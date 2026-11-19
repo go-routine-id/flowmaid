@@ -1,0 +1,18 @@
+architecture-beta
+    group g0(internet)[Edge]
+    group g1(disk)[Frontend]
+    group g2(internet)[Data] in g0
+    service s0(disk)[Service 0] in g0
+    service s1(cloud)[Service 1] in g1
+    service s2(database)[Service 2] in g0
+    service s3(server)[Service 3] in g2
+    service s4(cloud)[Service 4] in g0
+    s2:R -- L:s3
+    s4:B --> T:s2
+    s0:T --> B:s4
+    s0:R --> T:s4
+    s2:T -- B:s3
+    s1:T --> B:s4
+    s3:B -- L:s4
+    s1:L -- T:s2
+    s2:R -- L:s4

@@ -1,0 +1,16 @@
+classDiagram
+direction TB
+A *-- B
+B o-- C
+C --> D
+C *-- E
+B --> F
+A --|> G
+G --|> D
+B ..> B : b0
+B o-- B
+class F {
+ +int id
+ +run() void
+ +stop()
+}

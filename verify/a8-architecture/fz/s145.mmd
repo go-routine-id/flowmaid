@@ -1,0 +1,18 @@
+architecture-beta
+    group g0(internet)[Observability]
+    service s0(monitoring)[Service 0] in g0
+    service s1(disk)[Service 1] in g0
+    service s2(database)[Service 2] in g0
+    service s3(server)[Service 3] in g0
+    service s4(disk)[Service 4] in g0
+    service s5(monitoring)[Service 5] in g0
+    service s6(disk)[Service 6]
+    s5:L --> R:s3
+    s1:L -- R:s6
+    s3:R --> L:s0
+    s3:B -- T:s5
+    s1:T -- L:s5
+    s4:T --> B:s5
+    s6:L --> R:s0
+    s2:T --> B:s4
+    s0:L -- B:s1

@@ -1,0 +1,31 @@
+flowchart RL
+  n1["worker cache queue"]
+  n2["split"]
+  n3["store api mail"]
+  subgraph B0["Analytics"]
+    n4["db split parse"]
+  end
+  subgraph B1["Data tier"]
+    n5["split<br/>db"]
+  end
+  subgraph B2["Fulfilment desk"]
+    n6["db"]
+    n7["split pack search"]
+    subgraph B2s0["Ingest 0"]
+      n8["audit"]
+    end
+    subgraph B2s1["Edge services 1"]
+      n9["worker cache auth<br/>pack"]
+    end
+  end
+  n10["billing<br/>pack"]
+  n4 --> n10
+  n7 -->|billing| n10
+  n6 ==>|parse| n2
+  n5 ==> n8
+  n8 -.->|cache| n6
+  n9 -->|cache| n10
+  n5 --> n2
+  n2 -.-> n7
+  n10 -->|db| n4
+  n5 -.->|parse| n9

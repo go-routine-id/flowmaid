@@ -1,0 +1,9 @@
+flowchart TD
+  subgraph S1 [Stage one]
+    a[Alpha] --> b[Beta]
+  end
+  subgraph S2 [Stage two]
+    c[Gamma] --> d[Delta]
+  end
+  S1 -->|hand over| S2
+  S2 -.->|retry| S1

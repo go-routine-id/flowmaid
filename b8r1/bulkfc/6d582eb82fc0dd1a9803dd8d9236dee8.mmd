@@ -1,0 +1,13 @@
+flowchart TB
+  subgraph outer [Outer frame]
+    direction TB
+    subgraph inner [Inner]
+      I1[one] --> I2[two]
+    end
+    O1[outer node] --> inner
+  end
+  X[Outside] --> outer
+  inner --> Y[Below]
+  X --> I2
+  Y ==> outer
+  outer --> Z[After]

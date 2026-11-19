@@ -1,0 +1,16 @@
+blocks-overview-lr	QUEUE>CHARGE	live 1 -> 2	cubics 4	new run len 8.5 at (1506.9,461.2)-(1506.9,452.8) turn in 89.7 out 89.7
+blocks-overview-lr	QUEUE>SHIP	live 1 -> 2	cubics 4	new run len 8.5 at (1504.4,495.8)-(1504.4,504.2) turn in 89.7 out 89.7
+blocks-overview-rl	QUEUE>CHARGE	live 1 -> 2	cubics 4	new run len 8.5 at (1381.9,461.2)-(1381.9,452.8) turn in 89.7 out 89.7
+near-drag	__start_root>A	live 1 -> 2	cubics 4	new run len 8.4 at (681.5,91.6)-(681.5,100.0) turn in 89.7 out 89.7
+nested-composite	__start_root>A	live 1 -> 2	cubics 4	new run len 8.3 at (108.7,376.7)-(108.7,385.0) turn in 89.7 out 89.7
+nested-composite	K0NN_1>__note_16	live 1 -> 2	cubics 1	
+nested-composite	__note_23>B1	live 1 -> 2	cubics 1	
+note-edge-row	__start_0>S	live 1 -> 2	cubics 4	new run len 8.0 at (115.8,297.7)-(123.8,297.7) turn in 89.7 out 89.8
+note-edge-row	__note_6>S	live 0 -> 0	cubics 1	new run len 9.3 at (173.7,299.8)-(169.6,308.2) turn in - out -
+routed-around	C1i0>C1i1	live 1 -> 2	cubics 4	new run len 8.0 at (822.0,383.7)-(822.0,375.7) turn in 89.8 out 89.7
+routed-around	[C1]>__note_16	live 0 -> 0	cubics 1	new run len 9.1 at (1365.0,444.4)-(1358.9,451.1) turn in - out -
+spread-bottom	__start_1>K1_0	live 1 -> 2	cubics 4	new run len 8.5 at (757.6,150.7)-(757.6,142.3) turn in 89.8 out 89.7
+state-note	Parse>__note_6	live 0 -> 0	cubics 1	new run len 9.4 at (310.7,523.8)-(314.9,532.2) turn in - out -
+state-note	[Active]>[Review]	live 2 -> 3	cubics 8	new run len 8.6 at (365.9,657.0)-(357.3,657.0) turn in 89.8 out 89.6
+wide-frames	[K0N]>K0_0	live 2 -> 3	cubics 8	new run len 8.6 at (440.1,426.0)-(431.4,426.0) turn in 89.8 out 89.6
+wide-frames	[K0]>A	live 2 -> 3	cubics 8	new run len 8.6 at (339.4,197.5)-(348.0,197.5) turn in 89.8 out 89.6

@@ -1,0 +1,39 @@
+fix(blocks): a label kept off its end blocks stays on its line, and leaves an end block for no spot farther from its line's ends (b12a2c-squeeze fix round 1, B12 G3, lead ruling on chips)
+
+7208f50 barred every spot of a label's line whose chip meets one of its
+edge's end blocks. Where the stretch outside them was crowded, the best
+spot left lay BESIDE the line: the public fixture drawn BT set `place
+order` 41 px off its line by the Storefront title, drawn LR `write` 20 px,
+and blocks/reqresp's `response` hung 35 px beside its line. Mermaid
+centres a chip on its line; the lead ruled that a chip stays on it and
+that a chip inside its end block is acceptable, one detached is not.
+
+`labels::place_long`: the search with the end blocks barred
+(`Track::new`) is kept only when it finds a clean spot ON the line;
+otherwise the label is searched again over its whole line as before
+7208f50 (`best_spot` now returns its spot's key, so the stage can tell).
+And a label that sat inside an end block leaves it only for a spot no
+farther from its line's nearer end than it sat: on a long edge the
+stretch between the blocks can lie far down the line, and the chip was
+carried to its middle (one input's end-distance mean +19 since 7208f50).
+Chips more than 5 px off their line over the local inputs: 66 at the
+package start, 79 at 22dac44, 66 now, none farther than at the start.
+
+Tests: blockcheck::a_chip_kept_off_its_end_blocks_stays_on_its_line
+(`place order` BT, `write` LR, `response`: within 3 px of their lines);
+labels::tests::a_label_leaves_its_end_block_for_no_spot_farther_from_an_end
+(the scan keeps only the outside spots no farther from an end, and the
+whole line when there are none).
+
+Checks against the package start (d99c073), suite-on:
+- local judge: must-fail 86 -> 75, no cell worse (the end-distance cell
+  7208f50 made worse is back to the start; that input's label returns
+  inside its end block, the ruling's trade: one end-block line comes
+  back of the seven 7208f50 cleared).
+- gate messages: no worse (failing 8 -> 8, same names).
+- direction copies (332 + 32): no worse.
+Block mode only (`blocks`); the default build is byte-identical.
+No snapshot or gate changed. Guard green.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

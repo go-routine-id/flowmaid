@@ -1,0 +1,8 @@
+test src/mindmap.rs - mindmap::try_route (line 1806) ... ok
+test src/lib.rs - (line 22) ... ok
+test src/er.rs - er::try_route (line 185) ... ok
+test src/class.rs - class::try_route (line 237) ... ok
+test src/scene.rs - scene::SvgOptions::theme (line 10248) ... ok
+test src/scene.rs - scene::SvgOptions (line 10210) ... ok
+test src/scene.rs - scene::try_route (line 5271) ... ok
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.58s

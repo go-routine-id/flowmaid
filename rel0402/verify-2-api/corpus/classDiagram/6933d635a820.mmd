@@ -1,0 +1,17 @@
+classDiagram
+    direction RL
+    class Repo~T~ {
+      <<interface>>
+      +find(id) T
+      +save(item T) void
+    }
+    class UserRepo
+    class OrderRepo
+    Repo~T~ <|.. UserRepo
+    Repo <|.. OrderRepo
+    UserRepo "1" --> "*" User : loads
+    OrderRepo "1" --> "*" Order : loads
+    User "1" --> "*" Order : places
+    Order --> Order : parent
+    User --> User : manager
+    note for Repo "Generic repository"

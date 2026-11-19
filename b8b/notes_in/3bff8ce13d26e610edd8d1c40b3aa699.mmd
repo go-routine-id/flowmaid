@@ -1,0 +1,16 @@
+stateDiagram-v2
+    state f <<fork>>
+    state j <<join>>
+    [*] --> f
+    f --> A
+    f --> B
+    f --> j
+    A --> j
+    B --> j
+    j --> End
+    note left of f : spawn all
+    note right of j
+        wait for
+        everyone
+    end note
+    End --> [*]

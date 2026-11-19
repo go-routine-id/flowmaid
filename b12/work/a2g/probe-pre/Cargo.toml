@@ -1,0 +1,23 @@
+[package]
+name = "probe"
+version = "0.1.0"
+edition = "2021"
+[dependencies]
+flowmaid = { path = "/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/work/a2g/pre-tree" }
+[profile.release]
+debug = false
+[[bin]]
+name = "frdiff"
+path = "../probe/src/frdiff.rs"
+[[bin]]
+name = "pdiff"
+path = "../probe/src/pdiff.rs"
+[[bin]]
+name = "onsvg"
+path = "../probe/src/onsvg.rs"
+[[bin]]
+name = "meas"
+path = "../probe/src/meas.rs"
+[[bin]]
+name = "frdiff2"
+path = "../probe/src/frdiff2.rs"

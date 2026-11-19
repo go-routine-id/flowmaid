@@ -1,0 +1,22 @@
+flowchart TD
+  n1["ingest<br/>mail"]
+  n2["billing search queue"]
+  subgraph B0["Back office and finance"]
+    n3["auth ingest report"]
+    n4["merge"]
+  end
+  subgraph B1["Ops"]
+    n5["worker"]
+    n6["audit"]
+  end
+  n7["audit"]
+  n8["search billing cache"]
+  n6 -.->|queue| n8
+  n4 --> n2
+  n8 -.-> n2
+  n7 --> n1
+  n1 -->|ship| n3
+  n2 --> n7
+  n7 ==> n3
+  n8 --> n1
+  n4 -.-> n3

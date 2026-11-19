@@ -1,0 +1,11 @@
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> Working
+    state "Working on the very long composite state name" as Working {
+        [*] --> Load
+        Load --> Run
+        Run --> [*]
+    }
+    Working --> Done
+    Idle --> Done
+    Done --> [*]

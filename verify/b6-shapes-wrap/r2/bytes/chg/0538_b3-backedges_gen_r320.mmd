@@ -1,0 +1,11 @@
+flowchart TD
+    N0(Notify check)
+    N1[/Retry/]
+    N2([Fetch])
+    N3{Notify}
+    N4(Notify load)
+    N0 --> N1
+    N0 --> N2
+    N2 --> N3
+    N3 --> N4
+    N3 -->|back| N0

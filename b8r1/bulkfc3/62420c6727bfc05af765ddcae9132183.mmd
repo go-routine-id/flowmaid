@@ -1,0 +1,11 @@
+flowchart BT
+  A[Alpha] ==> B[Beta]
+  B ==>|spin| B
+  B --> B
+  B --> C[Gamma]
+  C ==>|back| A
+  C --> D[Delta]
+  D -->|loop| D
+  D -.-> B
+  linkStyle 1 stroke:#c33,stroke-width:9px
+  linkStyle 4 stroke-width:6px

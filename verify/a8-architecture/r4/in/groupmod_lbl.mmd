@@ -1,0 +1,11 @@
+architecture-beta
+    group left(cloud)[Left side group]
+    group right(database)[Right side group]
+    service a(server)[A] in left
+    service b(server)[B] in left
+    service c(database)[C] in right
+    service d(disk)[D] in right
+    a{group}:R -[cross group sync]-> L:c{group}
+    a:B -[local]-> T:b
+    c:B -[replicate]-> T:d
+    b:R -[backup nightly]-> L:d

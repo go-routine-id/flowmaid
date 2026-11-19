@@ -1,0 +1,278 @@
+   Q routed n1->n5 end_kink end on n5 67.8deg
+   Q routed n11->n37 band n25->n42 568px
+   Q routed n11->n37 end_kink end on n37 78.2deg
+   Q routed n11->n37 overlap n25->n42 166px
+   Q routed n11->n37 tight n25->n42 320px
+   Q routed n15->n38 band n25->n38 654px
+   Q routed n15->n38 band n25->n42 826px
+   Q routed n15->n38 end_kink end on n38 84.2deg
+   Q routed n15->n38 overlap n25->n38 614px
+   Q routed n15->n38 overlap n25->n42 468px
+   Q routed n15->n38 tight n25->n38 1040px
+   Q routed n15->n38 tight n25->n42 852px
+   Q routed n16->n17 band n22->n40 132px
+   Q routed n16->n17 end_kink end on n17 44.4deg
+   Q routed n16->n17 overlap n22->n40 50px
+   Q routed n16->n17 tight n22->n40 66px
+   Q routed n16->n21 band n21->n16 176px
+   Q routed n16->n23 band n16->n29 1058px
+   Q routed n16->n23 band n22->n40 446px
+   Q routed n16->n23 edge_frame g6
+   Q routed n16->n23 edge_frame g7
+   Q routed n16->n23 end_kink end on n23 76.4deg
+   Q routed n16->n23 overlap n16->n29 296px
+   Q routed n16->n23 overlap n22->n40 136px
+   Q routed n16->n23 tight n16->n29 956px
+   Q routed n16->n23 tight n22->n40 240px
+   Q routed n16->n29 band n22->n40 398px
+   Q routed n16->n29 edge_frame g7
+   Q routed n16->n29 end_kink end on n29 72.4deg
+   Q routed n16->n29 overlap n22->n40 124px
+   Q routed n16->n29 tight n22->n40 212px
+   Q routed n16->n31 band n16->n35 900px
+   Q routed n16->n32 band n16->n23 1096px
+   Q routed n16->n32 band n16->n29 594px
+   Q routed n16->n32 band n22->n40 380px
+   Q routed n16->n32 end_kink end on n32 70.2deg
+   Q routed n16->n32 overlap n16->n29 708px
+   Q routed n16->n32 overlap n22->n40 116px
+   Q routed n16->n32 tight n16->n23 498px
+   Q routed n16->n32 tight n16->n29 1120px
+   Q routed n16->n32 tight n22->n40 200px
+   Q routed n16->n37 band n43->n16 1312px
+   Q routed n16->n40 band n16->n41 652px
+   Q routed n16->n40 band n22->n40 424px
+   Q routed n16->n40 end_kink end on n40 62.5deg
+   Q routed n16->n40 tight n16->n41 130px
+   Q routed n16->n40 tight n22->n40 44px
+   Q routed n16->n41 band n16->n43 176px
+   Q routed n16->n41 end_kink end on n41 74.5deg
+   Q routed n16->n43 band n16->n37 1276px
+   Q routed n16->n44 band n43->n16 1770px
+   Q routed n2->n7 end_kink end on n7 70.2deg
+   Q routed n20->n37 border g4 bottom 145px
+   Q routed n20->n37 hug g4 131px
+   Q routed n22->n40 edge_frame g1
+   Q routed n22->n40 edge_frame g4
+   Q routed n22->n40 edge_frame g6
+   Q routed n22->n40 edge_frame g7
+   Q routed n22->n40 end_kink end on n40 78.4deg
+   Q routed n25->n38 border g6 bottom 118px
+   Q routed n25->n38 edge_frame g1
+   Q routed n25->n38 edge_frame g2
+   Q routed n25->n38 edge_frame g3
+   Q routed n25->n38 end_kink end on n38 85.2deg
+   Q routed n25->n38 hug g5 84px
+   Q routed n25->n38 hug g6 113px
+   Q routed n25->n42 band n25->n38 1492px
+   Q routed n25->n42 border g6 bottom 112px
+   Q routed n25->n42 edge_frame g1
+   Q routed n25->n42 edge_frame g2
+   Q routed n25->n42 edge_frame g3
+   Q routed n25->n42 end_kink end on n42 88.2deg
+   Q routed n25->n42 hug g5 36px
+   Q routed n25->n42 hug g6 112px
+   Q routed n25->n42 hug n37 27px
+   Q routed n25->n42 overlap n25->n38 306px
+   Q routed n25->n42 tight n25->n38 1166px
+   Q routed n28->n42 band n11->n37 584px
+   Q routed n28->n42 band n15->n38 1034px
+   Q routed n28->n42 band n25->n38 1454px
+   Q routed n28->n42 band n25->n42 1898px
+   Q routed n28->n42 band n31->n38 912px
+   Q routed n28->n42 edge_frame g1
+   Q routed n28->n42 edge_frame g2
+   Q routed n28->n42 edge_frame g3
+   Q routed n28->n42 end_kink end on n42 85.6deg
+   Q routed n28->n42 hug n15 75px
+   Q routed n28->n42 overlap n11->n37 292px
+   Q routed n28->n42 overlap n15->n38 140px
+   Q routed n28->n42 overlap n25->n42 362px
+   Q routed n28->n42 tight n11->n37 510px
+   Q routed n28->n42 tight n15->n38 344px
+   Q routed n28->n42 tight n25->n42 1546px
+   Q routed n29->n38 band n15->n38 482px
+   Q routed n29->n38 band n25->n38 588px
+   Q routed n29->n38 band n25->n42 294px
+   Q routed n29->n38 edge_frame g1
+   Q routed n29->n38 edge_frame g2
+   Q routed n29->n38 edge_frame g3
+   Q routed n29->n38 overlap n15->n38 136px
+   Q routed n29->n38 overlap n25->n38 160px
+   Q routed n29->n38 tight n15->n38 242px
+   Q routed n29->n38 tight n25->n38 296px
+   Q routed n3->n7 end_kink end on n7 57.6deg
+   Q routed n31->n38 band n15->n38 1224px
+   Q routed n31->n38 band n25->n38 464px
+   Q routed n31->n38 band n25->n42 1748px
+   Q routed n31->n38 band n29->n38 578px
+   Q routed n31->n38 border g5 bottom 443px
+   Q routed n31->n38 border g6 bottom 299px
+   Q routed n31->n38 edge_frame g1
+   Q routed n31->n38 edge_frame g2
+   Q routed n31->n38 edge_frame g3
+   Q routed n31->n38 end_kink end on n38 85.7deg
+   Q routed n31->n38 hug g5 600px
+   Q routed n31->n38 hug g6 515px
+   Q routed n31->n38 overlap n25->n38 1396px
+   Q routed n31->n38 overlap n29->n38 168px
+   Q routed n31->n38 tight n15->n38 912px
+   Q routed n31->n38 tight n25->n38 1678px
+   Q routed n31->n38 tight n29->n38 312px
+   Q routed n33->n16 end_kink end on n16 89.5deg
+   Q routed n38->n39 end_kink end on n39 64.9deg
+   Q routed n4->n30 edge_frame g4
+   Q routed n4->n30 end_kink end on n30 90.4deg
+   Q routed n4->n30 hug n1 25px
+   Q routed n4->n43 lat_wiggle 56.0
+   Q routed n43->n16 border g10 left 63px
+   Q routed n43->n16 edge_chip g10
+   Q routed n43->n16 hug g10 42px
+   Q routed n45->g8 edge_frame g1
+   Q routed n45->g8 edge_frame g5
+   Q routed n45->g8 edge_frame g6
+   Q routed n45->g8 edge_frame g7
+   Q routed n45->g8 hug g5 50px
+   Q routed n46->g1 end_kink end on g1 86.7deg
+   Q routed n46->n17 end_cross n46->g1 at (2539,250)
+   Q routed n5->n7 edge_frame g4
+   Q routed n5->n7 end_kink end on n7 85.5deg
+   Q routed n7->n33 end_kink end on n33 88.0deg
+   Q routed n8->n42 band n11->n37 580px
+   Q routed n8->n42 band n25->n42 558px
+   Q routed n8->n42 band n28->n42 706px
+   Q routed n8->n42 end_kink end on n42 79.0deg
+   Q routed n8->n42 tight n25->n42 56px
+   Q routed n8->n42 tight n28->n42 278px
+   Q static n11->n37 band n25->n38 218px
+   Q static n11->n37 band n25->n42 604px
+   Q static n11->n37 end_kink end on n37 75.8deg
+   Q static n11->n37 overlap n25->n42 166px
+   Q static n11->n37 tight n25->n42 334px
+   Q static n15->n38 band n25->n38 666px
+   Q static n15->n38 band n25->n42 824px
+   Q static n15->n38 end_cross n25->n38 at (3168,1448)
+   Q static n15->n38 end_kink end on n38 82.0deg
+   Q static n15->n38 overlap n25->n38 242px
+   Q static n15->n38 overlap n25->n42 470px
+   Q static n15->n38 tight n25->n38 448px
+   Q static n15->n38 tight n25->n42 866px
+   Q static n16->n17 end_kink end on n17 38.6deg
+   Q static n16->n23 band n16->n29 294px
+   Q static n16->n23 band n22->n40 218px
+   Q static n16->n23 edge_frame g6
+   Q static n16->n23 edge_frame g7
+   Q static n16->n23 end_kink end on n23 73.3deg
+   Q static n16->n29 band n22->n40 484px
+   Q static n16->n29 edge_frame g7
+   Q static n16->n29 tight n22->n40 26px
+   Q static n16->n31 band n16->n35 898px
+   Q static n16->n32 band n16->n23 1116px
+   Q static n16->n32 band n16->n29 350px
+   Q static n16->n32 band n22->n40 210px
+   Q static n16->n32 end_kink end on n32 66.0deg
+   Q static n16->n32 overlap n16->n29 102px
+   Q static n16->n32 overlap n22->n40 66px
+   Q static n16->n32 tight n16->n23 624px
+   Q static n16->n32 tight n16->n29 172px
+   Q static n16->n32 tight n22->n40 96px
+   Q static n16->n37 band n16->n44 1274px
+   Q static n16->n37 band n43->n16 1276px
+   Q static n16->n40 band n16->n41 720px
+   Q static n16->n40 end_kink end on n40 58.5deg
+   Q static n16->n40 tight n16->n41 64px
+   Q static n16->n41 end_kink end on n41 70.6deg
+   Q static n16->n43 band n4->n43 204px
+   Q static n16->n43 band n43->n16 1914px
+   Q static n2->n7 end_kink end on n7 69.1deg
+   Q static n22->n40 border g6 left 126px
+   Q static n22->n40 edge_frame g1
+   Q static n22->n40 edge_frame g4
+   Q static n22->n40 edge_frame g6
+   Q static n22->n40 edge_frame g7
+   Q static n22->n40 hug g6 105px
+   Q static n25->n38 edge_frame g1
+   Q static n25->n38 edge_frame g2
+   Q static n25->n38 edge_frame g3
+   Q static n25->n42 band n25->n38 852px
+   Q static n25->n42 border g6 bottom 116px
+   Q static n25->n42 edge_frame g1
+   Q static n25->n42 edge_frame g2
+   Q static n25->n42 edge_frame g3
+   Q static n25->n42 end_kink end on n42 86.9deg
+   Q static n25->n42 hug g5 53px
+   Q static n25->n42 hug g6 112px
+   Q static n25->n42 tight n25->n38 218px
+   Q static n28->n42 band n11->n37 226px
+   Q static n28->n42 band n15->n38 520px
+   Q static n28->n42 band n25->n38 1676px
+   Q static n28->n42 band n25->n42 642px
+   Q static n28->n42 band n29->n38 754px
+   Q static n28->n42 band n31->n38 638px
+   Q static n28->n42 border g1 left 86px
+   Q static n28->n42 edge_frame g1
+   Q static n28->n42 edge_frame g2
+   Q static n28->n42 edge_frame g3
+   Q static n28->n42 hug g1 67px
+   Q static n28->n42 overlap n11->n37 50px
+   Q static n28->n42 overlap n15->n38 136px
+   Q static n28->n42 overlap n25->n42 142px
+   Q static n28->n42 overlap n31->n38 164px
+   Q static n28->n42 tight n11->n37 76px
+   Q static n28->n42 tight n15->n38 248px
+   Q static n28->n42 tight n25->n38 102px
+   Q static n28->n42 tight n25->n42 242px
+   Q static n28->n42 tight n29->n38 724px
+   Q static n28->n42 tight n31->n38 302px
+   Q static n29->n38 band n25->n38 928px
+   Q static n29->n38 edge_frame g1
+   Q static n29->n38 edge_frame g2
+   Q static n29->n38 edge_frame g3
+   Q static n29->n38 hug g6 385px
+   Q static n29->n38 hug n13 139px
+   Q static n3->n7 end_kink end on n7 51.5deg
+   Q static n31->n38 band n15->n38 834px
+   Q static n31->n38 band n25->n38 1008px
+   Q static n31->n38 band n25->n42 1748px
+   Q static n31->n38 band n29->n38 346px
+   Q static n31->n38 border g5 bottom 453px
+   Q static n31->n38 border g6 bottom 277px
+   Q static n31->n38 edge_frame g1
+   Q static n31->n38 edge_frame g2
+   Q static n31->n38 edge_frame g3
+   Q static n31->n38 end_kink end on n38 83.9deg
+   Q static n31->n38 hug g5 642px
+   Q static n31->n38 hug g6 481px
+   Q static n31->n38 overlap n15->n38 400px
+   Q static n31->n38 overlap n25->n38 286px
+   Q static n31->n38 overlap n29->n38 40px
+   Q static n31->n38 tight n15->n38 998px
+   Q static n31->n38 tight n25->n38 548px
+   Q static n31->n38 tight n25->n42 704px
+   Q static n31->n38 tight n29->n38 164px
+   Q static n33->n16 end_kink end on n16 88.5deg
+   Q static n36->n16 lat_wiggle 47.1
+   Q static n38->n39 end_kink end on n39 59.1deg
+   Q static n4->n30 edge_frame g4
+   Q static n4->n30 end_kink end on n30 89.4deg
+   Q static n43->n16 band n4->n43 180px
+   Q static n45->g8 border g5 left 41px
+   Q static n45->g8 edge_frame g1
+   Q static n45->g8 edge_frame g5
+   Q static n45->g8 edge_frame g6
+   Q static n45->g8 edge_frame g7
+   Q static n45->g8 hug g5 24px
+   Q static n46->g1 end_kink end on g1 61.7deg
+   Q static n5->n44 lat_wiggle 77.4
+   Q static n5->n7 edge_frame g4
+   Q static n5->n7 end_kink end on n7 84.6deg
+   Q static n7->n33 end_kink end on n33 87.1deg
+   Q static n8->n42 band n11->n37 584px
+   Q static n8->n42 band n25->n42 614px
+   Q static n8->n42 band n28->n42 222px
+   Q static n8->n42 end_cross n28->n42 at (3644,1437)
+   Q static n8->n42 end_cross n28->n42 at (3654,1440)
+   Q static n8->n42 end_kink end on n42 76.7deg
+   Q static n8->n42 overlap n28->n42 26px
+   Q static n8->n42 tight n25->n42 52px
+   Q static n8->n42 tight n28->n42 64px

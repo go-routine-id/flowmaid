@@ -1,0 +1,26 @@
+flowchart LR
+    subgraph G0[Ops 0]
+        subgraph H0[inner 0]
+            g0m0[g0m0]
+            g0m1[g0m1]
+        end
+    end
+    subgraph G1[Order processing 1]
+        g1m0[g1m0]
+        g1m1[g1m1]
+    end
+    subgraph G2[Billing and invoices 2]
+        g2m0[g2m0]
+        g2m1[g2m1]
+        g2m2[g2m2]
+    end
+    g2m0 --> g0m0
+    g2m2 --> g0m1
+    o1 --> g0m0
+    o0 --> G1
+    g1m1 --> g2m0
+    o1 --> g2m1
+    g2m2 --> o2
+    g1m1 -.-> o0
+    o0 -.-> G2
+    o1 -.-> o0

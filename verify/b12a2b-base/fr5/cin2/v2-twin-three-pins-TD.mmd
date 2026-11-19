@@ -1,0 +1,21 @@
+flowchart TD
+    subgraph A[Customer support portal]
+        a1[a1 wide node]
+        a2[a2]
+        a3[a3]
+    end
+    subgraph B[Customer support portal backend]
+        b1[b1]
+        b2[b2 wide node]
+        b3[b3]
+    end
+    a1 --> b1
+    a2 --> b2
+    a1 --> b2
+    a3 --> b3
+    a1 --> b3
+    p[p] --> A
+    q[q] --> B
+    r[r] --> B
+    q --> b1
+    r --> b3

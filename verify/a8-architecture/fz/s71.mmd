@@ -1,0 +1,18 @@
+architecture-beta
+    group g0(internet)[Ops]
+    service s0(monitoring)[Service 0]
+    service s1(database)[Service 1] in g0
+    service s2(cloud)[Service 2] in g0
+    service s3(internet)[Service 3] in g0
+    service s4(cloud)[Service 4] in g0
+    service s5(database)[Service 5]
+    service s6(database)[Service 6] in g0
+    service s7(monitoring)[Service 7] in g0
+    service s8(server)[Service 8]
+    service s9(internet)[Service 9] in g0
+    service s10(internet)[Service 10]
+    service s11(internet)[Service 11]
+    service s12(internet)[Service 12]
+    service s13(disk)[Service 13] in g0
+    service s14(disk)[Service 14]
+    s12:T -- B:s1

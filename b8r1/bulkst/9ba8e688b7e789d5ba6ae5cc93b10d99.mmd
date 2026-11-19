@@ -1,0 +1,18 @@
+stateDiagram-v2
+direction LR
+state f <<fork>>
+state j <<join>>
+state c <<choice>>
+[*] --> f
+f --> A
+f --> B
+f --> c
+c --> A : left
+c --> B : right
+c --> j : straight
+A --> j
+B --> j
+j --> [*]
+note right of c : decide
+note left of f : fork note
+note right of j : join note

@@ -1,0 +1,16 @@
+flowchart BT
+    N0{Report}
+    N1{Fetch done}
+    N2[Emit]
+    N3{Fetch archive}
+    N4[Queue retry]
+    N5{Retry report}
+    N0 --> N1
+    N1 -->|ok| N2
+    N2 -->|fail| N3
+    N1 --> N4
+    N3 -->|next| N5
+    N0 --> N1
+    N4 -->|rollback| N3
+    N3 --> N1
+    N3 ==>|again| N0

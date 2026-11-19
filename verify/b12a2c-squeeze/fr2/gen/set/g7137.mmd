@@ -1,0 +1,32 @@
+flowchart BT
+  n1["report"]
+  subgraph B0["Core"]
+    n2["worker index audit"]
+    subgraph B0s0["Core 0"]
+      n3["ingest<br/>report"]
+      n4["search report store"]
+    end
+  end
+  subgraph B1["Edge services"]
+    n5["search"]
+    n6["store"]
+    subgraph B1s0["Core 0"]
+      n7["notify"]
+      n8["notify split split<br/>api"]
+    end
+  end
+  n9["audit pack merge"]
+  n4 ==> n7
+  n2 -.-> n9
+  n3 -->|split| n2
+  n7 --> n3
+  n6 -.-> n2
+  n4 ==> n8
+  n6 --> n5
+  n6 --> n3
+  n2 ==> n5
+  n7 -->|auth| n6
+  n9 -->|ingest| n6
+  n2 ==>|search| n3
+  n5 ==> n8
+  n1 -->|auth| n2

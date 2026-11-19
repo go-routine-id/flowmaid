@@ -1,0 +1,10 @@
+flowchart TD
+    subgraph G[Core]
+        m0[queue]
+        m1[db]
+        m2[queue]
+        m0 --> m1
+    end
+    s0[src0] --> G
+    s1[src1] -- "lbl8" --> G
+    G --> z2[after]

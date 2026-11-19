@@ -1,0 +1,19 @@
+architecture-beta
+    group g0(cloud)[Private API]
+    group g1(disk)[Backend Services] in g0
+    group g2(server)[Data Storage Layer] in g0
+    group g3(internet)[Ops]
+    service s0(disk)[Service 0] in g0
+    service s1(internet)[Service 1] in g3
+    service s2(internet)[Service 2] in g1
+    service s3(database)[Service 3] in g2
+    service s4(disk)[Service 4] in g1
+    service s5(internet)[Service 5] in g0
+    service s6(disk)[Service 6] in g3
+    service s7(disk)[Service 7] in g0
+    s7:R --> R:s2
+    s4:B -- T:s2
+    s1:L --> T:s4
+    s5:T --> B:s2
+    s6:T --> B:s3
+    s5:L --> R:s7

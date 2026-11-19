@@ -1,0 +1,29 @@
+gitGraph LR:
+    commit id: "ZERO"
+    branch develop
+    branch release
+    commit id:"A"
+    checkout main
+    commit id:"ONE"
+    checkout develop
+    commit id:"B"
+    branch featureA
+    commit id:"FIX"
+    commit id: "FIX-2"
+    checkout main
+    commit id:"TWO"
+    checkout release
+    merge main id: "rel-sync"
+    checkout develop
+    merge featureA id: "mfa" tag: "feat-done"
+    checkout release
+    commit id: "rc"
+    checkout main
+    merge release id: "ship" tag: "v3.0.0"
+    merge develop id: "integrate"
+    branch "my topic" order: 0
+    checkout "my topic"
+    commit "a message"
+    commit msg: "another" id: "t2"
+    checkout main
+    merge "my topic" id: "mt"

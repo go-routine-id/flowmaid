@@ -1,0 +1,12 @@
+flowchart TD
+    subgraph G[Édition générale des données]
+        m0[ledger]
+        m1[ledger]
+        m0 --> m1
+    end
+    s0[src0] --> m0
+    s1[src1] -- "lbl5" --> G
+    s1 --> m1
+    s2[src2] -- "lbl7" --> G
+    m1 --> z[end]
+    G --> z2[after]

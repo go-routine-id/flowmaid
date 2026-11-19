@@ -1,0 +1,17 @@
+classDiagram
+direction TB
+A o-- B
+B o-- C
+A o-- D : owns
+D --|> E
+D --|> F : has many of
+E <|-- G
+F --> H
+A --|> G
+E --> H
+E o-- E : e0
+class B {
+ +int id
+ +run() void
+ +stop()
+}

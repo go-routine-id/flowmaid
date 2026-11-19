@@ -1,0 +1,16 @@
+flowchart RL
+    subgraph G[Édition générale des données]
+        m0[db]
+        m1[charge]
+        m2[charge]
+        m0 --> m1
+    end
+    s0[src0] -- "lbl7" --> m1
+    s0 --> G
+    s1[src1] --> m0
+    s2[src2] --> m1
+    s2 --> m2
+    s3[src3] --> m2
+    s3 --> G
+    s4[src4] -- "lbl9" --> G
+    m2 --> z[end]

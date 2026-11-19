@@ -1,0 +1,12 @@
+flowchart BT
+  N0[Load] --> N1[Parse]
+  N1 --> N2[Check]
+  N2 --> N3[Emit]
+  N0 --> N3
+  N0 --> N2
+  N3 -->|again| N1
+  N3 -.->|retry| N0
+  N2 --> N4{Done?}
+  N4 -->|no| N1
+  N4 -->|yes| N5([Archive])
+  N5 --> N5

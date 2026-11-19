@@ -1,0 +1,12 @@
+flowchart BT
+    subgraph O[MMMM WWWW QQQQ]
+        subgraph G[Data ingestion workers]
+            m0[ledger]
+            m1[x wide member node]
+        end
+        k[k]
+    end
+    m1 --> k
+    s0[src0] --> m0
+    s1[src1] --> G
+    s2[src2] --> m1

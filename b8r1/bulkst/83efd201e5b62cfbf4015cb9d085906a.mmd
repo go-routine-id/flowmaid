@@ -1,0 +1,12 @@
+stateDiagram-v2
+  [*] --> Idle
+  Idle --> Running : start
+  Running --> Idle : stop
+  Running --> Running : tick
+  Running --> Done
+  Done --> [*]
+  state Running {
+    [*] --> A
+    A --> B
+    B --> A
+  }

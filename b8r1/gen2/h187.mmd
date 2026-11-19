@@ -1,0 +1,31 @@
+flowchart TD
+  s0["api metric"]
+  s1["report ship"]
+  subgraph g0["pay zone"]
+    m0["billing billing store"]
+  end
+  subgraph g1["db pay db zone"]
+    direction TB
+    m1["user metric metric"]
+    m2["cart"]
+    m3["log ship"]
+    m4["search"]
+    m1 --> m2
+    m2 --> m3
+    m1 --> m4
+  end
+  subgraph g2["auth api zone"]
+    m5["pay cache auth"]
+  end
+  subgraph g3["cart trace zone"]
+    m6["store search search"]
+    m7["queue user"]
+    m6 --> m7
+  end
+  s1 --> g0
+  s1 --> g1
+  s1 --> m5
+  s1 --> g3
+  m6 --> m0
+  m0 --> m5
+  s0 --> L8["queue"]

@@ -1,0 +1,21 @@
+sequenceDiagram
+    participant A
+    participant B as Backend
+    participant C as Cache
+    B->>+A: call into A
+    alt cache hit and value fresh
+        A->>C: get
+        C-->>A: value
+    else cache miss or stale entry
+        A->>B: load
+        B-->>A: data
+    else
+        A->>A: noop
+    end
+    A-->>-B: result
+    Note over A,C: spanning note across all
+    actor Z as Late actor
+    B->>Z: notify
+    activate Z
+    Z-->>B: ok
+    deactivate Z

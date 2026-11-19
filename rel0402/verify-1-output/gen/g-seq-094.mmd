@@ -1,0 +1,22 @@
+sequenceDiagram
+autonumber
+actor P0 as <b>bold</b>
+participant P1 as 日本語
+Note over P1: a&b
+P0--)P1: delta
+par beta
+Note over P0,P1: gamma
+P0->>P0: self <b>bold</b>
+P1->>P1: 日本語
+P0--)P0: x
+P1->>P0: x
+P1-->P1: alpha
+P0->>P0: x
+P1--)P0: Customer Order
+Note over P0,P1: 日本語
+Note right of P0: gamma
+P1-)P0: beta
+P0->>P0: self <b>bold</b>
+and alpha
+P1-->P0: a&b
+end

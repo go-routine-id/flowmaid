@@ -1,0 +1,23 @@
+flowchart BT
+    N0(Load)
+    N1([Check store])
+    N2([Parse queue])
+    N3{Parse}
+    N4{{Notify check}}
+    N5{Emit store}
+    N6(Report)
+    N7(Done)
+    N8{Queue archive}
+    N0 -->|fail| N1
+    N0 --> N2
+    N2 --> N3
+    N2 -->|yes| N4
+    N2 --> N5
+    N3 -->|fail| N6
+    N5 -->|fail| N7
+    N5 --> N8
+    N0 --> N3
+    N3 --> N7
+    N2 --> N3
+    N8 -.-> N5
+    N5 -.-> N4

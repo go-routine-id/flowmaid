@@ -1,0 +1,40 @@
+flowchart TD
+    __start_root((" "))
+    Idle("waiting for input")
+    __start_0((" "))
+    Syntax("Syntax")
+    Semantics("Semantics")
+    __end_0((" "))
+    decide{" "}
+    Rejected("Rejected")
+    forked[" "]
+    Persist("Persist")
+    Notify("Notify")
+    joined[" "]
+    Done("Done")
+    __note_13["shown to the user"]
+    __end_root((" "))
+    subgraph Validating
+        direction LR
+        __start_0
+        Syntax
+        Semantics
+        __end_0
+    end
+    __start_root --> Idle
+    __start_0 --> Syntax
+    Syntax -->|"ok"| Semantics
+    Semantics --> __end_0
+    decide -->|"invalid"| Rejected
+    decide -->|"valid"| forked
+    forked --> Persist
+    forked --> Notify
+    Persist --> joined
+    Notify --> joined
+    joined --> Done
+    Rejected -->|"retry"| Idle
+    Rejected -.- __note_13
+    Done --> __end_root
+    Idle -->|"submit"| Validating
+    Validating --> decide
+    style __note_13 fill:#fff8c5,stroke:#9c8a2c

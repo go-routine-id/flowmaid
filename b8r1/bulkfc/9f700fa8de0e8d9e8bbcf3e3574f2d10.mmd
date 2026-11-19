@@ -1,0 +1,8 @@
+flowchart LR
+  A[Start] -->|ok| B[Check]
+  B -.->|maybe later| C[Queue]
+  C ==>|heavy load path| D[Worker]
+  D --o|circle end| E[Sink]
+  E --x|cross| F[Drop]
+  F <-->|both ways| G[Peer]
+  G -->|a very long label that needs room| H[End]

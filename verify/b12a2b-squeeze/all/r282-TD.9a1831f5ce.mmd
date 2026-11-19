@@ -1,0 +1,14 @@
+flowchart TD
+    subgraph O[Order processing]
+        subgraph G[Payments]
+            m0[queue]
+            m1[w]
+        end
+        k[k]
+    end
+    m0 --> k
+    s0[src0] --> m0
+    s0 --> m0
+    s1[src1] --> O
+    s2[src2] -- "lbl2" --> G
+    G --> z2[after]

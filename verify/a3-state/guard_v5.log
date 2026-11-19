@@ -1,0 +1,13 @@
+== fmt
+== clippy
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 4.34s
+== test
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+== doctest
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.36s
+== msrv
+warning: `flowmaid` (lib test) generated 1 warning (1 duplicate)
+    Finished dev [unoptimized + debuginfo] target(s) in 1.81s
+== wasm
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.91s
+GUARD: ALL GREEN

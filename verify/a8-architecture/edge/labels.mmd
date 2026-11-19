@@ -1,0 +1,5 @@
+architecture-beta
+    service a(server)[A]
+    service b(server)[B]
+    a:R -[]- L:b
+    a:B -["quoted, label"]-> T:b

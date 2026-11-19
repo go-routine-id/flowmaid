@@ -1,0 +1,22 @@
+flowchart RL
+    subgraph O[MMMM WWWW QQQQ]
+        subgraph G[WWW Mammoth Wombat Overview]
+            m0[w]
+            m1[charge]
+            m2[x wide member node]
+        end
+        k[k]
+    end
+    m1 --> k
+    m2 --> k
+    s0[src0] --> O
+    s0 --> G
+    s1[src1] --> G
+    s1 --> m0
+    s2[src2] --> m2
+    s2 --> O
+    s3[src3] --> m0
+    s4[src4] -- "lbl6" --> m0
+    s4 --> m0
+    m2 --> z[end]
+    G --> z2[after]

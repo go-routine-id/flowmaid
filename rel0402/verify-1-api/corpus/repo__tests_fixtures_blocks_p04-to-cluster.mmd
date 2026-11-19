@@ -1,0 +1,11 @@
+flowchart TD
+    x -->|to block| S
+    subgraph S[block S]
+        a --> b
+        a --> c
+    end
+    S -->|from block| y
+    subgraph T[block T]
+        d --> e
+    end
+    S -->|block to block| T

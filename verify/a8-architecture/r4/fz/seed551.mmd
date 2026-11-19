@@ -1,0 +1,15 @@
+architecture-beta
+    group g0(monitoring)[Data]
+    service s0(cloud)[Authentication and Authorization Service 0] in g0
+    service s1(disk)[Authentication and Authorization Service 1] in g0
+    service s2(database)[Q 2] in g0
+    service s3(server)[Authentication and Authorization Service 3] in g0
+    junction s4 in g0
+    junction s5 in g0
+    s1:T <--> B:s5
+    s4:T <--> B:s5
+    s5:B -[replicates to standby]-> T:s2
+    s3:L -- R:s0
+    s2:B <--> T:s0
+    s3:B -- T:s1
+    s5:L <-[replicates to standby]-> R:s3

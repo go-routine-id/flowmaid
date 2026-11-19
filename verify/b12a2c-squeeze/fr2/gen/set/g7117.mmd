@@ -1,0 +1,38 @@
+flowchart TD
+  n1["billing"]
+  n2["report<br/>audit"]
+  n3["ship<br/>pack"]
+  subgraph B0["Analytics"]
+    n4["ingest mail index<br/>pack"]
+    n5["pack"]
+    n6["audit audit mail"]
+    n7["auth"]
+    subgraph B0s0["Fulfilment desk 0"]
+      n8["audit"]
+      n9["store"]
+    end
+    subgraph B0s1["Data tier 1"]
+      n10["ingest"]
+    end
+  end
+  subgraph B1["Platform"]
+    n11["split store merge"]
+    n12["pack"]
+  end
+  n13["pack"]
+  n14["pack"]
+  n13 --> n3
+  n1 --> n11
+  n14 --> B0s0
+  n7 -->|ingest| n5
+  n3 --> n10
+  n11 -.-> n8
+  n14 -.-> n1
+  n10 --> n4
+  n14 --> n11
+  n1 --> n10
+  n5 -->|api| B0s0
+  n6 -.-> n12
+  n3 -->|worker| n6
+  n12 -->|index| n4
+  n9 --> n11

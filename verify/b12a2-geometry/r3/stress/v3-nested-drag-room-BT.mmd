@@ -1,0 +1,14 @@
+flowchart BT
+    top[start] --> p1
+    top --> q1
+    subgraph OUT["Outer platform services"]
+        subgraph INN["An inner block whose title runs far past its members"]
+            p1[alpha] --> p2[beta]
+            p1 --> p3[gamma]
+        end
+        q1[delta] --> q2[epsilon]
+        p2 --> q2
+    end
+    q2 --> end1[done]
+    p3 --> end1
+    p2 -.-> p1

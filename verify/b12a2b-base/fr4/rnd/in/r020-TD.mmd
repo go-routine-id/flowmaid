@@ -1,0 +1,15 @@
+flowchart TD
+    subgraph O[MMMM WWWW QQQQ]
+        subgraph G[Core]
+            m0[ledger]
+            m1[x wide member node]
+        end
+        k[k]
+    end
+    m0 --> k
+    m1 --> k
+    s0[src0] --> G
+    s0 --> m0
+    s1[src1] --> G
+    s2[src2] --> O
+    s3[src3] --> m0

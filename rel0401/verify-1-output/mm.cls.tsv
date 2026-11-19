@@ -1,0 +1,68 @@
+0	"class A."	ERR Parse error on line 2: | ...lassDiagramclass A. | ----------------------^	ERR Parse error on line 2:
+1	"class .A"	ERR Parse error on line 2: | classDiagramclass .A | ------------------^	ERR Parse error on line 2:
+2	"class A..B"	ERR Parse error on line 2: | classDiagramclass A..B | -------------------^	ERR Parse error on line 2:
+3	"class A...B"	ERR Parse error on line 2: | classDiagramclass A...B | -------------------^	ERR Parse error on line 2:
+4	"class A.B."	ERR Parse error on line 2: | ...ssDiagramclass A.B. | ----------------------^	ERR Parse error on line 2:
+5	"class A....B"	ERR Parse error on line 2: | classDiagramclass A....B | -------------------^	ERR Parse error on line 2:
+6	"class ..A"	ERR Parse error on line 2: | classDiagramclass ..A | ------------------^	ERR Parse error on line 2:
+7	"class ."	ERR Parse error on line 2: | classDiagramclass . | ------------------^	ERR Parse error on line 2:
+8	"class A.~T~"	ERR Parse error on line 2: | ...assDiagramclass A.~T~ | ----------------------^	ERR Parse error on line 2:
+9	"class A. {\n}"	ERR Parse error on line 2: | ...assDiagramclass A. {} | ----------------------^	ERR Parse error on line 2:
+10	"<<interface>> A."	ERR Parse error on line 2: | ...ram<<interface>> A. | ----------------------^	ERR Parse error on line 2:
+11	"class A.:::foo"	ERR Parse error on line 2: | ...lassDiagramclass A.:::foo | ----------------------^	ERR Parse error on line 2:
+12	"class A.[\"lbl\"]"	ERR Parse error on line 2: | ...lassDiagramclass A.["lbl"] | ----------------------^	ERR Parse error on line 2:
+13	"class A..B~T~"	ERR Parse error on line 2: | classDiagramclass A..B~T~ | -------------------^	ERR Parse error on line 2:
+14	"class a.b.C"	ok	ok
+15	"class A.B"	ok	ok
+16	"class A.B~T~"	ok	ok
+17	"class A.-B"	ok	ok
+18	"class A-.B"	ok	ok
+19	"class A._B"	ok	ok
+20	"class A.1"	ok	ok
+21	"class 1.A"	ok	ok
+22	"class A. B"	ok	ok
+23	"class A .B"	ok	ok
+24	"class A . B"	ok	ok
+25	"class `A.`"	ok	ok
+26	"class `..A`"	ok	ok
+27	"class A.B {\n+x int\n}"	ok	ok
+28	"class A.B.C {\n}"	ok	ok
+29	"namespace N {\nclass A.\n}"	ERR Parse error on line 3: | ...mespace N {class A.} | ----------------------^	ERR Parse error on line 3:
+30	"namespace N {\nclass a.b.C\n}"	ok	ok
+31	"namespace N.M {\nclass A\n}"	ok	ok
+32	"namespace N. {\nclass A\n}"	ERR Parse error on line 2: | ...iagramnamespace N. {class A} | ----------------------^	ERR Parse error on line 2:
+33	"class A.;"	ERR Lexical error on line 2. Unrecognized text. | ...lassDiagramclass A.; | ----------------------^	ERR Lexical error on line 2. Unrecognized text.
+34	"class A.B~T.U~"	ok	ok
+35	"class A~T~."	ERR Parse error on line 2: | ...ssDiagramclass A~T~. | ----------------------^	ERR Parse error on line 2:
+36	"class A.B~T~."	ERR Parse error on line 2: | ...Diagramclass A.B~T~. | ----------------------^	ERR Parse error on line 2:
+37	"class A[\"x\"]."	ERR Parse error on line 2: | ...Diagramclass A["x"]. | ----------------------^	ERR Parse error on line 2:
+38	"class A:::foo."	ERR Parse error on line 2: | ...iagramclass A:::foo. | ----------------------^	ERR Parse error on line 2:
+39	"class A ."	ERR Parse error on line 2: | ...assDiagramclass A . | ----------------------^	ERR Parse error on line 2:
+40	"class A . . B"	ERR Parse error on line 2: | ...ssDiagramclass A . . B | ----------------------^	ERR Parse error on line 2:
+41	"<<interface>> .A"	ERR Parse error on line 2: | ...agram<<interface>> .A | ----------------------^	ERR Parse error on line 2:
+42	"class A\n<<interface>> A"	ok	ok
+43	"class A.B\n<<interface>> A.B"	ok	ok
+44	"class A..B {\n}"	ERR Parse error on line 2: | classDiagramclass A..B {} | -------------------^	ERR Parse error on line 2:
+45	"class A,B"	ERR Parse error on line 2: | classDiagramclass A,B | -------------------^	ERR Parse error on line 2:
+46	"class A, B"	ERR Parse error on line 2: | classDiagramclass A, B | -------------------^	ERR Parse error on line 2:
+47	"class A.B:::c"	ok	ok
+48	"class A. :::foo"	ERR Parse error on line 2: | ...assDiagramclass A. :::foo | ----------------------^	ERR Parse error on line 2:
+49	"class A.\tB"	ok	ok
+50	"class A.B[\"x.y\"]"	ok	ok
+51	"class A[\"x.\"]"	ok	ok
+52	"class A.B.\nA.B --> C"	ERR Parse error on line 2: | ...ssDiagramclass A.B.A.B --> C | ----------------------^	ERR Parse error on line 2:
+53	"class A\nclass B."	ERR Parse error on line 3: | ...ramclass Aclass B. | ---------------------^	ERR Parse error on line 3:
+54	"class A$"	ERR Parse error on line 2: | classDiagramclass A$ | -------------------^	ERR Parse error on line 2:
+55	"class A.$"	ERR Parse error on line 2: | ...lassDiagramclass A.$ | ----------------------^	ERR Parse error on line 2:
+56	"class .A.B"	ERR Parse error on line 2: | classDiagramclass .A.B | ------------------^	ERR Parse error on line 2:
+57	"class A.."	ERR Parse error on line 2: | classDiagramclass A.. | -------------------^	ERR Parse error on line 2:
+58	"class A-."	ERR Parse error on line 2: | ...assDiagramclass A-. | ----------------------^	ERR Parse error on line 2:
+59	"class A.-"	ok	ok
+60	"class A.B-"	ok	ok
+61	"class Map~a.b~"	ok	ok
+62	"class A~T~"	ok	ok
+63	"class A.B~T~ {\n}"	ok	ok
+64	"class A~T~. {\n}"	ERR Parse error on line 2: | ...ssDiagramclass A~T~. {} | ----------------------^	ERR Parse error on line 2:
+65	"class A{\n}"	ok	ok
+66	"class A.{\n}"	ERR Parse error on line 2: | ...lassDiagramclass A.{} | ----------------------^	ERR Parse error on line 2:
+67	"class A.B{\n}"	ok	ok

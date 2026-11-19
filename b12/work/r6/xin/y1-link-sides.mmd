@@ -1,0 +1,19 @@
+flowchart TD
+  hub[Dispatcher] --> a1
+  hub --> c1
+  hub --> m1
+  subgraph ZONE[Processing zone]
+    a1[Parse] --> a2[Validate]
+    a2 --> a3[Store]
+    subgraph MID[Middle stage with a long title]
+      m1[Fetch] --> m2[Decode]
+      m2 --> m3[Emit]
+    end
+    c1[Audit] --> c2[Report]
+    a1 --> c2
+    c1 --> a2
+    m3 --> a3
+    m3 --> c2
+  end
+  a3 --> sink[(Archive)]
+  c2 --> sink

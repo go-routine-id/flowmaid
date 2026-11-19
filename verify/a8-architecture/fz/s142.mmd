@@ -1,0 +1,23 @@
+architecture-beta
+    group g0(cloud)[Private API]
+    group g1(disk)[Backend Services]
+    group g2(monitoring)[Backend Services]
+    group g3(cloud)[Data]
+    service s0(monitoring)[Service 0]
+    service s1(monitoring)[Service 1] in g0
+    service s2(internet)[Service 2] in g3
+    service s3(monitoring)[Service 3] in g0
+    service s4(internet)[Service 4]
+    service s5(monitoring)[Service 5]
+    service s6(cloud)[Service 6] in g3
+    s4:T --> L:s6
+    s2:B --> T:s1
+    s4:R --> L:s0
+    s6:B --> L:s0
+    s4:T -- B:s6
+    s0:R --> L:s5
+    s0:T --> T:s6
+    s5:R --> L:s2
+    s4:R -- R:s5
+    s5:L --> T:s0
+    s2:B --> T:s3

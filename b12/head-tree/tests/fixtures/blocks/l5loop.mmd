@@ -1,0 +1,13 @@
+flowchart TD
+    subgraph B[Other]
+        b1 --> b2 --> b3
+    end
+    subgraph T[Target]
+        t1 --> t2 --> t3 --> t4
+    end
+    subgraph S[Source]
+        s1 --> s2
+    end
+    n1 --> t1
+    n4 --> b1
+    s2 --> t1

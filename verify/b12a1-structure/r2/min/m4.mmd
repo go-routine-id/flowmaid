@@ -1,0 +1,11 @@
+flowchart TD
+  top --> A
+  subgraph A[First]
+    a1 --> a2
+  end
+  subgraph B[Second]
+    b1 --> b2
+  end
+  A --> B
+  B --> top
+  B --> A

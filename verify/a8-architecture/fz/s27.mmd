@@ -1,0 +1,10 @@
+architecture-beta
+    group g0(disk)[Frontend]
+    service s0(database)[Service 0]
+    service s1(monitoring)[Service 1]
+    service s2(disk)[Service 2] in g0
+    service s3(cloud)[Service 3] in g0
+    service s4(database)[Service 4] in g0
+    service s5(internet)[Service 5] in g0
+    service s6(internet)[Service 6]
+    s4:B --> T:s5

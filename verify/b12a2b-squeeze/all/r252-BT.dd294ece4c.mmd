@@ -1,0 +1,14 @@
+flowchart BT
+    subgraph G[Shipping and returns desk]
+        m0[charge]
+        m1[db]
+        m2[ledger]
+    end
+    s0[src0] --> G
+    s0 --> G
+    s1[src1] --> m2
+    s1 --> m2
+    s2[src2] --> G
+    s2 --> G
+    s3[src3] --> m1
+    s3 --> G

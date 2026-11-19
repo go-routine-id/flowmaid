@@ -1,0 +1,22 @@
+must-fail lines that disappear:
+   MUST FAIL     infra-overview                     bends                  141  must <= 120       target <= -         [0.38 109, start 110, mermaid 100]  4.3 (a): mermaid's total + 20 %
+   MUST FAIL     infra-overview-v2                  bends                  147  must <= 114       target <= -         [0.38 124, start 125, mermaid 95]  4.3 (b): mermaid's + 20 %
+must-fail lines that appear:
+must-fail lines that stay with another value or bound:
+  live      MUST FAIL     infra-overview                     bends_max               13  must <= 8         target <= -         [0.38 8, start 8, mermaid 7]  4.3 (a): 0.38's own worst edge
+  corrected MUST FAIL     infra-overview                     bends_max                6  must <= 4         target <= -         [0.38 4, start 4, mermaid 7]  4.3 (a): 0.38's own worst edge
+  live      MUST FAIL     infra-overview                     straight_max          1590  must <= 1240      target <= -         [0.38 1175, start 1175, mermaid 1236]  4.3 (a): mermaid's
+  corrected MUST FAIL     infra-overview                     straight_max          1919  must <= 1240      target <= -         [0.38 1405, start 1405, mermaid 1236]  4.3 (a): mermaid's
+  live      MUST FAIL     infra-overview-v2                  bends_max               13  must <= 8         target <= -         [0.38 12, start 12, mermaid 6]  4.3 (b): the analog's bound
+  corrected MUST FAIL     infra-overview-v2                  bends_max                6  must <= 4         target <= -         [0.38 6, start 6, mermaid 6]  4.3 (b): the analog's bound
+  live      MUST FAIL     perm-a-edges-reversed              bends_max               13  must <= 8         target <= -         [0.38 9, start 9, mermaid 8]  4.3 (b)
+  corrected MUST FAIL     perm-a-edges-reversed              bends_max                6  must <= 4         target <= -         [0.38 4, start 4, mermaid 8]  4.3 (b)
+  live      MUST FAIL     perm-b-subgraphs-reversed          bends_max               12  must <= 8         target <= -         [0.38 8, start 8, mermaid 6]  4.3 (b)
+  corrected MUST FAIL     perm-b-subgraphs-reversed          bends_max                6  must <= 4         target <= -         [0.38 4, start 4, mermaid 6]  4.3 (b)
+  live      MUST FAIL     perm-c-actors-reversed             bends_max               13  must <= 8         target <= -         [0.38 8, start 8, mermaid 7]  4.3 (b)
+  corrected MUST FAIL     perm-c-actors-reversed             bends_max                6  must <= 4         target <= -         [0.38 4, start 4, mermaid 7]  4.3 (b)
+  live      MUST FAIL     perm-d-edges-rotated               bends_max               13  must <= 8         target <= -         [0.38 8, start 8, mermaid 6]  4.3 (b)
+  corrected MUST FAIL     perm-d-edges-rotated               bends_max                6  must <= 4         target <= -         [0.38 4, start 4, mermaid 6]  4.3 (b)
+  live      MUST FAIL     perm-e-one-more-inner-edge         bends_max               13  must <= 8         target <= -         [0.38 11, start 11, mermaid 8]  4.3 (b)
+  corrected MUST FAIL     perm-e-one-more-inner-edge         bends_max                6  must <= 4         target <= -         [0.38 4, start 5, mermaid 8]  4.3 (b)
+target lines: disappear [] appear []

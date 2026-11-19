@@ -1,0 +1,25 @@
+flowchart TD
+  H[Gateway hub]
+  subgraph Orders
+    o1[intake] --> o2[validate]
+    o2 --> o3[persist]
+  end
+  subgraph Billing
+    b1[charge] --> b2[receipt]
+  end
+  subgraph Notify
+    n1[email] --> n2[sms]
+  end
+  subgraph Store
+    s1[(primary)]
+    s2[(replica)]
+  end
+  H -->|new order| o1
+  H -->|pay| b1
+  H -.->|ping| n1
+  o3 ==>|write| s1
+  b2 -->|log| s1
+  s1 -.-> s2
+  o2 -->|bill| b1
+  b2 -->|notify| n1
+  n2 --> H

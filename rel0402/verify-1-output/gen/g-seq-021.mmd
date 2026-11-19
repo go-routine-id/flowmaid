@@ -1,0 +1,46 @@
+sequenceDiagram
+actor P0 as x
+P0--)P0: alpha
+activate P0
+P0->>P0: act
+deactivate P0
+P0-->P0: alpha
+activate P0
+P0->>P0: act
+deactivate P0
+P0->>P0: alpha
+Note left of P0: a&b
+activate P0
+P0->>P0: act
+deactivate P0
+P0--)P0: 日本語
+loop gamma
+P0--xP0: delta
+P0-->P0: 日本語
+P0-->>P0: 日本語
+end
+Note over P0: Long label here
+par alpha
+activate P0
+P0->>P0: act
+deactivate P0
+P0--xP0: Long label here
+end
+P0-xP0: beta
+P0--)P0: 日本語
+P0->>P0: self beta
+Note over P0: 日本語
+P0-->P0: x
+P0-->>P0: Customer Order
+P0->>P0: self beta
+Note over P0: <b>bold</b>
+P0->>P0: Customer Order
+P0->>P0: beta
+P0-)P0: Customer Order
+opt delta
+Note right of P0: x
+P0-->>P0: a&b
+P0-)P0: x
+P0-)P0: Long label here
+P0-->P0: x
+end

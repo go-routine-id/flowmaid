@@ -1,0 +1,18 @@
+flowchart LR
+    N0([Report])
+    N1(Fetch)
+    N2[/Parse/]
+    N3[Fetch report]
+    N4[Notify]
+    N5([Fetch])
+    N0 -->|yes| N1
+    N1 -->|ok| N2
+    N0 -->|ok| N3
+    N3 --> N4
+    N4 --> N5
+    N1 --> N4
+    N1 --> N5
+    N4 --> N5
+    N1 -.->|retry| N0
+    N4 -->|again| N1
+    N1 ==> N0

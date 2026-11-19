@@ -1,0 +1,7 @@
+flowchart LR
+  U[User] --> FE(Frontend) --> API{Auth?}
+  API -->|ok| SVC[Service Layer]
+  API -.->|denied| ERR[401 Response]
+  CACHE([Redis Cache]) --> SVC
+  SVC ==> DB[Database]
+  SVC --> CACHE

@@ -1,0 +1,37 @@
+flowchart RL
+  n1["ship"]
+  n2["db<br/>mail"]
+  n3["store"]
+  subgraph B0["Data tier"]
+    n4["search"]
+    subgraph B0s0["Back office and finance 0"]
+      n5["queue"]
+      n6["audit"]
+    end
+  end
+  subgraph B1["Core"]
+    n7["notify"]
+    n8["split"]
+    n9["auth"]
+    subgraph B1s0["Analytics 0"]
+      n10["mail"]
+      n11["api parse index"]
+      n12["pack"]
+    end
+  end
+  n13["search store ship"]
+  n7 ==> n2
+  n8 --> n11
+  n5 --> n1
+  n3 --> B1s0
+  n3 -.->|split| n7
+  n6 -.->|queue| n11
+  n13 --> n1
+  n2 -.-> n13
+  n1 --> n3
+  n9 -.-> n13
+  n3 -->|mail| n13
+  n6 -->|ship| n8
+  n12 ==> n5
+  n13 --> n12
+  n7 ==> n11

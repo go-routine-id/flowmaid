@@ -1,0 +1,10 @@
+flowchart TD
+  A[One] --> B[Two]
+  B --> C[Three]
+  C --> D[Four]
+  D e1@-->|back| A
+  D e2@--> B
+  e1@{ curve: linear }
+  e2@{ curve: step }
+  linkStyle 3 stroke:#d33,stroke-width:4px
+  linkStyle 4 stroke:#33d,stroke-width:2px,stroke-dasharray:5 5

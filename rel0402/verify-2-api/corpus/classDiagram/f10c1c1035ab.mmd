@@ -1,0 +1,12 @@
+classDiagram
+A ..> B
+B --|> C
+A --> D : owns
+D ..|> E
+E *-- F
+E ..> A
+B *-- C
+B o-- B : b0
+B o-- B : b1
+B --> B
+F --> F : f0

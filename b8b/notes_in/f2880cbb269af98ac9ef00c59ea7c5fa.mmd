@@ -1,0 +1,24 @@
+stateDiagram-v2
+direction BT
+[*] --> A
+state K0 {
+  [*] --> K0_0
+  K0_0 --> K0_1 : t1
+  state K0_f <<fork>>
+  K0_0 --> K0_f
+  K0_f --> K0_0
+  K0_f --> K0_1
+  note left of K0_1 : in466
+}
+A --> K0
+K0_1 --> A : out
+A --> K0_1
+note left of K0 : on617
+note left of K0 : on617b
+note right of K0 : on192
+note right of K0 : on192b
+note left of K0
+  on306 line one
+  second line
+end note
+note left of K0 : on637

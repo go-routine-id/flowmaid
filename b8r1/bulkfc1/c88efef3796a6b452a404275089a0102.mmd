@@ -1,0 +1,22 @@
+flowchart LR
+    N0{{Archive report}}
+    N1(Notify)
+    N2[Archive]
+    N3[Fetch]
+    N4[Emit]
+    N5{Load store}
+    N6([Store])
+    N7([Retry])
+    N8([Parse retry])
+    N0 --> N1
+    N0 -->|next| N2
+    N2 --> N3
+    N3 -->|fail| N4
+    N2 -->|yes| N5
+    N3 --> N6
+    N4 --> N7
+    N5 -->|ok| N8
+    N0 --> N7
+    N2 --> N4
+    N8 --> N5
+    N7 -.-> N4

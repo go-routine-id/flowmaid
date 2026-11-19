@@ -1,0 +1,27 @@
+classDiagram
+direction LR
+class Animal {
+  +String name
+  -int age
+  #foo() void
+  ~bar()$ 
+  +baz()* 
+  +total() : Money
+  <<interface>>
+}
+class Box~T~
+class Duck, Fish
+Animal : +inline() int
+class `Foo Bar`
+Animal-Name --> Dog
+Animal <|-- Dog
+Animal "1" o-- "*" Toy : owns
+Cat ..> Toy
+A *..* B
+A <|--|> Zebra
+bar ()-- foo
+foo --() baz
+note "free note"
+note for Animal "attached"
+<<service>> Dog
+Dog --> Toy %% trailing

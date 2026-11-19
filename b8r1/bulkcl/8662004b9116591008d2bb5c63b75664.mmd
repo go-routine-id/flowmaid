@@ -1,0 +1,14 @@
+classDiagram
+    direction TB
+    class Logger {
+      +log(msg) void
+      +warn(msg) void
+      +error(msg) void
+    }
+    ServiceA --> Logger : logs to
+    ServiceB --> Logger : logs to
+    ServiceC ..> Logger : uses
+    ServiceD o-- Logger : shares
+    ServiceE *-- Logger : owns
+    Logger <|-- FileLogger : is a
+    Logger --> Sink : writes

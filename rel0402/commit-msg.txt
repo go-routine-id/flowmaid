@@ -1,0 +1,11 @@
+release: 0.40.2 — route_partial for ER, class and mindmap; picking on six more scene types
+
+Version 0.40.2 in Cargo.toml and Cargo.lock. CHANGELOG: [Unreleased]
+becomes [0.40.2] with highlights; the drag cost line matches a fresh
+run of examples/drag_bench. README, docs/ROADMAP.md and the docs page
+are brought up to date. Static drawings are byte for byte those of
+0.40.1. 0.40.1 was not published to crates.io, so 0.40.2 is the first
+published release with its changes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

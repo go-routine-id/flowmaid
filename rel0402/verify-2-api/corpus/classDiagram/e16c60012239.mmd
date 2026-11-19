@@ -1,0 +1,13 @@
+classDiagram
+    class Logger {
+      +log(msg) void
+      +warn(msg) void
+      +error(msg) void
+    }
+    ServiceA "a1" --> "A2" Logger : logs to
+    ServiceB "b1" --> "B2" Logger : logs to
+    ServiceC "c1" ..> "C2" Logger : uses
+    ServiceD "d1" o-- "D2" Logger : shares
+    ServiceE "e1" *-- "E2" Logger : owns
+    Logger <|-- FileLogger : is a
+    Logger "L1" --> "S2" Sink : writes

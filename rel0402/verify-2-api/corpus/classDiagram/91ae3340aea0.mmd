@@ -1,0 +1,11 @@
+classDiagram
+  class Node {
+    +int id
+    +String name
+    +children() List
+  }
+  Base <|-- Leaf
+  Base <|-- Node
+  Base <|-- Other
+  Node <|-- Special
+  Node --> Node : parent

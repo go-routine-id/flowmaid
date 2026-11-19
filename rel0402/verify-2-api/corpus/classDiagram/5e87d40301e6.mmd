@@ -1,0 +1,23 @@
+classDiagram
+direction LR
+A *-- B
+A --> C
+A "1" ..> "*" D
+B ..|> E
+A --|> F : owns
+C -- G : uses
+F o-- D
+G *-- E
+D --> F
+C o-- C
+C ..> C : c1
+C o-- C : c2
+C ..> C
+C ..> C
+C ..> C : c5
+C ..> C
+class G {
+ +int id
+ +run() void
+ +stop()
+}

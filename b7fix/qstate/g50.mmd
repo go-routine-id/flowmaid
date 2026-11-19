@@ -1,0 +1,16 @@
+stateDiagram-v2
+direction BT
+[*] --> A
+state K0 {
+  [*] --> K0_0
+  K0_0 --> K0_1 : t1
+  K0_0 --> K0_2
+  K0_2 --> K0_3 : t3
+  note right of K0_0 : in6
+}
+A --> K0 : g1
+K0_3 --> A : out
+K0 --> K0_2
+A --> A : back
+note right of K0 : on13
+note right of K0 : on13b

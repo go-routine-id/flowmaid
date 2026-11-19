@@ -1,0 +1,21 @@
+flowchart RL
+    N0[Emit notify]
+    N1(Done notify)
+    N2[Archive]
+    N3(Notify queue)
+    N4(Load)
+    N5(Queue store)
+    N6{Emit}
+    N7{Load report}
+    N8{Archive}
+    N9{Notify}
+    N0 --> N1
+    N0 --> N2
+    N2 --> N3
+    N2 --> N4
+    N2 --> N5
+    N3 --> N6
+    N4 -->|fail| N7
+    N5 --> N8
+    N8 --> N9
+    N6 --> N0

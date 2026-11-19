@@ -1,0 +1,183 @@
+diff --git a/src/router.rs b/src/router.rs
+index 2ec0edb..abf0f92 100644
+--- a/src/router.rs
++++ b/src/router.rs
+@@ -77,7 +77,9 @@ use crate::clearance::{
+     EDGE_SPACING, FRAME_INSET, FRAME_SEP, MIN_OVERLAP_RUN, NODE_CLEARANCE, NODE_SEP, PARALLEL_COS,
+     PORT_ZONE, SAMPLE_STEP, TIGHT_RUN_MIN, WIGGLE_TOL,
+ };
+-use crate::scene::{edge_polyline, grow_scene, title_head, Bbox, Scene, ARROW_MARKER_PX, MARGIN};
++use crate::scene::{
++    edge_polyline, grow_scene, title_head, Bbox, Scene, ARROW_MARKER_PX, SVG_MARGIN,
++};
+ use std::cmp::Reverse;
+ use std::collections::BinaryHeap;
+ 
+@@ -117,10 +119,20 @@ const LABEL_COST: f64 = RUN_COST / 2.0;
+ /// A port stub reaches this much beyond the clearance (px), so it ends
+ /// on free lattice just outside its own inflated end.
+ const STUB_EXTRA: f64 = 2.0;
++/// How far (px) a port stub reaches out of the side at an end glyph of
++/// an edge the flowchart painter draws: two heads plus a corner's
++/// rounding, so the spline drawn through the finished path — its last
++/// corner rounded by at most half this leg — still runs straight for a
++/// whole head ([`ARROW_MARKER_PX`]) before the tip: the head and the
++/// stroke entering its base point square into the side (report §2.3).
++/// It also lands the corner well past the frame line [`FRAME_SEP`] out
++/// of a framed node, where the plain stub's corner (one clearance out)
++/// met it. Where it stands in a wall, the plain stub is used.
++const GLYPH_STUB_LEN: f64 = 2.0 * ARROW_MARKER_PX + 8.0;
+ /// Extra room beyond the drawing the lattice may use (px): half the
+-/// canvas margin, so a detour round the outermost node stays on the
++/// scene's margin, so a detour round the outermost node stays on the
+ /// canvas.
+-const ROUTE_OUTER: f64 = MARGIN / 2.0;
++const ROUTE_OUTER: f64 = crate::scene::MARGIN / 2.0;
+ /// What a corner costs, in px of path length.
+ const BEND_COST: f64 = 24.0;
+ /// What crossing an accepted edge costs, in px of path length: five
+@@ -671,7 +683,7 @@ impl World {
+         // Title chips with the header corner they sit in, as `to_svg`
+         // draws them (same math as the harness).
+         let chips = (0..sc.clusters.len())
+-            .map(|ci| title_head(&sc.clusters, ci, maxx + MARGIN))
++            .map(|ci| title_head(&sc.clusters, ci, maxx + SVG_MARGIN))
+             .collect();
+         let labels = sc
+             .edges
+@@ -1268,13 +1280,10 @@ fn detour(
+     let (p0, p3) = drawn_ends(e);
+     let (r0, r3) = (w.end_rect(info.ends.0), w.end_rect(info.ends.1));
+     let (s0, s3) = (side_of(r0, p0), side_of(r3, p3));
+-    let len = ROUTE_CLEAR + STUB_EXTRA;
+     // Transposed so the source stub leaves along x.
+     let flip = matches!(s0, Side::Top | Side::Bottom);
+     let t = |p: Pt| if flip { (p.1, p.0) } else { p };
+     let tr = |r: R| if flip { (r.1, r.0, r.3, r.2) } else { r };
+-    let (a, b) = (t(stub_of(r0, s0, p0, len)), t(stub_of(r3, s3, p3, len)));
+-    let (n0, n3) = (t(normal(s0)), t(normal(s3)));
+     let walls: Vec<R> = w
+         .nodes
+         .iter()
+@@ -1283,6 +1292,20 @@ fn detour(
+         .chain(blocked.iter().map(|&f| grow(w.frames[f], FRAME_SEP)))
+         .map(tr)
+         .collect();
++    // An end glyph's long stub where it stands in the open, else the
++    // plain one.
++    let glyph = glyph_ends(e);
++    let stub = |r: R, s: Side, p: Pt, glyph: bool| {
++        let plain = t(stub_of(r, s, p, stub_len(ROUTE_CLEAR, false)));
++        let long = t(stub_of(r, s, p, stub_len(ROUTE_CLEAR, glyph)));
++        if walls.iter().any(|&q| within(q, long)) {
++            plain
++        } else {
++            long
++        }
++    };
++    let (a, b) = (stub(r0, s0, p0, glyph.0), stub(r3, s3, p3, glyph.1));
++    let (n0, n3) = (t(normal(s0)), t(normal(s3)));
+     // The stubs stand in the open, or no leg set can be clear.
+     if walls.iter().any(|&r| within(r, a) || within(r, b)) {
+         return None;
+@@ -2687,18 +2710,20 @@ fn free_slot(
+ /// midpoint, or on a straight side the free slot nearest it, at least
+ /// [`PORT_SPACING`] from every end in `taken` there but edge `me`'s (so
+ /// two reroutes never land on one port, G9).
++#[allow(clippy::too_many_arguments)]
+ fn terms(
+     w: &World,
+     end: EndRef,
+     port: Pt,
+     alt: bool,
+     clear: f64,
++    glyph: bool,
+     taken: &[(EndRef, Pt, usize)],
+     me: usize,
+ ) -> Vec<Term> {
+     let rect = w.end_rect(end);
+     let side = side_of(rect, port);
+-    let len = clear + STUB_EXTRA;
++    let len = stub_len(clear, glyph);
+     let mut v = vec![Term {
+         port,
+         stub: stub_of(rect, side, port, len),
+@@ -2722,6 +2747,37 @@ fn terms(
+     v
+ }
+ 
++/// What landing an end glyph on its plain stub instead of its
++/// [`GLYPH_STUB_LEN`] one costs, in px of path length: one corner, the
++/// head then rides the curve round the last corner.
++const SHORT_STUB_COST: f64 = BEND_COST;
++
++/// The stub length of an end under clearance `clear`: [`GLYPH_STUB_LEN`]
++/// at an end glyph (`glyph`), when that is the longer, else just past
++/// the clearance.
++fn stub_len(clear: f64, glyph: bool) -> f64 {
++    let plain = clear + STUB_EXTRA;
++    if glyph {
++        plain.max(GLYPH_STUB_LEN)
++    } else {
++        plain
++    }
++}
++
++/// Which ends of `e` (source, target) carry a glyph the flowchart
++/// painter draws, so their stubs reach [`GLYPH_STUB_LEN`] out. An ER or
++/// class edge (its own painter, [`crate::scene::SceneEdge`]'s
++/// `paint_width`) keeps the plain stubs its painter was tuned on.
++fn glyph_ends(e: &crate::scene::SceneEdge) -> (bool, bool) {
++    if e.paint_width.is_some() {
++        return (false, false);
++    }
++    (
++        e.ends.start_marker(e.kind).is_some(),
++        e.ends.end_marker(e.kind).is_some(),
++    )
++}
++
+ /// How one routing attempt may run.
+ #[derive(Clone, Copy, Debug)]
+ struct Try {
+@@ -2773,14 +2829,32 @@ fn route_edge(
+     let (p0, p3) = drawn_ends(e);
+     let o = w.outer;
+     let usable = |t: &Term| inside(o, t.stub) && w.stub_free(info, t.stub);
+-    let starts: Vec<Term> = terms(w, info.ends.0, p0, t.alt, clear, env.taken, me)
+-        .into_iter()
+-        .filter(usable)
+-        .collect();
+-    let goals: Vec<Term> = terms(w, info.ends.1, p3, t.alt, clear, env.taken, me)
+-        .into_iter()
+-        .filter(usable)
+-        .collect();
++    let glyph = glyph_ends(e);
++    // At an end glyph, its long stub where it stands free and the plain
++    // one at [`SHORT_STUB_COST`]: the search keeps the plain stub only
++    // where the long one costs more than that (a detour round what the
++    // long stub runs into), so a route the long stub cannot improve
++    // stays as it was.
++    let ends_of = |end: EndRef, port: Pt, glyph: bool| -> Vec<Term> {
++        let plain = terms(w, end, port, t.alt, clear, false, env.taken, me);
++        if !glyph {
++            return plain.into_iter().filter(usable).collect();
++        }
++        let long = terms(w, end, port, t.alt, clear, true, env.taken, me);
++        let mut v = Vec::with_capacity(2 * long.len());
++        for (l, mut p) in long.into_iter().zip(plain) {
++            if usable(&l) && l.stub != p.stub {
++                v.push(l);
++                p.cost += SHORT_STUB_COST;
++            }
++            if usable(&p) {
++                v.push(p);
++            }
++        }
++        v
++    };
++    let starts = ends_of(info.ends.0, p0, glyph.0);
++    let goals = ends_of(info.ends.1, p3, glyph.1);
+     let stubs: Vec<Pt> = starts.iter().chain(&goals).map(|t| t.stub).collect();
+     if stubs.is_empty() {
+         return None;

@@ -1,0 +1,29 @@
+flowchart LR
+  s0["trace metric index"]
+  s1["user order billing"]
+  subgraph g0["metric order user zone"]
+    direction TB
+    m0["ship"]
+  end
+  subgraph g1["report user zone"]
+    m1["api queue search"]
+    m2["cache"]
+  end
+  subgraph g2["index billing zone"]
+    direction LR
+    m3["web log api"]
+  end
+  subgraph g3["log zone"]
+    m4["notify"]
+    m5["search"]
+    m6["billing search log"]
+    m7["report cache"]
+    m4 --> m5
+    m4 --> m6
+  end
+  s0 --> m0
+  s0 --> g1
+  s0 --> g2
+  s0 --> m4
+  m2 --> m5
+  m6 --> m1

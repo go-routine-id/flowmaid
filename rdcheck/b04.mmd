@@ -1,0 +1,6 @@
+erDiagram
+    users ||--o{ posts : "writes"
+    users {
+        uuid id PK "default gen_random_uuid()"
+        varchar(255) email UK "not null"
+    }

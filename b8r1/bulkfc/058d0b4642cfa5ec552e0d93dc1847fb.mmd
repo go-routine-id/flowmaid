@@ -1,0 +1,16 @@
+flowchart TD
+  subgraph F0 [Frame 0]
+    n6>Node 6 with a long label]
+    n3((Node 3 with a long label))
+  end
+  n0 <--> n1
+  n3 ==> n5
+  n0 e2@~~~ n1
+  e2@{ curve: bumpY }
+  n6 -.-> n3
+  n1 ---|no| n2
+  n0 x--x|no| n5
+  n1 o--o n5
+  n3 --x n3
+  n0 x--x|no| n5
+  linkStyle 8 stroke-width:16px

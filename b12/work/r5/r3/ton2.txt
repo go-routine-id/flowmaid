@@ -1,0 +1,103 @@
+   Compiling flowmaid v0.38.0 (/home/user/flowmaid)
+    Finished `test` profile [unoptimized] target(s) in 28.50s
+     Running unittests src/lib.rs (/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/target-ont/debug/deps/flowmaid-9cd8330e70945a63)
+
+running 75 tests
+test blockcheck::a_chain_out_of_a_nested_block_leaves_through_its_downstream_side ... ok
+test blockcheck::a_blocks_lanes_keep_short_of_what_stands_beside_it ... ok
+test blockcheck::a_chain_label_sits_outside_both_end_blocks ... ok
+test blockcheck::a_hub_fan_leaves_in_target_order ... ok
+test blockcheck::a_link_between_two_rows_keeps_one_side_of_a_block ... ok
+test blockcheck::a_member_a_channel_holds_out_of_place_goes_back_with_it ... ok
+test blockcheck::a_narrowing_candidate_starts_from_the_winning_order ... ok
+test blockcheck::a_note_card_keeps_its_row_in_its_block ... ok
+test blockcheck::a_pin_moved_off_a_title_leaves_its_channel_in_place ... ok
+test blockcheck::a_ping_pong_level_stays_lanes ... ok
+test blockcheck::a_source_block_sits_beside_what_it_feeds ... ok
+test blockcheck::a_long_edge_of_a_block_layout_runs_in_a_channel ... ok
+test blockcheck::a_subgraph_takes_consecutive_rows ... ok
+test blockcheck::a_turned_edge_of_a_whole_block_runs_up_its_channel_too ... ok
+test blockcheck::a_turned_edge_one_layer_up_is_a_z_not_a_lane ... ok
+test blockcheck::a_turned_edge_runs_up_its_channel_through_flow_sides ... ok
+test blockcheck::an_edge_between_members_of_a_block_is_drawn_inside_it ... ok
+test blockcheck::block_order_follows_declarations_until_it_costs_twice_the_minimum ... ok
+test blockcheck::block_order_follows_first_mention ... ok
+test blockcheck::block_order_survives_reordered_statements ... ok
+test blockcheck::a_band_gap_holds_its_steps_between_the_frames ... ok
+test blockcheck::crossing_neutral_members_keep_declaration_order ... ok
+test blockcheck::layout_clustered_returns_blocks ... ok
+test blockcheck::a_step_past_a_block_keeps_out_of_its_title_strip ... ok
+test blockcheck::level_order_is_deterministic_and_bounded ... ok
+test blockcheck::sibling_blocks_never_interleave ... ok
+test blockcheck::linked_blocks_never_share_a_row ... ok
+test blockcheck::the_rows_equal_fixtures_are_listed ... ok
+test blockcheck::the_start_order_ignores_edge_statement_order ... ok
+test blockcheck::the_steps_of_a_whole_blocks_turned_edges_stay_in_their_gap ... ok
+test lanes::tests::a_far_reaching_back_edge_takes_a_lane ... ok
+test lanes::tests::a_lane_clears_only_what_lies_between_and_hugs_it ... ok
+test lanes::tests::a_lane_counts_the_edge_it_turns_across_at_a_shared_end ... ok
+test lanes::tests::a_lane_leaves_and_enters_along_the_sides_normal ... ok
+test lanes::tests::a_lane_straight_into_its_target_counts_the_edges_leaving_beside_it ... ok
+test lanes::tests::a_slanted_shape_s_port_span_is_its_flat_run ... ok
+test lanes::tests::a_tied_lane_takes_the_side_asked_for ... ok
+test lanes::tests::lanes_from_stacked_ends_into_one_node_run_side_by_side ... ok
+test lanes::tests::nested_lanes_keep_apart_innermost_first ... ok
+test ortho::tests::a_channel_whose_label_rooms_cannot_hold_its_order_steps_under_its_labels ... ok
+test ortho::tests::a_channels_tracks_keep_a_pitch_apart_and_never_cross ... ok
+test ortho::tests::a_drawing_past_the_routers_cap_keeps_the_builders_curves ... ok
+test ortho::tests::a_drifting_chain_runs_straight_where_its_rooms_allow ... ok
+test ortho::tests::a_fan_off_a_diamonds_corners_steps_clear_of_its_rows_note_cards ... ok
+test ortho::tests::a_label_follows_its_run_onto_the_new_line ... ok
+test ortho::tests::a_labelled_twin_bulges_past_its_twin_or_not_at_all ... ok
+test ortho::tests::a_step_crossing_a_kept_curve_moves_clear_of_it_in_its_room ... ok
+test ortho::tests::boxes_side_by_side_join_straight_or_by_a_midway_z ... ok
+test ortho::tests::collapse_drops_repeats_and_points_on_a_straight_leg ... ok
+test ortho::tests::edges_come_out_on_the_axes_in_every_direction ... ok
+test ortho::tests::flow_coordinates_run_downstream_in_every_direction ... ok
+test ortho::tests::segment_tests_count_proper_crossings_only ... ok
+test ortho::tests::steps_out_of_one_side_turning_one_way_never_cross_twice ... ok
+test ports::tests::a_block_layouts_pins_share_no_port ... ok
+test blockcheck::the_level_order_keeps_the_public_fixture_within_its_crossings ... ok
+test ports::tests::a_drag_s_kept_ends_stay_and_pin_the_comb ... ok
+test ports::tests::a_fans_square_paths_nest_off_their_side ... ok
+test ports::tests::a_free_pin_moves_clear_within_its_gap ... ok
+test ports::tests::a_nearly_straight_pair_is_drawn_straight ... FAILED
+test ports::tests::a_side_whose_every_end_a_drag_keeps_is_left_as_drawn ... ok
+test ports::tests::a_square_path_steers_its_ends_by_its_corners_chord ... ok
+test ports::tests::assigning_twice_changes_nothing ... ok
+test ports::tests::back_edge_never_starts_where_another_edge_arrives ... ok
+test ports::tests::ends_keep_out_of_a_title_chips_shadow ... ok
+test ports::tests::hub_ends_get_distinct_ports_in_both_modes ... ok
+test ports::tests::lone_ends_meet_their_side_in_the_middle_and_combs_space_evenly ... ok
+test ports::tests::lr_boxes_are_entered_from_the_left_by_monotone_curves ... ok
+test ports::tests::parallel_edges_keep_the_order_they_are_drawn_in ... ok
+test ports::tests::place_keeps_order_and_spacing_with_least_move ... ok
+test ports::tests::profiles_trace_the_painted_outline_and_keep_their_ends_side ... ok
+test ports::tests::spaced_ends_crossing_on_their_legs_are_put_in_order ... ok
+test ports::tests::weighted_placement_moves_the_light_ends_and_never_a_pin ... ok
+test ports::tests::a_corner_left_far_from_its_rounding_point_is_rounded_again ... ok
+test blockcheck::chains_keep_one_side_of_a_block ... ok
+test blockcheck::a_generated_sweep_keeps_the_block_invariants has been running for over 60 seconds
+test blockcheck::a_generated_sweep_keeps_the_block_invariants ... ok
+
+failures:
+
+---- ports::tests::a_nearly_straight_pair_is_drawn_straight stdout ----
+
+thread 'ports::tests::a_nearly_straight_pair_is_drawn_straight' (24546) panicked at src/ports.rs:2804:13:
+(302.425, 602.944271909073) (92.35, 710.5)
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: flowmaid::ports::tests::a_nearly_straight_pair_is_drawn_straight
+   3: flowmaid::ports::tests::a_nearly_straight_pair_is_drawn_straight::{closure#0}
+   4: <flowmaid::ports::tests::a_nearly_straight_pair_is_drawn_straight::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+
+failures:
+    ports::tests::a_nearly_straight_pair_is_drawn_straight
+
+test result: FAILED. 74 passed; 1 failed; 0 ignored; 0 measured; 1077 filtered out; finished in 67.33s
+
+error: test failed, to rerun pass `--lib`

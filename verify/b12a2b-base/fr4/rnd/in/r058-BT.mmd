@@ -1,0 +1,10 @@
+flowchart BT
+    subgraph G[Order processing]
+        m0[db]
+        m1[x wide member node]
+        m0 --> m1
+    end
+    s0[src0] --> m0
+    s1[src1] -- "lbl9" --> m0
+    s1 --> m0
+    s2[src2] --> m0

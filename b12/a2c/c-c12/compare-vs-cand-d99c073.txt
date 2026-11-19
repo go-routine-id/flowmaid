@@ -1,0 +1,179 @@
+compare.sh: baseline /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/tools-a2b/cand-d99c073
+            candidate /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/a2c/c-c12
+
+== 1. local inputs, per cell (LIVE judge)
+[local static A2] 444 / 444 cells; must-fail 86 -> 89; worse 8 (new 3, worse inside failing 5, changed 0, missing 0); gone 0, better inside failing 12; info: target new 0 / gone 0 / worse 0, drift inside passing 28
+  NEW      infra-overview-v2 lateral_x 1 (must <= 0; baseline 0)
+  NEW      infra-overview-v2 crossings 18 (must <= 17; baseline 14)
+  NEW      infra-overview-v2 detour_max 1.85 (must <= 1.76; baseline 1.47)
+  WORSE    infra-overview-v2 bends_max 6 -> 8 (must <= 4)
+  WORSE    infra-overview-v2 lbl_crowd 4 -> 5 (must <= 1)
+  WORSE    infra-overview-v2 lbl_in_end 1 -> 2 (must <= 0)
+  WORSE    infra-overview-v2 lbl_endpx_mean 381 -> 455 (must <= 329)
+  WORSE    infra-overview-v2 area 5093327 -> 5190016 (must <= 3209880)
+  better       infra-overview-v2 compact_max 15.77 -> 10.11 (must <= 5.5)
+  better       infra-overview-v2 compact_mean 7.49 -> 5.3 (must <= 3.9)
+  better       blocks-overview compact_max 19.97 -> 8.24 (must <= 7.97)
+  better       blocks-overview-edges-reversed compact_max 19.97 -> 8.24 (must <= 7.97)
+  better       blocks-overview-edges-rotated compact_max 19.97 -> 8.24 (must <= 7.97)
+  better       blocks-overview-actors-reversed compact_max 19.97 -> 8.24 (must <= 7.97)
+  better       blocks-overview-subgraphs-reversed compact_max 19.97 -> 8.24 (must <= 7.97)
+  better       blocks-overview compact_mean 7.26 -> 5.24 (must <= 4.63)
+  better       blocks-overview-edges-reversed compact_mean 7.26 -> 5.24 (must <= 4.63)
+  better       blocks-overview-edges-rotated compact_mean 7.26 -> 5.24 (must <= 4.63)
+  better       blocks-overview-actors-reversed compact_mean 7.26 -> 5.24 (must <= 4.63)
+  better       blocks-overview-subgraphs-reversed compact_mean 7.26 -> 5.24 (must <= 4.63)
+  drift        infra-overview-v2 span_max 0.247 -> 0.249 (must <= 0.28)
+  drift        infra-overview-v2 bends 76 -> 85 (must <= 114)
+  drift        infra-overview-v2 edge_len 25360 -> 27378 (must <= 29695)
+  drift        blocks-overview bends 52 -> 54 (must <= 108)
+  drift        blocks-overview-edges-reversed bends 52 -> 54 (must <= 108)
+  drift        blocks-overview-edges-rotated bends 52 -> 54 (must <= 108)
+  drift        blocks-overview-actors-reversed bends 52 -> 54 (must <= 108)
+  drift        blocks-overview-subgraphs-reversed bends 52 -> 54 (must <= 108)
+  drift        blocks-overview lbl_endpx_mean 232 -> 234 (must <= 295)
+  drift        blocks-overview-edges-reversed lbl_endpx_mean 232 -> 234 (must <= 295)
+  drift        blocks-overview-edges-rotated lbl_endpx_mean 232 -> 234 (must <= 295)
+  drift        blocks-overview-actors-reversed lbl_endpx_mean 232 -> 234 (must <= 295)
+  drift        blocks-overview-subgraphs-reversed lbl_endpx_mean 232 -> 234 (must <= 295)
+  drift        blocks-overview lane_gap_min 12.5 -> 12.4 (must >= 8)
+  drift        blocks-overview-edges-reversed lane_gap_min 12.5 -> 12.4 (must >= 8)
+  drift        blocks-overview-edges-rotated lane_gap_min 12.5 -> 12.4 (must >= 8)
+  drift        blocks-overview-actors-reversed lane_gap_min 12.5 -> 12.4 (must >= 8)
+  drift        blocks-overview-subgraphs-reversed lane_gap_min 12.5 -> 12.4 (must >= 8)
+  drift        blocks-overview area 2060168 -> 2073872 (must <= 2783242)
+  drift        blocks-overview-edges-reversed area 2060168 -> 2073872 (must <= 3021370)
+  drift        blocks-overview-edges-rotated area 2060168 -> 2073872 (must <= 2783242)
+  drift        blocks-overview-actors-reversed area 2060168 -> 2073872 (must <= 2783242)
+  drift        blocks-overview-subgraphs-reversed area 2060168 -> 2073872 (must <= 2783242)
+  drift        blocks-overview edge_len 15528 -> 15796 (must <= 20125)
+  drift        blocks-overview-edges-reversed edge_len 15528 -> 15796 (must <= 18290)
+  drift        blocks-overview-edges-rotated edge_len 15528 -> 15796 (must <= 20125)
+  drift        blocks-overview-actors-reversed edge_len 15528 -> 15796 (must <= 20125)
+  drift        blocks-overview-subgraphs-reversed edge_len 15528 -> 15796 (must <= 20125)
+[local routed] 62 / 62 cells; must-fail 19 -> 20; worse 1 (new 1, worse inside failing 0, changed 0, missing 0); gone 0, better inside failing 0; info: target new 0 / gone 0 / worse 0, drift inside passing 2
+  NEW      infra-overview-v2 lateral_x 1 (must <= 0; baseline 0)
+  drift        infra-overview-v2 lbl_crowd 4 -> 5 (must <= 8)
+  drift        infra-overview-v2 crossings 14 -> 18 (must <= 20)
+cells: WORSE
+
+== 2. suite-on gate messages
+panics: cannot read /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/a2c/c-c12/gates/lib.txt
+
+== 3. direction copies (332 + 32, static and routed)
+[dirs static] 332 copies  defects 41->42 (+1/-1)  x_drawn 1283->1301 (+7/-2)  lateral_x 201->213 (+4/-3)  fan_x 30->29 (+2/-2)  edge_chip 8->8 (+1/-1)  side_ends 216->227 (+6/-1)  min_edge_gap down 6
+    WORSE defects (1): notes.spread-bottom-BT 0->2
+    WORSE x_drawn (7): notes.spread-bottom-BT 1->2; notes.spread-bottom-TD 1->4; notes.spread-face-BT 1->2; notes.wide-frames-BT 2->3; quality.bench-75-TD 214->220; quality.dense-lr-BT 18->25; quality.dense-lr-TD 16->18
+    WORSE lateral_x (4): quality.bench-75-BT 5->10; quality.bench-75-TD 10->15; quality.dense-lr-BT 2->5; quality.dense-lr-TD 0->2
+    WORSE fan_x (2): notes.spread-bottom-TD 0->2; quality.bench-75-TD 7->9
+    WORSE edge_chip (1): blocks.state-note-TD 0->1
+    WORSE side_ends (6): blocks.b9-inside-TD 1->3; notes.nested-composite-BT 2->3; notes.wide-frames-BT 0->1; notes.wide-frames-TD 0->1; quality.bench-75-BT 8->13; quality.dense-lr-BT 4->6
+    WORSE min_edge_gap drop > 0.5 px (6): blocks.turned-blocks-TD 40->12.51; notes.spread-bottom-TD 35.81->14; notes.spread-face-BT 31.3->12.51; notes.spread-face-TD 40->12.44; notes.wide-frames-BT 21.14->17.39; notes.wide-frames-TD 40->18.67
+    info edge_edge_x: total 1266->1281, up 5 / down 3 (worse on 5, better on 3): notes.spread-bottom-TD 1->4; notes.wide-frames-BT 2->3; quality.bench-75-TD 214->220; quality.dense-lr-BT 18->25; quality.dense-lr-TD 16->18
+    info overlap_pairs: total 14->15, up 1 / down 1 (worse on 1, better on 1): notes.spread-bottom-BT 0->2
+    info overlap_len: total 532->560, up 1 / down 0 (worse on 1, better on 0): notes.spread-bottom-BT 0->28
+    info min_node_gap: total 8404.87->8416.37, up 9 / down 3 (worse on 3, better on 9): blocks.nested-BT 40->38.39; blocks.nested-TD 18.08->14.62; quality.bench-75-TD 20.39->12.65
+    info lbl_edge: total 11->10, up 0 / down 1 (worse on 0, better on 1)
+    info arrow_on_start: total 6->4, up 0 / down 2 (worse on 0, better on 2)
+    info center_off: total 49.52->51.86, up 25 / down 9 (no direction)
+    info width: total 275143->273148, up 1 / down 13 (no direction)
+    info height: total 217280->217740, up 26 / down 9 (no direction)
+    info aspect: total 786.33->786.34, up 29 / down 5 (no direction)
+    info area_per_node: total 14812004->14755992, up 21 / down 14 (no direction)
+    info corner_touch: total 2->1, up 0 / down 1 (worse on 0, better on 1)
+    info border_runs: total 3->4, up 1 / down 0 (worse on 1, better on 0): notes.spread-face-TD 0->1
+    info border_len: total 514.35->1477.18, up 1 / down 0 (worse on 1, better on 0): notes.spread-face-TD 0->962.83
+    info overlap_max: total 484->498, up 1 / down 0 (worse on 1, better on 0): notes.spread-bottom-BT 0->14
+    info tight_pairs: total 313->315, up 4 / down 1 (worse on 4, better on 1): notes.spread-bottom-BT 0->1; notes.spread-bottom-TD 0->1; quality.bench-75-TD 35->36; quality.dense-lr-BT 0->1
+    info tight_len: total 43226->43082, up 4 / down 1 (worse on 4, better on 1): notes.spread-bottom-BT 0->32; notes.spread-bottom-TD 0->86; quality.bench-75-TD 5760->5950; quality.dense-lr-BT 0->26
+    info hug_runs: total 12->11, up 1 / down 2 (worse on 1, better on 2): notes.spread-face-TD 0->1
+    info hug_len: total 1394.37->2291.93, up 1 / down 2 (worse on 1, better on 2): notes.spread-face-TD 0->960.47
+    info hug_max: total 1195.14->2092.7, up 1 / down 2 (worse on 1, better on 2): notes.spread-face-TD 0->960.47
+    info end_cross: total 5->7, up 2 / down 0 (worse on 2, better on 0): notes.spread-bottom-TD 0->1; notes.wide-frames-BT 0->1
+    info xgap_max: total 62->60, up 1 / down 3 (worse on 1, better on 3): notes.spread-face-BT 0->1
+    info ortho_edges: total 2605->2593, up 4 / down 15 (no direction)
+    info end_gap_max: total 4->3.98, up 0 / down 2 (worse on 0, better on 2)
+    info lat_wiggles: total 323->329, up 8 / down 4 (worse on 8, better on 4): blocks.b9-inside-TD 1->2; blocks.nested-BT 0->2; blocks.nested-TD 0->1; blocks.turned-blocks-BT 0->1; notes.spread-face-TD 2->3; notes.wide-frames-BT 1->3 ...
+    info lat_backtrack: total 47038.4->42735.5, up 13 / down 9 (worse on 13, better on 9): blocks.b9-inside-TD 34.05->63.15; blocks.blocks-overview-BT 345.9->359.26; blocks.blocks-overview-actors-reversed-BT 345.9->359.26; blocks.blocks-overview-bt-BT 345.9->359.26; blocks.blocks-overview-edges-reversed-BT 345.9->359.26; blocks.blocks-overview-edges-rotated-BT 345.9->359.26 ...
+    info band_pairs: total 1028->1046, up 19 / down 6 (worse on 19, better on 6): blocks.blocks-overview-BT 4->6; blocks.blocks-overview-TD 2->3; blocks.blocks-overview-actors-reversed-BT 4->6; blocks.blocks-overview-actors-reversed-TD 2->3; blocks.blocks-overview-bt-BT 4->6; blocks.blocks-overview-bt-TD 2->3 ...
+    info band_len: total 389738->400974, up 23 / down 7 (worse on 23, better on 7): blocks.blocks-overview-BT 592->1238; blocks.blocks-overview-TD 462->706; blocks.blocks-overview-actors-reversed-BT 592->1238; blocks.blocks-overview-actors-reversed-TD 462->706; blocks.blocks-overview-bt-BT 592->1238; blocks.blocks-overview-bt-TD 462->706 ...
+    info ink: total 32.33->32.38, up 5 / down 0 (no direction)
+    info idiom_ortho: total 3844->3838, up 1 / down 5 (no direction)
+    info idiom_scubic: total 96->108, up 5 / down 1 (no direction)
+    info idiom_spline: total 0->1, up 1 / down 0 (worse on 1, better on 0): quality.dense-lr-BT 0->1
+    info idiom_bow: total 64->57, up 0 / down 4 (no direction)
+    info xhops: total 1000->1018, up 7 / down 1 (no direction)
+    info fan_uneven: total 10->10, up 1 / down 1 (worse on 1, better on 1): notes.spread-bottom-BT 0->1
+    info compact_max: total 3810.58->3403.31, up 1 / down 34 (worse on 1, better on 34): blocks.nested-TD 12.42->12.59
+    info compact_mean: total 2502.75->2402.39, up 0 / down 35 (worse on 0, better on 35)
+    info span_max: total 166.08->166.1, up 5 / down 3 (worse on 5, better on 3): blocks.b9-inside-TD 0.46->0.47; blocks.nested-BT 0.53->0.54; blocks.turned-blocks-TD 0.39->0.4; notes.spread-bottom-BT 0.53->0.54; quality.dense-lr-BT 0.21->0.22
+    info edge_len: total 1.90489e+06->1.89316e+06, up 21 / down 14 (worse on 21, better on 14): blocks.blocks-overview-BT 15990.3->16394.2; blocks.blocks-overview-TD 15690.2->15958.2; blocks.blocks-overview-actors-reversed-BT 15990.3->16394.2; blocks.blocks-overview-actors-reversed-TD 15690.2->15958.2; blocks.blocks-overview-bt-BT 15990.3->16394.2; blocks.blocks-overview-bt-TD 15690.2->15958.2 ...
+    info bends_max: total 1382->1370, up 17 / down 8 (worse on 17, better on 8): blocks.blocks-overview-BT 6->8; blocks.blocks-overview-TD 6->8; blocks.blocks-overview-actors-reversed-BT 6->8; blocks.blocks-overview-actors-reversed-TD 6->8; blocks.blocks-overview-bt-BT 6->8; blocks.blocks-overview-bt-TD 6->8 ...
+    info detour_max: total 322.88->314.14, up 6 / down 11 (worse on 6, better on 11): blocks.state-note-BT 1.26->1.27; blocks.state-note-TD 1.25->1.26; blocks.turned-blocks-TD 1.24->1.29; notes.nested-composite-BT 1.22->1.46; notes.nested-composite-TD 1.22->1.49; notes.spread-bottom-BT 1.45->1.47
+    info lbl_end_mean: total 31852.5->31702.6, up 22 / down 10 (worse on 22, better on 10): blocks.blocks-overview-BT 244.06->250.53; blocks.blocks-overview-TD 234.97->237.98; blocks.blocks-overview-actors-reversed-BT 244.06->250.53; blocks.blocks-overview-actors-reversed-TD 234.97->237.98; blocks.blocks-overview-bt-BT 244.06->250.53; blocks.blocks-overview-bt-TD 234.97->237.98 ...
+    info chip_crowd: total 275->277, up 4 / down 2 (worse on 4, better on 2): blocks.turned-blocks-TD 0->1; notes.spread-bottom-BT 2->3; notes.spread-face-BT 4->5; quality.dense-lr-TD 4->5
+    info chip_gap_min: total 8900.11->8897.15, up 6 / down 7 (worse on 7, better on 6): blocks.nested-TD 11.86->10.53; blocks.state-note-TD 4.81->0.55; blocks.turned-blocks-TD 21->3; notes.nested-composite-TD 6.6->5.27; notes.spread-face-BT 5.1->3.37; notes.wide-frames-TD 7.13->3.96 ...
+    info up_lanes: total 4->7, up 2 / down 0 (worse on 2, better on 0): notes.nested-composite-BT 0->2; notes.nested-composite-TD 1->2
+    info pin_corner: total 65->77, up 13 / down 1 (worse on 13, better on 1): blocks.blocks-overview-TD 1->2; blocks.blocks-overview-actors-reversed-TD 1->2; blocks.blocks-overview-bt-TD 1->2; blocks.blocks-overview-edges-reversed-TD 1->2; blocks.blocks-overview-edges-rotated-TD 1->2; blocks.blocks-overview-lr-TD 1->2 ...
+[dirs routed] 332 copies  defects 41->42 (+1/-1)  x_drawn 1285->1303 (+7/-2)  lateral_x 201->213 (+4/-3)  fan_x 32->31 (+2/-2)  edge_chip 8->8 (+1/-1)  side_ends 216->227 (+6/-1)  min_edge_gap down 6
+    WORSE defects (1): notes.spread-bottom-BT 0->2
+    WORSE x_drawn (7): notes.spread-bottom-BT 1->2; notes.spread-bottom-TD 1->4; notes.spread-face-BT 1->2; notes.wide-frames-BT 2->3; quality.bench-75-TD 214->220; quality.dense-lr-BT 18->25; quality.dense-lr-TD 16->18
+    WORSE lateral_x (4): quality.bench-75-BT 5->10; quality.bench-75-TD 10->15; quality.dense-lr-BT 2->5; quality.dense-lr-TD 0->2
+    WORSE fan_x (2): notes.spread-bottom-TD 0->2; quality.bench-75-TD 7->9
+    WORSE edge_chip (1): blocks.state-note-TD 0->1
+    WORSE side_ends (6): blocks.b9-inside-TD 1->3; notes.nested-composite-BT 2->3; notes.wide-frames-BT 0->1; notes.wide-frames-TD 0->1; quality.bench-75-BT 8->13; quality.dense-lr-BT 4->6
+    WORSE min_edge_gap drop > 0.5 px (6): blocks.turned-blocks-TD 40->12.51; notes.spread-bottom-TD 35.81->14; notes.spread-face-BT 31.3->12.51; notes.spread-face-TD 40->12.44; notes.wide-frames-BT 21.14->17.39; notes.wide-frames-TD 40->18.67
+    info edge_edge_x: total 1268->1283, up 5 / down 3 (worse on 5, better on 3): notes.spread-bottom-TD 1->4; notes.wide-frames-BT 2->3; quality.bench-75-TD 214->220; quality.dense-lr-BT 18->25; quality.dense-lr-TD 16->18
+    info overlap_pairs: total 14->15, up 1 / down 1 (worse on 1, better on 1): notes.spread-bottom-BT 0->2
+    info overlap_len: total 534->562, up 1 / down 0 (worse on 1, better on 0): notes.spread-bottom-BT 0->28
+    info min_node_gap: total 8379.65->8391.15, up 9 / down 3 (worse on 3, better on 9): blocks.nested-BT 40->38.39; blocks.nested-TD 18.08->14.62; quality.bench-75-TD 20.39->12.65
+    info lbl_edge: total 13->12, up 0 / down 1 (worse on 0, better on 1)
+    info arrow_on_start: total 6->4, up 0 / down 2 (worse on 0, better on 2)
+    info center_off: total 49.62->51.96, up 25 / down 9 (no direction)
+    info width: total 274843->272848, up 1 / down 13 (no direction)
+    info height: total 217338->217798, up 26 / down 9 (no direction)
+    info aspect: total 783.41->783.42, up 29 / down 5 (no direction)
+    info area_per_node: total 14794886->14738874, up 21 / down 14 (no direction)
+    info corner_touch: total 2->1, up 0 / down 1 (worse on 0, better on 1)
+    info border_runs: total 3->4, up 1 / down 0 (worse on 1, better on 0): notes.spread-face-TD 0->1
+    info border_len: total 514.35->1477.18, up 1 / down 0 (worse on 1, better on 0): notes.spread-face-TD 0->962.83
+    info overlap_max: total 486->500, up 1 / down 0 (worse on 1, better on 0): notes.spread-bottom-BT 0->14
+    info tight_pairs: total 313->315, up 4 / down 1 (worse on 4, better on 1): notes.spread-bottom-BT 0->1; notes.spread-bottom-TD 0->1; quality.bench-75-TD 35->36; quality.dense-lr-BT 0->1
+    info tight_len: total 43226->43082, up 4 / down 1 (worse on 4, better on 1): notes.spread-bottom-BT 0->32; notes.spread-bottom-TD 0->86; quality.bench-75-TD 5760->5950; quality.dense-lr-BT 0->26
+    info hug_runs: total 20->19, up 1 / down 2 (worse on 1, better on 2): notes.spread-face-TD 0->1
+    info hug_len: total 1818.69->2716.25, up 1 / down 2 (worse on 1, better on 2): notes.spread-face-TD 0->960.47
+    info hug_max: total 1407.3->2304.86, up 1 / down 2 (worse on 1, better on 2): notes.spread-face-TD 0->960.47
+    info end_cross: total 5->7, up 2 / down 0 (worse on 2, better on 0): notes.spread-bottom-TD 0->1; notes.wide-frames-BT 0->1
+    info xgap_max: total 62->60, up 1 / down 3 (worse on 1, better on 3): notes.spread-face-BT 0->1
+    info ortho_edges: total 2597->2585, up 4 / down 15 (no direction)
+    info end_gap_max: total 4->3.98, up 0 / down 2 (worse on 0, better on 2)
+    info lat_wiggles: total 319->325, up 8 / down 4 (worse on 8, better on 4): blocks.b9-inside-TD 1->2; blocks.nested-BT 0->2; blocks.nested-TD 0->1; blocks.turned-blocks-BT 0->1; notes.spread-face-TD 2->3; notes.wide-frames-BT 1->3 ...
+    info lat_backtrack: total 46868.7->42565.8, up 13 / down 9 (worse on 13, better on 9): blocks.b9-inside-TD 34.05->63.15; blocks.blocks-overview-BT 345.9->359.26; blocks.blocks-overview-actors-reversed-BT 345.9->359.26; blocks.blocks-overview-bt-BT 345.9->359.26; blocks.blocks-overview-edges-reversed-BT 345.9->359.26; blocks.blocks-overview-edges-rotated-BT 345.9->359.26 ...
+    info band_pairs: total 1030->1048, up 19 / down 6 (worse on 19, better on 6): blocks.blocks-overview-BT 4->6; blocks.blocks-overview-TD 2->3; blocks.blocks-overview-actors-reversed-BT 4->6; blocks.blocks-overview-actors-reversed-TD 2->3; blocks.blocks-overview-bt-BT 4->6; blocks.blocks-overview-bt-TD 2->3 ...
+    info band_len: total 390478->401714, up 23 / down 7 (worse on 23, better on 7): blocks.blocks-overview-BT 592->1238; blocks.blocks-overview-TD 462->706; blocks.blocks-overview-actors-reversed-BT 592->1238; blocks.blocks-overview-actors-reversed-TD 462->706; blocks.blocks-overview-bt-BT 592->1238; blocks.blocks-overview-bt-TD 462->706 ...
+    info ink: total 32.35->32.4, up 5 / down 0 (no direction)
+    info idiom_ortho: total 3844->3838, up 1 / down 5 (no direction)
+    info idiom_scubic: total 96->108, up 5 / down 1 (no direction)
+    info idiom_spline: total 0->1, up 1 / down 0 (worse on 1, better on 0): quality.dense-lr-BT 0->1
+    info idiom_bow: total 64->57, up 0 / down 4 (no direction)
+    info xhops: total 1002->1020, up 7 / down 1 (no direction)
+    info fan_uneven: total 10->10, up 1 / down 1 (worse on 1, better on 1): notes.spread-bottom-BT 0->1
+    info compact_max: total 3810.98->3403.71, up 1 / down 34 (worse on 1, better on 34): blocks.nested-TD 12.42->12.59
+    info compact_mean: total 2503.15->2402.79, up 0 / down 35 (worse on 0, better on 35)
+    info span_max: total 166.08->166.1, up 5 / down 3 (worse on 5, better on 3): blocks.b9-inside-TD 0.46->0.47; blocks.nested-BT 0.53->0.54; blocks.turned-blocks-TD 0.39->0.4; notes.spread-bottom-BT 0.53->0.54; quality.dense-lr-BT 0.21->0.22
+    info edge_len: total 1.90422e+06->1.89249e+06, up 21 / down 14 (worse on 21, better on 14): blocks.blocks-overview-BT 15990.3->16394.2; blocks.blocks-overview-TD 15690.2->15958.2; blocks.blocks-overview-actors-reversed-BT 15990.3->16394.2; blocks.blocks-overview-actors-reversed-TD 15690.2->15958.2; blocks.blocks-overview-bt-BT 15990.3->16394.2; blocks.blocks-overview-bt-TD 15690.2->15958.2 ...
+    info bends_max: total 1376->1364, up 17 / down 8 (worse on 17, better on 8): blocks.blocks-overview-BT 6->8; blocks.blocks-overview-TD 6->8; blocks.blocks-overview-actors-reversed-BT 6->8; blocks.blocks-overview-actors-reversed-TD 6->8; blocks.blocks-overview-bt-BT 6->8; blocks.blocks-overview-bt-TD 6->8 ...
+    info detour_max: total 322.08->313.34, up 6 / down 11 (worse on 6, better on 11): blocks.state-note-BT 1.26->1.27; blocks.state-note-TD 1.25->1.26; blocks.turned-blocks-TD 1.24->1.29; notes.nested-composite-BT 1.22->1.46; notes.nested-composite-TD 1.22->1.49; notes.spread-bottom-BT 1.45->1.47
+    info lbl_end_mean: total 31790.8->31640.8, up 22 / down 10 (worse on 22, better on 10): blocks.blocks-overview-BT 244.06->250.53; blocks.blocks-overview-TD 234.97->237.98; blocks.blocks-overview-actors-reversed-BT 244.06->250.53; blocks.blocks-overview-actors-reversed-TD 234.97->237.98; blocks.blocks-overview-bt-BT 244.06->250.53; blocks.blocks-overview-bt-TD 234.97->237.98 ...
+    info chip_crowd: total 269->271, up 4 / down 2 (worse on 4, better on 2): blocks.turned-blocks-TD 0->1; notes.spread-bottom-BT 2->3; notes.spread-face-BT 4->5; quality.dense-lr-TD 4->5
+    info chip_gap_min: total 8915.19->8912.23, up 6 / down 7 (worse on 7, better on 6): blocks.nested-TD 11.86->10.53; blocks.state-note-TD 4.81->0.55; blocks.turned-blocks-TD 21->3; notes.nested-composite-TD 6.6->5.27; notes.spread-face-BT 5.1->3.37; notes.wide-frames-TD 7.13->3.96 ...
+    info up_lanes: total 4->7, up 2 / down 0 (worse on 2, better on 0): notes.nested-composite-BT 0->2; notes.nested-composite-TD 1->2
+    info pin_corner: total 65->77, up 13 / down 1 (worse on 13, better on 1): blocks.blocks-overview-TD 1->2; blocks.blocks-overview-actors-reversed-TD 1->2; blocks.blocks-overview-bt-TD 1->2; blocks.blocks-overview-edges-reversed-TD 1->2; blocks.blocks-overview-edges-rotated-TD 1->2; blocks.blocks-overview-lr-TD 1->2 ...
+[dirsx static] 32 copies  defects 0->0 (+0/-0)  x_drawn 1->1 (+0/-0)  lateral_x 1->1 (+0/-0)  fan_x 0->0 (+0/-0)  edge_chip 0->0 (+0/-0)  side_ends 2->2 (+0/-0)  min_edge_gap down 0
+[dirsx routed] 32 copies  defects 0->0 (+0/-0)  x_drawn 1->1 (+0/-0)  lateral_x 1->1 (+0/-0)  fan_x 0->0 (+0/-0)  edge_chip 0->0 (+0/-0)  side_ends 2->2 (+0/-0)  min_edge_gap down 0
+dirs: WORSE (54)
+
+VERDICT cells:  WORSE
+VERDICT panics: WORSE
+VERDICT dirs:   WORSE
+VERDICT: WORSE

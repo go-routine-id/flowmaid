@@ -1,0 +1,2 @@
+   Q routed A->D lat_wiggle 49.8
+   Q static A->D lat_wiggle 42.4

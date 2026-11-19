@@ -1,0 +1,26 @@
+flowchart RL
+    N0[Report]
+    N1(Archive)
+    N2{Check emit}
+    N3{Report}
+    N4(Load)
+    N5(Validate load)
+    N6(Retry emit)
+    N7[Done check]
+    N8([Retry emit])
+    N9([Report])
+    N0 -->|next| N1
+    N0 --> N2
+    N1 -->|no| N3
+    N1 --> N4
+    N3 --> N5
+    N5 -->|no| N6
+    N4 -->|ok| N7
+    N5 --> N8
+    N7 --> N9
+    N8 --> N9
+    N2 --> N6
+    N3 --> N4
+    N4 --> N1
+    N8 -->|back| N2
+    N3 ==>|retry| N2

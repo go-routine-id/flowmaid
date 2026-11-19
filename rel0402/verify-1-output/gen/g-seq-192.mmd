@@ -1,0 +1,26 @@
+sequenceDiagram
+actor P0 as 日本語
+participant P1 as beta
+participant P2 as 日本語
+participant P3 as 日本語
+participant P4 as Long label here
+actor P5 as gamma
+actor P6 as beta
+alt alpha
+opt 日本語
+end
+P2->>P2: self <b>bold</b>
+P5-->>P0: <b>bold</b>
+par gamma
+P4-->>P1: gamma
+end
+Note over P0,P6: alpha
+Note over P0,P6: x
+Note left of P2: 日本語
+P6-->P3: Long label here
+P2--)P4: Customer Order
+P0->>P0: self x
+Note over P0,P6: Long label here
+P4->>P4: self 日本語
+P5-xP3: gamma
+end

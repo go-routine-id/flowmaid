@@ -1,0 +1,13 @@
+flowchart TD
+    subgraph A[Front]
+        a1[form] --> a2[result page]
+        a3[upload] --> a4[receipt]
+    end
+    subgraph B[Back]
+        b1[validate] --> b2[store]
+        b3[scan] --> b4[archive]
+    end
+    a1 -->|request| b1
+    b2 -->|response| a2
+    a3 -->|file| b3
+    b4 -->|ack| a4

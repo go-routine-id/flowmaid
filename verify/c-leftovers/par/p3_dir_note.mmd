@@ -1,0 +1,9 @@
+stateDiagram-v2
+  [*] --> P
+  state P {
+    direction LR
+    a --> b
+    b --> c
+    note right of b : a note
+  }
+  P --> Q

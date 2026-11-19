@@ -1,0 +1,12 @@
+[package]
+name = "vprobe3"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+fm_dev = { path = "../dev", package = "flowmaid" }
+fm_head = { path = "../head", package = "flowmaid" }
+
+[profile.release]
+debug = false
+incremental = false

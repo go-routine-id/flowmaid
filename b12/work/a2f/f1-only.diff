@@ -1,0 +1,248 @@
+diff --git a/src/blockcheck.rs b/src/blockcheck.rs
+index 904f999..0304a22 100644
+--- a/src/blockcheck.rs
++++ b/src/blockcheck.rs
+@@ -2289,6 +2289,71 @@ fn titles_are_drawn_whole_in_every_direction() {
+     }
+ }
+ 
++#[test]
++fn a_frame_holds_its_bold_title_as_a_browser_draws_it() {
++    // A frame's title is drawn bold. Grown to the regular estimate, a
++    // long title ran 6-15 px past its frame's right border in a browser
++    // (title-hidden 12 px, title-entry 8, lr 6, a nested block's 14).
++    // The widths below are what Chromium draws these titles at (12 px
++    // bold, Liberation Sans, Helvetica's metrics; the widest line),
++    // measured once, so the test does not grade the estimate with
++    // itself.
++    let ink_of = |title: &str| -> Option<f64> {
++        [
++            ("A long block title that covers the whole first row", 273.59),
++            (
++                "A long block title that covers the first member and more",
++                318.61,
++            ),
++            (
++                "A nested block whose title runs far past its one member",
++                318.63,
++            ),
++            ("Edge and shared services with a long title", 239.06),
++        ]
++        .iter()
++        .find(|(t, _)| title.split('\n').next() == Some(*t))
++        .map(|&(_, w)| w)
++    };
++    for name in ["title-hidden", "title-entry", "lr", "nested-wide-title"] {
++        let src = std::fs::read_to_string(format!(
++            "{}/tests/fixtures/blocks/{name}.mmd",
++            env!("CARGO_MANIFEST_DIR")
++        ))
++        .unwrap();
++        for dir in ["TD", "BT", "LR", "RL"] {
++            let g = graph(&in_direction(&src, dir));
++            let sc = block_scene(&g);
++            let what = format!("{name} {dir}");
++            let mut seen = 0;
++            for c in &sc.clusters {
++                let Some(ink) = ink_of(&c.title) else {
++                    continue;
++                };
++                seen += 1;
++                // The text starts 10 px in (`to_svg`: the chip's inset
++                // and pad); its ink ends a chip pad and a title inset
++                // short of the right border, as F1 sizes the frame.
++                let room = c.x + c.w - (c.x + 10.0 + ink);
++                assert!(
++                    room >= 4.0 + 6.0 - 1.0,
++                    "{what}: {}'s title ends {room:.1} px from its border",
++                    c.id
++                );
++                // Drawn whole, not cut to fit.
++                let i = sc.clusters.iter().position(|o| o.id == c.id).unwrap();
++                assert_eq!(
++                    crate::scene::fit_cluster_title(&sc.clusters, i, sc.width),
++                    c.title,
++                    "{what}"
++                );
++            }
++            assert_eq!(seen, 1, "{what}");
++            assert_frames_clear(&what, &sc);
++        }
++    }
++}
++
+ /// The jog room of frame `id` in `sc`: how far its top border lies
+ /// above its first row past its pad and title strip (TD).
+ fn jog_room(g: &Graph, sc: &Scene, id: &str) -> f64 {
+diff --git a/src/layout.rs b/src/layout.rs
+index 89053b5..f7bddc1 100644
+--- a/src/layout.rs
++++ b/src/layout.rs
+@@ -974,6 +974,29 @@ pub fn text_width(s: &str) -> f64 {
+         .fold(0.0, f64::max)
+ }
+ 
++/// [`text_width`] for text drawn bold throughout, as a subgraph title is
++/// (`font-weight="bold"`): the widest line's advances from
++/// [`bold_line_width`]'s Helvetica-Bold table, in px at
++/// [`TEXT_CALIBRATION`]. Style tags are interpreted (every run is bold
++/// already), their characters count zero.
++///
++/// [`text_width`]'s ~6% for a `<b>` run is too little for a whole bold
++/// line: Helvetica-Bold advances run about 10% past the regular ones on
++/// lowercase text (`n`, `o`, `u` 611 against 556 per 1000 em, `r` 389
++/// against 333), so a frame sized by the regular estimate let a long
++/// bold title run past its border (blocks/title-hidden: 12 px at the
++/// title font).
++pub(crate) fn bold_text_width(s: &str) -> f64 {
++    s.split('\n')
++        .map(|l| {
++            if !l.contains(['<', '$']) {
++                return bold_line_width(l);
++            }
++            spans(l).iter().map(|(t, _, _)| bold_line_width(t)).sum()
++        })
++        .fold(0.0, f64::max)
++}
++
+ /// Split one label line into styled runs `(text, bold, italic)`,
+ /// interpreting `<b>`/`<strong>` and `<i>`/`<em>` tags the way
+ /// mermaid does. Unknown tags stay literal text; unclosed tags just
+@@ -1272,6 +1295,55 @@ fn line_width(s: &str) -> f64 {
+         .sum()
+ }
+ 
++/// [`line_width`] for a bold line ([`bold_text_width`]): Helvetica-Bold
++/// advance widths (its AFM, per 1000 em) at [`TEXT_CALIBRATION`] px,
++/// rounded up to 0.1 px, so the estimate never falls short of a browser
++/// drawing the line in Helvetica or a metric-compatible face (Arial,
++/// Liberation Sans) by more than a glyph's ink past its advance.
++/// Characters outside the table count as a wide lowercase letter.
++fn bold_line_width(s: &str) -> f64 {
++    const EM: f64 = TEXT_CALIBRATION;
++    s.chars()
++        .map(|c| match c {
++            // 278
++            'i' | 'j' | 'l' | ' ' | '.' | ',' | '/' | '\\' | 'I' | '\'' | '|' => 3.9,
++            // 333
++            '!' | ':' | ';' | 'f' | 't' | '(' | ')' | '[' | ']' | '-' | '`' => 4.7,
++            // 389
++            'r' | '*' | '{' | '}' => 5.5,
++            '"' => 6.7,
++            'z' => 7.0,
++            // 556
++            'a' | 'c' | 'e' | 'k' | 's' | 'v' | 'x' | 'y' | 'J' | '0'..='9' | '#' | '$' | '_' => {
++                7.8
++            }
++            // 584
++            '+' | '<' | '=' | '>' | '~' | '^' => 8.2,
++            // 611
++            'b' | 'd' | 'g' | 'h' | 'n' | 'o' | 'p' | 'q' | 'u' | '?' | 'F' | 'L' | 'T' | 'Z' => {
++                8.6
++            }
++            // 667
++            'E' | 'P' | 'S' | 'V' | 'X' | 'Y' => 9.4,
++            // 722
++            'A' | 'B' | 'C' | 'D' | 'H' | 'K' | 'N' | 'R' | 'U' | '&' => 10.2,
++            // 778
++            'w' | 'G' | 'O' | 'Q' => 10.9,
++            'M' => 11.7,
++            'm' | '%' => 12.5,
++            'W' => 13.3,
++            '@' => 13.7,
++            // As [`line_width`]: joiners draw nothing, symbols and wide
++            // scripts take about an em.
++            '\u{200D}' | '\u{FE0F}' => 0.0,
++            '—' => EM,
++            '\u{2190}'..='\u{21FF}' | '\u{2600}'..='\u{27BF}' => EM,
++            c if (c as u32) >= 0x2E80 => 14.0,
++            _ => 8.6,
++        })
++        .sum()
++}
++
+ /// Intrinsic node size (width, height) in pixels, based on shape,
+ /// the estimated widest-line width, and the number of label lines.
+ ///
+@@ -10454,6 +10526,48 @@ mod tests {
+         );
+     }
+ 
++    #[test]
++    fn a_bold_title_is_measured_as_a_browser_draws_it() {
++        // Widths (px at the 12 px title font, bold) that Chromium draws
++        // these repository fixtures' subgraph titles at in the face
++        // `Helvetica` resolves to on a Linux box (Liberation Sans Bold,
++        // metric-compatible with Helvetica Bold): measured once with
++        // `getBBox`, so this test does not grade the estimate by itself.
++        let measured = [
++            ("A long block title that covers the whole first row", 273.59),
++            (
++                "A long block title that covers the first member and more",
++                318.61,
++            ),
++            (
++                "A nested block whose title runs far past its one member",
++                318.63,
++            ),
++            ("Edge and shared services with a long title", 239.06),
++            ("second line of the title", 127.01),
++            ("Outer", 32.33),
++        ];
++        for (title, ink) in measured {
++            let bold = bold_text_width(title) * TITLE_SCALE;
++            // Never short by more than a glyph's ink past its advance
++            // (`getBBox` holds the ink), never more than 2 % over.
++            assert!(bold >= ink - 1.0, "{title}: {bold} < {ink}");
++            assert!(bold <= ink * 1.02, "{title}: {bold} > {ink}");
++        }
++        // The regular estimate falls short of a long bold title by more
++        // than a chip's pad and a frame's inset together: why a block's
++        // frame is sized by the bold one.
++        let (title, ink) = measured[0];
++        assert!(text_width(title) * TITLE_SCALE + 10.0 < ink);
++        // Tags are read, not measured; a multi-line title takes its
++        // widest line.
++        assert_eq!(bold_text_width("<b>Outer</b>"), bold_text_width("Outer"));
++        assert_eq!(
++            bold_text_width("Outer\nsecond line of the title"),
++            bold_text_width("second line of the title")
++        );
++    }
++
+     #[test]
+     fn bold_labels_render_as_svg_tspans_not_literal_tags() {
+         let svg = crate::render_svg("flowchart TD\nA[\"<b>Go</b> service\"] --> B").unwrap();
+diff --git a/src/scene.rs b/src/scene.rs
+index 8679f0c..3888d10 100644
+--- a/src/scene.rs
++++ b/src/scene.rs
+@@ -6185,17 +6185,21 @@ fn cluster_raw_boxes(g: &Graph, nodes: &[SceneNode]) -> (Vec<RawBox>, Vec<usize>
+ }
+ 
+ /// The least width (px, on screen) of a block's frame in a block
+-/// layout (B12 F1, F2): its title chip as [`fit_cluster_title`]
+-/// measures it, with a [`TITLE_INSET`] on both sides, so the title is
+-/// drawn whole inside its own frame. In TD / BT that is the frame's
+-/// breadth, in LR / RL its length along the flow: the title runs along
+-/// the screen's x axis in every direction. 0 for a block without a
+-/// title. The layout reserves it (`layout::frame_title_room`).
++/// layout (B12 F1, F2): its title as it is drawn, bold
++/// ([`crate::layout::bold_text_width`]), with the chip's pad and a
++/// [`TITLE_INSET`] on both sides, so the title's ink lies whole inside
++/// its own frame. In TD / BT that is the frame's breadth, in LR / RL its
++/// length along the flow: the title runs along the screen's x axis in
++/// every direction. 0 for a block without a title. The layout reserves
++/// it (`layout::f1_breadths`, `layout::f1_flow_short`).
++///
++/// (Measured with [`text_width`], as the title's chip still is, a long
++/// title ran 6-15 px past its frame's right border in a browser.)
+ pub(crate) fn title_fit_width(title: &str) -> f64 {
+     if title.trim().is_empty() {
+         return 0.0;
+     }
+-    text_width(title) * TITLE_SCALE + 8.0 + 2.0 * TITLE_INSET
++    crate::layout::bold_text_width(title) * TITLE_SCALE + 8.0 + 2.0 * TITLE_INSET
+ }
+ 
+ /// How far a frame's top border lies above its first row's box without

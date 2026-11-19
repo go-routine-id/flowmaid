@@ -1,0 +1,19 @@
+flowchart LR
+    N0([Fetch load])
+    N1(Archive)
+    N2((Archive))
+    N3((Store))
+    N4(Archive)
+    N5[(Done fetch)]
+    N6(Notify)
+    N7[Check]
+    N0 --> N1
+    N0 --> N2
+    N2 -->|no| N3
+    N2 --> N4
+    N4 --> N5
+    N5 --> N6
+    N4 --> N7
+    N6 -->|rollback| N3
+    N4 -.->|again| N1
+    N5 -->|retry| N0

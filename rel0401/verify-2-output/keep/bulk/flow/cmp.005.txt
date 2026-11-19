@@ -1,0 +1,20 @@
+d1.p MISMATCH 1
+d1.p TRANSLATION 399
+d1.r MISMATCH 1
+d1.r TRANSLATION 399
+d4.p TRANSLATION 400
+d4.r TRANSLATION 400
+d6 same 794
+d6.p TRANSLATION 1
+d6.r TRANSLATION 5
+d9.p TRANSLATION 400
+d9.r TRANSLATION 400
+r0 TRANSLATION 4
+r0 same 396
+render same 400
+scene same 400
+== MISMATCH: 2
+   /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b8r1/bulkst/e314ad4e61156d05a8c44a084d386275.mmd d1.r {'ox': -132.4, 'oy': -127.0, 'bvb': [0.0, 0.0], 'verdict': 'MISMATCH'}
+       ('skel', 102, '<path d="M # # L # # L # # C # #, # #, # # C # #, # #, # # L # # C # #, # #, # # C # #, # #, # # L # # C # #, # #, # # C # #, # #, # # C # #, # #, # # C # #, # ', '<path d="M # # L # # L # # L # # L # # L # # C # #, # #, # # C # #, # #, # # L # # C # #, # #, # # C # #, # #, # # C # #, # #, # # C # #, # #, # # L # #" fill="')
+   /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b8r1/bulkst/e314ad4e61156d05a8c44a084d386275.mmd d1.p {'ox': -132.4, 'oy': -127.0, 'bvb': [0.0, 0.0], 'verdict': 'MISMATCH'}
+       ('skel', 102, '<path d="M # # L # # L # # C # #, # #, # # C # #, # #, # # L # # C # #, # #, # # C # #, # #, # # L # # C # #, # #, # # C # #, # #, # # C # #, # #, # # C # #, # ', '<path d="M # # L # # L # # L # # L # # L # # C # #, # #, # # C # #, # #, # # L # # C # #, # #, # # C # #, # #, # # C # #, # #, # # C # #, # #, # # L # #" fill="')

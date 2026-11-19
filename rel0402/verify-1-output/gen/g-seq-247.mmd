@@ -1,0 +1,14 @@
+sequenceDiagram
+participant P0 as delta
+actor P1 as beta
+actor P2 as <b>bold</b>
+actor P3 as alpha
+participant P4 as x
+P1-->>P0: alpha
+loop Customer Order
+P4->P1: gamma
+P3-->P2: beta
+par 日本語
+P2->P3: delta
+end
+end

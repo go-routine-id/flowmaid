@@ -1,0 +1,27 @@
+architecture-beta
+    group g0(monitoring)[Backend Services]
+    service s0(disk)[Q 0] in g0
+    service s1(disk)[Web App 1] in g0
+    service s2(nonsense)[Web App 2] in g0
+    service s3(monitoring)[PostgreSQL Primary 3] in g0
+    service s4(monitoring)[Q 4]
+    service s5(internet)[PostgreSQL Primary 5] in g0
+    service s6(database)[Authentication and Authorization Service 6]
+    service s7(database)[PostgreSQL Primary 7] in g0
+    service s8(database)[Q 8] in g0
+    service s9(disk)[PostgreSQL Primary 9] in g0
+    junction s10 in g0
+    junction s11
+    s6:T -- B:s11
+    s5:L <-[calls]-> R:s3
+    s7:T <--> B:s5
+    s8:T --> T:s9
+    s6:B -- T:s2
+    s5:R -- L:s2
+    s3:B --> L:s8
+    s8{group}:T -- B:s11
+    s5:R <-[reads config]-> R:s6
+    s7:R -[x]- L:s5
+    s8:B --> B:s10
+    s7:B -[calls]-> B:s6
+    s9:T --> B:s8

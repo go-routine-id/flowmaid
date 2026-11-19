@@ -1,0 +1,14 @@
+flowchart LR
+    subgraph G[Data ingestion workers]
+        m0[w]
+        m1[x wide member node]
+        m0 --> m1
+    end
+    s0[src0] --> G
+    s1[src1] --> G
+    s2[src2] --> m0
+    s2 --> m1
+    s3[src3] --> G
+    s3 --> m1
+    s4[src4] --> G
+    m1 --> z[end]

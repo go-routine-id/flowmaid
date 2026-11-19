@@ -1,0 +1,17 @@
+flowchart LR
+  client[Client]
+  subgraph outer[Region]
+    o1[edge cache]
+    o2[metrics agent]
+    subgraph inner[Cluster]
+      i1[api]
+      i2[cron]
+      i3[sidecar]
+    end
+  end
+  audit[Audit log]
+  client --> i1
+  client --> o1
+  i2 --> audit
+  o2 --> audit
+  client --> spare[Spare]

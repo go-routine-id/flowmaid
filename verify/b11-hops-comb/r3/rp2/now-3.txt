@@ -1,0 +1,3 @@
+bench-75.mmd	frames=252	worst_ms=6.82	p99=5.31	p95=4.57	over6=1	mean_ms=2.79	worst_node=gw
+dense-td.mmd	frames=552	worst_ms=5.52	p99=4.88	p95=3.62	over6=0	mean_ms=2.08	worst_node=n16
+dense-lr.mmd	frames=624	worst_ms=5.01	p99=3.39	p95=2.86	over6=0	mean_ms=1.72	worst_node=n12

@@ -1,0 +1,54 @@
+flowchart LR
+  n1["api<br/>worker"]
+  n2["mail<br/>billing"]
+  n3["cache db audit"]
+  subgraph B0["Storefront"]
+    n4["queue"]
+    n5["cache pack worker<br/>ship"]
+    subgraph B0s0["Back office and finance 0"]
+      n6["pack"]
+      n7["billing"]
+    end
+    subgraph B0s1["Fulfilment desk 1"]
+      n8["index"]
+    end
+  end
+  subgraph B1["Analytics"]
+    n9["store"]
+    n10["notify merge audit<br/>notify"]
+    n11["parse"]
+    n12["api"]
+  end
+  subgraph B2["Fulfilment desk"]
+    n13["worker split audit<br/>pack"]
+    n14["search"]
+    n15["split queue queue"]
+    n16["audit<br/>store"]
+  end
+  subgraph B3["Core"]
+    n17["worker"]
+  end
+  n18["pack index billing"]
+  n11 --> n7
+  n4 --> n15
+  n8 -.-> n6
+  n8 -->|audit| n2
+  n12 --> n13
+  n1 -.-> n17
+  n18 --> n6
+  n13 --> n9
+  n13 ==>|cache| n15
+  n4 ==>|search| n17
+  n12 -->|queue| n11
+  n5 --> n3
+  n4 --> n13
+  n18 --> n10
+  n4 --> n11
+  n15 ==>|report| n7
+  n11 -->|pack| B0s0
+  n15 --> n11
+  n1 --> n16
+  n3 --> n6
+  n17 --> n8
+  n16 -->|cache| n5
+  n6 -.-> n17

@@ -1,0 +1,22 @@
+flowchart RL
+  n1 ~~~ n2
+  n7 e1@<==> n9
+  e1@{ curve: stepBefore }
+  n9 <--> n0
+  n6 === n3
+  n3 --> n4
+  n2 <-.-> n0
+  n9 e6@==> n8
+  e6@{ curve: bumpY }
+  n6 <-.-> n3
+  n7 --> n4
+  n1 -.->|a longer label| n5
+  n8 e10@o--o|no| n8
+  e10@{ curve: basis }
+  linkStyle 0 interpolate basis stroke-width:15px
+  linkStyle 3 stroke-width:16px,stroke:#3a3
+  linkStyle 5 interpolate natural stroke-width:55px
+  linkStyle 6 stroke-width:12px
+  linkStyle 7 stroke-width:20px
+  linkStyle 8 stroke-width:5px,stroke:#36c,stroke-dasharray:6 3
+  linkStyle 10 stroke-width:55px,stroke:#3a3

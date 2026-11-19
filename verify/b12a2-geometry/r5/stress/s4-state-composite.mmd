@@ -1,0 +1,11 @@
+stateDiagram-v2
+    [*] --> Idle
+    state Working {
+        [*] --> Fetch
+        Fetch --> Parse
+        Parse --> Store
+    }
+    Idle --> Working : start
+    Working --> Done : finish
+    Done --> Idle : reset
+    Store --> Idle : abort

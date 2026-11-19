@@ -1,0 +1,7 @@
+flowchart TD
+  A[Start] e1@-->|step one| B[Middle]
+  B -->|go| C[End]
+  B --> D[Alt]
+  B --> E[Alt 2]
+  e1@{ curve: linear }
+  linkStyle 1 stroke:#e33,stroke-width:4px,interpolate:step

@@ -1,0 +1,5 @@
+3010 ('routed vb !=0', 'translation')
+1490 ('routed vb 0 0', 'same')
+1000 ('static', 'same')
+head viewBox origin signs among changed: {'x<0 y<0': 1185, 'x<0 y=0': 926, 'x=0 y<0': 859, 'x>0 y<0': 28, 'x<0 y>0': 12}
+bad 0

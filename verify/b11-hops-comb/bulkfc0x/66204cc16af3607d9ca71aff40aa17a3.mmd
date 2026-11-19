@@ -1,0 +1,12 @@
+flowchart LR
+  A[Client] -->|request with a long label| B{Auth?}
+  B -->|ok| C[Service]
+  B -->|denied by policy| D[401]
+  C -->|read| E[(DB)]
+  C -->|write through cache| F[(Cache)]
+  C -->|publish| G[Queue]
+  subgraph back [Backend]
+    C
+    E
+    F
+  end

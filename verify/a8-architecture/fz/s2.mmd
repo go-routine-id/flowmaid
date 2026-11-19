@@ -1,0 +1,11 @@
+architecture-beta
+    group g0(server)[Data Storage Layer]
+    group g1(disk)[Data] in g0
+    service s0(monitoring)[Service 0] in g0
+    service s1(monitoring)[Service 1] in g0
+    service s2(server)[Service 2] in g0
+    s0:B -- T:s2
+    s1:T --> B:s2
+    s0:R --> T:s2
+    s1:R -- L:s2
+    s0:B --> T:s2

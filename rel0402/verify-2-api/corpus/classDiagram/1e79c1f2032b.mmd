@@ -1,0 +1,7 @@
+classDiagram
+Base <|-- Node
+Base <|-- Leaf
+Node --> Item : has
+Node --> Node : parent
+Node --> Node : next
+Node --> Node : prev

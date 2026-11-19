@@ -1,0 +1,10 @@
+erDiagram
+    EMPLOYEE |o--o{ EMPLOYEE : "manages"
+    EMPLOYEE ||--|{ DEPT : "works in"
+    DEPT ||--o{ EMPLOYEE : "employs"
+    DEPT }o--|| SITE : "located at"
+    SITE ||..o{ EMPLOYEE : "hosts"
+    EMPLOYEE {
+        int id PK "surrogate"
+        string name
+    }

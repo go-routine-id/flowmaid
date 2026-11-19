@@ -1,0 +1,21 @@
+flowchart TD
+  a[Alpha] e1@--> x[Xray]
+  a e2@--> y[Yank]
+  a --> z[Zulu]
+  b[Bravo] --> z
+  b e3@--> x
+  b --> y
+  c[Charlie] --> x
+  c --> y
+  c e4@--> z
+  e1@{ curve: linear }
+  e2@{ animate: true }
+  e3@{ curve: stepAfter }
+  e4@{ animation: fast }
+  x --> s[Sink]
+  y --> s
+  z --> s
+  a --> s
+  c --> s
+  linkStyle 5 stroke:#e55,stroke-width:8px
+  linkStyle 7 stroke:#090,stroke-width:1px,stroke-dasharray:6 3

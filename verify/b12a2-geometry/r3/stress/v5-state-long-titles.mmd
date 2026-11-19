@@ -1,0 +1,13 @@
+stateDiagram-v2
+    [*] --> Idle
+    state "Ожидание подтверждения заказа клиентом" as Wait {
+        [*] --> Pending
+        Pending --> Checked
+    }
+    state Run {
+        [*] --> Busy
+        Busy --> Done
+    }
+    Idle --> Wait : заказ
+    Wait --> Run : подтверждено
+    Run --> [*]

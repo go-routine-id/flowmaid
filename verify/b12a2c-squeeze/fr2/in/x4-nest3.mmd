@@ -1,0 +1,20 @@
+flowchart TD
+  u[User] --> p1
+  u --> q1
+  v[Batch job] --> r1
+  subgraph P[Platform]
+    subgraph Q[Compute tier]
+      subgraph Q1[Short first]
+        p1[api] --> p2["worker pool<br/>with many<br/>replicas"]
+      end
+      subgraph Q2[Tall first]
+        q1["scheduler<br/>with a tall<br/>label here"] --> q2[cron]
+      end
+    end
+    subgraph R[Storage tier]
+      r1[ingest] --> r2[(warehouse)]
+    end
+  end
+  p2 --> r2
+  q2 -->|nightly| r1
+  r2 --> rep[Reports]

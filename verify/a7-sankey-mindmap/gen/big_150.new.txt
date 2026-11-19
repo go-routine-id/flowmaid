@@ -1,0 +1,1 @@
+big_150.mmd: n=151 canvas 3543x5969 boxfill 2.8% root@(346,3033) rel (0.10,0.51) trunks 2682-2682 spokes(all) 34-2682 ratio 78.88 time 2.51ms

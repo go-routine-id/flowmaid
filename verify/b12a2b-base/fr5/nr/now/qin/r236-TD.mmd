@@ -1,0 +1,10 @@
+flowchart TD
+    subgraph G[Order processing]
+        m0[charge]
+        m1[x wide member node]
+    end
+    s0[src0] --> m1
+    s1[src1] --> G
+    s2[src2] --> m0
+    s2 --> G
+    s3[src3] --> G

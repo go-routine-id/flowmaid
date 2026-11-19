@@ -1,0 +1,26 @@
+bench-75	static	user->gw border edge left 44px
+bench-75	static	user->gw hug edge 45px
+bench-75	static	lb->svc1 border edge right 46px
+bench-75	static	lb->svc1 hug edge 57px
+bench-75	static	lb->svc4 hug svc5 58px
+bench-75	static	svc1->objects hug data 38px
+bench-75	static	svc4->logs border app right 107px
+bench-75	static	svc4->logs hug app 177px
+bench-75	static	queue->job2 border jobs left 56px
+bench-75	static	queue->job2 hug jobs 31px
+bench-75	static	alerts->gw edge_frame app
+bench-75	static	job1->svc1 edge_frame data
+bench-75	static	job1->svc1 hug ops 53px
+bench-75	static	lb->metrics edge_frame app
+bench-75	static	lb->metrics border app left 133px
+bench-75	static	lb->metrics hug app 116px
+bench-75	static	lb->svc2 overlap lb->metrics 14px
+bench-75	static	svc1->db overlap svc1->objects 70px
+bench-75	static	svc1->db overlap svc5->logs 18px
+bench-75	static	svc1->cache overlap lb->metrics 218px
+bench-75	static	svc3->db edge_gap svc1->objects 7.6px
+bench-75	static	svc5->queue overlap svc1->objects 18px
+bench-75	static	svc1->objects overlap svc5->logs 38px
+bench-75	static	svc2->logs overlap dash->user 40px
+bench-75	static	svc3->logs end_cross svc3->metrics at (453,545)
+bench-75	static	svc5->logs overlap job1->svc1 26px

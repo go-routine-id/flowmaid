@@ -1,0 +1,57 @@
+flowchart RL
+  n1["ingest"]
+  n2["merge"]
+  subgraph B0["Platform"]
+    n3["parse"]
+    n4["queue"]
+    n5["notify<br/>cache"]
+  end
+  subgraph B1["Ops"]
+    n6["billing"]
+    n7["store billing ship"]
+    n8["split auth split"]
+    subgraph B1s0["Analytics 0"]
+      n9["merge"]
+    end
+    subgraph B1s1["Analytics 1"]
+      n10["queue auth store<br/>report"]
+      n11["ingest"]
+      n12["parse<br/>cache"]
+    end
+  end
+  subgraph B2["Platform"]
+    n13["notify notify split"]
+    subgraph B2s0["Ingest 0"]
+      n14["pack"]
+      n15["store"]
+      n16["cache"]
+    end
+  end
+  n17["pack"]
+  n18["merge<br/>merge"]
+  n12 -->|search| n11
+  n4 --> n7
+  n9 --> n17
+  n1 --> n6
+  n10 --> n2
+  n6 -.-> n15
+  n14 -.-> n9
+  n18 -.-> n2
+  n14 -->|search| n7
+  n12 --> n3
+  n16 -.-> n6
+  n7 --> n12
+  n11 --> n9
+  n17 --> B1
+  n4 ==> n14
+  n13 -->|ingest| n15
+  n1 ==> n12
+  n10 -.-> n3
+  n16 --> n2
+  n18 --> n3
+  n11 ==> n2
+  n3 --> n9
+  n18 -.-> n10
+  n13 --> n18
+  n1 -.-> n14
+  n14 -->|api| n11

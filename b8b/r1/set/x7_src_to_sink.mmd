@@ -1,0 +1,12 @@
+flowchart TB
+  api[API gateway]
+  subgraph svc[Services]
+    s1[orders]
+    s2[payments]
+    s3[nightly job]
+  end
+  api --> s1
+  api --> s2
+  api --> health[health check]
+  api --> docs[docs site]
+  s3 --> mail[mail relay]

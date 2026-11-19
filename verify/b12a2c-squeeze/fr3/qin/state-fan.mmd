@@ -1,0 +1,16 @@
+stateDiagram-v2
+  [*] --> Idle
+  Idle --> Work : start
+  Idle --> Check : audit
+  state Work {
+    [*] --> Fetch
+    Fetch --> Build : got
+    Build --> Pack
+  }
+  state Check {
+    [*] --> Scan
+    Scan --> Report : findings
+  }
+  Pack --> Done : shipped
+  Report --> Done : filed
+  Done --> [*]

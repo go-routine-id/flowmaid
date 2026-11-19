@@ -1,0 +1,10 @@
+1px defects 91->62  x_drawn 1254->1045  edge_node_x 25->25  fan_x 43->3  edge_frame_pairs 27->12  lateral_x 469->451  edge_chip 49->22  overlap_pairs 27->13
+mid defects 346->325  x_drawn 1285->1128  edge_node_x 19->19  fan_x 38->31  edge_frame_pairs 38->23  lateral_x 558->527  edge_chip 41->20  overlap_pairs 17->11
+    b9-inside defects 2->3; x_drawn 0->3
+    b9-inside2 x_drawn 2->3; fan_x 2->3
+far defects 875->840  x_drawn 1454->1346  edge_node_x 84->84  fan_x 65->60  edge_frame_pairs 162->144  lateral_x 658->618  edge_chip 76->73  overlap_pairs 38->20
+    blocks-overview-bt fan_x 3->4
+    blocks-overview-lr fan_x 4->5
+    cycle2 x_drawn 3->4
+    lane-beside defects 25->26; x_drawn 1->2; edge_node_x 1->2; fan_x 1->2
+    nested-cases x_drawn 21->22

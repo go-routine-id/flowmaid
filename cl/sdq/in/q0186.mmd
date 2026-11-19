@@ -1,0 +1,17 @@
+stateDiagram-v2
+direction LR
+[*] --> S0
+state C0 {
+  [*] --> C0i0
+  C0i0 --> C0i1
+  C0i1 --> C0i2
+  C0i2 --> C0i3
+  note left of C0i3 : n79
+  note right of C0i2 : n39
+}
+S0 --> C0
+S0 --> T0
+C0 --> T1
+C0 --> T2
+note left of S0 : m65
+note left of T0 : m4

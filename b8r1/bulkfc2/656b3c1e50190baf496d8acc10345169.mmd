@@ -1,0 +1,18 @@
+flowchart LR
+    N0[Fetch fetch]
+    N1([Emit emit])
+    N2[Done load]
+    N3[Emit]
+    N4([Retry])
+    N5(Notify queue)
+    N6[Load check]
+    N0 --> N1
+    N0 --> N2
+    N0 -->|no| N3
+    N1 --> N4
+    N4 --> N5
+    N3 --> N6
+    N4 --> N6
+    N0 --> N4
+    N0 --> N6
+    N5 -.->|retry| N1

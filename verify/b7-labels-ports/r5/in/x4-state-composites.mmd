@@ -1,0 +1,20 @@
+stateDiagram-v2
+  state Outer {
+    [*] --> In1
+    state Nested {
+      [*] --> deep1
+      deep1 --> deep2
+    }
+    In1 --> Nested
+  }
+  state Middle {
+    [*] --> m1
+    m1 --> m2
+  }
+  state Last {
+    [*] --> l1
+  }
+  Outer --> Middle : advance
+  Middle --> Last : finish up
+  Last --> Outer : restart all
+  Middle --> Outer : go back

@@ -1,0 +1,335 @@
+diff --git a/src/edgepass.rs b/src/edgepass.rs
+index ce9d0ad..cbfa812 100644
+--- a/src/edgepass.rs
++++ b/src/edgepass.rs
+@@ -428,34 +428,55 @@ pub(crate) fn finish_blocks(g: &Graph, sc: &mut Scene, blocks: Option<&[Vec<usiz
+     stages(g, sc, cx, Mode::Static);
+ }
+ 
++
++fn dbgw(tag: &str, sc: &Scene) {
++    if std::env::var_os("FMDBGE").is_none() { return; }
++    let want = std::env::var("FMDBGE").unwrap();
++    for e in &sc.edges { if format!("{}->{}", e.from, e.to) == want {
++        let w: Vec<String> = e.waypoints.iter().map(|p| format!("({:.1},{:.1})", p.0, p.1)).collect();
++        eprintln!("[{}] bez=({:.1},{:.1})..({:.1},{:.1}) n={} {}", tag, e.bezier[0].0, e.bezier[0].1, e.bezier[3].0, e.bezier[3].1, w.len(), w.join(" "));
++    } }
++}
+ /// The edge stages over `sc` with its context built.
+ fn stages(g: &Graph, sc: &mut Scene, mut cx: Ctx, mode: Mode) {
+     let mut moved = vec![false; sc.edges.len()];
++    dbgw("in", sc);
+     crate::ports::assign(g, sc, &cx, mode, &mut moved);
++    dbgw("crate::ports::assign", sc);
+     // Every edge on the axes, its corners rounded (report §2.1): from the
+     // ends the ports stage settled, before the router judges them.
+     crate::ortho::orthogonalize(g, sc, &mut cx, mode);
++    dbgw("crate::ortho::orthogonalize", sc);
+     crate::router::repair(g, sc, &cx, mode, &mut moved);
++    dbgw("crate::router::repair", sc);
+     // A rerouted end may have switched to another side of its node and
+     // landed on a port another edge already holds: space those groups
+     // again. Groups the router left alone are already spaced and stay
+     // byte-identical.
+     crate::ports::respace(g, sc, &cx, mode, &mut moved);
++    dbgw("crate::ports::respace", sc);
+     // After the ports are spaced again, so the channel nudge sees (and
+     // keeps) the final ends; in the static scene it ends by putting each
+     // side's ends in the order their paths now head (G9).
+     crate::router::nudge(g, sc, &cx, mode, &mut moved);
++    dbgw("crate::router::nudge", sc);
+     // Then two unrelated edges the nudge (or the builder) left side by
+     // side under the spacing get one moved clear, where that costs
+     // nothing else (G4).
+     crate::router::spread_close(g, sc, &cx, mode, &mut moved);
++    dbgw("crate::router::spread_close", sc);
+     // Then a fan's teeth nest: the ports, the tracks and the turns of
+     // each side's ends in one order (report B4, see [`crate::comb`]).
+     crate::comb::comb(sc, &cx, &mut moved);
++    dbgw("crate::comb::comb", sc);
+     glyph_stubs(sc, &cx, &mut moved);
++    dbgw("glyph_stubs", sc);
+     straight_cubics(sc, &cx);
++    dbgw("straight_cubics", sc);
+     square_s_cubics(sc, &cx);
++    dbgw("square_s_cubics", sc);
+     snap_ends(sc, &cx);
++    dbgw("snap_ends", sc);
+     // A corner a moved end left far from its rounding point turns as a
+     // rounded corner again (see `ports::reround`). An edge a drag keeps
+     // ([`Ctx::fixed`]) keeps its geometry, whoever drew it (a fold's
+@@ -463,6 +484,7 @@ fn stages(g: &Graph, sc: &mut Scene, mut cx: Ctx, mode: Mode) {
+     for (i, e) in sc.edges.iter_mut().enumerate() {
+         if cx.drawn.get(i).copied().unwrap_or(false) && !cx.fixed.get(i).copied().unwrap_or(false) {
+             crate::ports::reround(e);
++
+         }
+     }
+     let budget = match mode {
+@@ -470,6 +492,7 @@ fn stages(g: &Graph, sc: &mut Scene, mut cx: Ctx, mode: Mode) {
+         Mode::Routed => crate::labels::LABEL_ROUTE_WORK,
+     };
+     crate::labels::relabel(g, sc, &cx, &moved, budget);
++    dbgw("crate::labels::relabel", sc);
+     // A scene whose painter strokes its own width (ER, class) is drawn
+     // on its canvas as-is; a flowchart's is fitted like its SVG.
+     refit(sc, mode, g.edge_paint_width.is_none());
+diff --git a/src/ortho.rs b/src/ortho.rs
+index 6fc1dad..09460de 100644
+--- a/src/ortho.rs
++++ b/src/ortho.rs
+@@ -989,6 +989,11 @@ fn ortho_pass(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
+         }
+         plans.push((i, plan));
+     }
++    if probe() {
++        for (i, e) in sc.edges.iter().enumerate() {
++            eprintln!("PROBE edge {i} {}->{}", e.from, e.to);
++        }
++    }
+     place_tracks(&mut jogs, &kept, cx.blocks);
+     uncross(&mut jogs, &kept_lines);
+ 
+@@ -1359,6 +1364,8 @@ struct TitleSides {
+     sides: Vec<Option<TitleSide>>,
+     /// The displaced crossings: (edge, frame) -> the column it takes.
+     cols: std::collections::BTreeMap<(usize, usize), f64>,
++    /// TFIX: frames whose side's member ends past the chip were displaced too.
++    moved: std::collections::BTreeSet<(usize, usize)>,
+ }
+ 
+ impl TitleSides {
+@@ -1366,6 +1373,7 @@ impl TitleSides {
+         let mut out = TitleSides {
+             sides: Vec::new(),
+             cols: std::collections::BTreeMap::new(),
++            moved: std::collections::BTreeSet::new(),
+         };
+         if !cx.blocks || !matches!(dir, Direction::TD | Direction::BT) || sc.clusters.is_empty() {
+             return out;
+@@ -1394,6 +1402,10 @@ impl TitleSides {
+             std::collections::BTreeMap::new();
+         let mut taken: std::collections::BTreeMap<usize, Vec<f64>> =
+             std::collections::BTreeMap::new();
++        // TFIX: the side's other crossings that are an end's own run into a
++        // member of the frame (its port's breadth): (breadth, edge).
++        let mut movable: std::collections::BTreeMap<usize, Vec<(f64, usize)>> =
++            std::collections::BTreeMap::new();
+         for (i, e) in sc.edges.iter().enumerate() {
+             if !cx.drawn.get(i).copied().unwrap_or(false)
+                 || e.waypoints.len() < 2 && e.bezier[0] == e.bezier[3]
+@@ -1431,6 +1443,20 @@ impl TitleSides {
+                 if displaced && shaded(end, k) {
+                     by.entry(k).or_default().push((b, i));
+                 } else {
++                    if probe() {
++                        eprintln!("PROBE taken frame {k} b {:.1} by {}->{} displaced {}", b, e.from, e.to, displaced);
++                    }
++                    let own = match end {
++                        Some(EndRef::Node(v)) => {
++                            let r = flow_rect(dir, end_rect(sc, EndRef::Node(v)));
++                            let f = frames[k];
++                            b >= r.0 && b <= r.1 && r.0 >= f.0 && r.1 <= f.1 && r.2 >= f.2 && r.3 <= f.3
++                        }
++                        _ => false,
++                    };
++                    if own {
++                        movable.entry(k).or_default().push((b, i));
++                    }
+                     taken.entry(k).or_default().push(b);
+                 }
+             }
+@@ -1441,6 +1467,71 @@ impl TitleSides {
+             };
+             let taken = taken.remove(&k).unwrap_or_default();
+             v.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
++            if tfix() == 1 {
++                // The ends of this side's members crossing it between a
++                // displaced end's port and its column are displaced with
++                // them, the columns in the order of the breadths they
++                // replace; all of them or, as before, none past one.
++                let mov = movable.get(&k).cloned().unwrap_or_default();
++                let mut set = v.clone();
++                let assign = |set: &[(f64, usize)]| -> Option<Vec<f64>> {
++                    let others: Vec<f64> = taken
++                        .iter()
++                        .copied()
++                        .filter(|&o| !set.iter().any(|&(b, _)| (b - o).abs() < EPS))
++                        .collect();
++                    let mut next = c1 + crate::router::CORNER_R;
++                    let mut cols = Vec::new();
++                    for _ in set {
++                        let mut col = next;
++                        while let Some(&o) = others.iter().find(|&&o| (o - col).abs() < TRACK_PITCH) {
++                            col = o + TRACK_PITCH;
++                        }
++                        if col > f1 - crate::scene::LANE_PAD {
++                            return None;
++                        }
++                        cols.push(col);
++                        next = col + TRACK_PITCH;
++                    }
++                    Some(cols)
++                };
++                let mut ok = None;
++                for _ in 0..16 {
++                    set.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
++                    let Some(cols) = assign(&set) else { break };
++                    let between = |o: f64| set.iter().zip(&cols).any(|(&(b, _), &c)| (o - b) * (o - c) < 0.0);
++                    let add: Vec<(f64, usize)> = mov
++                        .iter()
++                        .copied()
++                        .filter(|&(o, j)| between(o) && !set.iter().any(|&(_, i)| i == j))
++                        .collect();
++                    if add.is_empty() {
++                        let fixed_between = taken.iter().any(|&o| {
++                            between(o) && !set.iter().any(|&(b, _)| (b - o).abs() < EPS)
++                        });
++                        if !fixed_between {
++                            ok = Some(cols);
++                        }
++                        break;
++                    }
++                    set.extend(add);
++                }
++                if let Some(cols) = ok {
++                    if probe() {
++                        eprintln!("PROBE   TFIX displaces {:?}", set.iter().zip(&cols).map(|(&(b, i), c)| format!("{}->{} {:.1}->{:.1}", sc.edges[i].from, sc.edges[i].to, b, c)).collect::<Vec<_>>());
++                    }
++                    for (&(_, i), &c) in set.iter().zip(&cols) {
++                        out.cols.insert((i, k), c);
++                    }
++                    out.moved.insert((0, k));
++                    continue;
++                }
++            }
++            if probe() {
++                eprintln!("PROBE title side frame {k} '{}' f1 {:.1} c1 {:.1} displaced {:?} taken {:?}", sc.clusters[k].title, f1, c1,
++                    v.iter().map(|&(b, i)| (format!("{:.1}", b), format!("{}->{}", sc.edges[i].from, sc.edges[i].to))).collect::<Vec<_>>(),
++                    taken.iter().map(|o| format!("{:.1}", o)).collect::<Vec<_>>());
++            }
+             // The nearest free columns past the chip, in the order of
+             // the breadths they replace, a track apart and a track off
+             // the side's other crossings; the first a corner's rounding
+@@ -1462,6 +1553,9 @@ impl TitleSides {
+                 // `ship -> pager` and back over it and `cart -> pager`).
+                 // Drawn as before; so is every entry after it.
+                 if taken.iter().any(|&o| (o - b) * (o - col) < 0.0) {
++                    if probe() {
++                        eprintln!("PROBE   stop at {}->{} b {:.1} col {:.1}", sc.edges[i].from, sc.edges[i].to, b, col);
++                    }
+                     break;
+                 }
+                 out.cols.entry((i, k)).or_insert(col);
+@@ -1537,7 +1631,12 @@ impl TitleSides {
+                 let (Some((_, _, t, _, _)), Some(&col)) = (side, self.cols.get(&(i, k))) else {
+                     continue;
+                 };
+-                if (a.1 - t) * (b.1 - t) < 0.0 && self.crossings(&[a, b]).iter().any(|c| c.0 == k) {
++                let hit = if self.moved.contains(&(0, k)) {
++                    self.all_crossings(&[a, b]).iter().any(|c| c.0 == k)
++                } else {
++                    self.crossings(&[a, b]).iter().any(|c| c.0 == k)
++                };
++                if (a.1 - t) * (b.1 - t) < 0.0 && hit {
+                     out.push((col, *t));
+                 }
+             }
+@@ -2360,22 +2459,31 @@ pub(crate) fn channel_sizes(steps: &[(f64, f64)]) -> Vec<usize> {
+ 
+ /// `group` (a channel's jogs, [`place_tracks`]) split into the sets
+ /// whose rooms chain, in a block layout (`blocks`); else as it is.
++fn rfix() -> u32 {
++    std::env::var("FM_RFIX").ok().and_then(|v| v.parse().ok()).unwrap_or(0)
++}
++fn tfix() -> u32 {
++    std::env::var("FM_TFIX").ok().and_then(|v| v.parse().ok()).unwrap_or(0)
++}
++fn probe() -> bool {
++    std::env::var_os("FM_PROBE").is_some()
++}
+ fn split_by_room(jogs: &[Jog], mut group: Vec<usize>, blocks: bool) -> Vec<Vec<usize>> {
+-    if !blocks || group.len() < 2 {
++    if !blocks || group.len() < 2 || rfix() == 3 {
+         return vec![group];
+     }
++    let room = |k: usize| if rfix() == 1 { jogs[k].plain.0 } else { jogs[k].room };
+     group.sort_by(|&a, &b| {
+-        jogs[a]
+-            .room
++        room(a)
+             .0
+-            .total_cmp(&jogs[b].room.0)
++            .total_cmp(&room(b).0)
+             .then(jogs[a].span().0.total_cmp(&jogs[b].span().0))
+             .then(a.cmp(&b))
+     });
+     let mut out: Vec<Vec<usize>> = Vec::new();
+     let mut reach = f64::NEG_INFINITY;
+     for k in group {
+-        let (lo, hi) = jogs[k].room;
++        let (lo, hi) = room(k);
+         match out.last_mut() {
+             Some(last) if lo < reach + TRACK_PITCH_MIN => {
+                 last.push(k);
+@@ -2457,6 +2565,9 @@ fn place_channel(jogs: &mut [Jog], group: Vec<usize>, blocks: bool) {
+         })
+     };
+     if group.iter().any(|&k| !jogs[k].above_label) || !holds(&order, jogs) {
++        if probe() && group.iter().any(|&k| jogs[k].above_label) {
++            eprintln!("PROBE   fallback to plain rooms: {:?}", group.iter().map(|&k| jogs[k].edge).collect::<Vec<_>>());
++        }
+         for &k in &group {
+             let j = &mut jogs[k];
+             (j.room, j.want, j.above_label) = (j.plain.0, j.plain.1, false);
+@@ -2591,9 +2702,47 @@ fn place_tracks(jogs: &mut [Jog], kept: &[(f64, (f64, f64))], blocks: bool) {
+         // (blocks/t9c-frames-8px-two-way drawn TD), which the router
+         // then took round the frames' lateral walls. Each set of steps
+         // whose rooms chain is a channel of its own there.
+-        for group in split_by_room(jogs, group, blocks) {
+-            if group.len() > 1 {
+-                place_channel(jogs, group, blocks);
++        let sets = split_by_room(jogs, group.clone(), blocks);
++        if probe() {
++            eprintln!("PROBE gap {} channel of {} -> {} sets", gap, group.len(), sets.len());
++            for (si, set) in sets.iter().enumerate() {
++                for &k in set {
++                    let j = &jogs[k];
++                    eprintln!("PROBE   set {si} jog {k} edge {} span ({:.1},{:.1}) lo_at {:.1} hi_at {:.1} room ({:.1},{:.1}) plain ({:.1},{:.1}) want {:.1} above {} lh {:.1}",
++                        j.edge, j.span().0, j.span().1, j.lo_at, j.hi_at, j.room.0, j.room.1, j.plain.0.0, j.plain.0.1, j.want, j.above_label, j.label_half);
++                }
++            }
++        }
++        let saved: Vec<(usize, ((f64, f64), f64, bool, f64))> = group
++            .iter()
++            .map(|&k| (k, (jogs[k].room, jogs[k].want, jogs[k].above_label, jogs[k].at)))
++            .collect();
++        let n_sets = sets.len();
++        for set in sets {
++            if set.len() > 1 {
++                place_channel(jogs, set, blocks);
++            }
++        }
++        if rfix() == 2 && n_sets > 1 && group.len() > 1 {
++            // Two sets placed apart that came within a pitch: the whole
++            // channel as one, as before the split.
++            let clash = group.iter().enumerate().any(|(x, &a)| {
++                group[x + 1..].iter().any(|&b| {
++                    (jogs[a].at - jogs[b].at).abs() < TRACK_PITCH_MIN - EPS
++                        && jogs[a].span().0 < jogs[b].span().1 + TRACK_PITCH
++                        && jogs[b].span().0 < jogs[a].span().1 + TRACK_PITCH
++                })
++            });
++            if clash {
++                for &(k, (r, w, a, at)) in &saved {
++                    (jogs[k].room, jogs[k].want, jogs[k].above_label, jogs[k].at) = (r, w, a, at);
++                }
++                place_channel(jogs, group.clone(), blocks);
++            }
++        }
++        if probe() {
++            for &k in &group {
++                eprintln!("PROBE   placed jog {k} edge {} at {:.2} room ({:.1},{:.1}) above {}", jogs[k].edge, jogs[k].at, jogs[k].room.0, jogs[k].room.1, jogs[k].above_label);
+             }
+         }
+     }

@@ -1,0 +1,10 @@
+flowchart LR
+    A[Client app] -->|send a fairly long request description here| B[Edge proxy]
+    B --> C[Service one]
+    C --> D[Service two]
+    D --> E[Database]
+    E -->|replicate changes back to the client with a long label| A
+    D -->|rollback| B
+    C -->|ack| A
+    B --> B
+    E --> E

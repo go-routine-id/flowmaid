@@ -1,0 +1,16 @@
+classDiagram
+direction LR
+A -- B : owns
+A --> C
+C --> C : c0
+A "1" --> "*" A : a0
+B *-- B : b0
+B o-- B : b1
+B --> B
+B o-- B : b3
+B *-- B : b4
+class B {
+ +int id
+ +run() void
+ +stop()
+}

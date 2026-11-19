@@ -1,0 +1,64 @@
+classDiagram
+direction LR
+C12 "1" o-- "*" C15 : <b>bold</b>
+C15 ..> C19
+C10 -- C3
+C16 *-- C12
+C5 "1" <--> "*" C9
+C17 "1" -- "*" C3
+C17 "1" ..|> "*" C6
+C19 "1" <|-- "*" C5
+C12 "1" <|-- "*" C3
+C2 *-- C9 : Customer Order
+C8 ..|> C5 : alpha
+C18 "1" *-- "*" C3
+C8 --> C1
+C16 *-- C14
+C14 <--> C3
+C4 <--> C19 : gamma
+C12 *-- C15
+C4 <|-- C19 : 日本語
+C15 "1" -- "*" C7 : beta
+C1 "1" ..> "*" C9
+C19 "1" ..> "*" C12
+C3 *-- C11 : gamma
+C1 "1" *-- "*" C15
+C8 --> C5
+C13 "1" <|-- "*" C19 : a&b
+C0 *-- C16 : delta
+C3 o-- C9
+C9 "1" *-- "*" C0 : Customer Order
+C17 <--> C2 : delta
+C18 "1" *-- "*" C3
+C3 <--> C2
+C13 "1" o-- "*" C15 : x
+C15 <|-- C3
+C8 "1" <--> "*" C6
+C5 "1" <--> "*" C16
+note for C13 "Long label here"
+note for C16 "<b>bold</b>"
+note for C10 "beta"
+class C5 {
+  +int id
+  +name() String
+}
+class C12 {
+  +int id
+  +name() String
+}
+class C13 {
+  +int id
+  +name() String
+}
+class C16 {
+  +int id
+  +name() String
+}
+class C17 {
+  +int id
+  +name() String
+}
+class C18 {
+  +int id
+  +name() String
+}

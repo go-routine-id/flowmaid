@@ -1,0 +1,53 @@
+feat(blocks): a gap packs its steps a track each, ends round an over-full side take a corner leg, and a fan's channels keep their order (B12.9 G2, B12.11 corner legs, pulled forward; B12.5 O6)
+
+Behind the block layout only; the default build draws exactly what it drew
+(`everything_renders_as_before_with_blocks_off`, guard green).
+
+- G2, the track packing of a gap (`layout::place`, `ortho::channel_sizes`):
+  a block layout's gap gets room for its largest channel as the ortho
+  stage packs it, one `TRACK_PITCH` a step, not for the most steps over
+  one point. A hub's fan stepping down a staircase under its block is a
+  channel of nine steps no point of which lies under more than seven:
+  dense-td's two outermost steps shared a track 4 px apart and the repair
+  rerouted one across the rest of the fan. `place_tracks` and the layout
+  read one channel rule (`joins_channel`, `channel_reach`).
+- A step keeps a frame's whole clearance off a border it passes along in
+  a block layout (`ortho::BLOCK_BORDER_CLEAR`), past the router's frame
+  band even where the router reads the path simplified: at 7.5 px the
+  first track under a block was a border ride the repair took off.
+- The repair no longer searches an edge of a block layout for its count
+  of crossings: every edge there runs where the block ordering put it,
+  which counted its crossings, and a way round the crowd found edge by
+  edge ignored the fan it belongs to (dense-td's turned `n36 -> n16`
+  came back across all five siblings twice each).
+- `ports::respace` keeps the drawn order of a side in a block layout
+  (ties by heading): re-sorted by the chord of a long path, an end the
+  repair never touched swapped past four of its fan's.
+- Corner legs (2.8, over-full sides; `ortho::breadth_ends`): an end
+  spilled round the corner of a member stacked beside others takes its
+  last run in the gap beside its side, a track further out per end of
+  that side reached before it, instead of dropping through the members
+  stacked beside it (bench-75: 11 boxes hit after the ortho stage, 0
+  now); a start and an end with such runs no longer meet midway.
+- O6 across levels (`BlockOrder::untangle_fans`): two channels of one fan
+  that cross in the layered order change places on the layers between
+  the crossing and the node they share, where they stand next to each
+  other in one level on each of those layers, when that lowers the
+  fans' layered crossings and not the drawing's.
+
+Suite-on, static: dense-td fan_x 18 -> 1 (start 1), x_drawn 68 -> 52,
+overlap pairs 1 -> 0, crossings 46-54 under the six edge-line shuffles
+(must 74.6, width unchanged); bench-75 fan_x 18 -> 9 (start 6), x_drawn
+240 -> 208, overlap pairs 6 -> 1; every crossing must and xframe_runs 0 held on the
+public fixture and its permutations. Gaps that hold long staircases grow
+(dense-td 1829 -> 2169 px tall).
+
+Tests: `ortho::a_staircase_of_steps_is_one_channel_a_track_each`,
+`blockcheck::a_hubs_fan_keeps_its_order_through_the_bands`. Suite-on:
+`casing::a_short_line_keeps_at_most_one_gap` passes again;
+`scene::marquee_selects_an_edge_once_its_painted_stroke_touches` fails
+on bench-75's new drawing (a hop beside a probe; next commit). No
+snapshot or gate changes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

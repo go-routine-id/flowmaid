@@ -1,0 +1,15 @@
+flowchart LR
+    N0{{Archive report}}
+    N1([Done])
+    N2(Emit)
+    N3([Retry])
+    N4([Done])
+    N0 --> N1
+    N1 -->|no| N2
+    N1 --> N3
+    N3 -->|yes| N4
+    N2 --> N3
+    N0 --> N4
+    N2 --> N3
+    N3 --> N1
+    N1 ==> N0

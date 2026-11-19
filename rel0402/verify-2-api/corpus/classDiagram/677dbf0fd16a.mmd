@@ -1,0 +1,23 @@
+classDiagram
+direction RL
+A -- B : x
+A "1" ..|> "*" C
+B ..|> D
+A ..> E
+B o-- F : uses
+D ..> F
+E o-- F
+A "1" --> "*" A
+C o-- C : c0
+C o-- C
+C --> C : c2
+C o-- C : c3
+C "1" --> "*" C
+E *-- E : e0
+E o-- E : e1
+E ..> E
+E ..> E : e3
+E "1" --> "*" E : e4
+E ..> E
+E *-- E : e6
+E --> E : e7

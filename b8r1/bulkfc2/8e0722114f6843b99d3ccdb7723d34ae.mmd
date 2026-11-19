@@ -1,0 +1,22 @@
+flowchart LR
+    N0{Archive}
+    N1([Store])
+    N2((Archive done))
+    N3([Store])
+    N4[Parse]
+    N5([Store])
+    N6([Validate])
+    N7[Notify]
+    N8[Validate]
+    N9[Report archive]
+    N0 -->|fail| N1
+    N1 --> N2
+    N2 --> N3
+    N2 --> N4
+    N3 --> N5
+    N5 --> N6
+    N4 -->|yes| N7
+    N7 -->|fail| N8
+    N8 --> N9
+    N5 --> N6
+    N8 -->|rollback| N4

@@ -1,0 +1,15 @@
+sequenceDiagram
+participant P0 as a&b
+participant P1 as delta
+participant P2 as Customer Order
+participant P3 as <b>bold</b>
+participant P4 as a&b
+P3->>P3: self Customer Order
+activate P2
+P2->>P3: act
+deactivate P2
+P1->>P4: beta
+P4-->P2: a&b
+Note left of P0: Customer Order
+P4->>P4: self Long label here
+P3-->P2: beta

@@ -1,0 +1,16 @@
+flowchart LR
+ subgraph prod["PROD"]
+  direction TB
+  sshd["sshd"]
+  src["source"]
+end
+ laptop(["laptop"])
+ subgraph standby["STANDBY"]
+  direction TB
+  static["static copy"]
+end
+ tunnel["tunnel"]
+ tunnel ==>|"ssh out of standby"| sshd
+ laptop -->|"read live state"| src
+ laptop -->|"one-off setup: role, hba, slot"| sshd
+ laptop -->|"write env, compose, cert"| static

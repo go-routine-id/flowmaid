@@ -1,0 +1,18 @@
+[local static A2] 444 / 444 cells; must-fail 89 -> 88; worse 2 (new 0, worse inside failing 2, changed 0, missing 0); gone 1, better inside failing 5; info: target new 0 / gone 2 / worse 0, drift inside passing 5
+  WORSE    blocks-overview-edges-reversed lbl_crowd 2 -> 3 (must <= 0)
+  WORSE    blocks-overview-edges-rotated lbl_crowd 2 -> 3 (must <= 0)
+  gone         hub5 lateral_x 3 -> 0 (must <= 0)
+  better       blocks-overview lateral_x 3 -> 2 (must <= 0)
+  better       blocks-overview-edges-reversed lateral_x 3 -> 1 (must <= 0)
+  better       blocks-overview-edges-rotated lateral_x 3 -> 1 (must <= 0)
+  better       blocks-overview-actors-reversed lateral_x 3 -> 2 (must <= 0)
+  better       blocks-overview-subgraphs-reversed lateral_x 3 -> 2 (must <= 0)
+  target-gone  blocks-overview-edges-reversed crossings 6 -> 5 (must <= 7)
+  target-gone  blocks-overview-edges-rotated crossings 6 -> 5 (must <= 7)
+  drift        blocks-overview-edges-reversed lbl_endpx_mean 231 -> 236 (must <= 295)
+  drift        blocks-overview-edges-rotated lbl_endpx_mean 231 -> 236 (must <= 295)
+  drift        blocks-overview edge_len 15483 -> 15523 (must <= 20125)
+  drift        blocks-overview-actors-reversed edge_len 15483 -> 15523 (must <= 20125)
+  drift        blocks-overview-subgraphs-reversed edge_len 15483 -> 15523 (must <= 20125)
+[local routed] 62 / 62 cells; must-fail 37 -> 37; worse 0 (new 0, worse inside failing 0, changed 0, missing 0); gone 0, better inside failing 0; info: target new 0 / gone 0 / worse 0, drift inside passing 0
+cells: WORSE

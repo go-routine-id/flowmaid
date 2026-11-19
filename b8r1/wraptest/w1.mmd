@@ -1,0 +1,31 @@
+flowchart TB
+  hub["hub with a fairly long label"]
+  subgraph a["small a"]
+    a1["a one"]
+  end
+  subgraph b["small b"]
+    b1["b one"]
+  end
+  subgraph c["small c"]
+    c1["c one"]
+  end
+  subgraph big["big frame with a long title here"]
+    direction TB
+    d1["member one of big"]
+    d2["member two of big"]
+    d3["member three of big"]
+    d4["member four of big"]
+    d5["member five of big"]
+    d6["member six of big"]
+  end
+  subgraph wide["wide frame"]
+    direction LR
+    e1["first member of the wide frame"]
+  end
+  hub --> a
+  hub --> b
+  hub --> c
+  hub --> big
+  hub --> wide
+  hub --> l1(["leaf one"])
+  hub --> l2(["leaf two"])

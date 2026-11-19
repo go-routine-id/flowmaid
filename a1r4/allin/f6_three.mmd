@@ -1,0 +1,7 @@
+classDiagram
+    class Logger {
+      +log(msg) void
+    }
+    ServiceA --> Logger : logs to
+    ServiceB --> Logger : logs to
+    ServiceC --> Logger : uses

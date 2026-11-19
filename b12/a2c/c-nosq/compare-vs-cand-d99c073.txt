@@ -1,0 +1,119 @@
+compare.sh: baseline /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/tools-a2b/cand-d99c073
+            candidate /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/a2c/c-nosq
+
+== 1. local inputs, per cell (LIVE judge)
+[local static A2] 444 / 444 cells; must-fail 86 -> 74; worse 19 (new 0, worse inside failing 19, changed 0, missing 0); gone 12, better inside failing 1; info: target new 1 / gone 0 / worse 2, drift inside passing 11
+  WORSE    infra-overview compact_max 9.71 -> 10.37 (must <= 5.5)
+  WORSE    infra-overview compact_mean 5.4 -> 5.53 (must <= 3.9)
+  WORSE    infra-overview lbl_crowd 4 -> 5 (must <= 0)
+  WORSE    infra-overview-v2 lbl_endpx_mean 381 -> 382 (must <= 329)
+  WORSE    perm-a-edges-reversed compact_max 9.71 -> 10.37 (must <= 5.5)
+  WORSE    perm-b-subgraphs-reversed compact_max 9.59 -> 10.25 (must <= 5.5)
+  WORSE    perm-c-actors-reversed compact_max 9.71 -> 10.37 (must <= 5.5)
+  WORSE    perm-d-edges-rotated compact_max 9.71 -> 10.37 (must <= 5.5)
+  WORSE    perm-e-one-more-inner-edge compact_max 10.12 -> 10.81 (must <= 5.5)
+  WORSE    perm-a-edges-reversed lbl_crowd 4 -> 5 (must <= 0)
+  WORSE    perm-c-actors-reversed lbl_crowd 4 -> 5 (must <= 0)
+  WORSE    perm-d-edges-rotated lbl_crowd 4 -> 5 (must <= 0)
+  WORSE    perm-b-subgraphs-reversed lbl_in_end 1 -> 3 (must <= 0)
+  WORSE    perm-e-one-more-inner-edge lbl_in_end 1 -> 2 (must <= 0)
+  WORSE    blocks-overview compact_mean 7.26 -> 7.29 (must <= 4.63)
+  WORSE    blocks-overview-edges-reversed compact_mean 7.26 -> 7.29 (must <= 4.63)
+  WORSE    blocks-overview-edges-rotated compact_mean 7.26 -> 7.29 (must <= 4.63)
+  WORSE    blocks-overview-actors-reversed compact_mean 7.26 -> 7.29 (must <= 4.63)
+  WORSE    blocks-overview-subgraphs-reversed compact_mean 7.26 -> 7.29 (must <= 4.63)
+  gone         infra-overview sib_stagger 1 -> 0 (must <= 0)
+  gone         perm-a-edges-reversed sib_stagger 1 -> 0 (must <= 0)
+  gone         perm-b-subgraphs-reversed sib_stagger 1 -> 0 (must <= 0)
+  gone         perm-c-actors-reversed sib_stagger 1 -> 0 (must <= 0)
+  gone         perm-d-edges-rotated sib_stagger 1 -> 0 (must <= 0)
+  gone         perm-e-one-more-inner-edge sib_stagger 1 -> 0 (must <= 0)
+  gone         blocks-overview sib_stagger 1 -> 0 (must <= 0)
+  gone         blocks-overview-edges-reversed sib_stagger 1 -> 0 (must <= 0)
+  gone         blocks-overview-edges-rotated sib_stagger 1 -> 0 (must <= 0)
+  gone         blocks-overview-actors-reversed sib_stagger 1 -> 0 (must <= 0)
+  gone         blocks-overview-subgraphs-reversed sib_stagger 1 -> 0 (must <= 0)
+  gone         dense-lr sib_stagger 2 -> 0 (must <= 0)
+  better       perm-b-subgraphs-reversed lbl_crowd 8 -> 5 (must <= 0)
+  target-new   infra-overview span_max 0.3 -> 0.32 (must <= 0.37)
+  target-worse infra-overview lbl_endpx_mean 377 -> 378 (must <= 386)
+  target-worse dense-lr crossings 17 -> 18 (must <= 51.5)
+  drift        infra-overview edge_len 23606 -> 23633 (must <= 30835)
+  drift        infra-overview-v2 edge_len 25360 -> 25394 (must <= 29695)
+  drift        perm-a-edges-reversed span_max 0.3 -> 0.32 (must <= 0.37)
+  drift        perm-b-subgraphs-reversed span_max 0.303 -> 0.323 (must <= 0.37)
+  drift        perm-c-actors-reversed span_max 0.3 -> 0.32 (must <= 0.37)
+  drift        perm-d-edges-rotated span_max 0.3 -> 0.32 (must <= 0.37)
+  drift        perm-e-one-more-inner-edge span_max 0.3 -> 0.32 (must <= 0.37)
+  drift        dense-lr lbl_struck 0 -> 2 (must <= 5)
+  drift        dense-td crossings 42 -> 43 (must <= 74.6)
+  drift        dense-lr edge_len 49989 -> 50004 (must <= 78383)
+  drift        dense-td edge_len 82549 -> 83273 (must <= 142183)
+[local routed] 62 / 62 cells; must-fail 19 -> 18; worse 0 (new 0, worse inside failing 0, changed 0, missing 0); gone 1, better inside failing 0; info: target new 0 / gone 0 / worse 0, drift inside passing 4
+  gone         perm-b-subgraphs-reversed lbl_crowd 8 -> 5 (must <= 5)
+  drift        infra-overview lbl_crowd 4 -> 5 (must <= 7)
+  drift        perm-a-edges-reversed lbl_crowd 4 -> 5 (must <= 5)
+  drift        perm-c-actors-reversed lbl_crowd 4 -> 5 (must <= 8)
+  drift        perm-d-edges-rotated lbl_crowd 4 -> 5 (must <= 7)
+cells: WORSE
+
+== 2. suite-on gate messages
+panics: cannot read /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/a2c/c-nosq/gates/lib.txt
+
+== 3. direction copies (332 + 32, static and routed)
+[dirs static] 332 copies  defects 41->41 (+0/-0)  x_drawn 1283->1286 (+3/-0)  lateral_x 201->201 (+0/-0)  fan_x 30->31 (+1/-0)  edge_chip 8->8 (+0/-0)  side_ends 216->216 (+0/-0)  min_edge_gap down 0
+    WORSE x_drawn (3): quality.dense-lr-LR 17->18; quality.dense-lr-RL 17->18; quality.dense-td-TD 42->43
+    WORSE fan_x (1): quality.dense-td-TD 0->1
+    info edge_edge_x: total 1266->1269, up 3 / down 0 (worse on 3, better on 0): quality.dense-lr-LR 17->18; quality.dense-lr-RL 17->18; quality.dense-td-TD 42->43
+    info overlap_len: total 532->472, up 0 / down 2 (worse on 0, better on 2)
+    info min_node_gap: total 8404.87->8398.6, up 1 / down 1 (worse on 1, better on 1): quality.dense-td-TD 18.75->12.47
+    info lbl_edge: total 11->15, up 2 / down 0 (worse on 2, better on 0): quality.dense-lr-LR 0->2; quality.dense-lr-RL 0->2
+    info overlap_max: total 484->428, up 0 / down 2 (worse on 0, better on 2)
+    info tight_pairs: total 313->312, up 0 / down 1 (worse on 0, better on 1)
+    info tight_len: total 43226->43428, up 5 / down 3 (worse on 5, better on 3): quality.dense-lr-LR 692->700; quality.dense-lr-RL 692->700; quality.dense-td-BT 2308->2436; quality.dense-td-LR 1372->1448; quality.dense-td-RL 1372->1448
+    info lat_backtrack: total 47038.4->47047.2, up 2 / down 0 (worse on 2, better on 0): quality.dense-lr-LR 1249.23->1253.67; quality.dense-lr-RL 1249.23->1253.67
+    info band_pairs: total 1028->1029, up 1 / down 1 (worse on 1, better on 1): quality.dense-td-TD 55->57
+    info band_len: total 389738->389568, up 2 / down 10 (worse on 2, better on 10): quality.dense-td-BT 51596->51848; quality.dense-td-TD 42878->43632
+    info xhops: total 1000->998, up 0 / down 2 (no direction)
+    info compact_max: total 3810.58->3810.98, up 2 / down 0 (worse on 2, better on 0): notes.spread-bottom-BT 15.55->15.75; notes.spread-bottom-TD 15.11->15.31
+    info compact_mean: total 2502.75->2504.5, up 37 / down 0 (worse on 37, better on 0): blocks.blocks-overview-BT 7.34->7.35; blocks.blocks-overview-TD 7.25->7.28; blocks.blocks-overview-actors-reversed-BT 7.34->7.35; blocks.blocks-overview-actors-reversed-TD 7.25->7.28; blocks.blocks-overview-bt-BT 7.34->7.35; blocks.blocks-overview-bt-TD 7.25->7.28 ...
+    info span_max: total 166.08->166.14, up 4 / down 0 (worse on 4, better on 0): notes.spread-bottom-BT 0.53->0.54; notes.spread-bottom-LR 0.53->0.55; notes.spread-bottom-RL 0.53->0.55; notes.spread-bottom-TD 0.53->0.54
+    info sib_stagger: total 40->12, up 0 / down 26 (worse on 0, better on 26)
+    info edge_len: total 1.90489e+06->1.90608e+06, up 27 / down 8 (worse on 27, better on 8): blocks.blocks-overview-BT 15990.3->15990.4; blocks.blocks-overview-TD 15690.2->15690.2; blocks.blocks-overview-actors-reversed-BT 15990.3->15990.4; blocks.blocks-overview-actors-reversed-TD 15690.2->15690.2; blocks.blocks-overview-bt-BT 15990.3->15990.4; blocks.blocks-overview-bt-TD 15690.2->15690.2 ...
+    info bends_max: total 1382->1381, up 1 / down 2 (worse on 1, better on 2): quality.dense-td-LR 10->11
+    info detour_max: total 322.88->322.87, up 2 / down 2 (worse on 2, better on 2): quality.dense-lr-LR 1.74->1.75; quality.dense-lr-RL 1.74->1.75
+    info lbl_end_mean: total 31852.5->31848, up 6 / down 21 (worse on 6, better on 21): blocks.hub5-LR 258.01->258.06; blocks.hub5-RL 258.01->258.06; notes.spread-face-TD 122.29->122.42; quality.dense-lr-LR 371->373.72; quality.dense-lr-RL 370.16->372.89; quality.dense-td-BT 624.65->630.22
+    info chip_crowd: total 275->270, up 0 / down 3 (worse on 0, better on 3)
+    info chip_gap_min: total 8900.11->8893.11, up 2 / down 2 (worse on 2, better on 2): quality.dense-lr-LR 4.29->0; quality.dense-lr-RL 4.29->0
+[dirs routed] 332 copies  defects 41->41 (+0/-0)  x_drawn 1285->1288 (+3/-0)  lateral_x 201->201 (+0/-0)  fan_x 32->33 (+1/-0)  edge_chip 8->8 (+0/-0)  side_ends 216->216 (+0/-0)  min_edge_gap down 0
+    WORSE x_drawn (3): quality.dense-lr-LR 17->18; quality.dense-lr-RL 17->18; quality.dense-td-TD 42->43
+    WORSE fan_x (1): quality.dense-td-TD 0->1
+    info edge_edge_x: total 1268->1271, up 3 / down 0 (worse on 3, better on 0): quality.dense-lr-LR 17->18; quality.dense-lr-RL 17->18; quality.dense-td-TD 42->43
+    info overlap_len: total 534->474, up 0 / down 2 (worse on 0, better on 2)
+    info min_node_gap: total 8379.65->8373.38, up 1 / down 1 (worse on 1, better on 1): quality.dense-td-TD 18.75->12.47
+    info lbl_edge: total 13->17, up 2 / down 0 (worse on 2, better on 0): quality.dense-lr-LR 0->2; quality.dense-lr-RL 0->2
+    info overlap_max: total 486->430, up 0 / down 2 (worse on 0, better on 2)
+    info tight_pairs: total 313->312, up 0 / down 1 (worse on 0, better on 1)
+    info tight_len: total 43226->43428, up 5 / down 3 (worse on 5, better on 3): quality.dense-lr-LR 692->700; quality.dense-lr-RL 692->700; quality.dense-td-BT 2308->2436; quality.dense-td-LR 1372->1448; quality.dense-td-RL 1372->1448
+    info lat_backtrack: total 46868.7->46877.6, up 2 / down 0 (worse on 2, better on 0): quality.dense-lr-LR 1249.23->1253.67; quality.dense-lr-RL 1249.23->1253.67
+    info band_pairs: total 1030->1031, up 1 / down 1 (worse on 1, better on 1): quality.dense-td-TD 55->57
+    info band_len: total 390478->390308, up 2 / down 10 (worse on 2, better on 10): quality.dense-td-BT 51596->51848; quality.dense-td-TD 42878->43632
+    info xhops: total 1002->1000, up 0 / down 2 (no direction)
+    info compact_max: total 3810.98->3811.38, up 2 / down 0 (worse on 2, better on 0): notes.spread-bottom-BT 15.55->15.75; notes.spread-bottom-TD 15.11->15.31
+    info compact_mean: total 2503.15->2504.9, up 37 / down 0 (worse on 37, better on 0): blocks.blocks-overview-BT 7.34->7.35; blocks.blocks-overview-TD 7.25->7.28; blocks.blocks-overview-actors-reversed-BT 7.34->7.35; blocks.blocks-overview-actors-reversed-TD 7.25->7.28; blocks.blocks-overview-bt-BT 7.34->7.35; blocks.blocks-overview-bt-TD 7.25->7.28 ...
+    info span_max: total 166.08->166.14, up 4 / down 0 (worse on 4, better on 0): notes.spread-bottom-BT 0.53->0.54; notes.spread-bottom-LR 0.53->0.55; notes.spread-bottom-RL 0.53->0.55; notes.spread-bottom-TD 0.53->0.54
+    info sib_stagger: total 40->12, up 0 / down 26 (worse on 0, better on 26)
+    info edge_len: total 1.90422e+06->1.90541e+06, up 27 / down 8 (worse on 27, better on 8): blocks.blocks-overview-BT 15990.3->15990.4; blocks.blocks-overview-TD 15690.2->15690.2; blocks.blocks-overview-actors-reversed-BT 15990.3->15990.4; blocks.blocks-overview-actors-reversed-TD 15690.2->15690.2; blocks.blocks-overview-bt-BT 15990.3->15990.4; blocks.blocks-overview-bt-TD 15690.2->15690.2 ...
+    info bends_max: total 1376->1375, up 1 / down 2 (worse on 1, better on 2): quality.dense-td-LR 10->11
+    info detour_max: total 322.08->322.07, up 2 / down 2 (worse on 2, better on 2): quality.dense-lr-LR 1.74->1.75; quality.dense-lr-RL 1.74->1.75
+    info lbl_end_mean: total 31790.8->31786.2, up 6 / down 21 (worse on 6, better on 21): blocks.hub5-LR 258.01->258.06; blocks.hub5-RL 258.01->258.06; notes.spread-face-TD 122.29->122.42; quality.dense-lr-LR 371->373.72; quality.dense-lr-RL 370.16->372.89; quality.dense-td-BT 624.65->630.22
+    info chip_crowd: total 269->264, up 0 / down 3 (worse on 0, better on 3)
+    info chip_gap_min: total 8915.19->8908.19, up 2 / down 2 (worse on 2, better on 2): quality.dense-lr-LR 4.29->0; quality.dense-lr-RL 4.29->0
+[dirsx static] 32 copies  defects 0->0 (+0/-0)  x_drawn 1->1 (+0/-0)  lateral_x 1->1 (+0/-0)  fan_x 0->0 (+0/-0)  edge_chip 0->0 (+0/-0)  side_ends 2->2 (+0/-0)  min_edge_gap down 0
+[dirsx routed] 32 copies  defects 0->0 (+0/-0)  x_drawn 1->1 (+0/-0)  lateral_x 1->1 (+0/-0)  fan_x 0->0 (+0/-0)  edge_chip 0->0 (+0/-0)  side_ends 2->2 (+0/-0)  min_edge_gap down 0
+dirs: WORSE (8)
+
+VERDICT cells:  WORSE
+VERDICT panics: WORSE
+VERDICT dirs:   WORSE
+VERDICT: WORSE

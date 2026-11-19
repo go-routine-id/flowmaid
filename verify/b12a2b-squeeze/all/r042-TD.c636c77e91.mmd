@@ -1,0 +1,17 @@
+flowchart TD
+    subgraph O[Shipping and returns desk]
+        subgraph G[WWW Mammoth Wombat Overview]
+            m0[db]
+            m1[auth service]
+            m2[ledger]
+        end
+        k[k]
+    end
+    m0 --> k
+    m1 --> k
+    s0[src0] -- "lbl2" --> m2
+    s0 --> m2
+    s1[src1] --> G
+    s1 --> G
+    s2[src2] --> m1
+    m2 --> z[end]

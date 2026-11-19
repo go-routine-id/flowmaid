@@ -1,0 +1,13 @@
+flowchart BT
+    subgraph O[Core]
+        subgraph G[MMMM WWWW QQQQ]
+            m0[auth service]
+            m1[ledger]
+        end
+        k[k]
+    end
+    s0[src0] --> G
+    s0 --> m1
+    s1[src1] --> G
+    s1 --> G
+    G --> z2[after]

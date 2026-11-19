@@ -1,0 +1,24 @@
+flowchart TD
+  s0["web store"]
+  subgraph g0["report notify zone"]
+    direction TB
+    m0["report store"]
+    m1["report"]
+  end
+  subgraph g1["trace pay zone"]
+    direction LR
+    m2["index report"]
+  end
+  subgraph g2["index cart index zone"]
+    m3["store order"]
+    m4["search auth trace"]
+    m3 --> m4
+  end
+  s0 --> m0
+  s0 --> m2
+  s0 --> m3
+  m3 --> m1
+  m2 --> m3
+  s0 --> L5["pay"]
+  s0 --> L6["pay pay"]
+  s0 --> L7["metric ship"]

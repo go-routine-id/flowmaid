@@ -1,0 +1,7 @@
+flowchart LR
+    x --> S
+    subgraph S[TB inside LR, edge to block only]
+        direction TB
+        a --> b --> c
+    end
+    S --> y

@@ -1,0 +1,25 @@
+flowchart LR
+  H0 ---|x| N22
+  H0 -.-> N25
+  H0 -.->|yes| N8
+  H0 ==> N19
+  H0 -.->|a much longer label here| N15
+  H1 -.-> N26
+  H1 --- N24
+  H1 --> N1
+  H1 -.->|gift wrap| N4
+  N15 --> N10
+  N15 --> N16
+  N9 --> N6
+  N21 --> N14
+  N23 --> N14
+  N7 --> N1
+  N26 -->|retry| N9
+  N0 -->|x| N12
+  N15 --> N16
+  N25 -->|ok| N25
+  N6 --> N6
+  N22 --> N16
+  N14 --> N6
+  N11 -->|x| N14
+  N11 --> N3

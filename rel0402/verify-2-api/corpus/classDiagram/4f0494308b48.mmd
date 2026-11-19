@@ -1,0 +1,44 @@
+classDiagram
+    direction LR
+    class User {
+        +String id
+        +String email
+        +login() bool
+    }
+    class Admin
+    class Guest
+    class Session {
+        +String token
+        +Date expires
+    }
+    class Cart {
+        +add(Item i) void
+        +total() Money
+    }
+    class Item
+    class Product
+    class Category
+    class Review
+    class Address
+    class Payment
+    class Invoice
+    class Shipment
+    class Warehouse
+    class Supplier
+    User <|-- Admin
+    User <|-- Guest
+    User "1" --> "*" Session : opens
+    User "1" *-- "1" Cart : owns
+    Cart "1" o-- "*" Item : holds
+    Item "*" --> "1" Product : of
+    Product "*" --> "1" Category : in
+    User "1" --> "*" Review : writes
+    Review "*" --> "1" Product : about
+    User "1" o-- "*" Address : lives at
+    Cart ..> Payment : pays with
+    Payment --> Invoice : produces
+    Invoice --> Shipment : triggers
+    Shipment --> Warehouse : from
+    Warehouse "*" o-- "*" Product : stocks
+    Supplier --> Product : supplies
+    note for Cart "one per user"

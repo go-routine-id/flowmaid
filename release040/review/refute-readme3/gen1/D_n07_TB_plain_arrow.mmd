@@ -1,0 +1,28 @@
+classDiagram
+  direction TB
+  class Hub {
+    +id int
+    +name String
+    +save() bool
+  }
+  class OrderService {
+    +run()
+    -state int
+  }
+  class Cart
+  class User {
+    +run()
+    -state int
+  }
+  class InventoryRepository
+  class AuditLog {
+    +run()
+    -state int
+  }
+  OrderService --> Hub
+  Cart --> Hub
+  PaymentGatewayAdapter --> Hub
+  User --> Hub
+  InventoryRepository --> Hub
+  Mailer --> Hub
+  AuditLog --> Hub

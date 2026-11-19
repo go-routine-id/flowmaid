@@ -1,0 +1,17 @@
+architecture-beta
+    group front(cloud)[Front]
+    group back(server)[Back]
+    service u(user)[User] in front
+    service app(mobile)[App] in front
+    service api(api)[API] in back
+    service q(queue)[Queue] in back
+    service w(server)[Worker] in back
+    service db(database)[DB] in back
+    u:R -- T:app
+    app:R --> L:api
+    api:B --> T:q
+    q:R --> L:w
+    w:B -- T:db
+    api:R -- L:db
+    junction j1 in back
+    db:B -- T:j1

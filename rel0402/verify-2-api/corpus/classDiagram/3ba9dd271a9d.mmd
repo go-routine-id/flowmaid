@@ -1,0 +1,27 @@
+classDiagram
+class Hub {
+  +route(msg) bool
+  +register(svc)
+  -table Map
+}
+class Billing {
+  +charge(amount)
+}
+class Auth
+class Search {
+  +query(q) List
+  +reindex()
+}
+class Mail
+class Storage {
+  -bucket
+}
+class Audit
+Billing --> Hub
+Auth --> Hub
+Search --> Hub
+Mail --> Hub
+Storage --> Hub
+Audit --> Hub
+Hub --> Registry
+Hub ..> Logger

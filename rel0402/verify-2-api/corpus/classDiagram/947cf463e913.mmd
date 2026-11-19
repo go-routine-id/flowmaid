@@ -1,0 +1,13 @@
+classDiagram
+A --> B
+B ..|> C
+B ..> D : uses
+D --> E
+A o-- D
+B ..> B : b0
+B "1" --> "*" B : b1
+class A {
+ +int id
+ +run() void
+ +stop()
+}

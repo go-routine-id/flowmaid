@@ -1,0 +1,10 @@
+flowmaid 0.38's own harness (examples/quality.rs, static mode, measured on the Scene in Rust) vs blockmetrics (measured on the SVG)
+input                    crossings   edges in foreign frame     chips struck        canvas (scene -> svg)
+advanced             x_drawn 0 = 0       edge_frame_x 0 = 0   lbl_edge 0 = 0   595.82x1235.50 -> 596x1236  OK
+bench-75         x_drawn 302 = 302       edge_frame_x 3 = 3   lbl_edge 0 = 0 2221.80x1965.25 -> 2222x1965  OK
+dense-lr           x_drawn 46 = 46       edge_frame_x 8 = 8   lbl_edge 5 = 5 2301.55x3467.50 -> 2302x3468  OK
+dense-td           x_drawn 80 = 80     edge_frame_x 11 = 11   lbl_edge 1 = 1 4249.10x1806.29 -> 4249x1806  OK
+fanout-frames        x_drawn 0 = 0       edge_frame_x 0 = 0   lbl_edge 0 = 0      565.50x2311 -> 566x2311  OK
+infra-overview     x_drawn 24 = 24       edge_frame_x 3 = 3   lbl_edge 0 = 0 2786.90x1224.93 -> 2787x1225  OK
+subgraph             x_drawn 0 = 0       edge_frame_x 0 = 0   lbl_edge 0 = 0        381.80x758 -> 382x758  OK
+quality cross-check: all 7 flowchart inputs agree on every compared number (state.mmd is not a flowchart: the harness skips it)

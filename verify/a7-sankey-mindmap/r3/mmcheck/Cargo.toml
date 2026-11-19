@@ -1,0 +1,8 @@
+[package]
+name = "mmcheck"
+version = "0.1.0"
+edition = "2021"
+[dependencies]
+flowmaid = { path = "../../../../wt/a7-sankey-mindmap" }
+[profile.release]
+debug = false

@@ -1,0 +1,64 @@
+  NOTE[s7_bar_outer_holds_block.mmd] round-trip scene differs
+  FAIL[partial a 25,0] bar f (335.0, 8.0) -> (322.5, 8.0)
+  FAIL[partial a 25,0] bar j (335.0, 8.0) -> (322.5, 8.0)
+  FAIL[route a 25,0] bar f (335.0, 8.0) -> (322.5, 8.0)
+  FAIL[route a 25,0] bar j (335.0, 8.0) -> (322.5, 8.0)
+  FAIL[partial-on-route c] edge 8 x->Inner not picked at (282.71160714285713, 216.59375)
+  FAIL[partial-on-route c] hit_test at (282.71160714285713, 216.59375) on edge 8: Some(Cluster(1))
+s7_bar_outer_holds_block.mmd: n 10 e 7 sub 3 bars 2 | partial worst 0.44 ms route worst 0.47 ms | frame mismatch 0 | spline dev 2.33 | picks 7260 miss 1 | bar changes 88 | bad 90
+  NOTE[s8_bar_in_block_to_member.mmd] round-trip scene differs
+  FAIL[partial h 140,-90] edge 8 P->Done not picked at (518.2578125, 173.6875)
+  FAIL[partial h 140,-90] hit_test at (518.2578125, 173.6875) on edge 8: Some(Cluster(0))
+  FAIL[route h 140,-90] edge 8 P->Done not picked at (518.2578125, 173.6875)
+  FAIL[route h 140,-90] hit_test at (518.2578125, 173.6875) on edge 8: Some(Cluster(0))
+s8_bar_in_block_to_member.mmd: n 8 e 7 sub 2 bars 2 | partial worst 0.34 ms route worst 0.24 ms | frame mismatch 0 | spline dev 2.33 | picks 5238 miss 2 | bar changes 0 | bad 4
+  NOTE[s9_bar_noted_block.mmd] round-trip scene differs
+  FAIL[partial f 140,-90] edge 0 __start_root->f not picked at (197.37345079572304, 33.70500599680621)
+  FAIL[partial f 140,-90] hit_test at (197.37345079572304, 33.70500599680621) on edge 0: None
+  FAIL[partial f 140,-90] edge 0 __start_root->f not picked at (196.37663312629914, 24.10477739267807)
+  FAIL[partial f 140,-90] hit_test at (196.37663312629914, 24.10477739267807) on edge 0: None
+  FAIL[route f 140,-90] edge 0 __start_root->f not picked at (197.37345079572304, 33.70500599680621)
+  FAIL[route f 140,-90] hit_test at (197.37345079572304, 33.70500599680621) on edge 0: None
+  FAIL[route f 140,-90] edge 0 __start_root->f not picked at (196.37663312629914, 24.10477739267807)
+  FAIL[route f 140,-90] hit_test at (196.37663312629914, 24.10477739267807) on edge 0: None
+  FAIL[partial a 25,0] bar f (292.0, 8.0) -> (279.5, 8.0)
+  FAIL[partial a 25,0] bar j (264.0, 8.0) -> (251.5, 8.0)
+  FAIL[route a 25,0] bar f (292.0, 8.0) -> (279.5, 8.0)
+  FAIL[route a 25,0] bar j (264.0, 8.0) -> (251.5, 8.0)
+s9_bar_noted_block.mmd: n 8 e 6 sub 2 bars 2 | partial worst 0.61 ms route worst 0.59 ms | frame mismatch 0 | spline dev 2.33 | picks 4656 miss 4 | bar changes 80 | bad 88
+  NOTE[s10_join_only_block.mmd] round-trip scene differs
+  FAIL[partial-on-route p1 25,0] bar j (8.0, 245.0) -> (8.0, 250.0)
+  FAIL[partial p1 0,40] bar j (8.0, 245.0) -> (8.0, 225.0)
+  FAIL[route p1 0,40] bar j (8.0, 245.0) -> (8.0, 225.0)
+  FAIL[partial-on-route p1 0,40] bar j (8.0, 245.0) -> (8.0, 230.0)
+s10_join_only_block.mmd: n 8 e 5 sub 2 bars 1 | partial worst 0.49 ms route worst 0.57 ms | frame mismatch 0 | spline dev 2.33 | picks 4074 miss 0 | bar changes 37 | bad 37
+  NOTE[t2_block25.mmd] round-trip scene differs
+  FAIL[partial p0 25,0] bar f (1528.5000000000005, 8.0) -> (1516.0000000000005, 8.0)
+  FAIL[partial p0 25,0] bar j (1528.5000000000005, 8.0) -> (1516.0000000000005, 8.0)
+  FAIL[route p0 25,0] bar f (1528.5000000000005, 8.0) -> (1516.0000000000005, 8.0)
+  FAIL[route p0 25,0] bar j (1528.5000000000005, 8.0) -> (1516.0000000000005, 8.0)
+  FAIL[partial p4 140,-90] edge 5 picked as 31 at (642.0, 244.00000000000003)
+  FAIL[partial p4 0,220] edge 6 picked as 28 at (686.0000000000001, 380.87500000000006)
+  FAIL[partial-back p5] edge 6 picked as 26 at (686.0000000000001, 283.37500000000006)
+  FAIL[partial p10 140,-90] edge 11 picked as 29 at (1326.0, 245.50000000000003)
+  FAIL[partial p10 140,-90] edge 12 picked as 29 at (1448.8000000000002, 244.00696601136588)
+  FAIL[partial p11 140,-90] edge 12 picked as 29 at (1441.4, 244.00000000000003)
+  FAIL[partial p11 140,-90] edge 13 picked as 29 at (1564.2000000000003, 244.00696601136588)
+  FAIL[partial p12 140,-90] edge 13 picked as 29 at (1556.8000000000002, 244.00000000000003)
+  FAIL[partial p12 140,-90] edge 14 picked as 29 at (1679.6000000000004, 244.00696601136588)
+  FAIL[partial p13 140,-90] edge 15 picked as 29 at (1795.0000000000005, 244.00696601136588)
+  FAIL[partial p14 140,-90] edge 15 picked as 29 at (1787.6000000000004, 244.00000000000003)
+  FAIL[partial p14 140,-90] edge 16 picked as 29 at (1910.4000000000005, 244.00696601136588)
+  FAIL[partial p15 140,-90] edge 16 picked as 29 at (1903.0000000000007, 244.00000000000003)
+  FAIL[partial p15 140,-90] edge 17 picked as 29 at (2025.8000000000006, 244.00696601136588)
+  FAIL[partial p16 140,-90] edge 17 picked as 29 at (2018.4000000000005, 244.00000000000003)
+  FAIL[partial p16 140,-90] edge 18 picked as 29 at (2141.2000000000007, 244.00696601136588)
+  FAIL[partial-on-route p18] edge 19 picked as 32 at (2256.6721359545377, 220.875)
+t2_block25.mmd: n 30 e 35 sub 2 bars 2 | partial worst 23.76 ms route worst 1.74 ms | frame mismatch 0 | spline dev 2.37 | picks 80142 miss 17 | bar changes 88 | bad 105
+  NOTE[t3_fourblocks.mmd] round-trip scene differs
+  FAIL[partial b0_0 25,0] bar f (5747.000000000001, 8.0) -> (5734.500000000002, 8.0)
+  FAIL[partial b0_0 25,0] bar j (5747.000000000001, 8.0) -> (5734.500000000002, 8.0)
+  FAIL[route b0_0 25,0] bar f (5747.000000000001, 8.0) -> (5734.5, 8.0)
+  FAIL[route b0_0 25,0] bar j (5747.000000000001, 8.0) -> (5734.5, 8.0)
+t3_fourblocks.mmd: n 64 e 58 sub 8 bars 2 | partial worst 4.20 ms route worst 1.64 ms | frame mismatch 0 | spline dev 2.33 | picks 304524 miss 0 | bar changes 328 | bad 328
+TOTAL BAD 652

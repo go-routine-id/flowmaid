@@ -1,0 +1,156 @@
+advanced	0	0	0.1
+b9-inside	0	0	0.0
+b9-inside2	0	0	0.0
+bench-75	0	0	0.0
+blocks-overview-actors-reversed	3	3	23.2
+    CDN>GATE | cache miss     371.4   464     84.4  20 | 21.9
+    SEARCH>INDEX | query          448.4   1044    49.1  20 | 6.5
+    ALERT>MAIL | digest         975.8   898     51.7  20 | 23.2
+blocks-overview-bt	2	2	17.4
+    SEARCH>INDEX | query          448.4   833.5   49.1  20 | 6.5
+    CHARGE>MAIL | receipt        841.4   1394.5  56.4  20 | 17.4
+blocks-overview-edges-reversed	3	3	23.2
+    ALERT>MAIL | digest         975.8   898     51.7  20 | 23.2
+    SEARCH>INDEX | query          448.4   1044    49.1  20 | 6.5
+    CDN>GATE | cache miss     371.4   464     84.4  20 | 21.9
+blocks-overview-edges-rotated	3	3	23.2
+    SEARCH>INDEX | query          448.4   1044    49.1  20 | 6.5
+    ALERT>MAIL | digest         975.8   898     51.7  20 | 23.2
+    CDN>GATE | cache miss     371.4   464     84.4  20 | 21.9
+blocks-overview-lr	0	0	2.4
+blocks-overview-rl	0	0	2.4
+blocks-overview-subgraphs-reversed	3	3	23.2
+    CDN>GATE | cache miss     371.4   464     84.4  20 | 21.9
+    SEARCH>INDEX | query          448.4   1044    49.1  20 | 6.5
+    ALERT>MAIL | digest         975.8   898     51.7  20 | 23.2
+blocks-overview	3	3	23.2
+    CDN>GATE | cache miss     371.4   464     84.4  20 | 21.9
+    SEARCH>INDEX | query          448.4   1044    49.1  20 | 6.5
+    ALERT>MAIL | digest         975.8   898     51.7  20 | 23.2
+cycle2-tie-swapped	0	0	2.5
+cycle2-tie	0	0	2.5
+cycle2	1	1	27.9
+    a2>b1 | request  105.7  229.1  60.8  20  157.4 | 27.9
+dense-lr	2	2	29.4
+    n12>n22 | nostrud                    1102.3  670. | 29.4
+    n42>n49 | eiusmod tempor eiusmod     2925.3  858. | 17.4
+dense-td	0	0	0.1
+empty-target	0	0	0.0
+fanout-frames	0	0	0.0
+fork-twins	0	0	0.1
+hub5	1	1	24.4
+    e2>a1 | bounce  431.5  542    60    20  891.0 | 24.4
+infra-bt	4	4	73.0
+    U1>DNS | a.example.org · *.a.example.org | 73.0
+    U2>DNS | b.example.org | 23.1
+    R1>ARGO | deploy controller pull | 51.2
+    PSPROD>TG | backup failed: on failure | 23.0
+infra-lr	1	1	19.9
+    T1>DNS | *.dev · *.staging · *.product · ops das | 19.9
+infra-mini-lr	0	0	0.0
+infra-overview-v2	1	1	43.8
+    U1>DNS | a.example.org · *.a.example.org | 43.8
+infra-overview	4	4	43.6
+    U1>DNS | a.example.org · *.a.example.org | 26.5
+    U2>DNS | b.example.org | 26.5
+    DNS>PSPROD | b A 203.0.113.36 | 43.6
+    PSPROD>TG | backup failed: on failure | 12.0
+infra-rl	1	1	19.9
+    T1>DNS | *.dev · *.staging · *.product · ops das | 19.9
+interleave	0	0	0.0
+iso-lane-lr	0	0	0.0
+iso-lane	0	0	0.1
+iso-nest	0	0	0.1
+iso-state	0	0	0.0
+l5loop	0	0	0.0
+lr	0	0	0.0
+near-drag	0	0	3.0
+nested-cases	0	0	0.0
+nested-chain	0	0	0.0
+nested-composite	3	3	9.0
+    K0NN_c>K0NN_2 | a     1666.6  259.3  21.8  20  151.7 | 6.4
+    K0N_c>K0NN_1 | a     1781.2  491.4  21.8  20  426.1 | 9.0
+    K0N_c>K0NN_1 | b     1780.2  522.1  21.8  20  429.5 | 9.0
+nested-self-only	0	0	0.0
+nested	0	0	2.5
+note-edge-row	0	0	0.0
+own-centre	0	0	0.0
+p01-iso	0	0	0.0
+p02-iso-dir	0	0	0.0
+p03-ext-dir	0	0	0.0
+p04-to-cluster	0	0	0.1
+p05-siblings	0	0	0.0
+p06-block-cycle	0	0	2.5
+p07-nested	0	0	0.0
+p08-chain3	1	1	23.9
+    a1>c2 | skip B  148.4  407  52.8  20  498.5 | 23.9
+p09-disconnected	0	0	0.0
+p10-mixed-rank	0	0	0.0
+p11-lr	0	0	0.0
+p12-state	0	0	0.1
+p13-inner-dir-ext	0	0	0.0
+p14-empty-and-self	0	0	0.0
+perm-a-edges-reversed	4	4	43.6
+    PSPROD>TG | backup failed: on failure | 12.0
+    DNS>PSPROD | b A 203.0.113.36 | 43.6
+    U2>DNS | b.example.org | 26.5
+    U1>DNS | a.example.org · *.a.example.org | 26.5
+perm-b-subgraphs-reversed	3	3	27.9
+    U1>DNS | a.example.org · *.a.example.org | 26.5
+    U2>DNS | b.example.org | 26.5
+    DNS>PSPROD | b A 203.0.113.36 | 27.9
+perm-c-actors-reversed	4	4	43.6
+    U1>DNS | a.example.org · *.a.example.org | 26.5
+    U2>DNS | b.example.org | 26.5
+    DNS>PSPROD | b A 203.0.113.36 | 43.6
+    PSPROD>TG | backup failed: on failure | 12.0
+perm-d-edges-rotated	4	4	43.6
+    PSPROD>TG | backup failed: on failure | 12.0
+    U1>DNS | a.example.org · *.a.example.org | 26.5
+    U2>DNS | b.example.org | 26.5
+    DNS>PSPROD | b A 203.0.113.36 | 43.6
+perm-e-one-more-inner-edge	4	4	43.6
+    U1>DNS | a.example.org · *.a.example.org | 26.5
+    U2>DNS | b.example.org | 26.5
+    DNS>PSPROD | b A 203.0.113.36 | 43.6
+    PSPROD>TG | backup failed: on failure | 12.0
+ratio2	0	0	0.0
+ratio2x4	1	1	13.9
+    b2>a3 | r2       334.6  184.3  26.5  20  146.3 | 13.9
+ratio3	0	0	0.1
+ratio4	1	1	13.9
+    b2>a3 | r2       334.6  184.3  26.5  20  146.3 | 13.9
+ratio4mask	1	1	13.9
+    b2>a3 | r2       334.6  184.3  26.5  20  146.3 | 13.9
+reqresp	0	0	0.1
+reqresp22	0	0	0.1
+routed-around	1	1	11.1
+    C0ch>C0i0 | y     518.1  237.3  21    20  88.1 | 11.1
+self-member	0	0	0.0
+selfsub-nested	0	0	0.0
+spread-bottom	1	0	4.6
+    [K0]>B1 | g5    668.9   77     29.6  20  105.5 | 4.6
+spread-face	0	0	0.1
+state-note	0	0	2.4
+state	0	0	0.1
+straight-link	0	0	0.0
+sub-nested-self	0	0	0.0
+subgraph	0	0	0.0
+swim-cycle	0	0	0.0
+swim-nested	0	0	0.0
+swimlane-nested	0	0	0.0
+swimlane	0	0	0.0
+t1-nest-own	0	0	0.0
+t2-self-nested	0	0	0.0
+t2b-self-nested-order	0	0	0.0
+t9-frames-8px-bt	0	0	0.0
+t9-frames-8px	0	0	0.0
+t9b-frames-8px-lr-bt	0	0	0.0
+t9b-frames-8px-lr	0	0	0.0
+t9c-frames-8px-two-way-bt	0	0	0.0
+t9c-frames-8px-two-way	0	0	0.0
+title-entry	0	0	0.0
+title-hidden	0	0	0.0
+wide-frames	1	1	14.7
+    [K0]>A | back  321.6  208.8  43.6  20  67 | 14.7
+wide-stroke	0	0	2.6

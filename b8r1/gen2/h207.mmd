@@ -1,0 +1,26 @@
+flowchart LR
+  s0["web"]
+  s1["metric notify cart"]
+  subgraph g0["metric zone"]
+    m0["queue api order"]
+  end
+  subgraph g1["api zone"]
+    m1["search db auth"]
+  end
+  subgraph g2["ship zone"]
+    direction LR
+    m2["index"]
+    m3["trace"]
+    m4["api"]
+    m5["cart"]
+    m6["ship web"]
+    m2 --> m3
+    m2 --> m4
+    m3 --> m5
+    m3 --> m6
+  end
+  s1 --> g0
+  s1 --> g1
+  s0 --> g2
+  m2 --> m0
+  s0 --> L7["search auth ship"]

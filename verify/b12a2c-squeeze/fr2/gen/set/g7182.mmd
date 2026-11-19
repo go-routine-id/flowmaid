@@ -1,0 +1,30 @@
+flowchart LR
+  n1["ship"]
+  n2["split"]
+  n3["auth<br/>auth"]
+  subgraph B0["Ops"]
+    n4["auth"]
+    n5["pack"]
+    n6["merge<br/>auth"]
+    n7["db"]
+  end
+  subgraph B1["Core"]
+    n8["billing"]
+    n9["billing worker report"]
+    n10["auth"]
+    n11["split"]
+  end
+  n12["parse worker api"]
+  n2 --> n5
+  n8 ==>|api| n10
+  n5 -->|store| n8
+  n8 ==> n5
+  n12 --> n7
+  n10 ==> n6
+  n10 --> n12
+  n12 --> n8
+  n9 --> n3
+  n9 --> n12
+  n11 --> n5
+  n12 -.-> n3
+  n4 --> n7

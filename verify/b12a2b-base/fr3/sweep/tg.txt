@@ -1,0 +1,96 @@
+a1-BT.svg	Mammoth Wombat Pipeline Overview	7.39 y → z	7.39 y → z
+a1-TD.svg	Mammoth Wombat Pipeline Overview	5.95 s4 → x	0.36 s4 → x
+a10-BT.svg	Monitoring Workloads Platform	7.44 y → z	7.44 y → z
+a10-TD.svg	Monitoring Workloads Platform	11.97 s5 → G	11.97 s5 → G
+a11-BT.svg	Edge and shared services	7.50 y → z	7.50 y → z
+a11-TD.svg	Edge and shared services	11.67 s5 → G	6.80 s1 → x
+a12-BT.svg	Reporting	59.33 y → z	59.33 y → z
+a12-TD.svg	Reporting	33.00 s2 → x	6.83 s1 → x
+a2-BT.svg	Order processing	18.27 y → z	20.97 y → z
+a2-TD.svg	Order processing	14.27 s2 → x	6.97 s1 → x
+a3-BT.svg	Observability stack	12.42 y → z	15.62 y → z
+a3-TD.svg	Observability stack	12.93 s5 → G	6.52 s1 → x
+a4-BT.svg	Warehouse Management System	7.49 y → z	7.49 y → z
+a4-TD.svg	Warehouse Management System	10.00 s1 → x	10.00 s1 → x
+a5-BT.svg	Payments and billing	8.57 y → z	10.97 y → z
+a5-TD.svg	Payments and billing	11.95 s5 → G	7.07 s1 → x
+a6-BT.svg	Data ingestion workers	1.34 y → z	1.34 y → z
+a6-TD.svg	Data ingestion workers	11.96 s5 → G	6.84 s1 → x
+a7-BT.svg	MMMM WWWW	27.60 y → z	27.80 y → z
+a7-TD.svg	MMMM WWWW	24.00 s2 → x	10.00 s1 → x
+a8-BT.svg	Identity	73.01 y → z	73.01 y → z
+a8-TD.svg	Identity	15.51 s1 → x	15.51 s1 → x
+a9-BT.svg	Shipping and returns desk	7.50 y → z	7.50 y → z
+a9-TD.svg	Shipping and returns desk	11.86 s5 → G	0.00 s1 → x
+b1-BT.svg	Mammoth Wombat Pipeline Overview	10.00 q3 → m	10.00 q3 → m
+b1-TD.svg	Mammoth Wombat Pipeline Overview	7.50 s4 → q1	7.50 s4 → q1
+b10-BT.svg	Monitoring Workloads Platform	7.41 q3 → m	7.41 q3 → m
+b10-TD.svg	Monitoring Workloads Platform	7.50 s4 → q1	7.50 s4 → q1
+b11-BT.svg	Edge and shared services	7.50 q3 → m	7.50 q3 → m
+b11-TD.svg	Edge and shared services	9.97 s4 → q1	7.43 s1 → q1
+b12-BT.svg	Reporting	44.33 q3 → m	44.33 q3 → m
+b12-TD.svg	Reporting	6.33 s4 → q1	6.33 s4 → q1
+b2-BT.svg	Order processing	11.77 q3 → m	14.47 q3 → m
+b2-TD.svg	Order processing	7.00 s4 → q1	10.01 s1 → q1
+b3-BT.svg	Observability stack	5.92 q3 → m	9.12 q3 → m
+b3-TD.svg	Observability stack	10.01 s1 → q1	10.01 s1 → q1
+b4-BT.svg	Warehouse Management System	7.48 q3 → m	7.48 q3 → m
+b4-TD.svg	Warehouse Management System	7.50 s4 → q1	7.50 s4 → q1
+b5-BT.svg	Payments and billing	24.47 q3 → m	24.47 q3 → m
+b5-TD.svg	Payments and billing	10.01 s1 → q1	10.01 s1 → q1
+b6-BT.svg	Data ingestion workers	2.98 q3 → m	2.98 q3 → m
+b6-TD.svg	Data ingestion workers	10.00 s4 → q1	9.88 s4 → q1
+b7-BT.svg	MMMM WWWW	21.10 q3 → m	21.30 q3 → m
+b7-TD.svg	MMMM WWWW	7.01 s4 → q1	10.01 s1 → q1
+b8-BT.svg	Identity	58.01 q3 → m	58.01 q3 → m
+b8-TD.svg	Identity	20.01 s4 → q1	6.61 s1 → q1
+b9-BT.svg	Shipping and returns desk	7.48 q3 → m	7.48 q3 → m
+b9-TD.svg	Shipping and returns desk	6.85 s4 → q1	7.38 s1 → q1
+c1-BT.svg	Mammoth Wombat Pipeline Overview	7.44 k3 → l1	7.44 k3 → l1
+c1-BT.svg	Lower	63.75 a → l1	63.75 a → l1
+c1-TD.svg	Mammoth Wombat Pipeline Overview	10.01 a → k1	10.01 a → k1
+c1-TD.svg	Lower	13.53 k3 → l1	13.53 k3 → l1
+c10-BT.svg	Monitoring Workloads Platform	14.75 k3 → l1	14.75 k3 → l1
+c10-BT.svg	Lower	63.75 a → l1	63.75 a → l1
+c10-TD.svg	Monitoring Workloads Platform	10.24 b → k1	10.94 b → k1
+c10-TD.svg	Lower	13.53 k3 → l1	13.53 k3 → l1
+c11-BT.svg	Edge and shared services	11.70 k3 → l1	14.50 k3 → l1
+c11-BT.svg	Lower	63.75 a → l1	63.75 a → l1
+c11-TD.svg	Edge and shared services	7.43 a → k1	7.43 a → k1
+c11-TD.svg	Lower	13.53 k3 → l1	13.53 k3 → l1
+c12-BT.svg	Reporting	20.50 a → l1	20.50 a → l1
+c12-BT.svg	Lower	63.75 a → l1	63.75 a → l1
+c12-TD.svg	Reporting	7.50 a → k1	7.50 a → k1
+c12-TD.svg	Lower	13.53 k3 → l1	13.53 k3 → l1
+c2-BT.svg	Order processing	20.50 a → l1	20.50 a → l1
+c2-BT.svg	Lower	63.75 a → l1	63.75 a → l1
+c2-TD.svg	Order processing	7.48 a → k1	7.48 a → k1
+c2-TD.svg	Lower	13.53 k3 → l1	13.53 k3 → l1
+c3-BT.svg	Observability stack	20.50 a → l1	20.50 a → l1
+c3-BT.svg	Lower	63.75 a → l1	63.75 a → l1
+c3-TD.svg	Observability stack	7.46 a → k1	7.46 a → k1
+c3-TD.svg	Lower	13.53 k3 → l1	13.53 k3 → l1
+c4-BT.svg	Warehouse Management System	7.50 k3 → l1	7.50 k3 → l1
+c4-BT.svg	Lower	63.75 a → l1	63.75 a → l1
+c4-TD.svg	Warehouse Management System	10.00 b → k1	10.00 b → k1
+c4-TD.svg	Lower	13.53 k3 → l1	13.53 k3 → l1
+c5-BT.svg	Payments and billing	20.50 a → l1	20.50 a → l1
+c5-BT.svg	Lower	63.75 a → l1	63.75 a → l1
+c5-TD.svg	Payments and billing	7.47 a → k1	7.47 a → k1
+c5-TD.svg	Lower	13.53 k3 → l1	13.53 k3 → l1
+c6-BT.svg	Data ingestion workers	19.14 k3 → l1	20.50 k3 → l1
+c6-BT.svg	Lower	63.75 a → l1	63.75 a → l1
+c6-TD.svg	Data ingestion workers	7.43 a → k1	7.43 a → k1
+c6-TD.svg	Lower	13.53 k3 → l1	13.53 k3 → l1
+c7-BT.svg	MMMM WWWW	20.50 a → l1	20.50 a → l1
+c7-BT.svg	Lower	63.75 a → l1	63.75 a → l1
+c7-TD.svg	MMMM WWWW	7.50 a → k1	7.50 a → k1
+c7-TD.svg	Lower	13.53 k3 → l1	13.53 k3 → l1
+c8-BT.svg	Identity	20.50 a → l1	20.50 a → l1
+c8-BT.svg	Lower	63.75 a → l1	63.75 a → l1
+c8-TD.svg	Identity	8.97 b → k1	8.97 b → k1
+c8-TD.svg	Lower	13.53 k3 → l1	13.53 k3 → l1
+c9-BT.svg	Shipping and returns desk	8.92 k3 → l1	12.92 k3 → l1
+c9-BT.svg	Lower	63.75 a → l1	63.75 a → l1
+c9-TD.svg	Shipping and returns desk	7.38 a → k1	7.38 a → k1
+c9-TD.svg	Lower	13.53 k3 → l1	13.53 k3 → l1

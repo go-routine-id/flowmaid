@@ -1,0 +1,10 @@
+stateDiagram-v2
+    state merge <<choice>>
+    [*] --> A
+    [*] --> B
+    [*] --> C
+    A --> merge : from a
+    B --> merge : from b
+    C --> merge : from c
+    merge --> Out : go
+    merge --> Err : fail

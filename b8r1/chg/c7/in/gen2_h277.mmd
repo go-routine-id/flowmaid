@@ -1,0 +1,54 @@
+flowchart LR
+  s0["user"]
+  s1["log search web"]
+  subgraph g0["search db store zone"]
+    m0["ship ship"]
+  end
+  subgraph g1["notify store report zone"]
+    direction TB
+    m1["notify api ship"]
+    m2["db cache ship"]
+    m3["order pay"]
+    m4["pay search index"]
+    m5["user"]
+    m1 --> m2
+    m1 --> m3
+    m1 --> m4
+    m4 --> m5
+  end
+  subgraph g2["auth db zone"]
+    direction TB
+    m6["db"]
+    m7["ship"]
+    m8["web trace"]
+    m6 --> m7
+    m6 --> m8
+  end
+  subgraph g3["search zone"]
+    direction LR
+    m9["api report ship"]
+  end
+  subgraph g4["search trace zone"]
+    direction LR
+    m10["billing pay search"]
+    m11["log log"]
+    m10 --> m11
+  end
+  subgraph g5["ship zone"]
+    m12["index trace"]
+    m13["web"]
+    m14["ship"]
+    m15["ship search billing"]
+    m12 --> m14
+    m14 --> m15
+  end
+  s1 --> m0
+  s1 --> m1
+  s1 --> g2
+  s0 --> g3
+  s0 --> m10
+  s0 --> m12
+  m10 --> m8
+  m4 --> m0
+  s0 --> L16["log index report"]
+  s0 --> L17["store billing"]

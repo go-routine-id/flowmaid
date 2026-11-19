@@ -1,0 +1,20 @@
+flowchart TD
+    H{Route?} -->|alpha| A[Alpha service]
+    H -->|beta| B[Beta]
+    H -->|gamma long label here| C[Gamma]
+    H --> D[Delta]
+    H -.->|epsilon| E[(Epsilon store)]
+    H ==> F[Phi]
+    A --> Z[Sink]
+    B --> Z
+    C --> Z
+    D --> Z
+    E --> Z
+    F --> Z
+    Start([Start]) --> H
+    Start --> Z
+    Z -->|retry| Start
+    subgraph grp [Group]
+      B
+      C
+    end

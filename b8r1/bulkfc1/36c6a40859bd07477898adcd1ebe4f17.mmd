@@ -1,0 +1,11 @@
+flowchart TD
+  A[Alpha] --> B[Beta]
+  A --> C[Gamma]
+  A --> D[Delta]
+  A --> E[Epsilon]
+  A --> F[Zeta]
+  B --> G[Omega]
+  F --> H[Sink]
+  H -->|go back to alpha now| A
+  G --> B
+  B --> G

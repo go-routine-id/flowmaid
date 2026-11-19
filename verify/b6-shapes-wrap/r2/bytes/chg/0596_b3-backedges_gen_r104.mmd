@@ -1,0 +1,17 @@
+flowchart TD
+    N0{Validate load}
+    N1([Retry archive])
+    N2[/Parse/]
+    N3(Emit)
+    N4([Archive retry])
+    N5[Emit]
+    N6([Retry parse])
+    N0 --> N1
+    N1 -->|next| N2
+    N1 -->|ok| N3
+    N3 -->|fail| N4
+    N2 --> N5
+    N5 --> N6
+    N3 --> N2
+    N5 -->|again| N2
+    N3 ==> N1

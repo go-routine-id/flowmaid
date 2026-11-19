@@ -1,0 +1,12 @@
+flowchart RL
+    N0([Fetch])
+    N1(Notify validate)
+    N2{Validate emit}
+    N3{{Retry store}}
+    N4(Load parse)
+    N0 -->|yes| N1
+    N0 --> N2
+    N0 -->|ok| N3
+    N1 --> N4
+    N2 -->|again| N0
+    N4 ==> N1

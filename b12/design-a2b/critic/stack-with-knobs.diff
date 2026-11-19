@@ -1,0 +1,2301 @@
+diff --git a/src/blockcheck.rs b/src/blockcheck.rs
+index 3b80f00..3760330 100644
+--- a/src/blockcheck.rs
++++ b/src/blockcheck.rs
+@@ -2530,6 +2530,43 @@ fn an_edge_between_stacked_blocks_crosses_their_title_sides_past_the_chips() {
+     }
+ }
+ 
++#[test]
++fn a_two_way_pair_between_blocks_keeps_its_steps_in_one_channel() {
++    // blocks/twoway-noted drawn LR or RL: the pair's two steps share the
++    // gap between the blocks, the labelled return's room above its label
++    // apart from the forward step's room but both plain rooms meeting.
++    // Split into two channels by the rooms above their labels, the
++    // return kept that room beside an unlabelled step and the two were
++    // stacked in the order of their rooms, not of their turns: they
++    // crossed, `uncross` swapped their ends, and the return ran up
++    // `K1`'s wall (a border run of 62 px) to a stepped end in `K0`.
++    // Split by their plain rooms they are one channel again, and the
++    // pair is drawn as two straight runs.
++    let src = std::fs::read_to_string(format!(
++        "{}/tests/fixtures/blocks/twoway-noted.mmd",
++        env!("CARGO_MANIFEST_DIR")
++    ))
++    .unwrap();
++    for dir in ["LR", "RL"] {
++        let g = graph(&src.replace("direction LR", &format!("direction {dir}")));
++        let sc = block_scene(&g);
++        let q = crate::quality::measure(&g, &sc);
++        assert_eq!((q.border_runs, q.x_drawn), (0, 0), "{dir}");
++        for e in sc.edges.iter().filter(|e| {
++            (e.from.as_str(), e.to.as_str()) == ("K0", "K1")
++                || (e.from.as_str(), e.to.as_str()) == ("K1", "K0")
++        }) {
++            let p = path_of(e);
++            assert!(
++                p.windows(2).all(|w| (w[0].1 - w[1].1).abs() < 0.5),
++                "{dir}: {} -> {} is not one straight run: {p:?}",
++                e.from,
++                e.to
++            );
++        }
++    }
++}
++
+ #[test]
+ fn a_displaced_end_never_steps_back_over_another_edges_crossing_of_its_title_side() {
+     // blocks/lr drawn BT: `pager`'s top lies partly under the chip of a
+@@ -2837,3 +2874,60 @@ fn a_label_keeps_off_the_blocks_that_hold_one_end_of_its_edge() {
+         }
+     }
+ }
++
++#[test]
++fn a_block_is_squeezed_to_its_content() {
++    // X2: a block whose Brandes-Köpf breadth is wider than its members
++    // need is squeezed to its least breadth. The public fixture's frames
++    // were up to 25 times the area of their members (the observability
++    // block spread across the drawing beside the alert rules' pin); the
++    // must of its row is mermaid's 6.64 + 20 %, in every permutation and
++    // in BT.
++    for name in [
++        "blocks/blocks-overview",
++        "blocks/blocks-overview-bt",
++        "blocks/blocks-overview-edges-reversed",
++        "blocks/blocks-overview-edges-rotated",
++        "blocks/blocks-overview-actors-reversed",
++        "blocks/blocks-overview-subgraphs-reversed",
++    ] {
++        let g = fixture(name);
++        let sc = block_scene(&g);
++        let q = crate::quality::measure(&g, &sc);
++        assert!(q.compact_max <= 7.97, "{name}: compact_max {}", q.compact_max);
++        assert_eq!((q.frame_overlap, q.node_frame), (0, 0), "{name}");
++    }
++}
++
++#[test]
++fn a_spine_inside_a_block_is_straight() {
++    // X2.4: a spine (two members each other's only inner link in that
++    // direction) is one rigid column through the squeeze: the build
++    // pipeline's three steps stand in one column, and no spine of the
++    // fixtures the spec names is drawn bent.
++    let g = fixture("blocks/blocks-overview");
++    let sc = block_scene(&g);
++    let xs: Vec<f64> = ["REPO", "BUILD", "REG"]
++        .iter()
++        .map(|id| {
++            let b = node_box(&sc, id);
++            (b.0 + b.2) / 2.0
++        })
++        .collect();
++    assert!(
++        (xs[0] - xs[1]).abs() < 0.5 && (xs[1] - xs[2]).abs() < 0.5,
++        "{xs:?}"
++    );
++    for name in [
++        "blocks/blocks-overview",
++        "blocks/hub5",
++        "notes/spread-face",
++        "notes/nested-composite",
++        "notes/fork-twins",
++    ] {
++        let g = fixture(name);
++        let sc = block_scene(&g);
++        let q = crate::quality::measure(&g, &sc);
++        assert_eq!(q.spine_off, 0, "{name}");
++    }
++}
+diff --git a/src/edgepass.rs b/src/edgepass.rs
+index ce9d0ad..69fb35a 100644
+--- a/src/edgepass.rs
++++ b/src/edgepass.rs
+@@ -428,34 +428,60 @@ pub(crate) fn finish_blocks(g: &Graph, sc: &mut Scene, blocks: Option<&[Vec<usiz
+     stages(g, sc, cx, Mode::Static);
+ }
+ 
++
++fn dbgw(tag: &str, sc: &Scene) {
++    if std::env::var_os("FMDBGE").is_none() { return; }
++    let want = std::env::var("FMDBGE").unwrap();
++    let wants: Vec<&str> = want.split(',').collect();
++    for e in &sc.edges { let nm = format!("{}->{}", e.from, e.to); if want == "*" || wants.contains(&nm.as_str()) {
++        let w: Vec<String> = e.waypoints.iter().map(|p| format!("({:.1},{:.1})", p.0, p.1)).collect();
++        eprintln!("{} [{}] bez=({:.1},{:.1})..({:.1},{:.1}) n={} {}", nm, tag, e.bezier[0].0, e.bezier[0].1, e.bezier[3].0, e.bezier[3].1, w.len(), w.join(" "));
++    } }
++}
+ /// The edge stages over `sc` with its context built.
+ fn stages(g: &Graph, sc: &mut Scene, mut cx: Ctx, mode: Mode) {
+     let mut moved = vec![false; sc.edges.len()];
++    if std::env::var_os("FMDBGN").is_some() {
++        for n in &sc.nodes { eprintln!("NODE {} x={:.1} y={:.1} w={:.1} h={:.1} box=({:.1},{:.1})-({:.1},{:.1})", n.id, n.x, n.y, n.w, n.h, n.x-n.w/2.0, n.y-n.h/2.0, n.x+n.w/2.0, n.y+n.h/2.0); }
++        for (ci, c) in sc.clusters.iter().enumerate() { let r = crate::labels::chip_rect(&sc.clusters, ci, f64::INFINITY); eprintln!("CLUSTER {} '{}' box=({:.1},{:.1})-({:.1},{:.1}) chip=({:.1},{:.1})-({:.1},{:.1})", c.id, c.title.replace('\n', " / "), c.x, c.y, c.x+c.w, c.y+c.h, r.0, r.1, r.2, r.3); }
++    }
++    dbgw("in", sc);
+     crate::ports::assign(g, sc, &cx, mode, &mut moved);
++    dbgw("crate::ports::assign", sc);
+     // Every edge on the axes, its corners rounded (report §2.1): from the
+     // ends the ports stage settled, before the router judges them.
+     crate::ortho::orthogonalize(g, sc, &mut cx, mode);
++    dbgw("crate::ortho::orthogonalize", sc);
+     crate::router::repair(g, sc, &cx, mode, &mut moved);
++    dbgw("crate::router::repair", sc);
+     // A rerouted end may have switched to another side of its node and
+     // landed on a port another edge already holds: space those groups
+     // again. Groups the router left alone are already spaced and stay
+     // byte-identical.
+     crate::ports::respace(g, sc, &cx, mode, &mut moved);
++    dbgw("crate::ports::respace", sc);
+     // After the ports are spaced again, so the channel nudge sees (and
+     // keeps) the final ends; in the static scene it ends by putting each
+     // side's ends in the order their paths now head (G9).
+     crate::router::nudge(g, sc, &cx, mode, &mut moved);
++    dbgw("crate::router::nudge", sc);
+     // Then two unrelated edges the nudge (or the builder) left side by
+     // side under the spacing get one moved clear, where that costs
+     // nothing else (G4).
+     crate::router::spread_close(g, sc, &cx, mode, &mut moved);
++    dbgw("crate::router::spread_close", sc);
+     // Then a fan's teeth nest: the ports, the tracks and the turns of
+     // each side's ends in one order (report B4, see [`crate::comb`]).
+     crate::comb::comb(sc, &cx, &mut moved);
++    dbgw("crate::comb::comb", sc);
+     glyph_stubs(sc, &cx, &mut moved);
++    dbgw("glyph_stubs", sc);
+     straight_cubics(sc, &cx);
++    dbgw("straight_cubics", sc);
+     square_s_cubics(sc, &cx);
++    dbgw("square_s_cubics", sc);
+     snap_ends(sc, &cx);
++    dbgw("snap_ends", sc);
+     // A corner a moved end left far from its rounding point turns as a
+     // rounded corner again (see `ports::reround`). An edge a drag keeps
+     // ([`Ctx::fixed`]) keeps its geometry, whoever drew it (a fold's
+@@ -463,6 +489,7 @@ fn stages(g: &Graph, sc: &mut Scene, mut cx: Ctx, mode: Mode) {
+     for (i, e) in sc.edges.iter_mut().enumerate() {
+         if cx.drawn.get(i).copied().unwrap_or(false) && !cx.fixed.get(i).copied().unwrap_or(false) {
+             crate::ports::reround(e);
++
+         }
+     }
+     let budget = match mode {
+@@ -470,9 +497,11 @@ fn stages(g: &Graph, sc: &mut Scene, mut cx: Ctx, mode: Mode) {
+         Mode::Routed => crate::labels::LABEL_ROUTE_WORK,
+     };
+     crate::labels::relabel(g, sc, &cx, &moved, budget);
++    dbgw("crate::labels::relabel", sc);
+     // A scene whose painter strokes its own width (ER, class) is drawn
+     // on its canvas as-is; a flowchart's is fitted like its SVG.
+     refit(sc, mode, g.edge_paint_width.is_none());
++    dbgw("refit", sc);
+ }
+ 
+ /// A path the stages drew as one straight leg (two waypoints on an
+diff --git a/src/layout.rs b/src/layout.rs
+index 01a253d..2f1bdf3 100644
+--- a/src/layout.rs
++++ b/src/layout.rs
+@@ -1723,6 +1723,8 @@ fn layout_core(
+         work: SEARCH_WORK,
+     };
+     if !search {
++        G3_AT.with(|c| *c.borrow_mut() = st.best.g3_at.clone());
++        G3_SLID.with(|c| *c.borrow_mut() = st.best.g3_slid.clone());
+         let blocks = st.rk.blocks.map(|b| (b.paths, st.best.title_jog));
+         return (st.best.lo, st.best.groups, blocks);
+     }
+@@ -1730,6 +1732,8 @@ fn layout_core(
+         narrow(g, sizes, node_cluster, &mut st);
+     }
+     centre_largest(g, sizes, node_cluster, &mut st);
++    G3_AT.with(|c| *c.borrow_mut() = st.best.g3_at.clone());
++    G3_SLID.with(|c| *c.borrow_mut() = st.best.g3_slid.clone());
+     let blocks = st.rk.blocks.map(|b| (b.paths, st.best.title_jog));
+     (st.best.lo, st.best.groups, blocks)
+ }
+@@ -4105,6 +4109,20 @@ struct Placement {
+     /// A block layout's jog room per subgraph ([`title_jogs`]; empty
+     /// outside block layouts and in LR / RL).
+     title_jog: Vec<f64>,
++    /// G3 PROTOTYPE: per edge, its gap label's band (top?) and chip centre.
++    g3_at: Vec<Option<(bool, f64, f64)>>,
++    /// G3 PROTOTYPE p4: per edge, a chain label slid along its run.
++    g3_slid: Vec<Option<(f64, f64)>>,
++}
++
++thread_local! {
++    /// G3 PROTOTYPE side channel: the kept placement's band labels.
++    pub(crate) static G3_AT: std::cell::RefCell<Vec<Option<(bool, f64, f64)>>> =
++        const { std::cell::RefCell::new(Vec::new()) };
++}
++thread_local! {
++    pub(crate) static G3_SLID: std::cell::RefCell<Vec<Option<(f64, f64)>>> =
++        const { std::cell::RefCell::new(Vec::new()) };
+ }
+ 
+ /// Steps 3 to 5 for one layering: dummy chains, ordering and
+@@ -4834,6 +4852,60 @@ fn place(
+                 &mut bpos,
+             );
+         }
++        // A block layout: each block fixed on its own, deepest first, and
++        // then as one rigid unit of its parent level (B12 X2, X3). In TD /
++        // BT only, for now: in LR / RL a one-row block packed to its least
++        // breadth gives up every column its members shared with the far
++        // ends of their fans, and the edge stages do not yet keep such a
++        // fan's ends in order through the bands (bench-75: 4 -> 17 fan
++        // crossings, the gap floor 15.3 -> 12.5); LR / RL blocks keep
++        // Brandes-Köpf's breadths until the node-side end order of the
++        // fans is built.
++        if let (true, Some(_), false, Some(nc), true) = (clustered, block_paths, horizontal, node_cluster, std::env::var_os("SQOFF").is_none()) {
++            // X2.2: a block with displaced title-side entries at
++            // Brandes-Köpf's breadths keeps a frame its members make
++            // broader than its title, which holds their columns past the
++            // chip (`f1_breadths`); the squeeze must not pack it under
++            // its title.
++            let cols0: Vec<usize> = title_counts(
++                    g,
++                    &TitleRows {
++                        nc,
++                        apath: &apath,
++                        alayer: &alayer,
++                        absize: &absize,
++                        bpos: &bpos,
++                        border: &border_side,
++                        preds: &preds,
++                        succs: &succs,
++                        edge_chain: &edge_chain,
++                        cluster_span: &cluster_span,
++                        n,
++                    },
++                );
++            let title_least: Vec<f64> = (0..g.subgraphs.len())
++                .map(|c| {
++                    if cols0.get(c).copied().unwrap_or(0) > 0 {
++                        crate::scene::title_fit_width(&g.subgraphs[c].title)
++                    } else {
++                        0.0
++                    }
++                })
++                .collect();
++            block_compact(
++                n,
++                layers,
++                preds_c,
++                succs_c,
++                &alayer,
++                bsep,
++                &apath,
++                &border_side,
++                None,
++                &title_least,
++                &mut bpos,
++            );
++        }
+         // ... then slides inside its layer's free room towards the breadth
+         // centre of everything drawn (D4); the order stays, so no crossing
+         // appears.
+@@ -5019,12 +5091,125 @@ fn place(
+             }
+             bpos = breadth(&layers, &room);
+         }
++        // E4 (experiment): an inner run left under its block's title chip
++        // (X2.5) moves past the chip into room that already exists before
++        // the next unit of the title row, with the run's other dummies
++        // inside the block, when nothing stands between on their layers.
++        if std::env::var_os("FMX4").is_some() {
++            let under = runs_under_titles(
++                g,
++                &TitleRows {
++                    nc,
++                    apath: &apath,
++                    alayer: &alayer,
++                    absize: &absize,
++                    bpos: &bpos,
++                    border: &border_side,
++                    preds: &preds,
++                    succs: &succs,
++                    edge_chain: &edge_chain,
++                    cluster_span: &cluster_span,
++                    n,
++                },
++            );
++            let dbg = std::env::var_os("FMDBGX").is_some();
++            let mut under = under;
++            under.sort_by(|a, b| bpos[a.0].total_cmp(&bpos[b.0]));
++            let under_set: Vec<usize> = under.iter().map(|u| u.0).collect();
++            let mut shifted: std::collections::BTreeMap<(usize, u64), usize> = Default::default();
++            for &(d, chip_hi) in &under {
++                let l = alayer[d];
++                let lv = &layers[l];
++                let Some(i) = lv.iter().position(|&w| w == d) else { continue };
++                let key = (l, chip_hi.to_bits());
++                let j = *shifted.get(&key).unwrap_or(&0);
++                let mut need = chip_hi + crate::router::CORNER_R + j as f64 * crate::ortho::TRACK_PITCH;
++                // The chip as it will stand once the run has moved (a run
++                // that set the frame's wall takes the frame and its chip
++                // along): iterate to a fixed point.
++                {
++                    let c = *apath[d].last().unwrap();
++                    let old = bpos[d];
++                    let chain = edge_chain.iter().find(|ch| ch.contains(&d)).cloned().unwrap_or_default();
++                    let run: Vec<usize> = chain
++                        .iter()
++                        .copied()
++                        .filter(|&x| apath[x].contains(&c) && (bpos[x] - old).abs() < 0.5)
++                        .collect();
++                    for _ in 0..4 {
++                        let mut trial = bpos.clone();
++                        for &x in &run {
++                            trial[x] = need;
++                        }
++                        let t = TitleRows {
++                            nc,
++                            apath: &apath,
++                            alayer: &alayer,
++                            absize: &absize,
++                            bpos: &trial,
++                            border: &border_side,
++                            preds: &preds,
++                            succs: &succs,
++                            edge_chain: &edge_chain,
++                            cluster_span: &cluster_span,
++                            n,
++                        };
++                        let Some(ch) = title_chip(g, &t, c, true) else { break };
++                        let n2 = ch.hi + crate::router::CORNER_R + j as f64 * crate::ortho::TRACK_PITCH;
++                        if (n2 - need).abs() < 0.5 {
++                            break;
++                        }
++                        need = n2;
++                    }
++                }
++                // The next unit to the right that is not itself a run under a chip.
++                let next = lv[i + 1..].iter().copied().find(|w| !under_set.contains(w));
++                let Some(r) = next else {
++                    if dbg { eprintln!("X25 d={} at {:.1} need {:.1}: no unit right", d, bpos[d], need); }
++                    continue;
++                };
++                let left_r = bpos[r] - absize[r] / 2.0;
++                let runs_between = lv[i + 1..].iter().take_while(|&&w| w != r).count();
++                let room = left_r - need - (runs_between as f64 + 1.0) * crate::ortho::TRACK_PITCH - GAP_B / 2.0;
++                if room < 0.0 {
++                    if dbg { eprintln!("X25 d={} at {:.1} need {:.1}: no room (next {} at {:.1})", d, bpos[d], need, r, left_r); }
++                    continue;
++                }
++                // The run: this chain's dummies at d's column on layers inside the block.
++                let Some(chain) = edge_chain.iter().find(|c| c.contains(&d)) else { continue };
++                let c = *apath[d].last().unwrap();
++                let old = bpos[d];
++                let run: Vec<usize> = chain
++                    .iter()
++                    .copied()
++                    .filter(|&x| apath[x].contains(&c) && (bpos[x] - old).abs() < 0.5)
++                    .collect();
++                let clear = run.iter().all(|&x| {
++                    layers[alayer[x]].iter().all(|&w| {
++                        w == x || under_set.contains(&w) || {
++                            let (a, b) = (bpos[w] - absize[w] / 2.0, bpos[w] + absize[w] / 2.0);
++                            b < old.min(need) - GAP_B / 4.0 || a > old.max(need) + GAP_B / 4.0
++                        }
++                    })
++                });
++                if !clear {
++                    if dbg { eprintln!("X25 d={} at {:.1} need {:.1}: blocked below", d, old, need); }
++                    continue;
++                }
++                for &x in &run {
++                    bpos[x] = need;
++                }
++                if dbg { eprintln!("X25 d={} moved {:.1} -> {:.1} ({} dummies)", d, old, need, run.len()); }
++                shifted.insert(key, j + 1);
++            }
++        }
+     }
+     // The same in LR / RL, where the title runs along the flow: a frame
+     // is at least as long as its title, grown equally upstream and
+     // downstream, so the frames opening and closing next to it along
+     // the flow keep their gap ([`f1_flow_short`]; the layer lines read
+     // the frames' reach).
++    let mut flow_short: Vec<f64> = Vec::new();
+     if let (Some(_), Some(nc), true) = (block_paths, node_cluster, horizontal) {
+         let gap_l = g.rank_gap.unwrap_or(GAP_L);
+         let short = f1_flow_short(g, nc, n, &layers, &alayer, &alsize, &cluster_span, gap_l);
+@@ -5041,6 +5226,7 @@ fn place(
+                 }
+             }
+         }
++        flow_short = short;
+     }
+ 
+     // A block layout's jog room (B12 F2): what each frame grows on its
+@@ -5668,6 +5854,243 @@ fn place(
+         }
+         need
+     };
++    // G3 PROTOTYPE (design study, not for commit): a block layout's gap
++    // labels in bands. A label whose edge has no run of its own at its
++    // common-ancestor level (an adjacent-band edge, a stand-in cut to a
++    // frame across one gap, a chain whose run is empty) sits in the gap it
++    // crosses: in a band at the top of the gap on its upper leg when no
++    // other line crosses that band within its chip plus CLEAR_GAP, else in
++    // a band at the bottom on its lower leg; the tracks of the gap lie
++    // between the bands. TD only in this prototype.
++    let g3_on = block_paths.is_some()
++        && node_cluster.is_some()
++        && matches!(g.direction, Direction::TD)
++        && std::env::var("FM_G3_OFF").is_err();
++    // Per gap (lower layer): (edge, upper unit, lower unit, upper col, lower col).
++    let mut g3_cols: Vec<Vec<(usize, usize, usize, f64, f64)>> = vec![Vec::new(); nlayers];
++    // Per edge: its gap label's window (gap, upper unit, lower unit).
++    let mut g3_win: Vec<Option<(usize, usize, usize)>> = vec![None; g.edges.len()];
++    if g3_on {
++        let nc = node_cluster.unwrap_or(&[]);
++        for (ei, e) in g.edges.iter().enumerate() {
++            if e.from == e.to || matches!(e.kind, EdgeKind::Invisible) || no_channel(ei) {
++                continue;
++            }
++            let chain = &edge_chain[ei];
++            let up = alayer[e.from] > alayer[e.to];
++            let (uend, lend) = if up { (e.to, e.from) } else { (e.from, e.to) };
++            let path: Vec<usize> = if !up {
++                std::iter::once(e.from)
++                    .chain(chain.iter().copied())
++                    .chain(std::iter::once(e.to))
++                    .collect()
++            } else {
++                std::iter::once(e.to)
++                    .chain(chain.iter().rev().copied())
++                    .chain(std::iter::once(e.from))
++                    .collect()
++            };
++            let cut = g.frame_cut.get(ei).copied().unwrap_or([None, None]);
++            let (ucut, lcut) = if up { (cut[1], cut[0]) } else { (cut[0], cut[1]) };
++            let pin = |c: Option<usize>, b: f64| -> f64 {
++                let Some(c) = c else { return b };
++                let (lo, hi) = (0..n).filter(|&v| apath[v].contains(&c)).fold(
++                    (f64::INFINITY, f64::NEG_INFINITY),
++                    |(lo, hi), v| (lo.min(bpos[v] - absize[v] / 2.0), hi.max(bpos[v] + absize[v] / 2.0)),
++                );
++                if lo <= hi { b.max(lo).min(hi) } else { b }
++            };
++            let last = path.len() - 1;
++            for (j, w) in path.windows(2).enumerate() {
++                let (a, b) = (w[0], w[1]);
++                if alayer[b] != alayer[a] + 1 {
++                    continue;
++                }
++                // (A pin's column: the other end's, held to the block's
++                // members, as `track_need` reads it.)
++                let pa = if j == 0 && ucut.is_some() { pin(ucut, bpos[b]) } else { bpos[a] };
++                let pb = if j + 1 == last && lcut.is_some() { pin(lcut, bpos[a]) } else { bpos[b] };
++                g3_cols[alayer[b]].push((ei, a, b, pa, pb));
++            }
++            if e.label.is_none() {
++                continue;
++            }
++            let common = common_prefix(&nc[e.from], &nc[e.to]);
++            if chain.is_empty() {
++                if path.len() == 2 && alayer[path[1]] == alayer[path[0]] + 1 {
++                    g3_win[ei] = Some((alayer[path[1]], path[0], path[1]));
++                }
++                continue;
++            }
++            // A chain with a run of its own keeps its slot (the dummy).
++            if chain.iter().any(|&d| apath[d] == common) {
++                continue;
++            }
++            // Its border gap: where the path leaves the upper end's blocks
++            // for the lower end's.
++            let upper_side = |v: usize| {
++                let p = &apath[v];
++                p.len() > common.len() && nc[uend].starts_with(p)
++            };
++            let lower_side = |v: usize| {
++                let p = &apath[v];
++                p.len() > common.len() && nc[lend].starts_with(p)
++            };
++            for w in path.windows(2) {
++                let (a, b) = (w[0], w[1]);
++                if alayer[b] == alayer[a] + 1 && (a == uend || upper_side(a)) && (b == lend || lower_side(b)) && !(upper_side(b)) {
++                    g3_win[ei] = Some((alayer[b], a, b));
++                    break;
++                }
++            }
++        }
++    }
++    // Per edge: (top band?, gap, row, chip width); per gap: extra room.
++    let mut g3_band: Vec<Option<(bool, usize, usize, f64)>> = vec![None; g.edges.len()];
++    let mut g3_rows: Vec<(usize, usize)> = vec![(0, 0); nlayers];
++    if g3_on {
++        let air = crate::clearance::CLEAR_GAP + 1.0;
++        // Frame walls that cross a gap: a column a chip keeps off too.
++        let walls = |li: usize, layer_of: usize| -> Vec<f64> {
++            layers[layer_of]
++                .iter()
++                .filter(|&&v| border_side.get(v).copied().unwrap_or(0) != 0)
++                .filter(|&&v| {
++                    apath[v].last().and_then(|c| cluster_span.get(c)).is_some_and(|s| s.0 < li && s.1 >= li)
++                })
++                .map(|&v| bpos[v])
++                .collect()
++        };
++        let mut chips: Vec<Vec<(bool, usize, f64, f64)>> = vec![Vec::new(); nlayers];
++        for (ei, win) in g3_win.iter().enumerate() {
++            let Some((li, a, b)) = *win else { continue };
++            let Some(lbl) = &g.edges[ei].label else { continue };
++            let w = text_width(lbl) + LABEL_PAD_W;
++            let own = g3_cols[li].iter().find(|c| c.0 == ei && c.1 == a && c.2 == b).copied();
++            let Some((_, _, _, pa, pb)) = own else {
++                if std::env::var("FMDBG_G3").is_ok() { eprintln!("G3 e{} no own window", ei); }
++                continue
++            };
++            let room = |top: bool| -> bool {
++                let (me, unit) = if top { (pa, a) } else { (pb, b) };
++                // A pin on a frame (a stand-in cut there) is no port of the
++                // member it was ranked to.
++                let cut = g.frame_cut.get(ei).copied().unwrap_or([None, None]);
++                let up = alayer[g.edges[ei].from] > alayer[g.edges[ei].to];
++                let pinned = if top == !up { cut[0].is_some() } else { cut[1].is_some() };
++                let shared = g3_cols[li].iter().filter(|c| c.0 != ei && (if top { c.1 } else { c.2 }) == unit && unit < n && !pinned).count();
++                if shared > 0 {
++                    return false;
++                }
++                let foreign = g3_cols[li]
++                    .iter()
++                    .filter(|c| c.0 != ei)
++                    .map(|c| if top { c.3 } else { c.4 })
++                    .chain(walls(li, if top { li - 1 } else { li }));
++                let fv: Vec<f64> = foreign.into_iter().collect();
++                if std::env::var("FMDBG_G3").is_ok() {
++                    let bad: Vec<f64> = fv.iter().copied().filter(|x| (x - me).abs() < w / 2.0 + air).collect();
++                    eprintln!("G3   e{} top {} me {:.1} bad {:?}", ei, top, me, bad);
++                }
++                fv.into_iter().all(|x| (x - me).abs() >= w / 2.0 + air)
++            };
++            let side = if room(true) {
++                Some(true)
++            } else if room(false) {
++                Some(false)
++            } else {
++                None
++            };
++            if std::env::var("FMDBG_G3").is_ok() {
++                eprintln!("G3 e{} {}>{} gap {} w {:.0} top {} bottom {} -> {:?}", ei, g.nodes.get(g.edges[ei].from).map_or("?", |x| x.id.as_str()), g.nodes.get(g.edges[ei].to).map_or("?", |x| x.id.as_str()), li, w, room(true), room(false), side);
++            }
++            if let Some(top) = side {
++                chips[li].push((top, ei, if top { pa } else { pb }, w));
++            }
++        }
++        for (li, list) in chips.iter_mut().enumerate() {
++            list.sort_by(|x, y| (x.2 - x.3 / 2.0).total_cmp(&(y.2 - y.3 / 2.0)));
++            for top in [true, false] {
++                let mut rows: Vec<f64> = Vec::new();
++                for &(t, ei, c, w) in list.iter() {
++                    if t != top {
++                        continue;
++                    }
++                    let left = c - w / 2.0;
++                    let r = match rows.iter().position(|&end| end + crate::labels::LABEL_GAP + 1.0 <= left) {
++                        Some(r) => r,
++                        None => {
++                            rows.push(f64::NEG_INFINITY);
++                            rows.len() - 1
++                        }
++                    };
++                    rows[r] = c + w / 2.0;
++                    g3_band[ei] = Some((top, li, r, w));
++                }
++                if top {
++                    g3_rows[li].0 = rows.len();
++                } else {
++                    g3_rows[li].1 = rows.len();
++                }
++            }
++        }
++    }
++    // G3 PROTOTYPE p2: how far into the gap a band starts, so that each of
++    // its labels lies at least G3_OFF of its edge's (estimated) length from
++    // the end its leg leaves: a label just past its source on a long edge
++    // reads as off its middle (gate `lbl_off_max`).
++    const G3_OFF: f64 = 0.17;
++    let gap_l_nominal = g.rank_gap.unwrap_or(GAP_L);
++    let g3_off = std::env::var("FM_G3_OFF_FRAC").ok().and_then(|v| v.parse::<f64>().ok()).unwrap_or(G3_OFF);
++    let mut g3_extra: Vec<(f64, f64)> = vec![(0.0, 0.0); nlayers];
++    if g3_on {
++        for (ei, b) in g3_band.iter().enumerate() {
++            let Some((top, li, _, _)) = *b else { continue };
++            let Some((_, a, bb)) = g3_win[ei] else { continue };
++            let Some(own) = g3_cols[li].iter().find(|c| c.0 == ei && c.1 == a && c.2 == bb) else { continue };
++            // A chain's border gap lies past the run it took to get there:
++            // its label is off its edge's ends already.
++            if !edge_chain[ei].is_empty() {
++                continue;
++            }
++            let cut = g.frame_cut.get(ei).copied().unwrap_or([None, None]);
++            let up = alayer[g.edges[ei].from] > alayer[g.edges[ei].to];
++            let (ucut, lcut) = if up { (cut[1], cut[0]) } else { (cut[0], cut[1]) };
++            // How far each end's facing side lies inside the gap's reach.
++            let off_a = if a < n && ucut.is_none() { reach_of(li - 1, 1) - alsize[a] / 2.0 } else { 0.0 };
++            let off_b = if bb < n && lcut.is_none() { reach_of(li, 0) - alsize[bb] / 2.0 } else { 0.0 };
++            let flow = off_a + off_b + track_need[li].max(gap_l_nominal);
++            let len = (own.3 - own.4).abs() + flow;
++            let want = g3_off * len;
++            if top {
++                let s0 = off_a + crate::ortho::ROW_CLEAR + LABEL_BOX_H / 2.0;
++                g3_extra[li].0 = g3_extra[li].0.max(want - s0);
++            } else {
++                let s0 = off_b + crate::ortho::HEAD_LEG + crate::labels::LABEL_GAP + LABEL_BOX_H / 2.0;
++                g3_extra[li].1 = g3_extra[li].1.max(want - s0);
++            }
++        }
++    }
++    let g3_row_h = |k: usize| -> f64 {
++        if k == 0 { 0.0 } else { k as f64 * LABEL_BOX_H + (k - 1) as f64 * (crate::labels::LABEL_GAP + 1.0) }
++    };
++    let g3_need: Vec<f64> = (0..nlayers)
++        .map(|li| {
++            let (t, b) = g3_rows[li];
++            if t == 0 && b == 0 {
++                return 0.0;
++            }
++            let steps = if track_need[li] > 0.0 {
++                track_need[li] - crate::ortho::ROW_CLEAR - crate::ortho::HEAD_LEG
++            } else {
++                0.0
++            };
++            let clear = crate::clearance::CLEAR_GAP + 0.5;
++            let top = if t > 0 { g3_extra[li].0 + g3_row_h(t) + clear } else { 0.0 };
++            let bot = if b > 0 { clear + g3_row_h(b) + crate::labels::LABEL_GAP + g3_extra[li].1 } else { 0.0 };
++            crate::ortho::ROW_CLEAR + top + steps + bot + crate::ortho::HEAD_LEG
++        })
++        .collect();
+     // The layer lines and the depth they span. `judged`: as the layout
+     // search judges a candidate (crossings, node hits, the ribbon tests)
+     // — a title strip's slot grown on both sides, a labelled gap only as
+@@ -5838,6 +6261,10 @@ fn place(
+                     cursor = cursor.max(at - before);
+                 }
+             }
++            if !judged && li > 0 && g3_need[li] > 0.0 {
++                let at = lcoord[li - 1] + reach_of(li - 1, 1) + g3_need[li] + reach_of(li, 0);
++                cursor = cursor.max(at - before);
++            }
+             prev_after = after;
+             lcoord[li] = cursor + before;
+             cursor += before + after + gap_l;
+@@ -5845,6 +6272,89 @@ fn place(
+         (lcoord, cursor - gap_l + MARGIN)
+     };
+     let (lcoord, total_l) = layer_lines(false);
++    // G3 PROTOTYPE p4: a chain's label slides along the straight stretch of
++    // its run that holds its sized dummy, to the dummy nearest the edge's
++    // nearer end that keeps the label within G3_CHAIN_OFF of its middle and
++    // has its chip's room on that layer (lbl_endpx_mean).
++    let g3_chain_off = std::env::var("FM_G3_CHAIN_OFF").ok().and_then(|v| v.parse::<f64>().ok()).unwrap_or(0.25);
++    let mut g3_slide: Vec<Option<usize>> = vec![None; g.edges.len()];
++    if g3_on && g3_chain_off > 0.0 {
++        let nc = node_cluster.unwrap_or(&[]);
++        let pos = |v: usize| (bpos[v], lcoord[alayer[v]]);
++        for (ei, e) in g.edges.iter().enumerate() {
++            let chain = &edge_chain[ei];
++            let (Some(lbl), false) = (&e.label, chain.is_empty()) else { continue };
++            let common = common_prefix(&nc[e.from], &nc[e.to]);
++            let paths: Vec<Vec<usize>> = chain.iter().map(|&d| apath[d].clone()).collect();
++            if !paths.iter().any(|p| *p == common) {
++                continue;
++            }
++            let mi = label_slot(&paths, &common);
++            let m = chain[mi];
++            let w = text_width(lbl) + LABEL_PAD_W;
++            let pts: Vec<(f64, f64)> = std::iter::once(e.from)
++                .chain(chain.iter().copied())
++                .chain(std::iter::once(e.to))
++                .map(pos)
++                .collect();
++            let mut acc = vec![0.0f64; pts.len()];
++            for k in 1..pts.len() {
++                acc[k] = acc[k - 1] + (pts[k].0 - pts[k - 1].0).abs() + (pts[k].1 - pts[k - 1].1).abs();
++            }
++            let len = acc[pts.len() - 1];
++            if len <= 0.0 {
++                continue;
++            }
++            let room = |d: usize| -> bool {
++                layers[alayer[d]].iter().filter(|&&v| v != d && border_side.get(v).copied().unwrap_or(0) == 0).all(|&v| {
++                    let half = if v < n { absize[v] / 2.0 } else { 0.0 };
++                    (bpos[v] - bpos[d]).abs() - half >= w / 2.0 + crate::clearance::CLEAR_GAP + 1.0
++                })
++            };
++            let mut best: Option<(f64, usize)> = None;
++            // Walk both ways from the sized dummy along its straight stretch.
++            for dir in [-1i64, 1] {
++                let mut k = mi as i64;
++                while k >= 0 && (k as usize) < chain.len() {
++                    let d = chain[k as usize];
++                    if (bpos[d] - bpos[m]).abs() > 0.5 || apath[d] != common {
++                        break;
++                    }
++                    let sk = acc[k as usize + 1];
++                    let off = (sk - len / 2.0).abs() / len;
++                    let endpx = sk.min(len - sk);
++                    if off <= g3_chain_off && (d == m || room(d)) && best.map_or(true, |b| endpx < b.0 - 0.5) {
++                        best = Some((endpx, d));
++                    }
++                    k += dir;
++                }
++            }
++            if let Some((_, d)) = best {
++                if d != m {
++                    g3_slide[ei] = Some(d);
++                }
++            }
++        }
++    }
++    // G3 PROTOTYPE: each band label's chip centre (breadth, flow), layout
++    // coordinates (breadth normalised below with the nodes).
++    let mut g3_at: Vec<Option<(bool, f64, f64)>> = g3_band
++        .iter()
++        .enumerate()
++        .map(|(ei, b)| {
++            let (top, li, row, _) = (*b)?;
++            let (_, a, bb) = g3_win[ei]?;
++            let own = g3_cols[li].iter().find(|c| c.0 == ei && c.1 == a && c.2 == bb)?;
++            let step = LABEL_BOX_H + crate::labels::LABEL_GAP + 1.0;
++            if top {
++                let l = lcoord[li - 1] + reach_of(li - 1, 1) + crate::ortho::ROW_CLEAR + g3_extra[li].0 + row as f64 * step + LABEL_BOX_H / 2.0;
++                Some((true, own.3, l))
++            } else {
++                let l = lcoord[li] - reach_of(li, 0) - crate::ortho::HEAD_LEG - crate::labels::LABEL_GAP - g3_extra[li].1 - row as f64 * step - LABEL_BOX_H / 2.0;
++                Some((false, own.4, l))
++            }
++        })
++        .collect();
+ 
+     // Normalise so the diagram starts at MARGIN (real-node extent).
+     let mut minb = f64::INFINITY;
+@@ -5861,12 +6371,35 @@ fn place(
+     for v in 0..na {
+         bpos[v] += shift;
+     }
++    for a in g3_at.iter_mut().flatten() {
++        a.1 += shift;
++    }
++    // (A slid chain label: its dummy's place.)
++    let g3_slid: Vec<Option<(f64, f64)>> = g3_slide
++        .iter()
++        .map(|d| d.map(|d| (bpos[d], lcoord[alayer[d]])))
++        .collect();
+     let total_b = (maxb - minb) + 2.0 * MARGIN;
+ 
++    // B12 X4: sibling frames of a band start (and end) level.
++    let lpos = match (block_paths, node_cluster) {
++        (Some(_), Some(nc)) if std::env::var_os("SQOFF").is_none() => level_sibling_frames(
++            g,
++            nc,
++            &alayer,
++            &alsize,
++            &lcoord,
++            &cluster_span,
++            &header,
++            &title_jog,
++            &flow_short,
++        ),
++        _ => (0..n).map(|v| lcoord[alayer[v]]).collect(),
++    };
+     let nodes = (0..n)
+         .map(|v| Placed {
+             b: bpos[v],
+-            l: lcoord[alayer[v]],
++            l: lpos[v],
+             bsize: absize[v],
+             lsize: alsize[v],
+             layer: alayer[v],
+@@ -5948,6 +6481,8 @@ fn place(
+         depth,
+         order,
+         title_jog,
++        g3_at,
++        g3_slid,
+     }
+ }
+ 
+@@ -5959,6 +6494,155 @@ const TITLE_FIT_PASSES: usize = 2;
+ /// already: float noise of the breadth placement.
+ const TITLE_FIT_EPS: f64 = 0.5;
+ 
++/// B12 X4: the nodes' positions along the flow in a block layout. A
++/// node is centred on its layer line, with one exception that levels
++/// sibling frames: on a layer that is the first row of two or more
++/// sibling blocks (one parent, so one band), the first-row members of
++/// each block (at any depth) move upstream, as one group per block,
++/// until the block's frame leading edge coincides with the earliest of
++/// them. A frame's leading edge is its first-row members' upstream
++/// edges less, per frame from that block inwards that opens on the
++/// layer, what the scene's frame reaches past them there: [`FRAME_PAD`],
++/// in TD the title strip and the jog room ([`title_jogs`]), in LR / RL
++/// half the title length the layout reserves ([`f1_flow_short`]). The
++/// same holds downstream on a layer that is the last row of two or more
++/// sibling blocks that do not share their first row (a source block
++/// ends on its band's last layer). Deeper sibling groups are levelled
++/// first; an outer block's group then moves its levelled inner frames
++/// as one. The shift is a layout coordinate, not a frame rule: frames
++/// stay functions of their own members, so `route()` at the scene's
++/// centres draws them the same. It needs no extra room: the earliest
++/// leading edge is one the layer lines already reserve (`reach_of`).
++/// Without it, sibling frames of a band whose first rows differ in
++/// height started apart and read as interleaved (the public fixture's
++/// build pipeline beside the shared services: `sib_stagger`).
++#[allow(clippy::too_many_arguments)] // internal: one bundle of layered-graph state
++fn level_sibling_frames(
++    g: &Graph,
++    nc: &[Vec<usize>],
++    alayer: &[usize],
++    alsize: &[f64],
++    lcoord: &[f64],
++    cluster_span: &BTreeMap<usize, (usize, usize)>,
++    header: &[f64],
++    title_jog: &[f64],
++    flow_short: &[f64],
++) -> Vec<f64> {
++    let n = g.nodes.len();
++    let mut lpos: Vec<f64> = (0..n).map(|v| lcoord[alayer[v]]).collect();
++    let strip_lo = matches!(g.direction, Direction::TD);
++    let strip_hi = matches!(g.direction, Direction::BT);
++    // What frame `c` reaches past a member on its first (`hi` false)
++    // or last row.
++    let grow = |c: usize, hi: bool| -> f64 {
++        let strip = if hi { strip_hi } else { strip_lo };
++        FRAME_PAD
++            + flow_short.get(c).copied().unwrap_or(0.0) / 2.0
++            + if strip {
++                header[c] + title_jog.get(c).copied().unwrap_or(0.0)
++            } else {
++                0.0
++            }
++    };
++    // The members of block `c` on row `li` and its leading (`hi` false)
++    // or trailing edge along the flow from them.
++    let row_of = |c: usize, li: usize| -> Vec<usize> {
++        (0..n)
++            .filter(|&v| alayer[v] == li && nc[v].contains(&c))
++            .collect()
++    };
++    let edge = |c: usize, li: usize, hi: bool, lpos: &[f64]| -> Option<f64> {
++        let mut out: Option<f64> = None;
++        for v in row_of(c, li) {
++            let at = nc[v].iter().position(|&x| x == c).unwrap_or(0);
++            let mut reach = 0.0;
++            for &c2 in &nc[v][at..] {
++                if let Some(&(lo, hi_l)) = cluster_span.get(&c2) {
++                    if (if hi { hi_l } else { lo }) == li {
++                        reach += grow(c2, hi);
++                    }
++                }
++            }
++            let e = if hi {
++                lpos[v] + alsize[v] / 2.0 + reach
++            } else {
++                lpos[v] - alsize[v] / 2.0 - reach
++            };
++            out = Some(out.map_or(e, |o: f64| if hi { o.max(e) } else { o.min(e) }));
++        }
++        out
++    };
++    let depth = |c: usize| {
++        let mut d = 0usize;
++        let mut p = g.subgraphs[c].parent;
++        while let Some(q) = p {
++            d += 1;
++            p = g.subgraphs[q].parent;
++        }
++        d
++    };
++    let mut moved = vec![false; n];
++    for hi in [false, true] {
++        // Sibling blocks by (parent, row), deepest parents first.
++        let mut groups: BTreeMap<(usize, Option<usize>, usize), Vec<usize>> = BTreeMap::new();
++        for (&c, &(lo, hi_l)) in cluster_span {
++            groups
++                .entry((
++                    usize::MAX - depth(c),
++                    g.subgraphs[c].parent,
++                    if hi { hi_l } else { lo },
++                ))
++                .or_default()
++                .push(c);
++        }
++        for ((_, _, li), blocks) in groups {
++            let blocks: Vec<usize> = if hi {
++                // Downstream: only blocks that do not share their first
++                // row with a sibling.
++                blocks
++                    .iter()
++                    .copied()
++                    .filter(|&c| {
++                        let first = cluster_span[&c].0;
++                        !blocks
++                            .iter()
++                            .any(|&d| d != c && cluster_span[&d].0 == first)
++                    })
++                    .collect()
++            } else {
++                blocks
++            };
++            if blocks.len() < 2 {
++                continue;
++            }
++            let edges: Vec<(usize, f64)> = blocks
++                .iter()
++                .filter_map(|&c| edge(c, li, hi, &lpos).map(|e| (c, e)))
++                .collect();
++            let target = edges.iter().map(|e| e.1).fold(
++                if hi { f64::NEG_INFINITY } else { f64::INFINITY },
++                |a, b| if hi { a.max(b) } else { a.min(b) },
++            );
++            for (c, e) in edges {
++                let d = target - e;
++                if d.abs() < ALIGN_EPS {
++                    continue;
++                }
++                let row = row_of(c, li);
++                // A one-row block levelled on its first row keeps it.
++                if hi && row.iter().any(|&v| moved[v]) {
++                    continue;
++                }
++                for v in row {
++                    lpos[v] += d;
++                    moved[v] = true;
++                }
++            }
++        }
++    }
++    lpos
++}
++
+ /// Each block's F1 frame across the flow at these breadths (TD / BT;
+ /// `scene::frame_boxes` in layout coordinates, without the jog room,
+ /// which grows the frame along the flow): its direct members' boxes
+@@ -6015,10 +6699,12 @@ fn f1_breadths(
+         // displaced entries: as broad as their columns past the chip,
+         // grown on the chip's far side (`scene::frame_boxes`).
+         let k = cols.get(i).copied().unwrap_or(0);
+-        let more = if short > 0.0 {
++        let x7 = std::env::var_os("FMX7").is_some();
++        let more = if short > 0.0 && std::env::var_os("FMX6").is_none() && !x7 {
+             0.0
+         } else {
+-            (crate::scene::title_column_width(title, k) - (hi - lo)).max(0.0)
++            let cut = if x7 && short > 0.0 && k > 0 { crate::router::CORNER_R } else { 0.0 };
++            (crate::scene::title_column_width(title, k) - cut - (hi - lo)).max(0.0)
+         };
+         hi += more;
+         let short = short + more;
+@@ -6249,6 +6935,11 @@ fn title_room(g: &Graph, t: &TitleRows, layers: &[Vec<usize>]) -> Vec<(usize, f6
+ /// the chip covers the whole side. The entries past it are displaced
+ /// ([`title_jogs`]).
+ pub(crate) fn title_cap((m0, m1): (f64, f64), (lo, hi): (f64, f64)) -> usize {
++    let (m0, m1) = if std::env::var_os("FMX3").is_some() {
++        (m0 + crate::ports::PORT_INSET, m1 - crate::ports::PORT_INSET)
++    } else {
++        (m0, m1)
++    };
+     let free = (m1 - hi).max(lo - m0);
+     if free < 0.0 {
+         0
+@@ -6296,11 +6987,19 @@ struct TitleRows<'a> {
+ /// run into its port. Without displaced crossings a frame keeps its
+ /// height.
+ fn title_jogs(g: &Graph, t: &TitleRows) -> Vec<f64> {
++    let x7 = std::env::var_os("FMX7").is_some();
++    let f1 = if x7 { f1_breadths(g, t.n, t.bpos, t.absize, &[]) } else { Vec::new() };
+     title_counts(g, t)
+         .into_iter()
+-        .map(|k| match k {
++        .enumerate()
++        .map(|(c, k)| match k {
+             0 => 0.0,
+-            k => crate::ortho::ROW_CLEAR + (k - 1) as f64 * crate::ortho::TRACK_PITCH,
++            k => crate::ortho::ROW_CLEAR + (k - 1) as f64 * crate::ortho::TRACK_PITCH
++                + if x7 && f1.get(c).copied().flatten().is_some_and(|f| f.2 > 0.0) {
++                    crate::router::CORNER_R
++                } else {
++                    0.0
++                },
+         })
+         .collect()
+ }
+@@ -6406,9 +7105,12 @@ fn title_entries(g: &Graph, t: &TitleRows) -> (Vec<usize>, Vec<Displaced>) {
+             if border.is_empty() || m1 <= chip_lo || m0 >= chip_hi {
+                 continue;
+             }
+-            let over = border
+-                .len()
+-                .saturating_sub(title_cap((m0, m1), (chip_lo, chip_hi)));
++            let cap = title_cap((m0, m1), (chip_lo, chip_hi));
++            let over = if std::env::var_os("FMX3").is_some() && border.len() > cap {
++                border.len()
++            } else {
++                border.len().saturating_sub(cap)
++            };
+             k += over;
+             // The free stretch holds the entries nearest it: those on the
+             // chip's side of the member are displaced.
+@@ -9250,6 +9952,574 @@ fn compact_breadth(
+     }
+ }
+ 
++/// How much broader (px) than its tightest packing a level of a block
++/// layout may stand and keep Brandes-Köpf's columns (B12 X2.3): float
++/// noise and a wall's rounding, not a column that lies apart.
++const BLOCK_SLACK: f64 = 4.0;
++
++/// Room (px) a run of a squeezed level of a block layout keeps beside
++/// each neighbour on top of [`pair_sep`] (B12 X2): one comfortable
++/// clearance ([`crate::clearance::CLEAR_GAP`]). Brandes-Köpf rarely
++/// packs a channel against its neighbours; the squeeze packs every
++/// column of a level as tight as its order allows, and runs packed at
++/// the bare [`EDGE_GAP`] left the edge stages no room for the ports,
++/// steps and tracks they lay beside them: the router rerouted the
++/// channels across their hub's fan (dense-td drew 78 crossings, 15 of
++/// them inside one fan, where it draws 44 with this room).
++const RUN_ROOM: f64 = crate::clearance::CLEAR_GAP;
++
++/// One level of a block layout as [`block_compact`] squeezes it: the
++/// level's own items (nodes, runs), its child blocks as rigid units,
++/// and, below the root, the block's two walls.
++struct LevelUnits {
++    /// Per unit: its members (augmented nodes).
++    members: Vec<Vec<usize>>,
++    /// The level's entries per layer, in layer order.
++    rows: Vec<Vec<usize>>,
++    /// The two walls' units (below the root): pinned at the level's
++    /// two ends.
++    walls: Option<(usize, usize)>,
++}
++
++/// B12 X2 and X3: the breadths of a block layout, fixed one level at a
++/// time, deepest first, up to the root.
++///
++/// A level's units are its own nodes and runs (each its own unit), its
++/// child blocks (already fixed: rigid units that move as a whole) and,
++/// below the root, the block's two walls. When the breadth
++/// Brandes-Köpf gave the level lies within [`BLOCK_SLACK`] of the least
++/// breadth its order allows (the longest path over the left-of relation
++/// with [`pair_sep`] distances, title room included: the walls carry
++/// it), its columns stay. Otherwise the level is squeezed to that
++/// breadth, seeded by Brandes-Köpf: every *spine* (two units on
++/// adjacent layers that are each other's only link inside the level in
++/// that direction; at a parent level a border link between two real
++/// nodes, X3) becomes one rigid column when that keeps the least
++/// breadth and the order and lays no two of the merged members over
++/// each other on a layer (two sibling blocks joined by a border spine
++/// may share layers); each unit's Brandes-Köpf offset is clamped
++/// into its feasible interval for that breadth, left to right so the
++/// order holds; then [`COMPACT_SWEEPS`] Gauss-Seidel sweeps move each
++/// unit to the weighted median of its links inside the level (1 / 2 / 8
++/// as [`compact_breadth`]), between its neighbours. A child block's
++/// links are its members' links to the rest of the level, so a block as
++/// a whole is pulled toward its border links. A fixed block keeps its
++/// centre where its parent placed it until the parent's own pass moves
++/// it. A level whose order the walls cannot hold (a unit split on a
++/// layer) keeps its positions.
++///
++/// Chain dummies of different cluster paths are no spine (X1: a chain
++/// bends where it crosses a border, in a gap).
++#[allow(clippy::too_many_arguments)] // internal: one bundle of layered-graph state
++fn block_compact(
++    n: usize,
++    layers: &[Vec<usize>],
++    preds: &[Vec<usize>],
++    succs: &[Vec<usize>],
++    alayer: &[usize],
++    absize: &[f64],
++    apath: &[Vec<usize>],
++    border: &[u8],
++    header_b: Option<&[f64]>,
++    title_least: &[f64],
++    bpos: &mut [f64],
++) {
++    let na = bpos.len();
++    if na == 0 {
++        return;
++    }
++    // Levels: every block (by its walls' path), deepest first, then the
++    // root.
++    let mut spans: BTreeMap<Vec<usize>, (usize, usize)> = BTreeMap::new();
++    for v in 0..na {
++        if border[v] != 0 {
++            let e = spans
++                .entry(apath[v].clone())
++                .or_insert((alayer[v], alayer[v]));
++            e.0 = e.0.min(alayer[v]);
++            e.1 = e.1.max(alayer[v]);
++        }
++    }
++    let mut levels: Vec<(Vec<usize>, usize, usize)> =
++        spans.into_iter().map(|(p, (lo, hi))| (p, lo, hi)).collect();
++    levels.sort_by(|a, b| b.0.len().cmp(&a.0.len()).then(a.0.cmp(&b.0)));
++    levels.push((Vec::new(), 0, layers.len().saturating_sub(1)));
++    let mut unit_of = vec![usize::MAX; na];
++    let mut off = vec![0.0f64; na];
++    let sep = |u: usize, v: usize| {
++        let run = |x: usize| x >= n && border[x] == 0;
++        pair_sep(u, v, n, absize, Some(apath), Some(border), header_b)
++            + if run(u) || run(v) { RUN_ROOM } else { 0.0 }
++    };
++    for (path, lo, hi) in levels {
++        let k = path.len();
++        let Some(lv) = level_units(&path, lo, hi, layers, apath, border, &mut unit_of) else {
++            continue;
++        };
++        for (u, ms) in lv.members.iter().enumerate() {
++            let anchor = ms[0];
++            for &m in ms {
++                off[m] = bpos[m] - bpos[anchor];
++                unit_of[m] = u;
++            }
++        }
++        // Each member's unit before any spine is merged.
++        let orig = unit_of.clone();
++        let in_level = |w: usize| apath[w].starts_with(&path);
++        // Links inside the level between two units: (member, other end,
++        // weight).
++        // A chain's segment across a border is no spine (X1): it bends
++        // there, in the gap, so it pulls a block as a border link does,
++        // not with the weight that keeps a run straight. (With 8, the
++        // bounce of the hub fixture's email block, a back edge leaving
++        // the block, outweighed the block's two forward links and took
++        // it out from under the delivery block: the hub's edge into it
++        // then ran down the far side and back, out of target order.)
++        let weight = |u: usize, v: usize| match (u < n, v < n) {
++            (true, true) => 1.0,
++            (false, false) if apath[u] != apath[v] => COMPACT_MIXED_WEIGHT,
++            (false, false) => COMPACT_DUMMY_WEIGHT,
++            _ => COMPACT_MIXED_WEIGHT,
++        };
++        let links = |m: usize, unit_of: &[usize]| -> Vec<(usize, f64)> {
++            if border[m] != 0 {
++                return Vec::new();
++            }
++            let mut out: Vec<(usize, f64)> = Vec::new();
++            for &w in preds[m].iter().chain(&succs[m]) {
++                if border[w] == 0
++                    && alayer[w].abs_diff(alayer[m]) == 1
++                    && in_level(w)
++                    && unit_of[w] != unit_of[m]
++                {
++                    out.push((w, weight(m, w)));
++                }
++            }
++            out
++        };
++        let packed0 = pack_units(&lv, &unit_of, &orig, &off, absize, &sep);
++        let Some((_, w_min)) = packed0.as_ref().map(|p| (p.0.clone(), p.2)) else {
++            clear_units(&lv, &mut unit_of);
++            continue;
++        };
++        // The breadth Brandes-Köpf gave the level.
++        let (mut bk_lo, mut bk_hi) = (f64::INFINITY, f64::NEG_INFINITY);
++        for row in &lv.rows {
++            for &v in row {
++                bk_lo = bk_lo.min(bpos[v] - absize[v] / 2.0);
++                bk_hi = bk_hi.max(bpos[v] + absize[v] / 2.0);
++            }
++        }
++        if bk_hi - bk_lo <= w_min + BLOCK_SLACK {
++            clear_units(&lv, &mut unit_of);
++            continue;
++        }
++        // Spines: (member, other end) on adjacent layers, each the
++        // other's only link inside the level in that direction.
++        let only = |m: usize, down: bool, unit_of: &[usize]| -> Option<usize> {
++            let mut it = links(m, unit_of)
++                .into_iter()
++                .map(|(w, _)| w)
++                .filter(|&w| (alayer[w] > alayer[m]) == down);
++            let w = it.next()?;
++            it.all(|x| x == w).then_some(w)
++        };
++        let mut spines: Vec<(u8, usize, usize)> = Vec::new();
++        for (u, ms) in lv.members.iter().enumerate() {
++            if lv.walls.is_some_and(|(a, b)| u == a || u == b) {
++                continue;
++            }
++            for &m in ms {
++                let Some(w) = only(m, true, &unit_of) else {
++                    continue;
++                };
++                if only(w, false, &unit_of) != Some(m) {
++                    continue;
++                }
++                let direct = |x: usize| apath[x].len() == k;
++                let class = match (m < n, w < n) {
++                    // A run's own column (X1: never across a border).
++                    (false, false) if direct(m) && direct(w) && apath[m] == apath[w] => 0,
++                    (false, false) => continue,
++                    // A run meeting its node, inside the level.
++                    (true, false) | (false, true) if direct(m) && direct(w) => 1,
++                    (true, false) | (false, true) => continue,
++                    // Two nodes: a spine, or a border spine (X3).
++                    (true, true) => 2,
++                };
++                spines.push((class, m, w));
++            }
++        }
++        spines.sort_by_key(|&(c, m, w)| (c, alayer[m], m, w));
++        // All at once first; one at a time, each kept only if it keeps
++        // the order and the least breadth, when that fails.
++        let save = (lv_clone(&lv), unit_of.clone(), off.clone());
++        let mut lv = lv;
++        for &(_, m, w) in &spines {
++            merge_units(&mut lv, &mut unit_of, &mut off, m, w);
++        }
++        let mut packed = pack_units(&lv, &unit_of, &orig, &off, absize, &sep)
++            .filter(|p| p.2 <= w_min + TITLE_FIT_EPS);
++        if packed.is_none() {
++            (lv, unit_of, off) = (save.0, save.1, save.2);
++            packed = packed0;
++            for &(_, m, w) in &spines {
++                if unit_of[m] == unit_of[w] {
++                    continue;
++                }
++                let keep = (lv_clone(&lv), unit_of.clone(), off.clone());
++                merge_units(&mut lv, &mut unit_of, &mut off, m, w);
++                match pack_units(&lv, &unit_of, &orig, &off, absize, &sep) {
++                    Some(p) if p.2 <= w_min + TITLE_FIT_EPS => packed = Some(p),
++                    _ => (lv, unit_of, off) = (keep.0, keep.1, keep.2),
++                }
++            }
++        }
++        let Some((left, right, w, topo, edges)) = packed else {
++            clear_units(&lv, &mut unit_of);
++            continue;
++        };
++        let nu = lv.members.len();
++        // Seed: Brandes-Köpf's offset from the level's left, clamped into
++        // the unit's feasible interval, then left to right so the order
++        // holds.
++        let anchor_x = |u: usize| lv.members[u].first().map_or(0.0, |&m| bpos[m] - off[m]);
++        let base = match lv.walls {
++            Some((wl, _)) => anchor_x(wl),
++            None => bk_lo,
++        };
++        let mut x: Vec<f64> = (0..nu)
++            .map(|u| (anchor_x(u) - base).max(left[u]).min(right[u]))
++            .collect();
++        let mut into: Vec<Vec<(usize, f64)>> = vec![Vec::new(); nu];
++        let mut outof: Vec<Vec<(usize, f64)>> = vec![Vec::new(); nu];
++        for &(a, b, s) in &edges {
++            outof[a].push((b, s));
++            into[b].push((a, s));
++        }
++        for &u in &topo {
++            for &(p, s) in &into[u] {
++                x[u] = x[u].max(x[p] + s);
++            }
++        }
++        if let Some((wl, wr)) = lv.walls {
++            x[wl] = 0.0;
++            x[wr] = w;
++        }
++        let ulinks: Vec<Vec<(usize, usize, f64)>> = lv
++            .members
++            .iter()
++            .map(|ms| {
++                ms.iter()
++                    .flat_map(|&m| {
++                        links(m, &unit_of)
++                            .into_iter()
++                            .map(move |(o, wt)| (m, o, wt))
++                    })
++                    .collect()
++            })
++            .collect();
++        let head = |u: usize| {
++            lv.members[u]
++                .iter()
++                .map(|&m| absize[m] / 2.0 - off[m])
++                .fold(f64::NEG_INFINITY, f64::max)
++        };
++        let tail = |u: usize| {
++            lv.members[u]
++                .iter()
++                .map(|&m| off[m] + absize[m] / 2.0)
++                .fold(f64::NEG_INFINITY, f64::max)
++        };
++        let (heads, tails): (Vec<f64>, Vec<f64>) = (0..nu).map(|u| (head(u), tail(u))).unzip();
++        // A block keeps its centre where Brandes-Köpf put it (its
++        // parent's pass moves it); the root keeps its left.
++        let shift = match lv.walls {
++            Some((wl, wr)) => (anchor_x(wl) + anchor_x(wr)) / 2.0 - w / 2.0,
++            None => bk_lo,
++        };
++        for round in 0..COMPACT_SWEEPS {
++            let order: Vec<usize> = if round % 2 == 0 {
++                topo.clone()
++            } else {
++                topo.iter().rev().copied().collect()
++            };
++            for u in order {
++                if lv.walls.is_some_and(|(a, b)| u == a || u == b) {
++                    continue;
++                }
++                let mut lo = heads[u];
++                for &(p, s) in &into[u] {
++                    lo = lo.max(x[p] + s);
++                }
++                let mut hi = w - tails[u];
++                for &(s2, s) in &outof[u] {
++                    hi = hi.min(x[s2] - s);
++                }
++                if lo > hi || ulinks[u].is_empty() {
++                    continue;
++                }
++                let mut pull: Vec<(f64, f64)> = ulinks[u]
++                    .iter()
++                    .map(|&(m, o, wt)| (x[unit_of[o]] + off[o] - off[m], wt))
++                    .collect();
++                let want = weighted_median(&mut pull);
++                if want.is_finite() {
++                    x[u] = want.max(lo).min(hi);
++                }
++            }
++        }
++        // X2.2: a block whose title side takes displaced entries and
++        // whose members Brandes-Köpf spread broader than its title keeps
++        // those breadths when the squeeze would pack its members under
++        // the title: the frame would grow to its title instead, and a
++        // title-bound frame holds no column past its chip for them (the
++        // public `blocks/lr` drawn BT: `pager` under the chip, its two
++        // entries went round through the lateral walls and crossed).
++        let least = path.last().and_then(|&c| title_least.get(c)).copied().unwrap_or(0.0);
++        if least > 0.0 {
++            let span = |at: &dyn Fn(usize) -> f64| {
++                let (mut lo, mut hi) = (f64::INFINITY, f64::NEG_INFINITY);
++                for ms in &lv.members {
++                    for &m in ms.iter().filter(|&&m| m < n) {
++                        lo = lo.min(at(m) - absize[m] / 2.0);
++                        hi = hi.max(at(m) + absize[m] / 2.0);
++                    }
++                }
++                hi - lo + 2.0 * FRAME_PAD
++            };
++            let before = span(&|m| bpos[m]);
++            let after = span(&|m| x[unit_of[m]] + off[m] + shift);
++            if before >= least - TITLE_FIT_EPS && after < least - TITLE_FIT_EPS {
++                clear_units(&lv, &mut unit_of);
++                continue;
++            }
++        }
++        for (u, ms) in lv.members.iter().enumerate() {
++            for &m in ms {
++                bpos[m] = x[u] + off[m] + shift;
++            }
++        }
++        clear_units(&lv, &mut unit_of);
++    }
++}
++
++/// The units of one level of a block layout ([`block_compact`]): path
++/// `path`, layers `lo..=hi`. `unit_of` is left marked with each
++/// member's unit. `None` for an empty level.
++#[allow(clippy::too_many_arguments)] // internal: one bundle of layered-graph state
++fn level_units(
++    path: &[usize],
++    lo: usize,
++    hi: usize,
++    layers: &[Vec<usize>],
++    apath: &[Vec<usize>],
++    border: &[u8],
++    unit_of: &mut [usize],
++) -> Option<LevelUnits> {
++    let k = path.len();
++    let mut members: Vec<Vec<usize>> = Vec::new();
++    let mut child: BTreeMap<usize, usize> = BTreeMap::new();
++    let (mut wl, mut wr) = (None, None);
++    let mut rows: Vec<Vec<usize>> = Vec::with_capacity(hi + 1 - lo);
++    for lay in &layers[lo..=hi.min(layers.len().saturating_sub(1))] {
++        let mut row = Vec::new();
++        for &v in lay {
++            if !apath[v].starts_with(path) {
++                continue;
++            }
++            let u = if apath[v].len() > k {
++                *child.entry(apath[v][k]).or_insert_with(|| {
++                    members.push(Vec::new());
++                    members.len() - 1
++                })
++            } else if k > 0 && border[v] == 1 {
++                *wl.get_or_insert_with(|| {
++                    members.push(Vec::new());
++                    members.len() - 1
++                })
++            } else if k > 0 && border[v] == 2 {
++                *wr.get_or_insert_with(|| {
++                    members.push(Vec::new());
++                    members.len() - 1
++                })
++            } else {
++                members.push(Vec::new());
++                members.len() - 1
++            };
++            members[u].push(v);
++            unit_of[v] = u;
++            row.push(v);
++        }
++        rows.push(row);
++    }
++    if members.is_empty() {
++        return None;
++    }
++    let walls = match (k > 0, wl, wr) {
++        (true, Some(a), Some(b)) => Some((a, b)),
++        (true, _, _) => {
++            clear_units(
++                &LevelUnits {
++                    members,
++                    rows,
++                    walls: None,
++                },
++                unit_of,
++            );
++            return None;
++        }
++        _ => None,
++    };
++    Some(LevelUnits {
++        members,
++        rows,
++        walls,
++    })
++}
++
++fn lv_clone(lv: &LevelUnits) -> LevelUnits {
++    LevelUnits {
++        members: lv.members.clone(),
++        rows: lv.rows.clone(),
++        walls: lv.walls,
++    }
++}
++
++fn clear_units(lv: &LevelUnits, unit_of: &mut [usize]) {
++    for ms in &lv.members {
++        for &m in ms {
++            unit_of[m] = usize::MAX;
++        }
++    }
++}
++
++/// Merge the unit of `w` into the unit of `m` so that `w` stands in
++/// `m`'s column (a spine of [`block_compact`]).
++fn merge_units(lv: &mut LevelUnits, unit_of: &mut [usize], off: &mut [f64], m: usize, w: usize) {
++    let (a, b) = (unit_of[m], unit_of[w]);
++    if a == b
++        || lv
++            .walls
++            .is_some_and(|(l, r)| [l, r].contains(&a) || [l, r].contains(&b))
++    {
++        return;
++    }
++    let delta = off[m] - off[w];
++    let moved = std::mem::take(&mut lv.members[b]);
++    for &x in &moved {
++        off[x] += delta;
++        unit_of[x] = a;
++    }
++    lv.members[a].extend(moved);
++}
++
++/// A packing of a level's units ([`block_compact`]): per unit its least
++/// and greatest position for the least breadth, that breadth, the units
++/// in topological order of the left-of relation, and the relation's
++/// edges `(left, right, least distance)`. `None` when the relation has
++/// a cycle (a unit split on a layer).
++type Packing = (
++    Vec<f64>,
++    Vec<f64>,
++    f64,
++    Vec<usize>,
++    Vec<(usize, usize, f64)>,
++);
++
++fn pack_units(
++    lv: &LevelUnits,
++    unit_of: &[usize],
++    orig: &[usize],
++    off: &[f64],
++    absize: &[f64],
++    sep: &dyn Fn(usize, usize) -> f64,
++) -> Option<Packing> {
++    let nu = lv.members.len();
++    let live: Vec<bool> = lv.members.iter().map(|m| !m.is_empty()).collect();
++    let mut edges: Vec<(usize, usize, f64)> = Vec::new();
++    for row in &lv.rows {
++        for p in row.windows(2) {
++            let (a, b) = (unit_of[p[0]], unit_of[p[1]]);
++            if a != b {
++                edges.push((a, b, sep(p[0], p[1]) + off[p[0]] - off[p[1]]));
++            } else if orig[p[0]] != orig[p[1]]
++                && off[p[1]] - off[p[0]] < sep(p[0], p[1]) - TITLE_FIT_EPS
++            {
++                // Two neighbours that a merged spine made one rigid unit
++                // and that would then overlap: the merge is infeasible.
++                return None;
++            }
++        }
++    }
++    let mut indeg = vec![0usize; nu];
++    let mut outof: Vec<Vec<(usize, f64)>> = vec![Vec::new(); nu];
++    for &(a, b, s) in &edges {
++        outof[a].push((b, s));
++        indeg[b] += 1;
++    }
++    let ext = |u: usize, f: &dyn Fn(usize) -> f64| {
++        lv.members[u]
++            .iter()
++            .map(|&m| f(m))
++            .fold(f64::NEG_INFINITY, f64::max)
++    };
++    let mut left: Vec<f64> = (0..nu)
++        .map(|u| {
++            if live[u] {
++                ext(u, &|m| absize[m] / 2.0 - off[m])
++            } else {
++                0.0
++            }
++        })
++        .collect();
++    if let Some((wl, _)) = lv.walls {
++        left[wl] = 0.0;
++    }
++    let mut queue: Vec<usize> = (0..nu).filter(|&u| live[u] && indeg[u] == 0).collect();
++    queue.reverse();
++    let mut topo: Vec<usize> = Vec::with_capacity(nu);
++    while let Some(u) = queue.pop() {
++        topo.push(u);
++        for &(b, s) in &outof[u] {
++            left[b] = left[b].max(left[u] + s);
++            indeg[b] -= 1;
++            if indeg[b] == 0 {
++                queue.push(b);
++            }
++        }
++    }
++    if topo.len() != live.iter().filter(|&&l| l).count() {
++        return None;
++    }
++    let tails: Vec<f64> = (0..nu)
++        .map(|u| {
++            if live[u] {
++                ext(u, &|m| off[m] + absize[m] / 2.0)
++            } else {
++                0.0
++            }
++        })
++        .collect();
++    let w = match lv.walls {
++        Some((_, wr)) => left[wr],
++        None => topo
++            .iter()
++            .map(|&u| left[u] + tails[u])
++            .fold(0.0f64, f64::max),
++    };
++    let mut right: Vec<f64> = (0..nu).map(|u| w - tails[u]).collect();
++    if let Some((_, wr)) = lv.walls {
++        right[wr] = w;
++    }
++    for &u in topo.iter().rev() {
++        for &(b, s) in &outof[u] {
++            right[u] = right[u].min(right[b] - s);
++        }
++    }
++    Some((left, right, w, topo, edges))
++}
++
+ /// The point that halves the total weight of `(position, weight)`
+ /// pairs (the lower one on an exact tie, the mean of the two middle
+ /// positions when the halves balance).
+@@ -9787,6 +11057,10 @@ mod tests {
+         for id in ["g2", "g4"] {
+             assert!(frame(id).y > first_row, "{id} not wrapped below g1");
+         }
++        if std::env::var_os("FMDBGW").is_some() {
++            eprintln!("HUBROW {} x {}", sc.width, sc.height);
++            for c in &sc.clusters { eprintln!("HUBROW frame {} x {:.1} w {:.1} y {:.1} h {:.1}", c.id, c.x, c.w, c.y, c.h); }
++        }
+         assert!(sc.width < 2.0 * sc.height, "{} x {}", sc.width, sc.height);
+     }
+ 
+diff --git a/src/ortho.rs b/src/ortho.rs
+index 6fc1dad..da91d51 100644
+--- a/src/ortho.rs
++++ b/src/ortho.rs
+@@ -97,6 +97,25 @@ const ALIGNED: f64 = 0.5;
+ /// Float tolerance.
+ const EPS: f64 = 1e-6;
+ 
++thread_local! {
++    /// G3 PROTOTYPE side channel: per scene edge of the static block
++    /// scene being finished, its gap label's band (top?), set by
++    /// `scene::scene_clustered`.
++    pub(crate) static G3_SIDE: std::cell::RefCell<Vec<Option<bool>>> =
++        const { std::cell::RefCell::new(Vec::new()) };
++}
++
++fn g3_side(edge: usize) -> Option<bool> {
++    G3_SIDE.with(|c| c.borrow().get(edge).copied().flatten())
++}
++
++thread_local! {
++    /// G3 PROTOTYPE p5: scene edges whose chain label sits on a dummy row
++    /// (kept clear of the tracks either side).
++    pub(crate) static G3_CHAIN: std::cell::RefCell<Vec<bool>> =
++        const { std::cell::RefCell::new(Vec::new()) };
++}
++
+ /// A point in flow coordinates: (breadth, along the flow), the flow
+ /// running towards larger values (see [`to_flow`]).
+ fn to_flow(dir: Direction, p: Pt) -> Pt {
+@@ -989,6 +1008,104 @@ fn ortho_pass(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
+         }
+         plans.push((i, plan));
+     }
++    // G3 PROTOTYPE: no foreign track within CLEAR_GAP of a band label's
++    // chip along the flow, where the track passes the chip's breadth.
++    if cx.blocks && mode == Mode::Static && std::env::var_os("FM_G3_NOEXCL").is_none() {
++        let clear = crate::clearance::CLEAR_GAP + SEP_AIR;
++        let mut chips: Vec<(usize, bool, Rect)> = Vec::new();
++        for (i, plan) in &plans {
++            let Some(top) = g3_side(*i) else { continue };
++            let Some((_, at, w)) = sc.edges[*i].label.as_ref() else { continue };
++            let ends: Vec<Pt> = plan
++                .iter()
++                .filter_map(|c| match *c {
++                    Corner::At(p) => Some(p),
++                    Corner::Jog(..) => None,
++                })
++                .collect();
++            if ends.len() < 2 {
++                continue;
++            }
++            let (f0, f3) = (ends[0], ends[ends.len() - 1]);
++            let (upper, lower) = if f0.1 <= f3.1 { (f0, f3) } else { (f3, f0) };
++            let col = if top { upper.0 } else { lower.0 };
++            let a = to_flow(dir, *at).1;
++            let (bh, fh) = match dir {
++                Direction::TD | Direction::BT => (w / 2.0, crate::layout::LABEL_BOX_H / 2.0),
++                Direction::LR | Direction::RL => (crate::layout::LABEL_BOX_H / 2.0, w / 2.0),
++            };
++            chips.push((*i, top, (col - bh, col + bh, a - fh, a + fh)));
++        }
++        // Chain labels on their dummy rows: off either way.
++        let mut rows: Vec<(usize, Rect)> = Vec::new();
++        for (i, e) in sc.edges.iter().enumerate() {
++            if !G3_CHAIN.with(|c| c.borrow().get(i).copied().unwrap_or(false)) {
++                continue;
++            }
++            let Some((_, at, w)) = e.label.as_ref() else { continue };
++            let p = to_flow(dir, *at);
++            let (bh, fh) = match dir {
++                Direction::TD | Direction::BT => (w / 2.0, crate::layout::LABEL_BOX_H / 2.0),
++                Direction::LR | Direction::RL => (crate::layout::LABEL_BOX_H / 2.0, w / 2.0),
++            };
++            rows.push((i, (p.0 - bh, p.0 + bh, p.1 - fh, p.1 + fh)));
++        }
++        let no_rows = std::env::var_os("FM_G3_NOROWS").is_some();
++        for j in jogs.iter_mut().filter(|_| !no_rows) {
++            for &(i, r) in &rows {
++                if i == j.edge {
++                    continue;
++                }
++                let (s0, s1) = j.span();
++                if s1 < r.0 - clear || s0 > r.1 + clear {
++                    continue;
++                }
++                let mid = (r.2 + r.3) / 2.0;
++                let shrink = |room: (f64, f64), want: f64| -> (f64, f64) {
++                    if room.1 < r.2 - clear || room.0 > r.3 + clear {
++                        return room;
++                    }
++                    let above = (room.0, room.1.min(r.2 - clear));
++                    let below = (room.0.max(r.3 + clear), room.1);
++                    let (first, second) = if want <= mid { (above, below) } else { (below, above) };
++                    if first.0 <= first.1 {
++                        first
++                    } else if second.0 <= second.1 {
++                        second
++                    } else {
++                        room
++                    }
++                };
++                j.room = shrink(j.room, j.want);
++                j.want = j.want.max(j.room.0).min(j.room.1);
++                j.at = j.want;
++                j.plain.0 = shrink(j.plain.0, j.plain.1);
++                j.plain.1 = j.plain.1.max(j.plain.0 .0).min(j.plain.0 .1);
++            }
++        }
++        let no_chips = std::env::var_os("FM_G3_NOCHIPS").is_some();
++        for j in jogs.iter_mut().filter(|_| !no_chips) {
++            for &(i, top, r) in &chips {
++                let (s0, s1) = j.span();
++                if s1 < r.0 - clear || s0 > r.1 + clear {
++                    continue;
++                }
++                let shrink = |room: (f64, f64)| -> (f64, f64) {
++                    if room.1 < r.2 - clear || room.0 > r.3 + clear {
++                        return room;
++                    }
++                    let n = if top { (room.0.max(r.3 + clear), room.1) } else { (room.0, room.1.min(r.2 - clear)) };
++                    if n.0 <= n.1 { n } else { room }
++                };
++                let _ = i;
++                j.room = shrink(j.room);
++                j.want = j.want.max(j.room.0).min(j.room.1);
++                j.at = j.want;
++                j.plain.0 = shrink(j.plain.0);
++                j.plain.1 = j.plain.1.max(j.plain.0 .0).min(j.plain.0 .1);
++            }
++        }
++    }
+     place_tracks(&mut jogs, &kept, cx.blocks);
+     uncross(&mut jogs, &kept_lines);
+ 
+@@ -1033,6 +1150,15 @@ fn ortho_pass(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
+                 let (a, b) = (screen[2], screen[3]);
+                 *at = ((a.0 + b.0) / 2.0, (a.1 + b.1) / 2.0);
+             }
++        } else if let (true, Some(top), true, false) = (cx.blocks, g3_side(i), mode == Mode::Static, chain[i]) {
++            // G3 PROTOTYPE: on its upper (top band) or lower leg, at its band.
++            if let Some((_, at, _)) = e.label.as_mut() {
++                let (a, b) = (to_flow(dir, screen[0]), to_flow(dir, screen[screen.len() - 1]));
++                let (upper, lower) = if a.1 <= b.1 { (a, b) } else { (b, a) };
++                let col = if top { upper.0 } else { lower.0 };
++                let me = to_flow(dir, *at);
++                *at = from_flow(dir, (col, me.1));
++            }
+         } else if cx.blocks && chain[i] {
+             // A block layout's long edge: its label keeps the slot the
+             // layout reserved on the run between its two end blocks
+@@ -1361,6 +1487,10 @@ struct TitleSides {
+     cols: std::collections::BTreeMap<(usize, usize), f64>,
+ }
+ 
++/// Float noise (px) a track's distance from a taken column may fall
++/// short of [`TRACK_PITCH`] and still count as a pitch apart.
++const PITCH_EPS: f64 = 1e-6;
++
+ impl TitleSides {
+     fn of(sc: &Scene, cx: &Ctx, dir: Direction, frames: &[Rect]) -> TitleSides {
+         let mut out = TitleSides {
+@@ -1415,6 +1545,9 @@ impl TitleSides {
+                 else {
+                     return false;
+                 };
++                if std::env::var_os("FMX3").is_some() {
++                    return true;
++                }
+                 let r = flow_rect(dir, end_rect(sc, EndRef::Node(v)));
+                 r.0 >= c0 && r.1 <= c1
+             };
+@@ -1446,10 +1579,21 @@ impl TitleSides {
+             // the side's other crossings; the first a corner's rounding
+             // past the chip's clearance, so the turn onto the track under
+             // the chip stays out of the chip's ring.
+-            let mut next = c1 + crate::router::CORNER_R;
++            let mut next = c1
++                + if std::env::var_os("FMX7").is_some() && sc.clusters[k].bold_title {
++                    0.0
++                } else {
++                    crate::router::CORNER_R
++                };
+             for &(b, i) in &v {
+                 let mut col = next;
+-                while let Some(&o) = taken.iter().find(|&&o| (o - col).abs() < TRACK_PITCH) {
++                // (A hair under the pitch: `col` set to `o + TRACK_PITCH`
++                // can lie a rounding under the pitch from `o` again, and
++                // the search then found `o` for ever.)
++                while let Some(&o) = taken
++                    .iter()
++                    .find(|&&o| (o - col).abs() < TRACK_PITCH - PITCH_EPS)
++                {
+                     col = o + TRACK_PITCH;
+                 }
+                 if col > f1 - crate::scene::LANE_PAD {
+@@ -1908,6 +2052,24 @@ impl ColumnRoom<'_> {
+                 fence(mid, mid, TRACK_PITCH / 2.0);
+             }
+         }
++        // G3 PROTOTYPE p5: a column carrying its own edge's label on this
++        // row keeps the chip and CLEAR_GAP off the other columns and runs
++        // (the reservation the layout gave its sized dummy).
++        if G3_SIDE.with(|c| !c.borrow().is_empty()) {
++            if let Some((_, r)) = self.labels.iter().find(|(j, r)| *j == self.edge && meets(r)) {
++                let half = (r.1 - r.0) / 2.0 + crate::clearance::CLEAR_GAP + SEP_AIR;
++                for &(j, c) in self.columns {
++                    if j != self.edge && c.1 >= band.0 - EPS && c.1 <= band.1 + EPS {
++                        fence(c.0, c.0, half);
++                    }
++                }
++                for &(b, (l0, l1)) in self.runs {
++                    if l1 > band.0 - EPS && l0 < band.1 + EPS {
++                        fence(b, b, half);
++                    }
++                }
++            }
++        }
+         for &(b, (l0, l1)) in self.runs {
+             if l1 > band.0 - EPS && l0 < band.1 + EPS {
+                 let mid = (q.0 + b) / 2.0;
+@@ -2201,8 +2363,23 @@ fn plan_jog(
+     // rides the straight run into the target instead of the step, and the
+     // steps of a labelled fan nest by their source, clear of the chips.
+     let mut above_label = false;
+-    let plain = ((lo, hi), want);
+-    if let Some((at, half)) = label {
++    let mut plain = ((lo, hi), want);
++    let g3 = if cx.blocks { g3_side(edge) } else { None };
++    if let (Some(top), Some((at, half))) = (g3, label) {
++        // G3 PROTOTYPE: a band label keeps its edge's own step on the far
++        // side of its chip, CLEAR_GAP off (flow coordinates).
++        let clear = crate::clearance::CLEAR_GAP + SEP_AIR;
++        let (a, b) = if top {
++            (lo.max(at + half + clear), hi)
++        } else {
++            (lo, hi.min(at - half - clear))
++        };
++        if b >= a {
++            (lo, hi, want) = (a, b, want.max(a).min(b));
++            plain = ((lo, hi), want);
++            above_label = true;
++        }
++    } else if let Some((at, half)) = label {
+         let (a, b) = if h > 0.0 {
+             (lo, hi.min(at - half - LABEL_SEP))
+         } else {
+@@ -2224,7 +2401,7 @@ fn plan_jog(
+         at: want,
+         above_label,
+         plain,
+-        label_half: label.map_or(0.0, |l| l.1),
++        label_half: if g3.is_some() { 0.0 } else { label.map_or(0.0, |l| l.1) },
+         runs: (l0, l1),
+     }
+ }
+@@ -2360,22 +2537,39 @@ pub(crate) fn channel_sizes(steps: &[(f64, f64)]) -> Vec<usize> {
+ 
+ /// `group` (a channel's jogs, [`place_tracks`]) split into the sets
+ /// whose rooms chain, in a block layout (`blocks`); else as it is.
++///
++/// A jog's room here is its plain room ([`Jog::plain`]), the widest
++/// [`place_channel`] may give it, not the room above its label it has
++/// now: a channel drops its steps back to their plain rooms when one of
++/// them is not drawn above its label or their order does not hold, and
++/// orders them by where they turn so their legs do not cross. Split by
++/// the rooms above their labels, a labelled step left alone in its set
++/// kept that room beside an unlabelled one, and two sets were stacked
++/// in the order of their rooms instead of their turns: a two-way pair
++/// between two blocks crossed, `uncross` swapped its ends and it was
++/// drawn as two stepped Zs, one up the target block's wall
++/// (blocks/twoway-noted drawn LR; a labelled return between a hub's
++/// labelled fan's steps went under the fan's last one, across its
++/// leg). Sets whose plain rooms do not chain lie apart whatever their
++/// channels do (a frame's border or title strip between them: the jog
++/// room's steps and the steps between two stacked frames).
+ fn split_by_room(jogs: &[Jog], mut group: Vec<usize>, blocks: bool) -> Vec<Vec<usize>> {
+     if !blocks || group.len() < 2 {
+         return vec![group];
+     }
++    let norfix = std::env::var_os("NORFIX").is_some();
++    let room = |k: usize| if norfix { jogs[k].room } else { jogs[k].plain.0 };
+     group.sort_by(|&a, &b| {
+-        jogs[a]
+-            .room
++        room(a)
+             .0
+-            .total_cmp(&jogs[b].room.0)
++            .total_cmp(&room(b).0)
+             .then(jogs[a].span().0.total_cmp(&jogs[b].span().0))
+             .then(a.cmp(&b))
+     });
+     let mut out: Vec<Vec<usize>> = Vec::new();
+     let mut reach = f64::NEG_INFINITY;
+     for k in group {
+-        let (lo, hi) = jogs[k].room;
++        let (lo, hi) = room(k);
+         match out.last_mut() {
+             Some(last) if lo < reach + TRACK_PITCH_MIN => {
+                 last.push(k);
+@@ -2584,13 +2778,14 @@ fn place_tracks(jogs: &mut [Jog], kept: &[(f64, (f64, f64))], blocks: bool) {
+         s = t;
+         // In a block layout one gap holds a frame's title strip and jog
+         // room as well as the space between the frames: a channel's
+-        // steps whose rooms do not meet (a two-way pair's steps between
+-        // two stacked frames and its displaced steps in the lower
+-        // frame's jog room) never share a track, and ordered as one
+-        // stack they interleaved, the jog room's two steps 5 px apart
+-        // (blocks/t9c-frames-8px-two-way drawn TD), which the router
+-        // then took round the frames' lateral walls. Each set of steps
+-        // whose rooms chain is a channel of its own there.
++        // steps whose plain rooms do not meet (a two-way pair's steps
++        // between two stacked frames and its displaced steps in the
++        // lower frame's jog room) never share a track, and ordered as
++        // one stack they interleaved, the jog room's two steps 5 px
++        // apart (blocks/t9c-frames-8px-two-way drawn TD), which the
++        // router then took round the frames' lateral walls. Each set of
++        // steps whose plain rooms chain is a channel of its own there
++        // ([`split_by_room`]).
+         for group in split_by_room(jogs, group, blocks) {
+             if group.len() > 1 {
+                 place_channel(jogs, group, blocks);
+diff --git a/src/ports.rs b/src/ports.rs
+index babf59e..9834d0f 100644
+--- a/src/ports.rs
++++ b/src/ports.rs
+@@ -773,9 +773,13 @@ fn capacity(len: f64) -> usize {
+ /// Both modes run the same rule.
+ pub(crate) fn assign(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mut [bool]) {
+     place_ports(g, sc, cx, mode, moved, true, true, None);
++    let dbg = |tag: &str, sc: &Scene| if std::env::var_os("FMDBGP").is_some() { for e in &sc.edges { if e.to.len() <= 4 && (e.from == "REG" || e.from == "OPS") { let p = e.waypoints.last().copied().unwrap_or(e.bezier[3]); eprintln!("PINSTAGE {} {}->{} end ({:.2},{:.2})", tag, e.from, e.to, p.0, p.1); } } };
++    dbg("place_ports", sc);
+     if cx.blocks {
+         free_pins(sc, cx, moved);
++        dbg("free_pins", sc);
+         order_pins(sc, cx, moved);
++        dbg("order_pins", sc);
+     }
+ }
+ 
+@@ -1076,6 +1080,9 @@ fn free_pins(sc: &mut Scene, cx: &Ctx, moved: &mut [bool]) {
+                     .then(|| pin_past(at, (lo, hi), &exact, &columns, chip))
+                     .flatten()
+             };
++            if std::env::var_os("FMDBGP").is_some() {
++                eprintln!("PIN {}->{} at {:.2} lo/hi {:.1}/{:.1} chip {:?} taken {:?} cols {:?} place {:?} past {:?}", sc.edges[i].from, sc.edges[i].to, at, lo, hi, chip, taken, columns, pin_place(at, (lo, hi), &taken, chip, from_low), past());
++            }
+             let Some(t) = pin_place(at, (lo, hi), &taken, chip, from_low).or_else(past) else {
+                 continue;
+             };
+@@ -1319,8 +1326,13 @@ fn place_ports(
+                 .collect(),
+             _ => Vec::new(),
+         };
++        let clear = if cx.blocks && std::env::var_os("FMX1").is_some() {
++            crate::ortho::CHIP_CLEAR
++        } else {
++            CHIP_SEP
++        };
+         let (lo, hi, shaded) = match prof.straight() {
+-            Some(n) => unshaded(&heads, &deep, side, n, (lo, hi), ports.len()),
++            Some(n) => unshaded(&heads, &deep, side, n, (lo, hi), ports.len(), clear),
+             None => (lo, hi, false),
+         };
+         let shaded = shaded && ports.iter().any(|p| p.want < lo || p.want > hi);
+@@ -2077,8 +2089,10 @@ fn unshaded(
+     n: f64,
+     (lo, hi): (f64, f64),
+     k: usize,
++    clear: f64,
+ ) -> (f64, f64, bool) {
+     let sgn = out_sign(side);
++    let mut deep_shade: Option<(f64, f64)> = None;
+     let (a, b) = if sgn > 0.0 {
+         (n, n + CHIP_SHADE)
+     } else {
+@@ -2092,10 +2106,15 @@ fn unshaded(
+         if !deep.get(ci).copied().unwrap_or(false) && (n1 + CHIP_SEP <= a || n0 - CHIP_SEP >= b) {
+             continue;
+         }
+-        let (c0, c1) = (t0 - CHIP_SEP, t1 + CHIP_SEP);
++        let (c0, c1) = (t0 - clear, t1 + clear);
+         if c1 <= lo || c0 >= hi {
+             continue;
+         }
++        if deep.get(ci).copied().unwrap_or(false) {
++            // (Strictly inside the chip's interval as `ortho` widens it,
++            // so every end there is displaced.)
++            deep_shade = Some((lo.max(t0 - CHIP_SEP), hi.min(t1 + CHIP_SEP)));
++        }
+         shaded = true;
+         free = free
+             .into_iter()
+@@ -2110,6 +2129,12 @@ fn unshaded(
+         .max_by(|x, y| (x.1 - x.0).total_cmp(&(y.1 - y.0)))
+     {
+         Some((p, q)) if shaded => (p, q, true),
++        // E3 (experiment): a title-row side whose free stretch cannot hold
++        // its ends puts them all under the chip, to be displaced together.
++        None if std::env::var_os("FMX3").is_some() && deep_shade.is_some_and(|(p, q)| q >= p) => {
++            let (p, q) = deep_shade.unwrap();
++            (p, q, true)
++        }
+         _ => (lo, hi, false),
+     }
+ }
+@@ -2871,14 +2896,14 @@ mod tests {
+         // Chip header over x 0..100, ending 10 px above a top side
+         // spanning x 50..250.
+         let heads = [(0.0, 0.0, 100.0, 20.0)];
+-        let (lo, hi, shaded) = unshaded(&heads, &[], Side::Top, 30.0, (58.0, 242.0), 2);
++        let (lo, hi, shaded) = unshaded(&heads, &[], Side::Top, 30.0, (58.0, 242.0), 2, CHIP_SEP);
+         assert!(shaded);
+         assert!(lo >= 100.0 + CHIP_SEP && hi == 242.0, "{lo} {hi}");
+         // Far below the chip: no shade.
+-        let (lo, hi, shaded) = unshaded(&heads, &[], Side::Top, 300.0, (58.0, 242.0), 2);
++        let (lo, hi, shaded) = unshaded(&heads, &[], Side::Top, 300.0, (58.0, 242.0), 2, CHIP_SEP);
+         assert!(!shaded && lo == 58.0 && hi == 242.0);
+         // No room past the chip for the ends: the side stays whole.
+-        let (lo, hi, _) = unshaded(&heads, &[], Side::Top, 30.0, (58.0, 110.0), 2);
++        let (lo, hi, _) = unshaded(&heads, &[], Side::Top, 30.0, (58.0, 110.0), 2, CHIP_SEP);
+         assert!(lo == 58.0 && hi == 110.0);
+     }
+ 
+diff --git a/src/router.rs b/src/router.rs
+index 675f769..84ef237 100644
+--- a/src/router.rs
++++ b/src/router.rs
+@@ -5352,6 +5352,42 @@ pub(crate) fn repair(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
+             }
+         }
+     }
++    if std::env::var_os("FMDBGR").is_some() {
++        for &(class, i) in &bad {
++            let e = &sc.edges[i];
++            let info = infos[i].as_ref().expect("filtered");
++            let mut hit = Vec::new();
++            for (f, &c) in w.chips.iter().enumerate() {
++                let own = [info.ends.0, info.ends.1].contains(&EndRef::Frame(f));
++                let gr = grow(c, if own { NODE_CLEARANCE } else { w.chip_reach });
++                if polys[i].windows(2).any(|s| !off_box(s[0], s[1], gr) && clip(s[0], s[1], gr).is_some()) {
++                    hit.push(format!("{}@({:.1},{:.1})-({:.1},{:.1})", sc.clusters[f].id, c.0, c.1, c.2, c.3));
++                }
++            }
++            eprintln!("REPAIR bad class={} {}->{} alone={:?} crossed={} chips={:?}", class, e.from, e.to, alone[i], crossed(i), hit);
++            if class == 1 {
++                let simple = simplify(&polys[i]);
++                for (fi, r) in w.frames.iter().enumerate() {
++                    let h = side_run(*r, &simple, &[]);
++                    if h > 0.0 { eprintln!("  HUGRUN frame {} {:.1}", sc.clusters[fi].id, h); }
++                }
++                for (vi, n) in w.nodes.iter().enumerate() {
++                    let h = side_run(n.0, &simple, &[]);
++                    if h > 0.0 { eprintln!("  HUGRUN node {} {:.1} box=({:.1},{:.1},{:.1},{:.1})", vi, h, n.0.0, n.0.1, n.0.2, n.0.3); }
++                }
++                for (fi, r) in w.frames.iter().enumerate() {
++                    for s2 in polys[i].windows(2) {
++                        if (s2[0].0 - s2[1].0).abs() < 1e-9 {
++                            for line in [r.0, r.2] {
++                                let d = (s2[0].0 - line).abs();
++                                if d < 12.5 { eprintln!("  HUG? frame {} x-line {:.9} seg x {:.9} d={:.12}", sc.clusters[fi].id, line, s2[0].0, d); }
++                            }
++                        }
++                    }
++                }
++            }
++        }
++    }
+     if bad.is_empty() {
+         return;
+     }
+diff --git a/src/scene.rs b/src/scene.rs
+index d3ee1af..d9ad218 100644
+--- a/src/scene.rs
++++ b/src/scene.rs
+@@ -3493,6 +3493,8 @@ pub(crate) fn scene_labelled(g: &Graph, sizes: &[(f64, f64)], labels: &[String])
+     };
+     // (A block layout's edge stages know which upstream edges are lanes.)
+     crate::edgepass::finish_blocks(g, &mut sc, blocks.as_deref());
++    crate::ortho::G3_SIDE.with(|c| c.borrow_mut().clear());
++    crate::ortho::G3_CHAIN.with(|c| c.borrow_mut().clear());
+     if blocks.is_some() && embrace_own_edges(g, &mut sc) {
+         crate::edgepass::refit(
+             &mut sc,
+@@ -4423,6 +4425,30 @@ fn scene_clustered(
+             }
+         }
+     }
++    if std::env::var("FMDBG_LBL").is_ok() {
++        let mut ys: Vec<f64> = sc.nodes.iter().map(|p| p.y).collect();
++        ys.sort_by(f64::total_cmp);
++        ys.dedup_by(|a, b| (*a - *b).abs() < 0.01);
++        eprintln!("LAYERS {:?}", ys.iter().map(|y| (y * 10.0).round() / 10.0).collect::<Vec<_>>());
++        for (ei, (ge, se)) in ga.edges.iter().zip(sc.edges.iter()).enumerate() {
++            let Some(lbl) = se.label.as_ref() else { continue };
++            let name = |v: usize| ga.nodes.get(v).map(|n| n.id.clone()).unwrap_or_default();
++            let common: Vec<usize> = node_cluster[ge.from]
++                .iter()
++                .zip(&node_cluster[ge.to])
++                .take_while(|(a, b)| a == b)
++                .map(|(a, _)| *a)
++                .collect();
++            let run = groups[ei].iter().filter(|p| p.as_slice() == common.as_slice()).count();
++            let slot = if groups[ei].is_empty() { usize::MAX } else { crate::layout::label_slot(&groups[ei], &common) };
++            eprintln!(
++                "LBL e{} {}>{} chain {} run {} slot {} at ({:.1},{:.1}) w {:.1} wps {:?} paths {:?} from_l {:.1} to_l {:.1}",
++                ei, name(ge.from), name(ge.to), groups[ei].len(), run, slot, lbl.1 .0, lbl.1 .1, lbl.2,
++                se.waypoints.iter().map(|p| ((p.0 * 10.0).round() / 10.0, (p.1 * 10.0).round() / 10.0)).collect::<Vec<_>>(),
++                groups[ei], sc.nodes.get(ge.from).map_or(-1.0, |n| n.y), sc.nodes.get(ge.to).map_or(-1.0, |n| n.y)
++            );
++        }
++    }
+     let horizontal = matches!(g.direction, Direction::LR | Direction::RL);
+ 
+     // Wrap boxes around the laid-out members, then widen each box to
+@@ -4483,9 +4509,14 @@ fn scene_clustered(
+                     let inside =
+                         home || path.contains(&si) && !cut.iter().any(|c| path.contains(c));
+                     let (wb, wl) = if horizontal { (wy, wx) } else { (wx, wy) };
++                    let pad = if block_paths.is_some() && std::env::var_os("FMX2").is_some() {
++                        LANE_PAD + 0.5
++                    } else {
++                        LANE_PAD
++                    };
+                     if inside && wl >= l0 && wl <= l1 {
+-                        b0 = b0.min(wb - LANE_PAD);
+-                        b1 = b1.max(wb + LANE_PAD);
++                        b0 = b0.min(wb - pad);
++                        b1 = b1.max(wb + pad);
+                     }
+                 }
+             }
+@@ -4663,6 +4694,56 @@ fn scene_clustered(
+         }
+     }
+ 
++    // G3 PROTOTYPE: a gap label goes to the band the layout reserved for
++    // it, on its upper (top band) or lower (bottom band) leg; the ortho
++    // stage keeps the gap's tracks off it (`crate::ortho`).
++    let mut g3_side: Vec<Option<bool>> = vec![None; sc.edges.len()];
++    let g3_off = std::env::var_os("FM_G3_OFF").is_some();
++    if block_paths.is_some() && matches!(g.direction, Direction::TD) && !g3_off {
++        let at = crate::layout::G3_AT.with(|c| std::mem::take(&mut *c.borrow_mut()));
++        // Scene index per augmented edge.
++        let mut idx: Vec<Option<usize>> = (0..ga.edges.len()).map(|ei| (ei < ne).then_some(ei)).collect();
++        let id_of = |end: End| -> String {
++            match end {
++                End::Node(v) => g.nodes[v].id.clone(),
++                End::Sub(si) => g.subgraphs[si].id.clone(),
++            }
++        };
++        let mut k = ne;
++        for (i, e) in g.sub_edges.iter().enumerate() {
++            if k < sc.edges.len() && sc.edges[k].from == id_of(e.from) && sc.edges[k].to == id_of(e.to) {
++                if let Some(ei) = stand_in[i] {
++                    if ei < idx.len() {
++                        idx[ei] = Some(k);
++                    }
++                }
++                k += 1;
++            }
++        }
++        let slid = crate::layout::G3_SLID.with(|c| std::mem::take(&mut *c.borrow_mut()));
++        let mut chain_rows = vec![false; sc.edges.len()];
++        for (ei, a) in slid.iter().enumerate() {
++            let (Some((b, l)), Some(Some(si))) = (*a, idx.get(ei)) else { continue };
++            if let Some(lbl) = sc.edges[*si].label.as_mut() {
++                lbl.1 = (b, l);
++                chain_rows[*si] = true;
++            }
++        }
++        // (Every chain label on its dummy row keeps the tracks off.)
++        for ei in 0..ne.min(sc.edges.len()) {
++            if sc.edges[ei].label.is_some() && !groups[ei].is_empty() && at.get(ei).map_or(true, |a| a.is_none()) {
++                chain_rows[ei] = true;
++            }
++        }
++        crate::ortho::G3_CHAIN.with(|c| *c.borrow_mut() = chain_rows);
++        for (ei, a) in at.iter().enumerate() {
++            let (Some((top, b, l)), Some(Some(si))) = (*a, idx.get(ei)) else { continue };
++            if let Some(lbl) = sc.edges[*si].label.as_mut() {
++                lbl.1 = (b, l);
++                g3_side[*si] = Some(top);
++            }
++        }
++    }
+     // Labels last, once every edge (sub-edges too) is drawn.
+     let moved = avoid_label_overlaps(&sc.nodes, &sc.clusters, &mut sc.edges, LABEL_STATIC_WORK);
+     fit_moved_labels(&mut sc, &moved);
+@@ -4680,6 +4761,7 @@ fn scene_clustered(
+         sc.width = (maxx - minx) + 2.0 * MARGIN;
+         sc.height = (maxy - miny) + 2.0 * MARGIN;
+     }
++    crate::ortho::G3_SIDE.with(|c| *c.borrow_mut() = if g3_off { Vec::new() } else { g3_side });
+     (sc, block_paths)
+ }
+ 
+@@ -6653,8 +6735,13 @@ fn frame_boxes(
+         // the members under it keep the places F2 counted them at. (A
+         // frame grown to its title is not grown for them: its title
+         // row's entries still go round, see `title_column_width`.)
+-        let cols = if title_fit && !bound[i] {
+-            title_column_width(&g.subgraphs[i].title, jog_entries(jog))
++        let x7b = std::env::var_os("FMX7").is_some() && bound[i];
++        let x6 = std::env::var_os("FMX6").is_some() || x7b;
++        let k7 = jog_entries(if x7b && jog > 0.0 { jog - crate::router::CORNER_R } else { jog });
++        let cols = if title_fit && (!bound[i] || x6) {
++            (title_column_width(&g.subgraphs[i].title, k7)
++                - if x7b && k7 > 0 && jog > 0.0 { crate::router::CORNER_R } else { 0.0 })
++            .max(0.0)
+         } else {
+             0.0
+         };
+@@ -6898,7 +6985,12 @@ fn route_title_jogs(g: &Graph, nodes: &[SceneNode], f1: &[RawBox], bound: &[bool
+             }
+         }
+         if k > 0 {
+-            jog[c] = crate::ortho::ROW_CLEAR + (k - 1) as f64 * crate::ortho::TRACK_PITCH;
++            jog[c] = crate::ortho::ROW_CLEAR + (k - 1) as f64 * crate::ortho::TRACK_PITCH
++                + if std::env::var_os("FMX7").is_some() && bound.get(c).copied().unwrap_or(false) {
++                    crate::router::CORNER_R
++                } else {
++                    0.0
++                };
+         }
+     }
+     jog
+diff --git a/tests/fixtures/blocks/twoway-noted.mmd b/tests/fixtures/blocks/twoway-noted.mmd
+new file mode 100644
+index 0000000..c394734
+--- /dev/null
++++ b/tests/fixtures/blocks/twoway-noted.mmd
+@@ -0,0 +1,14 @@
++stateDiagram-v2
++direction LR
++state K0 {
++  [*] --> a
++}
++state K1 {
++  direction TB
++  [*] --> b
++  b --> c : t1
++}
++K0 --> K1
++K1 --> K0 : back
++note left of K1 : one
++note left of K1 : two
+diff --git a/tests/fixtures/identity.tsv b/tests/fixtures/identity.tsv
+index 7bb271f..c26e9a1 100644
+--- a/tests/fixtures/identity.tsv
++++ b/tests/fixtures/identity.tsv
+@@ -89,6 +89,7 @@ tests/fixtures/blocks/t9c-frames-8px-two-way.mmd	a1e15d267510e536	12c91ee9c9d103
+ tests/fixtures/blocks/title-entry.mmd	4874310285f9504b	c58b81fd8b78739c	a16ed42d710fc0a9	blocks
+ tests/fixtures/blocks/title-hidden.mmd	20aefe8c0bde2ce4	9ea4bf5676932ea5	f3eec23a1ce597ec	blocks
+ tests/fixtures/blocks/turned-blocks.mmd	d77f14477ba8afc7	72633b6838ba71ae	7c4fa37bb36654b9	blocks
++tests/fixtures/blocks/twoway-noted.mmd	97f3b3acf179bb13	2ebf8a501a52edbd	9af2a3a1de5c6a97	blocks
+ tests/fixtures/blocks/wide-stroke.mmd	a8d6f148856157f2	79f6ebc7540e57b6	b9e1b7ce9facc3e5	blocks
+ tests/fixtures/fans/fan011.mmd	5ae7819cbc5bcc15	bd7a95193261abbf	6a5b6b0462bd1379	flat
+ tests/fixtures/fans/fan020.mmd	cce47bc38add99be	aa621f510c5db469	18a6460ac1d22373	flat
+diff --git a/tests/quality.rs b/tests/quality.rs
+index 91c788b..aa88d45 100644
+--- a/tests/quality.rs
++++ b/tests/quality.rs
+@@ -254,6 +254,7 @@ const BLOCK_CEILINGS: &[(&str, BlockCeil, BlockCeil)] = &[
+     ("blocks/title-entry", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+     ("blocks/title-hidden", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+     ("blocks/turned-blocks", (0, 0, 0, 4, 0), (0, 0, 0, 5, 0)),
++    ("blocks/twoway-noted", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+     ("blocks/wide-stroke", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+ ];
+ 

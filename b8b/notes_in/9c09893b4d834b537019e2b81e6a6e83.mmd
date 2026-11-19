@@ -1,0 +1,17 @@
+stateDiagram-v2
+state c <<choice>>
+[*] --> Hub
+Hub --> c
+c --> A : alpha
+c --> B : beta
+c --> C : gamma
+c --> D : delta
+c --> E : epsilon
+c --> F : zeta
+c --> G : eta
+c --> H : theta
+note right of Hub : the hub
+note left of A : a note
+note right of D : d note
+note left of H : h note
+note right of c : choice note

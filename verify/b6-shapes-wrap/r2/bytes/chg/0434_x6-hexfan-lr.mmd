@@ -1,0 +1,15 @@
+flowchart LR
+    A[a] --> X{{Router}}
+    B[b] --> X
+    C[c] --> X
+    D[d] --> X
+    E[e] --> X
+    X --> P1[/out one/]
+    X --> P2[/out two/]
+    X --> P3[/out three/]
+    X --> P4[/out four/]
+    X --> P5[/out five/]
+    P1 & P2 & P3 --> Z[(Sink)]
+    P4 & P5 --> Z
+    Z --> Z
+    X --> X

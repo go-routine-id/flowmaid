@@ -1,0 +1,95 @@
+diff --git a/src/scene.rs b/src/scene.rs
+index d3ee1af..07eb053 100644
+--- a/src/scene.rs
++++ b/src/scene.rs
+@@ -4497,18 +4497,12 @@ fn scene_clustered(
+             });
+         }
+         renest_boxes(g, &depth, &mut boxes);
+-        // A frame F1 grew to its title stays title-bound only while what
+-        // it covers besides (the channels inside it) leaves it no broader
+-        // than the frame function made it (its title, and the columns of
+-        // its displaced entries past the chip): a broader one keeps the
+-        // estimate every frame has.
+-        let mut bound = bound;
+-        for (si, b) in bound.iter_mut().enumerate() {
+-            if let (Some((_, _, w, _)), Some((_, _, w0, _))) = (boxes[si], raw[si]) {
+-                *b = *b && w <= w0 + TITLE_BOUND_EPS;
+-            }
+-        }
+-        let out = clusters_of(g, &boxes, &depth, &bound);
++        // In a block layout every title is measured as it is drawn, bold
++        // ([`SceneCluster::bold_title`]); `bound` (F1 grew the frame to
++        // its title) only counted the jog room above.
++        let _ = bound;
++        let bold = vec![block_paths.is_some(); g.subgraphs.len()];
++        let out = clusters_of(g, &boxes, &depth, &bold);
+         frames = boxes;
+         out
+     };
+@@ -6244,9 +6238,6 @@ fn keep_inner_room(
+         };
+         let (ob0, ob1, ol0, ol1) = span(o);
+         let (fb0, fb1, fl0, fl1) = span(&clusters[k]);
+-        // (The frame function's width: a title-bound frame stays so while
+-        // the room kept below leaves it no broader.)
+-        let w0 = clusters[k].w;
+         let (mut b0, mut b1) = (fb0, fb1);
+         for (i, e) in edges.iter().enumerate() {
+             if !kept.get(i).copied().unwrap_or(false) {
+@@ -6286,9 +6277,7 @@ fn keep_inner_room(
+         } else {
+             (c.x, c.w) = (b0, b1 - b0);
+         }
+-        if c.bold_title {
+-            c.bold_title = c.w <= w0 + TITLE_BOUND_EPS;
+-        }
++
+     }
+ }
+ 
+@@ -6492,11 +6481,6 @@ fn cluster_raw_boxes(g: &Graph, nodes: &[SceneNode]) -> (Vec<RawBox>, Vec<usize>
+     (boxes, depth)
+ }
+ 
+-/// How much broader (px) than its title a frame F1 grew to it may end
+-/// up and still count as title-bound ([`SceneCluster::bold_title`]):
+-/// float noise of the wrap, far below any channel's [`LANE_PAD`].
+-const TITLE_BOUND_EPS: f64 = 0.5;
+-
+ /// The least width (px, on screen) of a block's frame in a block
+ /// layout (B12 F1, F2): its title as it is drawn, bold
+ /// ([`crate::layout::bold_text_width`]), with the chip's pad and a
+@@ -6745,18 +6729,7 @@ fn route_lane_clusters(
+         });
+     }
+     renest_boxes(g, depth, &mut boxes);
+-    // A frame F1 grew to its title stays title-bound only while what it
+-    // covers besides leaves it no broader than the frame function made
+-    // it, as in `scene_clustered`.
+-    let bound: Vec<bool> = bound
+-        .iter()
+-        .zip(&boxes)
+-        .zip(raw)
+-        .map(|((&b, f), f0)| {
+-            b && matches!((f, f0), (Some((_, _, w, _)), Some((_, _, w0, _))) if *w <= *w0 + TITLE_BOUND_EPS)
+-        })
+-        .collect();
+-    clusters_of(g, &boxes, depth, &bound)
++    clusters_of(g, &boxes, depth, bound)
+ }
+ 
+ /// The frames [`route_built`] starts from, per subgraph: its box, its
+@@ -6788,7 +6761,11 @@ fn route_frame_base(g: &Graph, nodes: &[SceneNode], blocks: bool) -> FrameBase {
+     }
+     let (f1, _, bound) = frame_boxes(g, nodes, &[], true);
+     let jog = route_title_jogs(g, nodes, &f1, &bound);
+-    frame_boxes(g, nodes, &jog, true)
++    let (boxes, depth, _) = frame_boxes(g, nodes, &jog, true);
++    // Every title measured as drawn, bold, as `scene_clustered` measures
++    // a block layout's ([`SceneCluster::bold_title`]).
++    let bold = vec![true; boxes.len()];
++    (boxes, depth, bold)
+ }
+ 
+ /// The jog room of each block's frame in [`route`] and [`route_partial`]

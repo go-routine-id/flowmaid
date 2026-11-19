@@ -1,0 +1,30 @@
+== def-1 18:57:40 rustc=0 load=1.21
+quality/dense-lr: route_partial worst 7.06 ms (node 40), 5 frames over 6 ms
+quality/dense-td: route_partial worst 9.56 ms (node 17), 5 frames over 6 ms
+quality/bench-75: route_partial worst 8.56 ms (node 12), 12 frames over 6 ms
+blocks/blocks-overview: route_partial worst 4.54 ms (node 12), 0 frames over 6 ms
+== on-1 18:57:54 rustc=0 load=1.16
+quality/dense-lr: route_partial worst 7.99 ms (node 14), 5 frames over 6 ms
+quality/dense-td: route_partial worst 9.95 ms (node 8), 48 frames over 6 ms
+quality/bench-75: route_partial worst 7.64 ms (node 8), 4 frames over 6 ms
+blocks/blocks-overview: route_partial worst 4.14 ms (node 20), 0 frames over 6 ms
+== rl-1 18:58:09 rustc=0 load=1.12
+quality/dense-lr: route_partial worst 5.81 ms (node 46), 0 frames over 6 ms
+quality/dense-td: route_partial worst 9.76 ms (node 26), 41 frames over 6 ms
+quality/bench-75: route_partial worst 8.27 ms (node 14), 9 frames over 6 ms
+blocks/blocks-overview: route_partial worst 4.05 ms (node 9), 0 frames over 6 ms
+== def-2 18:58:23 rustc=0 load=1.10
+quality/dense-lr: route_partial worst 6.18 ms (node 14), 1 frames over 6 ms
+quality/dense-td: route_partial worst 6.67 ms (node 17), 6 frames over 6 ms
+quality/bench-75: route_partial worst 7.63 ms (node 10), 13 frames over 6 ms
+blocks/blocks-overview: route_partial worst 4.45 ms (node 12), 0 frames over 6 ms
+== on-2 18:58:36 rustc=0 load=1.08
+quality/dense-lr: route_partial worst 7.51 ms (node 5), 5 frames over 6 ms
+quality/dense-td: route_partial worst 10.30 ms (node 44), 46 frames over 6 ms
+quality/bench-75: route_partial worst 7.97 ms (node 10), 12 frames over 6 ms
+blocks/blocks-overview: route_partial worst 4.35 ms (node 11), 0 frames over 6 ms
+== rl-2 18:58:52 rustc=0 load=1.06
+quality/dense-lr: route_partial worst 6.37 ms (node 37), 4 frames over 6 ms
+quality/dense-td: route_partial worst 8.54 ms (node 4), 46 frames over 6 ms
+quality/bench-75: route_partial worst 9.65 ms (node 2), 17 frames over 6 ms
+blocks/blocks-overview: route_partial worst 3.47 ms (node 20), 0 frames over 6 ms

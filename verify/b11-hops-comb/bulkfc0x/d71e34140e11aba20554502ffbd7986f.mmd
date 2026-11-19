@@ -1,0 +1,16 @@
+flowchart LR
+    A[Plain] --> B[Thick]
+    B ==> C[Dotted]
+    C -.-> D[Two-way]
+    D <--> E[Cross]
+    E --x F[Circle]
+    F --o G[Wide]
+    G --> H[Coloured]
+    H --> I[Linear]
+    I e1@--> J[Step]
+    J --> K[End]
+    A ==> K
+    linkStyle 6 stroke-width:8px
+    linkStyle 7 stroke:#e11d48,stroke-width:3px
+    linkStyle 9 interpolate stepBefore
+    e1@{ curve: linear }

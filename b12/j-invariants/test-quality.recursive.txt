@@ -1,0 +1,664 @@
+   Compiling flowmaid v0.38.0 (/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/j-invariants/tree-recursive)
+    Finished `release` profile [optimized] target(s) in 1.59s
+     Running tests/quality.rs (/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/target-j-invariants/release/deps/quality-871fbc7f35609a50)
+
+running 13 tests
+test a_one_px_drag_leaves_unrelated_edges_put ... FAILED
+test edge_line_order_barely_moves_the_dense_layouts ... ok
+test channels_keep_edges_apart_and_off_chips ... FAILED
+test every_fixture_has_a_ceiling ... ok
+test crossing_gaps_do_not_read_as_dashes ... FAILED
+test defect_baseline_gate ... FAILED
+test every_shape_end_sits_on_its_outline ... ok
+test long_labels_wrap_and_dense_labels_do_not_tower ... ok
+test moving_a_node_declaration_barely_moves_dense_td ... FAILED
+test edges_keep_off_frame_borders ... FAILED
+test layout_shape_gate ... ok
+test labels_cover_nothing_they_must_not ... FAILED
+test quality_gate ... FAILED
+
+failures:
+
+---- a_one_px_drag_leaves_unrelated_edges_put stdout ----
+quality/dense-lr: 11 drag jumps
+quality/dense-td: 9 drag jumps
+quality/bench-75: 67 drag jumps
+notes/spread-face: 374 drag jumps
+notes/fork-twins: 0 drag jumps
+notes/near-drag: 0 drag jumps
+
+thread 'a_one_px_drag_leaves_unrelated_edges_put' (13389) panicked at tests/quality.rs:1029:5:
+quality/dense-lr: 11 > 0 drag jumps
+  drag n26: n12 -> n30 34.4
+  drag n27: n12 -> n30 34.4
+  drag n28: n26 -> n47 59.6
+  drag n29: n26 -> n47 59.6
+  drag n30: n26 -> n47 59.6
+  drag n33: n12 -> n30 34.4
+  drag n36: n12 -> n30 34.4
+  drag n38: n12 -> n30 26.8
+  drag n43: n12 -> n22 28.3
+  drag n44: n12 -> n22 42.3
+  drag n46: n12 -> n22 28.3
+quality/dense-td: 9 > 5 drag jumps
+  drag n9: n8 -> n42 84.9
+  drag n10: n8 -> n42 84.9
+  drag n12: n8 -> n42 84.9
+  drag n13: n8 -> n42 84.9
+  drag n14: n8 -> n42 84.9
+  drag n15: n8 -> n42 84.9
+  drag n38: n11 -> n37 35.7
+  drag n38: n20 -> n37 119.5
+  drag n43: n38 -> n39 44.0
+quality/bench-75: 67 > 16 drag jumps
+  drag user: svc1 -> db 36.2
+  drag user: svc4 -> db 36.4
+  drag ext: svc1 -> db 36.2
+  drag ext: svc4 -> db 36.4
+  drag gw: svc1 -> db 36.2
+  drag gw: svc4 -> db 36.4
+  drag lb: svc1 -> db 36.2
+  drag lb: svc4 -> db 36.4
+  drag lb: gw -> logs 29.1
+  drag svc1: svc2 -> cache 54.3
+  drag svc1: svc3 -> cache 46.4
+  drag svc1: svc4 -> db 36.4
+  drag svc1: svc5 -> db 37.1
+  drag svc1: svc6 -> queue 34.4
+  drag svc1: svc3 -> logs 37.6
+  drag svc2: svc1 -> db 33.5
+  drag svc2: svc3 -> cache 46.4
+  drag svc2: svc4 -> db 30.1
+  drag svc2: svc5 -> db 23.8
+  drag svc2: svc1 -> objects 38.7
+  drag svc2: svc3 -> logs 37.6
+  drag svc3: svc1 -> db 33.5
+  drag svc3: svc2 -> cache 42.2
+  drag svc3: svc4 -> db 36.4
+  drag svc3: svc1 -> objects 52.6
+  drag svc4: svc3 -> cache 46.4
+  drag svc4: svc5 -> db 23.8
+  drag svc4: svc1 -> objects 38.7
+  drag svc5: svc2 -> cache 54.3
+  drag svc5: svc3 -> cache 46.4
+  drag svc5: svc1 -> objects 38.7
+  drag svc5: svc3 -> logs 37.6
+  drag svc5: job1 -> ext 30.0
+  drag svc6: svc1 -> db 33.5
+  drag svc6: svc2 -> cache 54.3
+  drag svc6: svc3 -> cache 46.4
+  drag svc6: svc4 -> db 36.4
+  drag svc6: svc1 -> objects 38.7
+  drag svc6: svc3 -> logs 32.2
+  drag svc6: job1 -> ext 30.0
+  drag db: svc1 -> objects 38.7
+  drag cache: svc4 -> db 36.4
+  drag cache: svc1 -> objects 38.7
+  drag queue: svc1 -> db 33.5
+  drag queue: svc4 -> db 36.4
+  drag queue: svc1 -> objects 49.5
+  drag objects: svc1 -> cache 28.0
+  drag objects: svc4 -> db 36.4
+  drag objects: queue -> job2 44.2
+  drag logs: svc1 -> db 36.2
+  drag logs: svc4 -> db 36.4
+  drag metrics: svc1 -> db 36.2
+  drag metrics: svc4 -> db 36.4
+  drag alerts: svc1 -> db 36.2
+  drag alerts: svc4 -> db 36.4
+  drag dash: svc1 -> db 36.2
+  drag dash: svc4 -> db 36.4
+  drag dash: job1 -> ext 30.0
+  drag job1: svc1 -> db 36.2
+  drag job1: svc4 -> db 36.4
+  drag job2: svc1 -> db 36.2
+  drag job2: svc4 -> db 36.4
+  drag job2: job1 -> ext 29.0
+  drag job2: job1 -> svc1 29.1
+  drag job3: svc1 -> db 36.2
+  drag job3: svc4 -> db 36.4
+  drag job3: job1 -> svc1 29.1
+notes/spread-face: 374 > 0 drag jumps
+  drag __start_root: K2N_0 -> K2N_1 22.3
+  drag __start_root: K2NN_0 -> K2NN_f 20.2
+  drag __start_root: K2N_1 -> K2NN_1 29.4
+  drag __start_root: K2N_0 -> K2N_f 123.0
+  drag __start_root: K2N_f -> K2N_1 135.3
+  drag __start_root: K2N_f -> K2NN_1 42.7
+  drag __start_root: K2_f -> K2NN_2 145.5
+  drag __start_root: K2_f -> K2NN_2 192.2
+  drag __start_root: __note_27 -> K2N_1 22.5
+  drag __start_root: K2NN_0 -> __end_2 37.3
+  drag __start_root: K2N_0 -> B0 37.9
+  drag A: K2N_0 -> K2N_1 22.3
+  drag A: K2NN_0 -> K2NN_f 20.2
+  drag A: K2N_1 -> K2NN_1 29.4
+  drag A: K2N_0 -> K2N_f 123.0
+  drag A: K2N_f -> K2N_1 135.3
+  drag A: K2N_f -> K2NN_1 42.7
+  drag A: K2_f -> K2NN_2 145.5
+  drag A: K2_f -> K2NN_2 192.2
+  drag A: __note_27 -> K2N_1 22.5
+  drag A: K2NN_0 -> __end_2 37.3
+  drag A: K2N_0 -> B0 37.9
+  drag __start_0: K2N_0 -> K2N_1 22.3
+  drag __start_0: K2NN_0 -> K2NN_f 20.2
+  drag __start_0: K2N_1 -> K2NN_1 29.4
+  drag __start_0: K2N_0 -> K2N_f 123.0
+  drag __start_0: K2N_f -> K2N_1 135.3
+  drag __start_0: K2N_f -> K2NN_1 42.7
+  drag __start_0: K2_f -> K2NN_2 145.5
+  drag __start_0: K2_f -> K2NN_2 192.2
+  drag __start_0: __note_27 -> K2N_1 22.5
+  drag __start_0: K2NN_0 -> __end_2 37.3
+  drag __start_0: K2N_0 -> B0 37.9
+  drag K0_0: K2N_0 -> K2N_1 22.3
+  drag K0_0: K2NN_0 -> K2NN_f 20.2
+  drag K0_0: K2N_1 -> K2NN_1 29.4
+  drag K0_0: K2N_0 -> K2N_f 123.0
+  drag K0_0: K2N_f -> K2N_1 135.3
+  drag K0_0: K2N_f -> K2NN_1 42.7
+  drag K0_0: K2_f -> K2NN_2 145.5
+  drag K0_0: K2_f -> K2NN_2 192.2
+  drag K0_0: __note_27 -> K2N_1 22.5
+  drag K0_0: K2NN_0 -> __end_2 37.3
+  drag K0_0: K2N_0 -> B0 37.9
+  drag K0_1: K2N_0 -> K2N_1 22.3
+  drag K0_1: K2NN_0 -> K2NN_f 20.2
+  drag K0_1: K2N_1 -> K2NN_1 29.4
+  drag K0_1: K2N_0 -> K2N_f 123.0
+  drag K0_1: K2N_f -> K2N_1 135.3
+  drag K0_1: K2N_f -> K2NN_1 42.7
+  drag K0_1: K2_f -> K2NN_2 145.5
+  drag K0_1: K2_f -> K2NN_2 192.2
+  drag K0_1: __note_27 -> K2N_1 22.5
+  drag K0_1: K2NN_0 -> __end_2 37.3
+  drag K0_1: K2N_0 -> B0 37.9
+  drag __note_5: K2N_0 -> K2N_1 22.3
+  drag __note_5: K2NN_0 -> K2NN_f 20.2
+  drag __note_5: K2N_1 -> K2NN_1 29.4
+  drag __note_5: K2N_0 -> K2N_f 123.0
+  drag __note_5: K2N_f -> K2N_1 135.3
+  drag __note_5: K2N_f -> K2NN_1 42.7
+  drag __note_5: K2_f -> K2NN_2 145.5
+  drag __note_5: K2_f -> K2NN_2 192.2
+  drag __note_5: __note_27 -> K2N_1 22.5
+  drag __note_5: K2NN_0 -> __end_2 37.3
+  drag __note_5: K2N_0 -> B0 37.9
+  drag __start_1: K2N_0 -> K2N_1 22.3
+  drag __start_1: K2NN_0 -> K2NN_f 20.2
+  drag __start_1: K2N_1 -> K2NN_1 29.4
+  drag __start_1: K2N_0 -> K2N_f 123.0
+  drag __start_1: K2N_f -> K2N_1 135.3
+  drag __start_1: K2N_f -> K2NN_1 42.7
+  drag __start_1: K2_f -> K2NN_2 145.5
+  drag __start_1: K2_f -> K2NN_2 192.2
+  drag __start_1: __note_27 -> K2N_1 22.5
+  drag __start_1: K2NN_0 -> __end_2 37.3
+  drag __start_1: K2N_0 -> B0 37.9
+  drag K1_0: K2N_0 -> K2N_1 22.3
+  drag K1_0: K2NN_0 -> K2NN_f 20.2
+  drag K1_0: K2N_1 -> K2NN_1 29.4
+  drag K1_0: K2N_0 -> K2N_f 123.0
+  drag K1_0: K2N_f -> K2N_1 135.3
+  drag K1_0: K2N_f -> K2NN_1 42.7
+  drag K1_0: K2_f -> K2NN_2 145.5
+  drag K1_0: K2_f -> K2NN_2 192.2
+  drag K1_0: __note_27 -> K2N_1 22.5
+  drag K1_0: K2NN_0 -> __end_2 37.3
+  drag K1_0: K2N_0 -> B0 37.9
+  drag K1_1: K2N_0 -> K2N_1 22.3
+  drag K1_1: K2NN_0 -> K2NN_f 20.2
+  drag K1_1: K2N_1 -> K2NN_1 29.4
+  drag K1_1: K2N_0 -> K2N_f 123.0
+  drag K1_1: K2N_f -> K2N_1 135.3
+  drag K1_1: K2N_f -> K2NN_1 42.7
+  drag K1_1: K2_f -> K2NN_2 145.5
+  drag K1_1: K2_f -> K2NN_2 192.2
+  drag K1_1: __note_27 -> K2N_1 22.5
+  drag K1_1: K2NN_0 -> __end_2 37.3
+  drag K1_1: K2N_0 -> B0 37.9
+  drag K1_c: K2N_0 -> K2N_1 22.3
+  drag K1_c: K2NN_0 -> K2NN_f 20.2
+  drag K1_c: K2N_1 -> K2NN_1 29.4
+  drag K1_c: K2N_0 -> K2N_f 123.0
+  drag K1_c: K2N_f -> K2N_1 135.3
+  drag K1_c: K2N_f -> K2NN_1 42.7
+  drag K1_c: K2_f -> K2NN_2 145.5
+  drag K1_c: K2_f -> K2NN_2 192.2
+  drag K1_c: __note_27 -> K2N_1 22.5
+  drag K1_c: K2NN_0 -> __end_2 37.3
+  drag K1_c: K2N_0 -> B0 37.9
+  drag __note_10: K2N_0 -> K2N_1 22.3
+  drag __note_10: K2NN_0 -> K2NN_f 20.2
+  drag __note_10: K2N_1 -> K2NN_1 29.4
+  drag __note_10: K2N_0 -> K2N_f 123.0
+  drag __note_10: K2N_f -> K2N_1 135.3
+  drag __note_10: K2N_f -> K2NN_1 42.7
+  drag __note_10: K2_f -> K2NN_2 145.5
+  drag __note_10: K2_f -> K2NN_2 192.2
+  drag __note_10: __note_27 -> K2N_1 22.5
+  drag __note_10: K2NN_0 -> __end_2 37.3
+  drag __note_10: K2N_0 -> B0 37.9
+  drag __start_2: K2N_0 -> K2N_1 22.3
+  drag __start_2: K2NN_0 -> K2NN_f 20.2
+  drag __start_2: K2N_1 -> K2NN_1 29.4
+  drag __start_2: K2N_0 -> K2N_f 123.0
+  drag __start_2: K2N_f -> K2N_1 135.3
+  drag __start_2: K2N_f -> K2NN_1 42.7
+  drag __start_2: K2_f -> K2NN_2 145.5
+  drag __start_2: K2_f -> K2NN_2 192.2
+  drag __start_2: __note_27 -> K2N_1 22.5
+  drag __start_2: K2NN_0 -> __end_2 37.3
+  drag __start_2: K2N_0 -> B0 37.9
+  drag K2_0: K2N_0 -> K2N_1 22.3
+  drag K2_0: K2NN_0 -> K2NN_f 20.2
+  drag K2_0: K2N_1 -> K2NN_1 29.4
+  drag K2_0: K2N_0 -> K2N_f 123.0
+  drag K2_0: K2N_f -> K2N_1 135.3
+  drag K2_0: K2N_f -> K2NN_1 42.7
+  drag K2_0: K2_f -> K2NN_2 145.5
+  drag K2_0: K2_f -> K2NN_2 192.2
+  drag K2_0: __note_27 -> K2N_1 22.5
+  drag K2_0: K2NN_0 -> __end_2 37.3
+  drag K2_0: K2N_0 -> B0 37.9
+  drag K2_1: K2N_0 -> K2N_1 22.3
+  drag K2_1: K2NN_0 -> K2NN_f 20.2
+  drag K2_1: K2N_1 -> K2NN_1 29.4
+  drag K2_1: K2N_0 -> K2N_f 123.0
+  drag K2_1: K2N_f -> K2N_1 135.3
+  drag K2_1: K2N_f -> K2NN_1 42.7
+  drag K2_1: K2_f -> K2NN_2 145.5
+  drag K2_1: K2_f -> K2NN_2 192.2
+  drag K2_1: __note_27 -> K2N_1 22.5
+  drag K2_1: K2NN_0 -> __end_2 37.3
+  drag K2_1: K2N_0 -> B0 37.9
+  drag K2_2: K2N_0 -> K2N_1 22.3
+  drag K2_2: K2NN_0 -> K2NN_f 20.2
+  drag K2_2: K2N_1 -> K2NN_1 29.4
+  drag K2_2: K2N_0 -> K2N_f 123.0
+  drag K2_2: K2N_f -> K2N_1 135.3
+  drag K2_2: K2N_f -> K2NN_1 42.7
+  drag K2_2: K2_f -> K2NN_2 145.5
+  drag K2_2: K2_f -> K2NN_2 192.2
+  drag K2_2: __note_27 -> K2N_1 22.5
+  drag K2_2: K2NN_0 -> __end_2 37.3
+  drag K2_2: K2N_0 -> B0 37.9
+  drag __start_3: K2N_0 -> K2N_1 22.3
+  drag __start_3: K2NN_0 -> K2NN_f 20.2
+  drag __start_3: K2N_1 -> K2NN_1 29.4
+  drag __start_3: K2N_0 -> K2N_f 123.0
+  drag __start_3: K2N_f -> K2N_1 135.3
+  drag __start_3: K2N_f -> K2NN_1 42.7
+  drag __start_3: K2_f -> K2NN_2 145.5
+  drag __start_3: K2_f -> K2NN_2 192.2
+  drag __start_3: __note_27 -> K2N_1 22.5
+  drag __start_3: K2NN_0 -> __end_2 37.3
+  drag __start_3: K2N_0 -> B0 37.9
+  drag K2N_0: K2NN_0 -> K2NN_f 20.2
+  drag K2N_0: K2N_1 -> K2NN_1 29.4
+  drag K2N_0: K2N_f -> K2N_1 135.3
+  drag K2N_0: K2N_f -> K2NN_1 42.7
+  drag K2N_0: K2_f -> K2NN_2 145.5
+  drag K2N_0: K2_f -> K2NN_2 192.2
+  drag K2N_0: __note_27 -> K2N_1 22.5
+  drag K2N_0: K2NN_0 -> __end_2 37.3
+  drag K2N_1: K2NN_0 -> K2NN_f 20.2
+  drag K2N_1: K2N_0 -> K2N_f 123.0
+  drag K2N_1: K2N_f -> K2NN_1 42.7
+  drag K2N_1: K2_f -> K2NN_2 145.5
+  drag K2N_1: K2_f -> K2NN_2 192.2
+  drag K2N_1: K2NN_0 -> __end_2 37.3
+  drag K2N_1: K2N_0 -> B0 37.9
+  drag K2N_2: K2N_0 -> K2N_1 22.3
+  drag K2N_2: K2NN_0 -> K2NN_f 20.2
+  drag K2N_2: K2N_1 -> K2NN_1 29.4
+  drag K2N_2: K2N_0 -> K2N_f 123.0
+  drag K2N_2: K2N_f -> K2N_1 135.3
+  drag K2N_2: K2N_f -> K2NN_1 42.7
+  drag K2N_2: K2_f -> K2NN_2 145.5
+  drag K2N_2: K2_f -> K2NN_2 192.2
+  drag K2N_2: __note_27 -> K2N_1 22.5
+  drag K2N_2: K2NN_0 -> __end_2 37.3
+  drag K2N_2: K2N_0 -> B0 37.9
+  drag __start_4: K2N_0 -> K2N_1 22.3
+  drag __start_4: K2NN_0 -> K2NN_f 20.2
+  drag __start_4: K2N_1 -> K2NN_1 29.4
+  drag __start_4: K2N_0 -> K2N_f 123.0
+  drag __start_4: K2N_f -> K2N_1 135.3
+  drag __start_4: K2N_f -> K2NN_1 41.7
+  drag __start_4: K2_f -> K2NN_2 145.5
+  drag __start_4: K2_f -> K2NN_2 192.2
+  drag __start_4: __note_27 -> K2N_1 22.5
+  drag __start_4: K2NN_0 -> __end_2 37.3
+  drag __start_4: K2N_0 -> B0 37.9
+  drag K2NN_0: K2N_0 -> K2N_1 22.3
+  drag K2NN_0: K2N_1 -> K2NN_1 29.4
+  drag K2NN_0: K2N_0 -> K2N_f 123.0
+  drag K2NN_0: K2N_f -> K2N_1 135.3
+  drag K2NN_0: K2N_f -> K2NN_1 42.7
+  drag K2NN_0: K2_f -> K2NN_2 145.5
+  drag K2NN_0: K2_f -> K2NN_2 192.2
+  drag K2NN_0: __note_27 -> K2N_1 22.5
+  drag K2NN_0: K2N_0 -> B0 37.9
+  drag K2NN_1: K2N_0 -> K2N_1 22.3
+  drag K2NN_1: K2NN_0 -> K2NN_f 20.0
+  drag K2NN_1: K2N_0 -> K2N_f 123.0
+  drag K2NN_1: K2N_f -> K2N_1 135.3
+  drag K2NN_1: K2_f -> K2NN_2 145.5
+  drag K2NN_1: K2_f -> K2NN_2 192.2
+  drag K2NN_1: __note_27 -> K2N_1 22.5
+  drag K2NN_1: K2NN_0 -> __end_2 37.2
+  drag K2NN_1: K2N_0 -> B0 37.9
+  drag K2NN_2: K2N_0 -> K2N_1 22.3
+  drag K2NN_2: K2NN_0 -> K2NN_f 20.2
+  drag K2NN_2: K2N_1 -> K2NN_1 29.4
+  drag K2NN_2: K2N_0 -> K2N_f 123.0
+  drag K2NN_2: K2N_f -> K2N_1 135.3
+  drag K2NN_2: K2N_f -> K2NN_1 42.7
+  drag K2NN_2: __note_27 -> K2N_1 22.5
+  drag K2NN_2: K2NN_0 -> __end_2 37.3
+  drag K2NN_2: K2N_0 -> B0 37.9
+  drag K2NN_f: K2N_0 -> K2N_1 22.3
+  drag K2NN_f: K2N_1 -> K2NN_1 29.4
+  drag K2NN_f: K2N_0 -> K2N_f 123.0
+  drag K2NN_f: K2N_f -> K2N_1 135.3
+  drag K2NN_f: K2N_f -> K2NN_1 42.7
+  drag K2NN_f: K2_f -> K2NN_2 145.5
+  drag K2NN_f: K2_f -> K2NN_2 192.2
+  drag K2NN_f: __note_27 -> K2N_1 22.5
+  drag K2NN_f: K2NN_0 -> __end_2 37.2
+  drag K2NN_f: K2N_0 -> B0 37.9
+  drag K2N_f: K2N_0 -> K2N_1 22.3
+  drag K2N_f: K2NN_0 -> K2NN_f 20.2
+  drag K2N_f: K2N_1 -> K2NN_1 29.4
+  drag K2N_f: K2_f -> K2NN_2 167.5
+  drag K2N_f: K2_f -> K2NN_2 192.2
+  drag K2N_f: __note_27 -> K2N_1 22.5
+  drag K2N_f: K2NN_0 -> __end_2 37.3
+  drag K2N_f: K2N_0 -> B0 37.9
+  drag __note_25: K2N_0 -> K2N_1 22.3
+  drag __note_25: K2NN_0 -> K2NN_f 20.2
+  drag __note_25: K2N_1 -> K2NN_1 29.4
+  drag __note_25: K2N_0 -> K2N_f 123.0
+  drag __note_25: K2N_f -> K2N_1 135.3
+  drag __note_25: K2N_f -> K2NN_1 42.7
+  drag __note_25: K2_f -> K2NN_2 145.5
+  drag __note_25: K2_f -> K2NN_2 192.2
+  drag __note_25: __note_27 -> K2N_1 22.5
+  drag __note_25: K2NN_0 -> __end_2 37.3
+  drag __note_25: K2N_0 -> B0 37.9
+  drag K2_f: K2N_0 -> K2N_1 22.3
+  drag K2_f: K2NN_0 -> K2NN_f 20.2
+  drag K2_f: K2N_1 -> K2NN_1 29.4
+  drag K2_f: K2N_0 -> K2N_f 123.0
+  drag K2_f: K2N_f -> K2N_1 135.3
+  drag K2_f: K2N_f -> K2NN_1 42.7
+  drag K2_f: __note_27 -> K2N_1 22.5
+  drag K2_f: K2NN_0 -> __end_2 37.3
+  drag K2_f: K2N_0 -> B0 37.9
+  drag __note_27: K2N_0 -> K2N_1 22.3
+  drag __note_27: K2NN_0 -> K2NN_f 20.2
+  drag __note_27: K2N_1 -> K2NN_1 29.4
+  drag __note_27: K2N_0 -> K2N_f 123.0
+  drag __note_27: K2N_f -> K2N_1 135.3
+  drag __note_27: K2N_f -> K2NN_1 42.7
+  drag __note_27: K2_f -> K2NN_2 145.5
+  drag __note_27: K2_f -> K2NN_2 192.2
+  drag __note_27: K2NN_0 -> __end_2 37.3
+  drag __note_27: K2N_0 -> B0 37.9
+  drag __note_28: K2N_0 -> K2N_1 22.3
+  drag __note_28: K2NN_0 -> K2NN_f 20.2
+  drag __note_28: K2N_1 -> K2NN_1 29.4
+  drag __note_28: K2N_0 -> K2N_f 123.0
+  drag __note_28: K2N_f -> K2N_1 135.3
+  drag __note_28: K2N_f -> K2NN_1 42.7
+  drag __note_28: K2_f -> K2NN_2 145.5
+  drag __note_28: K2_f -> K2NN_2 192.2
+  drag __note_28: __note_27 -> K2N_1 22.5
+  drag __note_28: K2NN_0 -> __end_2 37.3
+  drag __note_28: K2N_0 -> B0 37.9
+  drag __end_2: K2N_0 -> K2N_1 22.3
+  drag __end_2: K2NN_0 -> K2NN_f 20.2
+  drag __end_2: K2N_1 -> K2NN_1 29.4
+  drag __end_2: K2N_0 -> K2N_f 123.0
+  drag __end_2: K2N_f -> K2N_1 135.3
+  drag __end_2: K2N_f -> K2NN_1 42.7
+  drag __end_2: K2_f -> K2NN_2 145.5
+  drag __end_2: K2_f -> K2NN_2 192.2
+  drag __end_2: __note_27 -> K2N_1 22.5
+  drag __end_2: K2N_0 -> B0 37.9
+  drag B0: K2N_0 -> K2N_1 22.3
+  drag B0: K2NN_0 -> K2NN_f 20.2
+  drag B0: K2N_1 -> K2NN_1 29.4
+  drag B0: K2N_0 -> K2N_f 123.0
+  drag B0: K2N_f -> K2N_1 135.3
+  drag B0: K2N_f -> K2NN_1 42.7
+  drag B0: K2_f -> K2NN_2 145.5
+  drag B0: K2_f -> K2NN_2 192.2
+  drag B0: __note_27 -> K2N_1 22.5
+  drag B0: K2NN_0 -> __end_2 37.3
+  drag __note_31: K2N_0 -> K2N_1 22.3
+  drag __note_31: K2NN_0 -> K2NN_f 20.2
+  drag __note_31: K2N_1 -> K2NN_1 29.4
+  drag __note_31: K2N_0 -> K2N_f 123.0
+  drag __note_31: K2N_f -> K2N_1 135.3
+  drag __note_31: K2N_f -> K2NN_1 42.7
+  drag __note_31: K2_f -> K2NN_2 145.5
+  drag __note_31: K2_f -> K2NN_2 192.2
+  drag __note_31: __note_27 -> K2N_1 22.5
+  drag __note_31: K2NN_0 -> __end_2 37.3
+  drag __note_31: K2N_0 -> B0 37.9
+  drag __note_32: K2N_0 -> K2N_1 22.3
+  drag __note_32: K2NN_0 -> K2NN_f 20.2
+  drag __note_32: K2N_1 -> K2NN_1 29.4
+  drag __note_32: K2N_0 -> K2N_f 123.0
+  drag __note_32: K2N_f -> K2N_1 135.3
+  drag __note_32: K2N_f -> K2NN_1 42.7
+  drag __note_32: K2_f -> K2NN_2 145.5
+  drag __note_32: K2_f -> K2NN_2 192.2
+  drag __note_32: __note_27 -> K2N_1 22.5
+  drag __note_32: K2NN_0 -> __end_2 37.3
+  drag __note_32: K2N_0 -> B0 37.9
+  drag __note_33: K2N_0 -> K2N_1 22.3
+  drag __note_33: K2NN_0 -> K2NN_f 20.2
+  drag __note_33: K2N_1 -> K2NN_1 29.4
+  drag __note_33: K2N_0 -> K2N_f 123.0
+  drag __note_33: K2N_f -> K2N_1 135.3
+  drag __note_33: K2N_f -> K2NN_1 42.7
+  drag __note_33: K2_f -> K2NN_2 145.5
+  drag __note_33: K2_f -> K2NN_2 192.2
+  drag __note_33: __note_27 -> K2N_1 22.5
+  drag __note_33: K2NN_0 -> __end_2 37.3
+  drag __note_33: K2N_0 -> B0 37.9
+  drag __note_34: K2N_0 -> K2N_1 22.3
+  drag __note_34: K2NN_0 -> K2NN_f 20.2
+  drag __note_34: K2N_1 -> K2NN_1 29.4
+  drag __note_34: K2N_0 -> K2N_f 123.0
+  drag __note_34: K2N_f -> K2N_1 135.3
+  drag __note_34: K2N_f -> K2NN_1 42.7
+  drag __note_34: K2_f -> K2NN_2 145.5
+  drag __note_34: K2_f -> K2NN_2 192.2
+  drag __note_34: __note_27 -> K2N_1 22.5
+  drag __note_34: K2NN_0 -> __end_2 37.3
+  drag __note_34: K2N_0 -> B0 37.9
+  drag __note_35: K2N_0 -> K2N_1 22.3
+  drag __note_35: K2NN_0 -> K2NN_f 20.2
+  drag __note_35: K2N_1 -> K2NN_1 29.4
+  drag __note_35: K2N_0 -> K2N_f 123.0
+  drag __note_35: K2N_f -> K2N_1 135.3
+  drag __note_35: K2N_f -> K2NN_1 42.7
+  drag __note_35: K2_f -> K2NN_2 145.5
+  drag __note_35: K2_f -> K2NN_2 192.2
+  drag __note_35: __note_27 -> K2N_1 22.5
+  drag __note_35: K2NN_0 -> __end_2 37.3
+  drag __note_35: K2N_0 -> B0 37.9
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: <quality::a_one_px_drag_leaves_unrelated_edges_put::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- channels_keep_edges_apart_and_off_chips stdout ----
+
+thread 'channels_keep_edges_apart_and_off_chips' (13390) panicked at tests/quality.rs:519:5:
+static edge_chip 5
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: <quality::channels_keep_edges_apart_and_off_chips::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- crossing_gaps_do_not_read_as_dashes stdout ----
+
+thread 'crossing_gaps_do_not_read_as_dashes' (13391) panicked at tests/quality.rs:437:5:
+static xgap_max 23
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: <quality::crossing_gaps_do_not_read_as_dashes::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- defect_baseline_gate stdout ----
+static	end_tilt	0.0000
+static	end_tilt_max	2.8049
+static	end_gaps	0.0000
+static	end_gap_max	0.0483
+static	lat_wiggles	106.0000
+static	lat_backtrack	30983.0009
+static	own_frame_x	0.0000
+static	own_frame_len	0.0000
+static	band_pairs	364.0000
+static	band_len	201052.0000
+static	ink	0.1054
+static	idiom_ortho	130.0000
+static	idiom_scubic	0.0000
+static	idiom_spline	55.0000
+static	idiom_bow	0.0000
+static	x_drawn	1288.0000
+static	end_kink	0.0000
+static	ink_out	0.0000
+routed	end_tilt	0.0000
+routed	end_tilt_max	0.3645
+routed	end_gaps	0.0000
+routed	end_gap_max	0.0483
+routed	lat_wiggles	14.0000
+routed	lat_backtrack	819.4230
+routed	own_frame_x	0.0000
+routed	own_frame_len	0.0000
+routed	band_pairs	194.0000
+routed	band_len	98660.0000
+routed	ink	0.0991
+routed	idiom_ortho	185.0000
+routed	idiom_scubic	0.0000
+routed	idiom_spline	0.0000
+routed	idiom_bow	0.0000
+routed	x_drawn	595.0000
+routed	end_kink	0.0000
+routed	ink_out	0.0000
+
+thread 'defect_baseline_gate' (13392) panicked at tests/quality.rs:809:5:
+defect baseline regressions:
+static end_tilt_max 2.80 > ceiling 0.3
+static lat_wiggles 106.00 > ceiling 15
+static lat_backtrack 30983.00 > ceiling 1870
+static band_pairs 364.00 > ceiling 124
+static band_len 201052.00 > ceiling 71360
+static idiom_spline 55.00 > ceiling 0
+static x_drawn 1288.00 > ceiling 428
+routed lat_wiggles 14.00 > ceiling 5
+routed lat_backtrack 819.42 > ceiling 440
+routed band_pairs 194.00 > ceiling 139
+routed band_len 98660.00 > ceiling 69110
+routed ink 0.0991 < floor 0.108
+routed x_drawn 595.00 > ceiling 494
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: <quality::defect_baseline_gate::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- moving_a_node_declaration_barely_moves_dense_td stdout ----
+
+thread 'moving_a_node_declaration_barely_moves_dense_td' (13400) panicked at tests/quality.rs:1082:9:
+n45 before line 78: width 5216 against 4251
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: <quality::moving_a_node_declaration_barely_moves_dense_td::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- edges_keep_off_frame_borders stdout ----
+
+thread 'edges_keep_off_frame_borders' (13394) panicked at tests/quality.rs:259:5:
+routed border_len 3871
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: <quality::edges_keep_off_frame_borders::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- labels_cover_nothing_they_must_not stdout ----
+
+thread 'labels_cover_nothing_they_must_not' (13397) panicked at tests/quality.rs:330:5:
+static lbl_edge 18 > 6
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: <quality::labels_cover_nothing_they_must_not::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- quality_gate stdout ----
+file	mode	nodes	edges	frames	edge_node_x	edge_node_pairs	edge_frame_x	edge_frame_pairs	edge_edge_x	overlap_pairs	overlap_len	node_near	min_node_gap	min_edge_gap	node_overlap	node_frame	frame_overlap	lbl_node	lbl_lbl	lbl_chip	lbl_edge	lbl_arrow	shared_ports	arrow_on_start	wiggles	backtrack	frame_side	center_off	width	height	aspect	area_per_node	defects	corner_touch	border_runs	border_len	overlap_max	tight_pairs	tight_len	hug_runs	hug_len	hug_max	edge_chip	end_cross	xgap_max	dash_edges	lbl_crowd	ortho_edges	xnotches	end_tilt	end_tilt_max	end_gaps	end_gap_max	lat_wiggles	lat_backtrack	own_frame_x	own_frame_len	band_pairs	band_len	ink	idiom_ortho	idiom_scubic	idiom_spline	idiom_bow	x_drawn	end_kink	ink_out
+back-edge	static	6.00	6.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	12.89	40.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.04	290.00	543.70	1.87	26278.83	0	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	3.00	0.00	0.00	0.00	0.00	0.05	0.00	0.00	0.00	0.00	0.00	0.00	0.14	6.00	0.00	0.00	0.00	0.00	0.00	0.00
+back-edge	routed	6.00	6.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	12.89	40.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.04	290.00	543.70	1.87	26278.83	0	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	3.00	0.00	0.00	0.00	0.00	0.05	0.00	0.00	0.00	0.00	0.00	0.00	0.14	6.00	0.00	0.00	0.00	0.00	0.00	0.00
+bench-75	static	21.00	75.00	5.00	5.00	5.00	0.00	0.00	681.00	66.00	3714.00	1.00	3.68	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	14.00	2634.68	0.00	0.42	2595.70	1301.25	1.99	160840.70	85	14.00	5.00	238.12	322.00	115.00	10540.00	9.00	486.81	93.14	4.00	0.00	17.00	0.00	0.00	50.00	0.00	0.00	0.00	0.00	0.05	52.00	8038.82	0.00	0.00	153.00	37486.00	0.07	50.00	0.00	25.00	0.00	681.00	0.00	0.00
+bench-75	routed	21.00	75.00	5.00	0.00	0.00	1.00	2.00	355.00	25.00	1194.00	0.00	10.51	2.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.63	2595.70	964.50	2.69	119216.79	27	6.00	10.00	1241.85	364.00	44.00	9240.00	18.00	2335.65	325.51	1.00	1.00	10.00	0.00	0.00	75.00	0.00	0.00	0.00	0.00	0.05	9.00	703.95	0.00	0.00	116.00	33584.00	0.07	75.00	0.00	0.00	0.00	355.00	0.00	0.00
+dense-lr	static	52.00	42.00	11.00	1.00	2.00	1.00	1.00	76.00	5.00	630.00	1.00	3.33	13.21	0.00	0.00	0.00	0.00	0.00	0.00	6.00	0.00	0.00	0.00	2.00	1286.32	0.00	0.19	5084.60	2981.36	1.71	291519.39	10	0.00	0.00	0.00	360.00	11.00	1304.00	0.00	0.00	0.00	0.00	0.00	6.00	0.00	0.00	31.00	0.00	0.00	2.80	0.00	0.05	24.00	6049.02	0.00	0.00	49.00	29754.00	0.05	34.00	0.00	8.00	0.00	80.00	0.00	0.00
+dense-lr	routed	52.00	42.00	11.00	0.00	0.00	0.00	0.00	85.00	2.00	178.00	0.00	8.17	19.98	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.19	5084.60	2981.36	1.71	291519.39	2	0.00	1.00	912.78	112.00	7.00	1974.00	5.00	1720.47	908.19	1.00	2.00	6.00	0.00	0.00	40.00	0.00	0.00	0.36	0.00	0.04	2.00	21.73	0.00	0.00	29.00	17510.00	0.05	42.00	0.00	0.00	0.00	90.00	0.00	0.00
+dense-td	static	46.00	47.00	10.00	6.00	7.00	2.00	3.00	526.00	61.00	8290.00	1.00	2.23	5.50	0.00	0.00	0.00	0.00	0.00	0.00	12.00	0.00	0.00	0.00	13.00	5621.00	0.00	0.12	4251.00	3366.43	1.26	311101.91	84	1.00	7.00	370.25	1358.00	70.00	17490.00	18.00	2225.29	756.01	1.00	0.00	23.00	0.00	0.00	24.00	0.00	0.00	0.00	0.00	0.01	29.00	16867.16	0.00	0.00	152.00	131142.00	0.06	25.00	0.00	22.00	0.00	526.00	0.00	0.00
+dense-td	routed	46.00	47.00	10.00	0.00	0.00	3.00	3.00	148.00	1.00	40.00	0.00	8.45	11.80	0.00	0.00	0.00	0.00	0.00	0.00	4.00	0.00	0.00	0.00	0.00	0.00	0.00	0.02	4803.25	3366.43	1.43	351517.35	4	0.00	2.00	1716.77	40.00	11.00	12272.00	8.00	4068.09	1662.04	1.00	0.00	6.00	0.00	0.00	45.00	0.00	0.00	0.00	0.00	0.01	2.00	65.74	0.00	0.00	41.00	45588.00	0.04	47.00	0.00	0.00	0.00	148.00	0.00	0.00
+fanout-frames	static	22.00	7.00	6.00	0.00	0.00	0.00	0.00	1.00	0.00	0.00	0.00	14.00	40.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.04	842.10	1983.50	2.36	75922.97	0	0.00	0.00	0.00	0.00	1.00	38.00	0.00	0.00	0.00	0.00	0.00	1.00	0.00	0.00	6.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	6.00	1962.00	0.12	7.00	0.00	0.00	0.00	1.00	0.00	0.00
+fanout-frames	routed	22.00	7.00	6.00	0.00	0.00	0.00	0.00	1.00	0.00	0.00	0.00	14.00	40.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.04	842.10	1983.50	2.36	75922.97	0	0.00	0.00	0.00	0.00	3.00	122.00	0.00	0.00	0.00	0.00	0.00	1.00	0.00	0.00	7.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	5.00	1416.00	0.12	7.00	0.00	0.00	0.00	1.00	0.00	0.00
+wide-labels	static	6.00	8.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	20.25	40.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.46	1971.00	156.30	12.61	51343.93	0	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	6.00	0.00	0.00	0.00	0.00	0.00	1.00	28.00	0.00	0.00	4.00	708.00	0.21	8.00	0.00	0.00	0.00	0.00	0.00	0.00
+wide-labels	routed	6.00	8.00	0.00	0.00	0.00	0.00	0.00	1.00	0.00	0.00	0.00	16.25	40.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.17	1971.00	181.30	10.87	59556.43	0	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	1.00	0.00	0.00	6.00	0.00	0.00	0.00	0.00	0.00	1.00	28.00	0.00	0.00	3.00	562.00	0.18	8.00	0.00	0.00	0.00	1.00	0.00	0.00
+
+thread 'quality_gate' (13401) panicked at tests/quality.rs:197:5:
+quality regressions:
+bench-75 static: edge_node_pairs = 5 > ceiling 0
+bench-75 static: edge_node_x = 5 > ceiling 0
+bench-75 static: defects = 85 > ceiling 4
+bench-75 static: wiggles = 14 > ceiling 0
+bench-75 static: min_edge_gap = 0.00 < floor 14.7
+bench-75 routed: edge_frame_pairs = 2 > ceiling 0
+bench-75 routed: defects = 27 > ceiling 2
+bench-75 routed: min_edge_gap = 2.00 < floor 10.6
+dense-lr static: edge_node_pairs = 2 > ceiling 0
+dense-lr static: edge_node_x = 1 > ceiling 0
+dense-lr static: wiggles = 2 > ceiling 0
+dense-td static: edge_node_pairs = 7 > ceiling 0
+dense-td static: edge_node_x = 6 > ceiling 0
+dense-td static: defects = 84 > ceiling 29
+dense-td static: wiggles = 13 > ceiling 0
+dense-td static: min_edge_gap = 5.50 < floor 12.1
+dense-td routed: min_edge_gap = 11.80 < floor 12
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: <quality::quality_gate::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+
+failures:
+    a_one_px_drag_leaves_unrelated_edges_put
+    channels_keep_edges_apart_and_off_chips
+    crossing_gaps_do_not_read_as_dashes
+    defect_baseline_gate
+    edges_keep_off_frame_borders
+    labels_cover_nothing_they_must_not
+    moving_a_node_declaration_barely_moves_dense_td
+    quality_gate
+
+test result: FAILED. 5 passed; 8 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.17s
+
+error: test failed, to rerun pass `--test quality`

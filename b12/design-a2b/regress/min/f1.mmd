@@ -1,0 +1,10 @@
+flowchart LR
+  a --> K0
+  subgraph K0
+    k0[k zero]
+  end
+  subgraph K1
+    k1[k one] --> k2[k two]
+  end
+  K0 --> K1
+  K1 -->|back| K0

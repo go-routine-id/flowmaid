@@ -1,0 +1,864 @@
+diff --git a/src/blockcheck.rs b/src/blockcheck.rs
+index 0d2ed04..5da1bce 100644
+--- a/src/blockcheck.rs
++++ b/src/blockcheck.rs
+@@ -3242,3 +3242,47 @@ fn a_waypoint_runs_last_leg_meets_its_head_square() {
+         );
+     }
+ }
++
++#[test]
++fn route_lays_a_run_on_its_ports_line_as_the_scene_does() {
++    // The public fixture drawn LR / RL as blocks: `route()` at the
++    // scene's own centres left the first run of `REG ==> ORD` 0.56 px
++    // off its port's line (146.69 -> 147.25 over 50 px), which the
++    // static scene lays on it (the rule of a waypoint run into its port
++    // held in the block layout's static scene only): once a node was
++    // dragged the run sloped. In a block layout `route()` keeps every end
++    // run of a waypoint path on its axis, as `scene()` does.
++    for name in [
++        "blocks-overview-lr",
++        "blocks-overview-rl",
++        "blocks-overview",
++    ] {
++        let src = std::fs::read_to_string(format!(
++            "{}/tests/fixtures/blocks/{name}.mmd",
++            env!("CARGO_MANIFEST_DIR")
++        ))
++        .unwrap();
++        let g = crate::parser::parse(&src).unwrap();
++        crate::levels::with_blocks(true, || {
++            let sc = crate::scene::scene(&g);
++            assert!(sc.block_layout, "{name}");
++            let centres: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
++            let rs = crate::scene::route(&g, &centres);
++            for (mode, s) in [("scene", &sc), ("route", &rs)] {
++                for e in s.edges.iter().filter(|e| e.waypoints.len() >= 3) {
++                    let w = &e.waypoints;
++                    for (a, b) in [(w[0], w[1]), (w[w.len() - 1], w[w.len() - 2])] {
++                        let (dx, dy) = ((b.0 - a.0).abs(), (b.1 - a.1).abs());
++                        let slope = dx.min(dy);
++                        assert!(
++                            !(1e-6..1.0).contains(&slope),
++                            "{name} {mode}: {} -> {} ends on a run {slope} px off its axis: {a:?} {b:?}",
++                            e.from,
++                            e.to
++                        );
++                    }
++                }
++            }
++        });
++    }
++}
+diff --git a/src/casing.rs b/src/casing.rs
+index cc1d5c8..eb8f56a 100644
+--- a/src/casing.rs
++++ b/src/casing.rs
+@@ -1427,6 +1427,13 @@ const JOIN_END_HEADS: f64 = 2.0;
+ /// closer than that is cut in pieces of one cluster, not as one gap of
+ /// any length), and no join reaches within `keep` px of either end of
+ /// the line ([`JOIN_END_HEADS`]).
++///
++/// Only a block layout's scene joins: a flat graph's and a compound
++/// (subgraph `direction`) scene keep one hole per crossing, as they
++/// always did, so the default build paints byte for byte as before while
++/// block layouts sit behind their switch. When block layouts become the
++/// default (B12.16) this is to be one rule for every flowchart scene, or
++/// the split kept and said so where the switch is flipped.
+ fn join_cluster_gaps(line: &[Pt], holes: &mut Vec<(Pt, f64)>, keep: f64) {
+     if holes.len() < 2 || line.len() < 2 {
+         return;
+diff --git a/src/corridor.rs b/src/corridor.rs
+new file mode 100644
+index 0000000..51cc5ca
+--- /dev/null
++++ b/src/corridor.rs
+@@ -0,0 +1,465 @@
++//! B12 R3 (experiment): corridors in a block layout's `route()`, planned
++//! after the ports stage, so a corridor starts and ends on the ports the
++//! stage gave, and delivered on the axes, so the ortho stage keeps it
++//! (it rounds a path on the axes and re-plans any other path from its
++//! ports, which made a corridor handed over by the builder a no-op
++//! wherever it ran one way across the flow).
++
++use crate::edgepass::{Ctx, EndRef};
++use crate::model::{Direction, Graph};
++use crate::scene::Scene;
++
++type Pt = (f64, f64);
++/// A box in edge-local flow coordinates: (b0, b1, l0, l1).
++type R = (f64, f64, f64, f64);
++
++const PITCH: f64 = crate::ortho::TRACK_PITCH;
++const PAD: f64 = 16.0;
++
++fn knob(name: &str) -> bool {
++    std::env::var(name).is_ok()
++}
++
++/// One planned corridor.
++struct Plan {
++    edge: usize,
++    /// Local start and end (breadth, flow).
++    a: Pt,
++    b: Pt,
++    /// Per band: its flow extent, the gap it passes in (b0, b1), the
++    /// breadth wanted before slots and the side it shifted to.
++    legs: Vec<Leg>,
++    /// Per turn gap (one more than the legs): its flow extent.
++    turns: Vec<(f64, f64)>,
++}
++
++struct Leg {
++    l: (f64, f64),
++    gap: (f64, f64),
++    at: f64,
++    side: i8,
++}
++
++pub(crate) fn route_corridors(g: &Graph, sc: &mut Scene, cx: &Ctx, moved: &mut [bool]) -> bool {
++    if !knob("FMX_POST") || !sc.block_layout {
++        return false;
++    }
++    let s = match g.direction {
++        Direction::TD => 1.0,
++        Direction::BT => -1.0,
++        _ => return false,
++    };
++    let loc = |p: Pt| (p.0, s * p.1);
++    let unloc = |p: Pt| (p.0, s * p.1);
++    let rect = |x0: f64, y0: f64, x1: f64, y1: f64| -> R {
++        let (a, b) = (s * y0, s * y1);
++        (x0, x1, a.min(b), a.max(b))
++    };
++    // Units of the top level: its frames, and the nodes outside them.
++    let mut units: Vec<R> = sc
++        .clusters
++        .iter()
++        .filter(|c| c.depth == 0)
++        .map(|c| rect(c.x, c.y, c.x + c.w, c.y + c.h))
++        .collect();
++    let frames = units.len();
++    let unit_of: Vec<usize> = sc
++        .nodes
++        .iter()
++        .map(|n| {
++            let c = loc((n.x, n.y));
++            units[..frames]
++                .iter()
++                .position(|r| c.0 > r.0 && c.0 < r.1 && c.1 > r.2 && c.1 < r.3)
++                .unwrap_or_else(|| {
++                    units.push(rect(
++                        n.x - n.w / 2.0,
++                        n.y - n.h / 2.0,
++                        n.x + n.w / 2.0,
++                        n.y + n.h / 2.0,
++                    ));
++                    units.len() - 1
++                })
++        })
++        .collect();
++    // The rows of units along the flow, and the gaps between them: where
++    // every corridor turns.
++    let mut rows: Vec<(f64, f64)> = units.iter().map(|r| (r.2, r.3)).collect();
++    rows.sort_by(|p, q| p.0.total_cmp(&q.0));
++    let mut merged: Vec<(f64, f64)> = Vec::new();
++    for r in rows {
++        match merged.last_mut() {
++            Some(m) if r.0 <= m.1 => m.1 = m.1.max(r.1),
++            _ => merged.push(r),
++        }
++    }
++    let gaps: Vec<(f64, f64)> = merged.windows(2).map(|w| (w[0].1, w[1].0)).collect();
++    // The global gap inside (lo, hi) nearest `want` (its middle).
++    let gap_in = |lo: f64, hi: f64, want: f64| -> Option<(f64, f64)> {
++        gaps.iter()
++            .copied()
++            .filter(|g| g.0 >= lo - 1e-6 && g.1 <= hi + 1e-6 && g.1 - g.0 >= 2.0 * crate::router::CORNER_R)
++            .min_by(|p, q| {
++                ((p.0 + p.1) / 2.0 - want)
++                    .abs()
++                    .total_cmp(&((q.0 + q.1) / 2.0 - want).abs())
++            })
++    };
++    let all = knob("FMX_ALL");
++    let fan_k: usize = std::env::var("FMX_FANK").ok().and_then(|v| v.parse().ok()).unwrap_or(usize::MAX);
++    let mut outs = vec![0usize; sc.nodes.len()];
++    let mut ins = vec![0usize; sc.nodes.len()];
++    for i in 0..sc.edges.len() {
++        if !cx.drawn.get(i).copied().unwrap_or(false) {
++            continue;
++        }
++        if let Some((a, b)) = cx.ends.get(i).copied().flatten() {
++            if let EndRef::Node(u) = a {
++                outs[u] += 1;
++            }
++            if let EndRef::Node(v) = b {
++                ins[v] += 1;
++            }
++        }
++    }
++    let mut plans: Vec<Plan> = Vec::new();
++    for i in 0..g.edges.len().min(sc.edges.len()) {
++        if !cx.drawn.get(i).copied().unwrap_or(false)
++            || cx.fixed.get(i).copied().unwrap_or(false)
++            || cx.held.get(i).copied().unwrap_or(false)
++            || sc.edges[i].meta.curve.is_some()
++            || crate::ports::note_link(sc, cx, i)
++        {
++            continue;
++        }
++        let Some((EndRef::Node(u), EndRef::Node(v))) = cx.ends.get(i).copied().flatten() else {
++            continue;
++        };
++        if u == v || unit_of[u] == unit_of[v] {
++            continue;
++        }
++        if outs[u] >= fan_k || ins[v] >= fan_k {
++            continue;
++        }
++        let (su, tu) = (units[unit_of[u]], units[unit_of[v]]);
++        if su.3 + 2.0 * PAD > tu.2 {
++            continue; // not one after the other along the flow (E1 only)
++        }
++        let e = &sc.edges[i];
++        let (p0, p3) = if e.waypoints.len() >= 2 {
++            (e.waypoints[0], e.waypoints[e.waypoints.len() - 1])
++        } else {
++            (e.bezier[0], e.bezier[3])
++        };
++        let (a, b) = (loc(p0), loc(p3));
++        // Ports on the flow-facing sides only.
++        let nu = &sc.nodes[u];
++        let nv = &sc.nodes[v];
++        let ub = rect(nu.x - nu.w / 2.0, nu.y - nu.h / 2.0, nu.x + nu.w / 2.0, nu.y + nu.h / 2.0);
++        let vb = rect(nv.x - nv.w / 2.0, nv.y - nv.h / 2.0, nv.x + nv.w / 2.0, nv.y + nv.h / 2.0);
++        if (a.1 - ub.3).abs() > 1.0 || (b.1 - vb.2).abs() > 1.0 {
++            continue;
++        }
++        let (s_out, t_in) = (su.3, tu.2);
++        let mut obs: Vec<R> = units
++            .iter()
++            .enumerate()
++            .filter(|&(k, r)| k != unit_of[u] && k != unit_of[v] && r.3 > s_out && r.2 < t_in)
++            .map(|(_, r)| *r)
++            .collect();
++        if obs.is_empty() {
++            // Nothing between: one step, in the gap after the source's
++            // unit, with the others there (when asked).
++            if !all {
++                continue;
++            }
++            let Some(gq) = gap_in(s_out, t_in, s_out) else {
++                continue;
++            };
++            plans.push(Plan {
++                edge: i,
++                a,
++                b,
++                legs: Vec::new(),
++                turns: vec![gq],
++            });
++            continue;
++        }
++        obs.sort_by(|p, q| p.2.total_cmp(&q.2).then(p.0.total_cmp(&q.0)));
++        let mut bands: Vec<((f64, f64), Vec<(f64, f64)>)> = Vec::new();
++        for o in &obs {
++            match bands.last_mut() {
++                Some((l, bs)) if o.2 < l.1 => {
++                    l.1 = l.1.max(o.3);
++                    bs.push((o.0, o.1));
++                }
++                _ => bands.push(((o.2, o.3), vec![(o.0, o.1)])),
++            }
++        }
++        let nb = bands.len();
++        let turns: Vec<(f64, f64)> = (0..=nb)
++            .map(|k| {
++                let lo = if k == 0 { s_out } else { bands[k - 1].0 .1 };
++                let hi = if k == nb { t_in } else { bands[k].0 .0 };
++                (lo, hi)
++            })
++            .collect();
++        if turns.iter().any(|t| t.1 - t.0 < 2.0 * crate::router::CORNER_R) {
++            continue;
++        }
++        // A one-step path in some gap that misses every band: left to
++        // the ortho stage (it draws that Z itself).
++        let clear_col = |x: f64, lo: f64, hi: f64| {
++            obs.iter()
++                .all(|o| !(x > o.0 - PAD && x < o.1 + PAD && o.3 > lo && o.2 < hi))
++        };
++        if let Some(k) = (0..=nb).find(|&k| {
++            let t = (turns[k].0 + turns[k].1) / 2.0;
++            clear_col(a.0, a.1, t) && clear_col(b.0, t, b.1)
++        }) {
++            if !knob("FMX_ONESTEP") {
++                continue;
++            }
++            let Some(gq) = gap_in(turns[k].0, turns[k].1, (turns[k].0 + turns[k].1) / 2.0) else {
++                continue;
++            };
++            plans.push(Plan {
++                edge: i,
++                a,
++                b,
++                legs: Vec::new(),
++                turns: vec![gq],
++            });
++            continue;
++        }
++        let free: Vec<Vec<(f64, f64)>> = bands
++            .iter()
++            .map(|(_, bs)| {
++                let mut bs: Vec<(f64, f64)> = bs.iter().map(|&(p, q)| (p - PAD, q + PAD)).collect();
++                bs.sort_by(|p, q| p.0.total_cmp(&q.0));
++                let mut out = Vec::new();
++                let mut lo = f64::NEG_INFINITY;
++                for (p, q) in bs {
++                    if p > lo {
++                        out.push((lo, p));
++                    }
++                    lo = lo.max(q);
++                }
++                out.push((lo, f64::INFINITY));
++                out
++            })
++            .collect();
++        let mut legs = Vec::with_capacity(nb);
++        let mut at = a.0;
++        let mut ok = true;
++        for k in 0..nb {
++            if let Some(&g0) = free[k].iter().find(|&&(p, q)| p <= at && at <= q) {
++                legs.push(Leg {
++                    l: bands[k].0,
++                    gap: g0,
++                    at,
++                    side: 0,
++                });
++                continue;
++            }
++            let mut best: Option<(f64, (f64, f64), f64, i8)> = None;
++            for &(p, q) in &free[k] {
++                let (edge, side) = if q < at { (q, -1) } else { (p, 1) };
++                if !edge.is_finite() {
++                    continue;
++                }
++                let d = (edge - at).abs() + (edge - b.0).abs();
++                if best.map_or(true, |bb| d < bb.0 - 1e-9) {
++                    best = Some((d, (p, q), edge, side));
++                }
++            }
++            let Some((_, gq, edge, side)) = best else {
++                ok = false;
++                break;
++            };
++            at = edge;
++            legs.push(Leg {
++                l: bands[k].0,
++                gap: gq,
++                at,
++                side,
++            });
++        }
++        if !ok {
++            continue;
++        }
++        let turns: Vec<(f64, f64)> = match turns
++            .iter()
++            .map(|t| gap_in(t.0, t.1, (t.0 + t.1) / 2.0))
++            .collect::<Option<Vec<_>>>()
++        {
++            Some(t) => t,
++            None => continue,
++        };
++        plans.push(Plan {
++            edge: i,
++            a,
++            b,
++            legs,
++            turns,
++        });
++    }
++    if plans.is_empty() {
++        return false;
++    }
++    // Slots: legs that shift into one gap of one band, ordered by the
++    // breadth each path takes next, a pitch apart from the near edge.
++    let key = |x: f64| (x * 10.0).round() as i64;
++    let mut breadth: Vec<Vec<f64>> = plans
++        .iter()
++        .map(|p| p.legs.iter().map(|l| l.at).collect())
++        .collect();
++    let mut groups: std::collections::BTreeMap<(i64, i64, i64, i64), Vec<(usize, usize)>> =
++        std::collections::BTreeMap::new();
++    for (pi, p) in plans.iter().enumerate() {
++        for (k, l) in p.legs.iter().enumerate() {
++            groups
++                .entry((key(l.l.0), key(l.l.1), key(l.gap.0), key(l.gap.1)))
++                .or_default()
++                .push((pi, k));
++        }
++    }
++    let next = |pi: usize, k: usize, br: &[Vec<f64>]| -> f64 {
++        br[pi].get(k + 1).copied().unwrap_or(plans[pi].b.0)
++    };
++    for (_, members) in groups {
++        // The side the shifted legs come from: low and high.
++        for side in [-1i8, 1] {
++            let mut legs: Vec<(usize, usize)> = members
++                .iter()
++                .copied()
++                .filter(|&(pi, k)| plans[pi].legs[k].side == side)
++                .collect();
++            if legs.is_empty() {
++                continue;
++            }
++            let sd = f64::from(side);
++            legs.sort_by(|x, y| {
++                (sd * next(x.0, x.1, &breadth))
++                    .total_cmp(&(sd * next(y.0, y.1, &breadth)))
++                    .then(plans[x.0].edge.cmp(&plans[y.0].edge))
++            });
++            for (slot, &(pi, k)) in legs.iter().enumerate() {
++                let l = &plans[pi].legs[k];
++                let edge = if side > 0 { l.gap.0 } else { l.gap.1 };
++                let far = if side > 0 { l.gap.1 } else { l.gap.0 };
++                let x = edge + sd * slot as f64 * PITCH;
++                breadth[pi][k] = if side > 0 { x.min(far) } else { x.max(far) };
++            }
++        }
++    }
++    // Turn tracks: the steps of every corridor in one gap, ordered so a
++    // step lies below another whose incoming column it spans and above
++    // one whose outgoing column it spans.
++    struct Step {
++        pi: usize,
++        k: usize,
++        from: f64,
++        to: f64,
++    }
++    let mut steps_by_gap: std::collections::BTreeMap<(i64, i64), Vec<Step>> =
++        std::collections::BTreeMap::new();
++    for (pi, p) in plans.iter().enumerate() {
++        let cols: Vec<f64> = std::iter::once(p.a.0)
++            .chain(breadth[pi].iter().copied())
++            .chain(std::iter::once(p.b.0))
++            .collect();
++        for k in 0..=p.legs.len() {
++            let (from, to) = (cols[k], cols[k + 1]);
++            if (from - to).abs() < 1e-6 {
++                continue;
++            }
++            steps_by_gap
++                .entry((key(p.turns[k].0), key(p.turns[k].1)))
++                .or_default()
++                .push(Step { pi, k, from, to });
++        }
++    }
++    let mut track: std::collections::BTreeMap<(usize, usize), f64> = std::collections::BTreeMap::new();
++    for ((lo, hi), steps) in steps_by_gap {
++        let (lo, hi) = (lo as f64 / 10.0, hi as f64 / 10.0);
++        let m = steps.len();
++        let within = |x: f64, s: &Step| {
++            let (p, q) = (s.from.min(s.to), s.from.max(s.to));
++            x > p + 1e-6 && x < q - 1e-6
++        };
++        // before[i][j]: i must lie above (upstream of) j.
++        let mut above = vec![vec![false; m]; m];
++        for i in 0..m {
++            for j in 0..m {
++                if i == j {
++                    continue;
++                }
++                if within(steps[j].from, &steps[i]) {
++                    above[j][i] = true; // j's incoming column inside i: i below j
++                }
++                if within(steps[j].to, &steps[i]) {
++                    above[i][j] = true; // j's outgoing column inside i: i above j
++                }
++            }
++        }
++        // Order: repeatedly take the step with the fewest unmet "above"
++        // constraints (a topological order where one exists).
++        let mut left: Vec<usize> = (0..m).collect();
++        let mut order = Vec::with_capacity(m);
++        while !left.is_empty() {
++            let pick = *left
++                .iter()
++                .min_by_key(|&&i| {
++                    (
++                        left.iter().filter(|&&j| j != i && above[j][i]).count(),
++                        plans[steps[i].pi].edge,
++                    )
++                })
++                .expect("non-empty");
++            order.push(pick);
++            left.retain(|&x| x != pick);
++        }
++        let room = (hi - lo) - 2.0 * crate::router::CORNER_R;
++        let spread = knob("FMX_SPREAD");
++        let pitch = if m > 1 {
++            if spread {
++                (room / (m - 1) as f64).min(2.0 * PITCH).max(PITCH.min(room / (m - 1) as f64))
++            } else {
++                PITCH.min(room / (m - 1) as f64)
++            }
++        } else {
++            0.0
++        };
++        let mid = (lo + hi) / 2.0;
++        for (r, &i) in order.iter().enumerate() {
++            let t = mid + (r as f64 - (m as f64 - 1.0) / 2.0) * pitch;
++            track.insert((steps[i].pi, steps[i].k), t);
++        }
++    }
++    for (pi, p) in plans.iter().enumerate() {
++        let cols: Vec<f64> = std::iter::once(p.a.0)
++            .chain(breadth[pi].iter().copied())
++            .chain(std::iter::once(p.b.0))
++            .collect();
++        let mut pts: Vec<Pt> = vec![p.a];
++        for k in 0..=p.legs.len() {
++            if let Some(&t) = track.get(&(pi, k)) {
++                pts.push((cols[k], t));
++                pts.push((cols[k + 1], t));
++            }
++        }
++        pts.push(p.b);
++        let pts: Vec<Pt> = pts.into_iter().map(unloc).collect();
++        if knob("FMDBG_CORR") {
++            let w: Vec<String> = pts.iter().map(|q| format!("({:.0},{:.0})", q.0, q.1)).collect();
++            eprintln!("CORR {}->{} {}", sc.edges[p.edge].from, sc.edges[p.edge].to, w.join(" "));
++        }
++        let e = &mut sc.edges[p.edge];
++        let n = pts.len();
++        e.bezier = [pts[0], pts[1.min(n - 1)], pts[n.saturating_sub(2)], pts[n - 1]];
++        e.waypoints = pts;
++        moved[p.edge] = true;
++    }
++    !plans.is_empty()
++}
+diff --git a/src/edgepass.rs b/src/edgepass.rs
+index 238a6bb..1ea4b28 100644
+--- a/src/edgepass.rs
++++ b/src/edgepass.rs
+@@ -71,6 +71,7 @@ pub(crate) enum Side {
+ }
+ 
+ /// What every stage knows about the scene's edges, computed once.
++#[derive(Clone)]
+ pub(crate) struct Ctx {
+     /// Index-parallel with `sc.edges`: the (source, target) ends, or
+     /// `None` when an edge could not be matched to the graph.
+@@ -122,6 +123,15 @@ pub(crate) struct Ctx {
+     /// blocks, and in `route()` and `route_partial()` until they lay
+     /// blocks out themselves.
+     pub blocks: bool,
++    /// The scene is a block layout's, static or routed (`Scene`'s
++    /// `block_layout`: [`Ctx::blocks`] in the static scene, and
++    /// `route()` / `route_partial()` drawing with the block layout's
++    /// frames): a run into a port within a fraction of a px of its line
++    /// is laid on the port's line ([`crate::ortho`]'s `flow_path`), and
++    /// a final run follows an end [`snap_ends`] moves across it
++    /// ([`level_end_run`]), so the run meets its head square in the
++    /// scene and once a node is dragged alike.
++    pub axis_ends: bool,
+     /// Index-parallel with `sc.edges`: the edge is a back-edge in its
+     /// lane. Every [`Ctx::back`] edge before blocks; in a block layout
+     /// ([`Ctx::blocks`]) only one between two plain nodes of one level
+@@ -271,6 +281,7 @@ pub(crate) fn ctx(g: &Graph, sc: &Scene) -> Ctx {
+         chain,
+         shaped,
+         blocks: false,
++        axis_ends: sc.block_layout,
+         lane,
+     }
+ }
+@@ -431,31 +442,73 @@ pub(crate) fn finish_blocks(g: &Graph, sc: &mut Scene, blocks: Option<&[Vec<usiz
+ /// The edge stages over `sc` with its context built.
+ fn stages(g: &Graph, sc: &mut Scene, mut cx: Ctx, mode: Mode) {
+     let mut moved = vec![false; sc.edges.len()];
++    if mode == Mode::Routed && std::env::var("FMX_PRE").is_ok() {
++        crate::corridor::route_corridors(g, sc, &cx, &mut moved);
++    }
+     crate::ports::assign(g, sc, &cx, mode, &mut moved);
++    if mode == Mode::Routed {
++        let (mut alt, mut alt_cx, mut alt_moved) = (sc.clone(), cx.clone(), moved.clone());
++        if crate::corridor::route_corridors(g, sc, &cx, &mut moved) {
++            tail(g, sc, &mut cx, mode, &mut moved);
++            if std::env::var("FMX_JUDGE").is_ok() {
++                tail(g, &mut alt, &mut alt_cx, mode, &mut alt_moved);
++                let a = crate::quality::measure(g, sc);
++                let b = crate::quality::measure(g, &alt);
++                let worse = a.defects() > b.defects()
++                    || a.x_drawn > b.x_drawn
++                    || a.lateral_x > b.lateral_x
++                    || a.fan_x > b.fan_x
++                    || a.edge_chip > b.edge_chip
++                    || a.side_ends > b.side_ends
++                    || a.min_edge_gap < b.min_edge_gap - 0.5;
++                let better = a.defects() < b.defects()
++                    || a.x_drawn < b.x_drawn
++                    || a.lateral_x < b.lateral_x
++                    || a.fan_x < b.fan_x
++                    || a.edge_chip < b.edge_chip
++                    || a.side_ends < b.side_ends;
++                if std::env::var("FMDBG_JUDGE").is_ok() {
++                    eprintln!("JUDGE worse {worse} better {better}: def {}/{} x {}/{} lat {}/{} fan {}/{} chip {}/{} side {}/{} gap {:.2}/{:.2}", a.defects(), b.defects(), a.x_drawn, b.x_drawn, a.lateral_x, b.lateral_x, a.fan_x, b.fan_x, a.edge_chip, b.edge_chip, a.side_ends, b.side_ends, a.min_edge_gap, b.min_edge_gap);
++                }
++                if worse || !better {
++                    *sc = alt;
++                }
++            }
++            return;
++        }
++    }
++    tail(g, sc, &mut cx, mode, &mut moved);
++}
++
++/// The stages after the ports.
++fn tail(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode, moved: &mut Vec<bool>) {
+     // Every edge on the axes, its corners rounded (report §2.1): from the
+     // ends the ports stage settled, before the router judges them.
+-    crate::ortho::orthogonalize(g, sc, &mut cx, mode);
+-    crate::router::repair(g, sc, &cx, mode, &mut moved);
++    crate::ortho::orthogonalize(g, sc, cx, mode);
++    crate::router::repair(g, sc, cx, mode, moved);
+     // A rerouted end may have switched to another side of its node and
+     // landed on a port another edge already holds: space those groups
+     // again. Groups the router left alone are already spaced and stay
+     // byte-identical.
+-    crate::ports::respace(g, sc, &cx, mode, &mut moved);
++    crate::ports::respace(g, sc, cx, mode, moved);
+     // After the ports are spaced again, so the channel nudge sees (and
+     // keeps) the final ends; in the static scene it ends by putting each
+     // side's ends in the order their paths now head (G9).
+-    crate::router::nudge(g, sc, &cx, mode, &mut moved);
++    crate::router::nudge(g, sc, cx, mode, moved);
+     // Then two unrelated edges the nudge (or the builder) left side by
+     // side under the spacing get one moved clear, where that costs
+     // nothing else (G4).
+-    crate::router::spread_close(g, sc, &cx, mode, &mut moved);
++    crate::router::spread_close(g, sc, cx, mode, moved);
+     // Then a fan's teeth nest: the ports, the tracks and the turns of
+     // each side's ends in one order (report B4, see [`crate::comb`]).
+-    crate::comb::comb(sc, &cx, &mut moved);
+-    glyph_stubs(sc, &cx, &mut moved);
+-    straight_cubics(sc, &cx);
+-    square_s_cubics(sc, &cx);
+-    snap_ends(sc, &cx);
++    crate::comb::comb(sc, cx, moved);
++    if cx.blocks && std::env::var("FMX_PINS").is_ok() {
++        crate::ports::free_pins_late(sc, cx, moved);
++    }
++    glyph_stubs(sc, cx, moved);
++    straight_cubics(sc, cx);
++    square_s_cubics(sc, cx);
++    snap_ends(sc, cx);
+     // A corner a moved end left far from its rounding point turns as a
+     // rounded corner again (see `ports::reround`). An edge a drag keeps
+     // ([`Ctx::fixed`]) keeps its geometry, whoever drew it (a fold's
+@@ -465,11 +518,26 @@ fn stages(g: &Graph, sc: &mut Scene, mut cx: Ctx, mode: Mode) {
+             crate::ports::reround(e);
+         }
+     }
++    if cx.axis_ends && std::env::var("FMX_KINK").is_ok() {
++        for (i, e) in sc.edges.iter_mut().enumerate() {
++            if cx.drawn.get(i).copied().unwrap_or(false) && !cx.fixed.get(i).copied().unwrap_or(false) {
++                tighten_end_corners(e);
++            }
++        }
++    }
++    if let Ok(want) = std::env::var("FMDBG_EDGE") {
++        for e in &sc.edges {
++            if format!("{}->{}", e.from, e.to) == want {
++                let w: Vec<String> = e.waypoints.iter().map(|p| format!("({:.2},{:.2})", p.0, p.1)).collect();
++                eprintln!("FINAL {mode:?}: bez {:?} wps {}", e.bezier, w.join(" "));
++            }
++        }
++    }
+     let budget = match mode {
+         Mode::Static => crate::labels::LABEL_STATIC_WORK,
+         Mode::Routed => crate::labels::LABEL_ROUTE_WORK,
+     };
+-    crate::labels::relabel(g, sc, &cx, &moved, budget);
++    crate::labels::relabel(g, sc, cx, moved, budget);
+     // A scene whose painter strokes its own width (ER, class) is drawn
+     // on its canvas as-is; a flowchart's is fitted like its SVG.
+     refit(sc, mode, g.edge_paint_width.is_none());
+@@ -759,7 +827,7 @@ fn snap_ends(sc: &mut Scene, cx: &Ctx) {
+                 e.bezier[a] = q;
+             } else {
+                 let k = if at_start { 0 } else { e.waypoints.len() - 1 };
+-                if cx.blocks {
++                if cx.axis_ends {
+                     level_end_run(&mut e.waypoints, at_start, q);
+                 }
+                 e.waypoints[k] = q;
+@@ -778,9 +846,9 @@ fn snap_ends(sc: &mut Scene, cx: &Ctx) {
+ /// of a px off a run that meets the flank just below the lid.
+ const LEVEL_RUN_REACH: f64 = 1.0;
+ 
+-/// In a block layout's scene, the final run of a waypoint path on an
+-/// axis follows its end when [`snap_ends`] moves that end across it
+-/// (a drum's shoulder takes the nearest point, not the point along the
++/// In a block layout's scene ([`Ctx::axis_ends`]), the final run of a
++/// waypoint path on an axis follows its end when [`snap_ends`] moves that
++/// end across it (a drum's shoulder takes the nearest point, not the point along the
+ /// run): the points on the run's line before the end, back to its
+ /// corner, move with it by as much, so the run stays on its axis and the
+ /// head square to the side. Left as it was, the run met the head at a
+@@ -1650,3 +1718,56 @@ mod tests {
+         assert!(!holds_other(&cx, node("A"), frame("Outer")));
+     }
+ }
++
++/// Experiment: the corner before a glyph end whose rounding reaches
++/// under the head turns tighter, so the head's base lies on the run.
++fn tighten_end_corners(e: &mut crate::scene::SceneEdge) {
++    if e.paint_width.is_some() {
++        return;
++    }
++    let head = crate::scene::edge_head_len(e) + 1.0;
++    let n = e.waypoints.len();
++    if n < 4 {
++        return;
++    }
++    for at_start in [false, true] {
++        let w = &mut e.waypoints;
++        let idx = |k: usize| if at_start { k } else { n - 1 - k };
++        let p = w[idx(0)];
++        let b = w[idx(1)];
++        let along_y = (b.0 - p.0).abs() < 1e-6 && (b.1 - p.1).abs() > 1e-6;
++        let along_x = (b.1 - p.1).abs() < 1e-6 && (b.0 - p.0).abs() > 1e-6;
++        if !along_x && !along_y {
++            continue;
++        }
++        let on = |q: (f64, f64)| if along_y { (q.0 - p.0).abs() < 1e-6 } else { (q.1 - p.1).abs() < 1e-6 };
++        // The corner: the last point back on the run's line before one off it.
++        let mut k = 1;
++        while k + 1 < n && on(w[idx(k + 1)]) {
++            k += 1;
++        }
++        if k + 1 >= n || k < 2 {
++            continue;
++        }
++        let c = w[idx(k)];
++        let a = w[idx(k + 1)];
++        let run = (c.0 - p.0).hypot(c.1 - p.1);
++        let r_after = (c.0 - w[idx(k - 1)].0).hypot(c.1 - w[idx(k - 1)].1);
++        let r_before = (c.0 - a.0).hypot(c.1 - a.1);
++        if run - r_after >= head || run <= head || k != 2 {
++            continue;
++        }
++        let r = (run - head).max(0.5);
++        if r >= r_after {
++            continue;
++        }
++        let towards = |from: (f64, f64), to: (f64, f64), d: f64| {
++            let l = (to.0 - from.0).hypot(to.1 - from.1);
++            (from.0 + (to.0 - from.0) / l * d, from.1 + (to.1 - from.1) / l * d)
++        };
++        w[idx(1)] = towards(c, p, r);
++        if r_before <= r_after + 1e-6 {
++            w[idx(k + 1)] = towards(c, a, r);
++        }
++    }
++}
+diff --git a/src/lib.rs b/src/lib.rs
+index 739a028..75da4b8 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -42,6 +42,7 @@ pub mod class;
+ pub(crate) mod clearance;
+ mod comb;
+ mod compound;
++mod corridor;
+ mod edgepass;
+ pub mod emit;
+ pub mod er;
+diff --git a/src/ortho.rs b/src/ortho.rs
+index 0344014..bfa10a6 100644
+--- a/src/ortho.rs
++++ b/src/ortho.rs
+@@ -863,6 +863,7 @@ fn ortho_pass(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
+             frames: &frames,
+             home: &home,
+             blocks: cx.blocks,
++            axis_ends: cx.axis_ends,
+             load: &load,
+             own,
+             head_leg,
+@@ -1191,6 +1192,9 @@ struct Along<'a> {
+     /// A block layout ([`Ctx::blocks`]): a step keeps out of the frames
+     /// that hold neither of its ends ([`plan_jog`]).
+     blocks: bool,
++    /// A block layout's scene, static or routed ([`Ctx::axis_ends`]): a
++    /// run reaching its port within `ALIGNED` of its line is laid on it.
++    axis_ends: bool,
+     /// The spans of the jogs each gap holds so far.
+     load: &'a std::cell::RefCell<Vec<Vec<(f64, f64)>>>,
+     /// The edge's own end nodes (never in its way).
+@@ -1845,15 +1849,19 @@ fn flow_path(
+             jogs.push(plan_jog(cx, edge, cur, (q, port, gq), h, lab));
+             out.push(Corner::Jog(k, cur.0 .0));
+             out.push(Corner::Jog(k, q.0));
+-        } else if cx.blocks && port && (q.0 - cur.0 .0).abs() > EPS {
+-            // In a block layout a run that reaches its port within
+-            // `ALIGNED` of its line is laid on the port's line from its
+-            // last turn on: the ports stage spread the end a fraction of
+-            // a px off the chain's last column, and a run left on the
+-            // column met its head at a slant, the painted spline kinked
+-            // under it (dense-lr `n22 -.-> n44`, 0.5 px over 316 px,
+-            // `idiom_spline` and `end_tilt_max` 0.8 deg in the static
+-            // `DEFECT_BASELINE`). Its own source port stays where it is.
++        } else if cx.axis_ends && port && (q.0 - cur.0 .0).abs() > EPS {
++            // In a block layout (its static scene, and `route()` with its
++            // frames, so a drag draws it as the scene does) a run that
++            // reaches its port within `ALIGNED` of its line is laid on
++            // the port's line from its last turn on: the ports stage
++            // spread the end a fraction of a px off the chain's last
++            // column, and a run left on the column met its head at a
++            // slant, the painted spline kinked under it (dense-lr
++            // `n22 -.-> n44`, 0.5 px over 316 px, `idiom_spline` and
++            // `end_tilt_max` 0.8 deg in the static `DEFECT_BASELINE`;
++            // `route()` of the public fixture drawn LR left `REG ==> ORD`
++            // 0.56 px off its port). Its own source port stays where it
++            // is.
+             let first = out.len() == 1;
+             match out.last_mut() {
+                 Some(Corner::Jog(k, b)) => {
+diff --git a/src/ports.rs b/src/ports.rs
+index 2df770a..d858e13 100644
+--- a/src/ports.rs
++++ b/src/ports.rs
+@@ -966,6 +966,14 @@ fn order_pins(sc: &mut Scene, cx: &Ctx, moved: &mut [bool]) {
+ /// router then took one of them another way, across the fan it belongs
+ /// to.)
+ fn free_pins(sc: &mut Scene, cx: &Ctx, moved: &mut [bool]) {
++    free_pins_at(sc, cx, moved, false);
++}
++
++pub(crate) fn free_pins_late(sc: &mut Scene, cx: &Ctx, moved: &mut [bool]) {
++    free_pins_at(sc, cx, moved, true);
++}
++
++fn free_pins_at(sc: &mut Scene, cx: &Ctx, moved: &mut [bool], late: bool) {
+     let flag = |v: &[bool], i: usize| v.get(i).copied().unwrap_or(false);
+     let heads = title_heads(sc, cx.blocks);
+     for i in 0..sc.edges.len() {
+@@ -1079,6 +1087,13 @@ fn free_pins(sc: &mut Scene, cx: &Ctx, moved: &mut [bool]) {
+                     .then(|| pin_past(at, (lo, hi), &exact, &columns, chip))
+                     .flatten()
+             };
++            if late
++                && taken
++                    .iter()
++                    .all(|&o| (o - at).abs() >= crate::clearance::EDGE_SPACING)
++            {
++                continue;
++            }
+             let Some(t) = pin_place(at, (lo, hi), &taken, chip, from_low).or_else(past) else {
+                 continue;
+             };

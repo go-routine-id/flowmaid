@@ -1,0 +1,11 @@
+[package]
+name = "bench-post"
+version = "0.1.0"
+edition = "2021"
+[[bin]]
+name = "bench"
+path = "../main.rs"
+[dependencies]
+flowmaid = { path = "/home/user/flowmaid" }
+[profile.release]
+debug = false

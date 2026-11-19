@@ -1,0 +1,8 @@
+flowchart TD
+  S[Start] --> L[Loop body]
+  L --> L
+  L --> C{More?}
+  C -->|yes| L
+  C -->|no| E[End]
+  L --> X[Log]
+  X --> E

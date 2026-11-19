@@ -1,0 +1,18 @@
+flowchart BT
+    N0(Done)
+    N1(Queue notify)
+    N2{Emit}
+    N3[Store emit]
+    N4{Notify}
+    N5{Parse emit}
+    N6[Load]
+    N0 -->|yes| N1
+    N1 -->|fail| N2
+    N1 -->|ok| N3
+    N2 -->|no| N4
+    N2 -->|no| N5
+    N5 --> N6
+    N2 --> N4
+    N5 --> N2
+    N2 ==> N0
+    N4 --> N3

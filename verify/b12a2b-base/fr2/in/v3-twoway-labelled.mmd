@@ -1,0 +1,14 @@
+flowchart LR
+    subgraph A[Client side]
+        a1[request]
+        a2[render]
+    end
+    subgraph B[Server side]
+        b1[handle]
+        b2[respond]
+    end
+    a1 -->|POST| b1
+    b2 -->|200 OK| a2
+    b1 --> b2
+    a2 -.->|retry| a1
+    b2 -->|push| a1

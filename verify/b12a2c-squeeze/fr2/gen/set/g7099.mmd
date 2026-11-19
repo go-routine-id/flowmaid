@@ -1,0 +1,27 @@
+flowchart LR
+  n1["db"]
+  n2["auth"]
+  subgraph B0["Data tier"]
+    n3["store"]
+    n4["parse"]
+  end
+  subgraph B1["Ingest"]
+    n5["ingest ship parse"]
+    n6["store split ship"]
+    n7["ship"]
+    n8["auth"]
+  end
+  subgraph B2["Ops"]
+    n9["search"]
+    n10["ingest auth store"]
+  end
+  n11["index"]
+  n8 --> n3
+  n10 --> n9
+  n5 -.->|pack| n1
+  n9 --> n7
+  n7 --> n11
+  n3 ==>|index| B0
+  n7 --> n5
+  n3 -->|queue| n10
+  n5 -->|audit| n3

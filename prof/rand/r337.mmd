@@ -1,0 +1,24 @@
+flowchart TD
+  H0 ==>|retry| N2
+  H0 -.->|a much longer label here| N7
+  H0 -.->|gift wrap| N4
+  H0 ---|yes| N13
+  H0 -.-> N3
+  H1 --> N10
+  H1 ---|yes| N1
+  H1 -->|gift wrap| N4
+  H1 --- N0
+  H1 ---|yes| N6
+  H1 -.->|yes| N8
+  H1 -.-> N11
+  H1 --> N9
+  H1 ==>|a much longer label here| N2
+  H1 -.-> N6
+  H1 -.->|x| N3
+  H1 -->|gift wrap| N11
+  N13 --> N7
+  N1 -->|ok| N15
+  N3 -->|no| N4
+  N8 --> N11
+  N15 -->|no| N0
+  N8 --> N3

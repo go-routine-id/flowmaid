@@ -1,0 +1,63 @@
+flowchart BT
+  n1["auth mail api"]
+  subgraph B0["Data tier"]
+    n2["auth"]
+    n3["billing queue ship<br/>cache"]
+    subgraph B0s0["Analytics 0"]
+      n4["billing<br/>search"]
+      n5["api"]
+    end
+    subgraph B0s1["Data tier 1"]
+      n6["split"]
+    end
+  end
+  subgraph B1["Fulfilment desk"]
+    n7["ship"]
+    n8["billing ingest index"]
+    subgraph B1s0["Data tier 0"]
+      n9["auth"]
+    end
+    subgraph B1s1["Platform 1"]
+      n10["notify"]
+      n11["mail audit queue"]
+    end
+  end
+  subgraph B2["Analytics"]
+    n12["worker mail pack"]
+    n13["auth"]
+    subgraph B2s0["Edge services 0"]
+      n14["mail"]
+    end
+  end
+  subgraph B3["Platform"]
+    n15["ship"]
+    n16["cache"]
+    n17["ship"]
+  end
+  n18["worker<br/>worker"]
+  n19["notify"]
+  n12 -->|queue| n19
+  n16 --> n13
+  n18 --> n11
+  n11 -->|pack| n14
+  n11 --> n8
+  n16 --> n8
+  n5 -.-> n8
+  n15 -->|report| B2
+  n17 -->|ship| n14
+  n4 ==>|ship| n8
+  n7 -.->|split| n2
+  n19 ==> n9
+  n16 -->|split| n5
+  n2 -->|split| n3
+  n2 -->|report| B2s0
+  n9 --> n16
+  n16 --> n15
+  n2 -->|cache| n14
+  n16 --> n10
+  n12 ==> n3
+  n1 --> n8
+  n7 ==> n16
+  n12 -.->|db| n11
+  n16 -->|parse| n12
+  n4 -.-> n9

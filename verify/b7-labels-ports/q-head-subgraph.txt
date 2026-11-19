@@ -1,0 +1,8 @@
+   Q routed Bus->C1 end_kink end on C1 56.3deg
+   Q routed Bus->C2 end_kink end on C2 56.3deg
+   Q routed C1->Store end_kink end on Store 71.3deg
+   Q routed C2->Store end_kink end on Store 71.3deg
+   Q static Bus->C1 end_kink end on C1 50.9deg
+   Q static Bus->C2 end_kink end on C2 50.9deg
+   Q static C1->Store end_kink end on Store 48.8deg
+   Q static C2->Store end_kink end on Store 48.8deg

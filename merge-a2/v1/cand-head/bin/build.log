@@ -1,0 +1,6 @@
+   Compiling flowmaid v0.40.1 (/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/merge-a2/v1/wt-head)
+    Finished `release` profile [optimized] target(s) in 3m 43s
+  Executable unittests src/lib.rs (/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/merge-a2/v1/target-on/release/deps/flowmaid-4dce2269cf2ca482)
+  Executable tests/quality.rs (/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/merge-a2/v1/target-on/release/deps/quality-ae11e34295223e09)
+   Compiling flowmaid v0.40.1 (/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/merge-a2/v1/wt-head)
+    Finished `release` profile [optimized] target(s) in 1.92s

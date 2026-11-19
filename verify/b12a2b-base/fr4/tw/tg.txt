@@ -1,0 +1,64 @@
+t00-BT.svg	Shipping and returns desk	6.78 a1 → b2	0.71 a1 → b2	0.71 a1 → b2
+t00-BT.svg	Shipping and returns desk two	1000000000.00 	1000000000.00 	1000000000.00 
+t00-TD.svg	Shipping and returns desk	21.75 p → a2	21.75 p → a2	21.75 p → a2
+t00-TD.svg	Shipping and returns desk two	0.04 a1 → b1	10.00 a1 → b1	10.00 a1 → b1
+t01-BT.svg	Order processing	24.50 a1 → b1	24.50 a1 → b1	24.50 a1 → b1
+t01-BT.svg	Order processing two	1000000000.00 	1000000000.00 	1000000000.00 
+t01-TD.svg	Order processing	37.50 q → B	37.50 q → b1	37.50 q → b1
+t01-TD.svg	Order processing two	7.43 q → b1	7.43 q → b1	7.43 q → b1
+t02-BT.svg	Payments and billing	6.72 a1 → b2	4.93 a1 → b2	4.93 a1 → b2
+t02-BT.svg	Payments and billing two	1000000000.00 	1000000000.00 	1000000000.00 
+t02-TD.svg	Payments and billing	37.60 q → B	37.60 q → B	37.60 q → B
+t02-TD.svg	Payments and billing two	12.49 a1 → b1	11.99 q → B	4.63 a1 → b1
+t03-BT.svg	Customer accounts	6.41 a1 → b2	4.17 a1 → b2	4.17 a1 → b2
+t03-BT.svg	Customer accounts two	1000000000.00 	1000000000.00 	1000000000.00 
+t03-TD.svg	Customer accounts	37.50 q → B	37.50 q → B	37.50 q → B
+t03-TD.svg	Customer accounts two	6.71 q → b1	7.41 q → b1	7.41 q → b1
+t04-BT.svg	Data ingestion workers	6.49 a1 → b2	2.80 a1 → b2	2.80 a1 → b2
+t04-BT.svg	Data ingestion workers two	1000000000.00 	1000000000.00 	1000000000.00 
+t04-TD.svg	Data ingestion workers	37.60 q → B	37.60 q → B	37.60 q → B
+t04-TD.svg	Data ingestion workers two	11.66 q → B	11.66 q → B	11.66 q → B
+t05-BT.svg	Edge and shared services	6.57 a1 → b2	3.47 a1 → b2	3.47 a1 → b2
+t05-BT.svg	Edge and shared services two	1000000000.00 	1000000000.00 	1000000000.00 
+t05-TD.svg	Edge and shared services	22.69 p → a2	22.69 p → a2	22.69 p → a2
+t05-TD.svg	Edge and shared services two	10.00 a1 → b1	10.00 a1 → b1	10.00 a1 → b1
+t06-BT.svg	Analytics warehouse	6.35 a1 → b2	4.05 a1 → b2	4.05 a1 → b2
+t06-BT.svg	Analytics warehouse two	1000000000.00 	1000000000.00 	1000000000.00 
+t06-TD.svg	Analytics warehouse	37.60 q → B	37.60 q → B	37.60 q → B
+t06-TD.svg	Analytics warehouse two	12.49 a1 → b1	11.77 q → B	4.29 a1 → b1
+t07-BT.svg	Notification center	10.00 a1 → b1	10.00 a1 → b1	10.00 a1 → b1
+t07-BT.svg	Notification center two	1000000000.00 	1000000000.00 	1000000000.00 
+t07-TD.svg	Notification center	37.50 q → B	37.50 q → b1	37.50 q → b1
+t07-TD.svg	Notification center two	6.67 q → b1	7.42 q → b1	7.42 q → b1
+t08-BT.svg	Identity provider	1.76 a1 → b1	1.76 a1 → b1	1.76 a1 → b1
+t08-BT.svg	Identity provider two	1000000000.00 	1000000000.00 	1000000000.00 
+t08-TD.svg	Identity provider	37.50 q → B	37.50 q → b1	37.50 q → b1
+t08-TD.svg	Identity provider two	7.45 q → b1	7.45 q → b1	7.45 q → b1
+t09-BT.svg	Search cluster	6.56 a1 → b1	24.50 a1 → b1	6.56 a1 → b1
+t09-BT.svg	Search cluster two	1000000000.00 	1000000000.00 	1000000000.00 
+t09-TD.svg	Search cluster	37.50 q → b1	37.50 q → b1	37.50 q → b1
+t09-TD.svg	Search cluster two	7.48 q → b1	7.48 q → b1	7.48 q → b1
+t10-BT.svg	Inventory	6.46 a1 → b1	24.50 a1 → b1	6.46 a1 → b1
+t10-BT.svg	Inventory two	1000000000.00 	1000000000.00 	1000000000.00 
+t10-TD.svg	Inventory	37.50 q → b1	37.50 q → b1	37.50 q → b1
+t10-TD.svg	Inventory two	7.50 a1 → b1	7.50 a1 → b1	7.50 a1 → b1
+t11-BT.svg	Fulfilment and logistics	6.51 a1 → b2	2.43 a1 → b2	2.43 a1 → b2
+t11-BT.svg	Fulfilment and logistics two	1000000000.00 	1000000000.00 	1000000000.00 
+t11-TD.svg	Fulfilment and logistics	37.50 q → B	37.50 q → B	37.50 q → B
+t11-TD.svg	Fulfilment and logistics two	9.83 a1 → b1	9.87 a1 → b1	9.87 a1 → b1
+t12-BT.svg	Monitoring stack	24.50 a1 → b1	24.50 a1 → b1	24.50 a1 → b1
+t12-BT.svg	Monitoring stack two	1000000000.00 	1000000000.00 	1000000000.00 
+t12-TD.svg	Monitoring stack	37.50 q → B	37.50 q → b1	37.50 q → b1
+t12-TD.svg	Monitoring stack two	7.45 q → b1	7.44 q → b1	7.44 q → b1
+t13-BT.svg	Batch jobs	6.43 a1 → b1	24.50 a1 → b1	6.43 a1 → b1
+t13-BT.svg	Batch jobs two	1000000000.00 	1000000000.00 	1000000000.00 
+t13-TD.svg	Batch jobs	37.50 q → b1	37.50 q → b1	37.50 q → b1
+t13-TD.svg	Batch jobs two	13.46 q → B	12.21 q → B	13.46 q → B
+t14-BT.svg	Mammoth Wombat Overview	6.59 a1 → b2	2.60 a1 → b2	2.60 a1 → b2
+t14-BT.svg	Mammoth Wombat Overview two	1000000000.00 	1000000000.00 	1000000000.00 
+t14-TD.svg	Mammoth Wombat Overview	20.50 p → a2	20.50 p → a2	20.50 p → a2
+t14-TD.svg	Mammoth Wombat Overview two	10.00 q → b1	10.00 q → b1	10.00 q → b1
+t15-BT.svg	Core services	6.45 a1 → b1	4.35 a1 → b1	6.45 a1 → b1
+t15-BT.svg	Core services two	1000000000.00 	1000000000.00 	1000000000.00 
+t15-TD.svg	Core services	37.50 q → b1	37.50 q → b1	37.50 q → b1
+t15-TD.svg	Core services two	7.49 q → b1	7.49 q → b1	7.49 q → b1

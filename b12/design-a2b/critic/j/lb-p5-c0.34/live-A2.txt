@@ -1,0 +1,83 @@
+MUST FAIL     infra-overview                     sib_stagger              1  must <= 0         target <= -         [0.38 3, start 3, mermaid 0]  4.3 (a)
+MUST FAIL     infra-overview                     lateral_x                2  must <= 0         target <= -         [0.38 21, start 21, mermaid 0]  4.3 (a)
+MUST FAIL     infra-overview                     compact_max           9.71  must <= 5.5       target <= 4.59      [0.38 11.43, start 11.43, mermaid 4.59]  4.3 (a): mermaid's + 20 %
+MUST FAIL     infra-overview                     compact_mean           5.4  must <= 3.9       target <= 3.25      [0.38 6.9, start 6.9, mermaid 3.25]  4.3 (a): mermaid's + 20 %
+MUST FAIL     infra-overview                     bends                  143  must <= 120       target <= -         [0.38 109, start 110, mermaid 100]  4.3 (a): mermaid's total + 20 %
+MUST FAIL     infra-overview                     bends_max               13  must <= 8         target <= -         [0.38 8, start 8, mermaid 7]  4.3 (a): 0.38's own worst edge
+target missed infra-overview                     lbl_off_mean         0.189  must <= 0.2       target <= 0.13      [0.38 0.198, start 0.187, mermaid 0.13]  4.3 (a)
+MUST FAIL     infra-overview                     lbl_off_max           0.36  must <= 0.35      target <= -         [0.38 0.332, start 0.335, mermaid 0.329]  4.3 (a)
+target missed infra-overview                     lbl_endpx_mean         383  must <= 386       target <= 340       [0.38 309, start 316, mermaid 558]  4.3 (a): the smaller of mermaid's and 1.25 x 0.38's
+MUST FAIL     infra-overview                     straight_max          1702  must <= 1240      target <= -         [0.38 1175, start 1175, mermaid 1236]  4.3 (a): mermaid's
+MUST FAIL     infra-overview                     area               5581220  must <= 4267593.75 target <= -         [0.38 3414075, start 3414075, mermaid 5184964]  4.3 (a): the smaller of mermaid's and 1.25 x 0.38's
+MUST FAIL     infra-overview-v2                  lateral_x                1  must <= 0         target <= -         [0.38 24, start 24, mermaid 0]  4.3 (b) v2
+MUST FAIL     infra-overview-v2                  compact_max          15.77  must <= 5.5       target <= -         [0.38 7.91, start 7.91, mermaid 4.03]  4.3 (b): the analog's bound
+MUST FAIL     infra-overview-v2                  compact_mean          7.49  must <= 3.9       target <= -         [0.38 5.03, start 5.03, mermaid 3.14]  4.3 (b): the analog's bound
+target missed infra-overview-v2                  crossings               14  must <= 17        target <= 13        [0.38 19, start 19, mermaid 13]  4.3 (b): mermaid's + 4
+MUST FAIL     infra-overview-v2                  bends                  151  must <= 114       target <= -         [0.38 124, start 125, mermaid 95]  4.3 (b): mermaid's + 20 %
+MUST FAIL     infra-overview-v2                  bends_max               13  must <= 8         target <= -         [0.38 12, start 12, mermaid 6]  4.3 (b): the analog's bound
+MUST FAIL     infra-overview-v2                  lbl_struck               2  must <= 0         target <= -         [0.38 2, start 2, mermaid 0]  4.3 (b)
+MUST FAIL     infra-overview-v2                  lbl_crowd                5  must <= 1         target <= -         [0.38 11, start 11, mermaid 1]  4.3 (b): mermaid's count
+MUST FAIL     infra-overview-v2                  lbl_in_end               1  must <= 0         target <= -         [0.38 7, start 7, mermaid 0]  4.3 (b)
+MUST FAIL     infra-overview-v2                  lbl_endpx_mean         341  must <= 329       target <= 290       [0.38 263, start 263, mermaid 496]  4.3 (b): the smaller of mermaid's and 1.25 x 0.38's
+MUST FAIL     infra-overview-v2                  area               5573653  must <= 3209880   target <= -         [0.38 2567904, start 2567904, mermaid 5366494]  4.3 (b): 1.25 x 0.38's
+MUST FAIL     perm-a-edges-reversed              sib_stagger              1  must <= 0         target <= -         [0.38 3, start 3, mermaid 0]  4.3 (b) permutations
+MUST FAIL     perm-b-subgraphs-reversed          sib_stagger              1  must <= 0         target <= -         [0.38 3, start 3, mermaid 0]  4.3 (b) permutations
+MUST FAIL     perm-c-actors-reversed             sib_stagger              1  must <= 0         target <= -         [0.38 3, start 3, mermaid 0]  4.3 (b) permutations
+MUST FAIL     perm-d-edges-rotated               sib_stagger              1  must <= 0         target <= -         [0.38 3, start 3, mermaid 0]  4.3 (b) permutations
+MUST FAIL     perm-e-one-more-inner-edge         sib_stagger              1  must <= 0         target <= -         [0.38 3, start 3, mermaid 0]  4.3 (b) permutations
+MUST FAIL     perm-a-edges-reversed              lateral_x                2  must <= 0         target <= -         [0.38 19, start 19, mermaid 0]  4.3 (b) permutations
+MUST FAIL     perm-b-subgraphs-reversed          lateral_x                2  must <= 0         target <= -         [0.38 21, start 21, mermaid 0]  4.3 (b) permutations
+MUST FAIL     perm-c-actors-reversed             lateral_x                2  must <= 0         target <= -         [0.38 21, start 21, mermaid 0]  4.3 (b) permutations
+MUST FAIL     perm-d-edges-rotated               lateral_x                2  must <= 0         target <= -         [0.38 21, start 21, mermaid 0]  4.3 (b) permutations
+MUST FAIL     perm-e-one-more-inner-edge         lateral_x                1  must <= 0         target <= -         [0.38 26, start 26, mermaid 0]  4.3 (b) permutations
+MUST FAIL     perm-a-edges-reversed              compact_max           9.71  must <= 5.5       target <= -         [0.38 11.24, start 11.24, mermaid 4.31]  4.3 (b)
+MUST FAIL     perm-b-subgraphs-reversed          compact_max           9.59  must <= 5.5       target <= -         [0.38 11.43, start 11.43, mermaid 4.69]  4.3 (b)
+MUST FAIL     perm-c-actors-reversed             compact_max           9.71  must <= 5.5       target <= -         [0.38 11.43, start 11.43, mermaid 4.59]  4.3 (b)
+MUST FAIL     perm-d-edges-rotated               compact_max           9.71  must <= 5.5       target <= -         [0.38 11.43, start 11.43, mermaid 4.69]  4.3 (b)
+MUST FAIL     perm-e-one-more-inner-edge         compact_max          10.12  must <= 5.5       target <= -         [0.38 10.75, start 10.75, mermaid 3.97]  4.3 (b)
+MUST FAIL     perm-b-subgraphs-reversed          lbl_crowd                3  must <= 0         target <= -         [0.38 7, start 7, mermaid 0]  4.3 (b)
+MUST FAIL     perm-e-one-more-inner-edge         lbl_crowd                3  must <= 0         target <= -         [0.38 11, start 11, mermaid 0]  4.3 (b)
+MUST FAIL     perm-a-edges-reversed              bends_max               13  must <= 8         target <= -         [0.38 9, start 9, mermaid 8]  4.3 (b)
+MUST FAIL     perm-b-subgraphs-reversed          bends_max               13  must <= 8         target <= -         [0.38 8, start 8, mermaid 6]  4.3 (b)
+MUST FAIL     perm-c-actors-reversed             bends_max               13  must <= 8         target <= -         [0.38 8, start 8, mermaid 7]  4.3 (b)
+MUST FAIL     perm-d-edges-rotated               bends_max               13  must <= 8         target <= -         [0.38 8, start 8, mermaid 6]  4.3 (b)
+MUST FAIL     perm-e-one-more-inner-edge         bends_max               13  must <= 8         target <= -         [0.38 11, start 11, mermaid 8]  4.3 (b)
+accepted      perm-c-actors-reversed             bands            U2 T1 U1 / EXT GH / PROD / DR STG  == infra-overview: U1 T1 U2 / EXT GH / PROD / DR STG  up to crossing-neutral units: U2~U1 (both: out DNS); U1~U2 (both: out DNS)
+MUST FAIL     blocks-overview                    sib_stagger              1  must <= 0         target <= -         [0.38 0, start 0, mermaid 0]  4.3 (c)
+MUST FAIL     blocks-overview-edges-reversed     sib_stagger              1  must <= 0         target <= -         [0.38 0, start 0, mermaid 0]  4.3 (c)
+MUST FAIL     blocks-overview-edges-rotated      sib_stagger              1  must <= 0         target <= -         [0.38 0, start 0, mermaid 0]  4.3 (c)
+MUST FAIL     blocks-overview-actors-reversed    sib_stagger              1  must <= 0         target <= -         [0.38 0, start 0, mermaid 0]  4.3 (c)
+MUST FAIL     blocks-overview-subgraphs-reversed sib_stagger              1  must <= 0         target <= -         [0.38 0, start 0, mermaid 0]  4.3 (c)
+MUST FAIL     blocks-overview                    lateral_x                4  must <= 0         target <= -         [0.38 14, start 14, mermaid 0]  4.3 (c)
+MUST FAIL     blocks-overview-edges-reversed     lateral_x                4  must <= 0         target <= -         [0.38 15, start 15, mermaid 0]  4.3 (c)
+MUST FAIL     blocks-overview-edges-rotated      lateral_x                4  must <= 0         target <= -         [0.38 15, start 15, mermaid 0]  4.3 (c)
+MUST FAIL     blocks-overview-actors-reversed    lateral_x                4  must <= 0         target <= -         [0.38 14, start 14, mermaid 0]  4.3 (c)
+MUST FAIL     blocks-overview-subgraphs-reversed lateral_x                4  must <= 0         target <= -         [0.38 14, start 14, mermaid 0]  4.3 (c)
+MUST FAIL     blocks-overview                    compact_max          19.97  must <= 7.97      target <= -         [0.38 26.52, start 26.52, mermaid 6.64]  4.3 (c): mermaid's 6.64 + 20 %
+MUST FAIL     blocks-overview-edges-reversed     compact_max          19.97  must <= 7.97      target <= -         [0.38 26.52, start 26.52, mermaid 6.47]  4.3 (c): mermaid's 6.64 + 20 %
+MUST FAIL     blocks-overview-edges-rotated      compact_max          19.97  must <= 7.97      target <= -         [0.38 26.52, start 26.52, mermaid 6.64]  4.3 (c): mermaid's 6.64 + 20 %
+MUST FAIL     blocks-overview-actors-reversed    compact_max          19.97  must <= 7.97      target <= -         [0.38 26.52, start 26.52, mermaid 6.64]  4.3 (c): mermaid's 6.64 + 20 %
+MUST FAIL     blocks-overview-subgraphs-reversed compact_max          19.97  must <= 7.97      target <= -         [0.38 26.52, start 26.52, mermaid 6.64]  4.3 (c): mermaid's 6.64 + 20 %
+MUST FAIL     blocks-overview                    compact_mean           7.3  must <= 4.63      target <= -         [0.38 9.02, start 9.02, mermaid 3.86]  4.3 (c): mermaid's 3.86 + 20 %
+MUST FAIL     blocks-overview-edges-reversed     compact_mean           7.3  must <= 4.63      target <= -         [0.38 8.81, start 8.81, mermaid 3.8]  4.3 (c): mermaid's 3.86 + 20 %
+MUST FAIL     blocks-overview-edges-rotated      compact_mean           7.3  must <= 4.63      target <= -         [0.38 8.74, start 8.74, mermaid 3.86]  4.3 (c): mermaid's 3.86 + 20 %
+MUST FAIL     blocks-overview-actors-reversed    compact_mean           7.3  must <= 4.63      target <= -         [0.38 8.87, start 8.87, mermaid 3.86]  4.3 (c): mermaid's 3.86 + 20 %
+MUST FAIL     blocks-overview-subgraphs-reversed compact_mean           7.3  must <= 4.63      target <= -         [0.38 8.89, start 8.89, mermaid 3.86]  4.3 (c): mermaid's 3.86 + 20 %
+target missed blocks-overview                    crossings                6  must <= 7         target <= 5         [0.38 14, start 14, mermaid 5]  4.3 (c): mermaid's 5 + 2
+target missed blocks-overview-edges-reversed     crossings                6  must <= 7         target <= 5         [0.38 7, start 6, mermaid 6]  4.3 (c): mermaid's 5 + 2
+target missed blocks-overview-edges-rotated      crossings                6  must <= 7         target <= 5         [0.38 23, start 23, mermaid 5]  4.3 (c): mermaid's 5 + 2
+target missed blocks-overview-actors-reversed    crossings                6  must <= 7         target <= 5         [0.38 15, start 15, mermaid 5]  4.3 (c): mermaid's 5 + 2
+target missed blocks-overview-subgraphs-reversed crossings                6  must <= 7         target <= 5         [0.38 12, start 12, mermaid 5]  4.3 (c): mermaid's 5 + 2
+MUST FAIL     infra-bt                           lateral_x                1  must <= 0         target <= -         [0.38 23, start 23, mermaid 0]  4.3 (d), B12.11
+MUST FAIL     blocks-overview-bt                 lateral_x                3  must <= 0         target <= -         [0.38 15, start 15, mermaid 0]  4.3 (d), B12.11
+MUST FAIL     hub5                               lateral_x                3  must <= 0         target <= -         [0.38 5, start 5, mermaid 0]  4.3 (d), B12.11
+MUST FAIL     cycle2                             lateral_x                2  must <= 0         target <= -         [0.38 6, start 6, mermaid 0]  4.3 (d), B12.11
+target missed bench-75                           lateral_x                2  must <= 3         target <= 0         [0.38 43, start 43, mermaid 3]  4.3 (d): not above mermaid's count (3 / 0 / 1), target 0
+MUST FAIL     dense-lr                           lateral_x                5  must <= 0         target <= 0         [0.38 51, start 52, mermaid 0]  4.3 (d): not above mermaid's count (3 / 0 / 1), target 0
+MUST FAIL     dense-td                           lateral_x                6  must <= 1         target <= 0         [0.38 93, start 93, mermaid 1]  4.3 (d): not above mermaid's count (3 / 0 / 1), target 0
+MUST FAIL     dense-lr                           sib_stagger              2  must <= 0         target <= -         [0.38 4, start 4, mermaid 0]  4.3 (f)
+MUST FAIL     bench-75                           compact_max          71.64  must <= 52.03     target <= -         [0.38 52.03, start 52.03, mermaid 9.88]  4.3 (f): not above the reference
+MUST FAIL     dense-lr                           compact_max          43.03  must <= 11.78     target <= -         [0.38 11.78, start 11.78, mermaid 6.92]  4.3 (f): not above the reference
+target missed dense-lr                           crossings               17  must <= 51.5      target <= 10        [0.38 46, start 45, mermaid 10]  4.3 (f): the smaller of 1.1 x 0.38's + 2 and 1.1 x the starting release's + 2
+judge: --due A2: 10 rule(s) due at a later checkpoint left out
+judge: 444 checks on 95 diagram(s): 70 must-fail, 10 target missed

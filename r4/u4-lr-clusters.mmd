@@ -1,0 +1,12 @@
+flowchart LR
+  subgraph ingest [Ingest layer]
+    direction LR
+    A[HTTP] -->|parse| B[Validate]
+  end
+  subgraph core [Core services]
+    C[Router] -->|dispatch job| D[Executor]
+    C -->|audit| E[Logger]
+  end
+  B -->|valid request| C
+  D -->|result| F[Reply]
+  E -.->|ship logs| G[(Archive)]

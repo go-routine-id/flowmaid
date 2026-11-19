@@ -1,0 +1,11 @@
+8a788c46f49c5e78394d01010353b1c7b5550f48
+tests/fixtures/identity.tsv
+
+Auto-merging src/architecture.rs
+Auto-merging src/compound.rs
+Auto-merging src/edgepass.rs
+Auto-merging src/gitgraph.rs
+Auto-merging src/ortho.rs
+Auto-merging src/scene.rs
+Auto-merging tests/fixtures/identity.tsv
+CONFLICT (content): Merge conflict in tests/fixtures/identity.tsv

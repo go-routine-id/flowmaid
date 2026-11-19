@@ -1,0 +1,15 @@
+flowchart RL
+    N0([Emit])
+    N1[(Archive archive)]
+    N2[Notify]
+    N3[Queue check]
+    N4[Report]
+    N0 -->|next| N1
+    N1 --> N2
+    N1 -->|ok| N3
+    N2 --> N4
+    N2 --> N4
+    N0 --> N1
+    N4 -->|retry| N2
+    N4 -.-> N0
+    N4 -.-> N1

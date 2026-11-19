@@ -1,0 +1,12 @@
+flowchart TD
+    subgraph G[Data ingestion workers]
+        m0[db]
+        m1[y]
+    end
+    s0[src0] --> G
+    s0 -- "lbl2" --> G
+    s1[src1] --> G
+    s2[src2] --> m1
+    s3[src3] -- "lbl9" --> G
+    s4[src4] --> G
+    s4 --> G

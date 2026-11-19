@@ -1,0 +1,27 @@
+flowchart LR
+  n1["search"]
+  n2["search"]
+  subgraph B0["Platform"]
+    n3["queue"]
+    n4["mail"]
+    subgraph B0s0["Storefront 0"]
+      n5["index<br/>queue"]
+      n6["report"]
+    end
+  end
+  subgraph B1["Fulfilment desk"]
+    n7["search worker merge"]
+  end
+  subgraph B2["Fulfilment desk"]
+    n8["merge"]
+    n9["api worker worker"]
+  end
+  n10["store merge audit"]
+  n11["billing<br/>audit"]
+  n3 -.-> n4
+  n9 -.->|auth| n1
+  n2 --> n1
+  n10 -->|search| n7
+  n2 ==>|index| n5
+  n7 ==>|split| n6
+  n9 -->|ship| n5

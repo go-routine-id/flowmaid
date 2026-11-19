@@ -1,0 +1,34 @@
+g106 routed tight_pairs:3.00->2.00 tight_len:144.00->110.00
+g106 static tight_len:158.00->146.00
+g131 routed min_edge_gap:12.72->12.59 border_len:111.26->107.62 tight_len:78.00->94.00 hug_runs:0.00->1.00 hug_len:0.00->34.70 hug_max:0.00->34.70 end_tilt_max:49.14->46.32 lat_wiggles:2.00->1.00 lat_backtrack:10.04->7.00 band_len:352.00->362.00
+g131 static min_node_gap:11.63->11.53 min_edge_gap:21.70->21.71 border_len:109.64->104.99 tight_len:32.00->44.00 end_tilt_max:49.14->46.32 lat_wiggles:2.00->1.00 lat_backtrack:17.50->14.50 end_kink:9.00->8.00
+g132 routed end_kink:9.00->8.00
+g132 static end_kink:8.00->7.00
+g147 static lbl_edge:1.00->0.00 end_kink:10.00->9.00
+g158 routed tight_pairs:1.00->0.00 tight_len:38.00->0.00
+g158 static tight_pairs:1.00->0.00 tight_len:46.00->0.00 end_kink:8.00->7.00
+g22 routed hug_runs:2.00->1.00 hug_len:136.30->102.82
+g22 static edge_edge_x:5.00->4.00 overlap_len:20.00->0.00 min_node_gap:12.51->12.50 corner_touch:0.00->1.00 overlap_max:20.00->0.00 tight_len:88.00->82.00 hug_runs:1.00->0.00 hug_len:194.27->0.00 hug_max:194.27->0.00 x_drawn:5.00->4.00
+g53 routed tight_pairs:0.00->1.00 tight_len:0.00->74.00 ortho_edges:3.00->2.00 band_pairs:1.00->2.00 band_len:128.00->260.00 idiom_ortho:15.00->14.00 idiom_scubic:19.00->20.00 end_kink:13.00->14.00
+g53 static tight_pairs:1.00->2.00 tight_len:38.00->124.00 ortho_edges:4.00->3.00 band_pairs:0.00->1.00 band_len:0.00->132.00 idiom_ortho:16.00->15.00 idiom_scubic:18.00->19.00
+g56 static end_kink:6.00->5.00
+g64 routed tight_len:74.00->54.00 band_len:138.00->134.00
+g64 static tight_len:86.00->68.00 band_len:148.00->134.00
+g81 routed min_node_gap:8.72->10.00 min_edge_gap:17.70->17.45 tight_len:118.00->98.00 band_pairs:3.00->4.00 band_len:380.00->480.00
+g81 static tight_len:74.00->56.00 band_len:108.00->110.00
+g92 routed end_kink:13.00->14.00
+g92 static end_kink:11.00->12.00
+g94 routed tight_pairs:2.00->3.00 tight_len:68.00->98.00 band_len:210.00->220.00
+g94 static edge_edge_x:4.00->3.00 min_node_gap:10.66->8.86 end_cross:1.00->2.00 lat_backtrack:16.00->46.50 band_len:218.00->234.00 x_drawn:4.00->3.00
+r028 routed tight_len:542.00->590.00 end_tilt_max:0.27->0.24 band_len:814.00->886.00 end_kink:2.00->1.00
+r028 static lat_backtrack:12.75->12.73 band_len:516.00->572.00 end_kink:2.00->1.00
+r105 static edge_edge_x:0.00->1.00 xgap_max:0.00->1.00 band_len:200.00->198.00 x_drawn:0.00->1.00
+r144 routed lbl_edge:0.00->1.00
+r144 static lbl_edge:0.00->1.00
+r218 routed min_node_gap:16.62->16.50 min_edge_gap:40.00->27.19 tight_pairs:1.00->2.00 tight_len:26.00->82.00 ortho_edges:0.00->1.00 band_pairs:1.00->2.00 band_len:106.00->312.00 idiom_ortho:2.00->3.00 idiom_scubic:11.00->10.00 end_kink:7.00->5.00
+r218 static min_node_gap:19.97->10.52 band_pairs:1.00->2.00 band_len:116.00->258.00 end_kink:6.00->4.00
+r351 routed end_kink:5.00->4.00
+r351 static min_node_gap:25.24->40.00 end_kink:2.00->1.00
+s7-fanlabel routed min_node_gap:35.23->40.00
+s7-fanlabel static min_node_gap:35.37->40.00 end_kink:6.00->4.00
+t9.mmd routed end_kink:2.00->1.00

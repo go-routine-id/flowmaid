@@ -1,0 +1,14 @@
+flowchart RL
+    subgraph G[Order processing]
+        m0[queue]
+        m1[x wide member node]
+        m2[auth service]
+        m0 --> m1
+    end
+    s0[src0] --> m2
+    s0 --> G
+    s1[src1] -- "lbl6" --> G
+    s1 --> m2
+    s2[src2] --> m2
+    s2 --> m0
+    m2 --> z[end]

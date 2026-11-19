@@ -1,0 +1,11 @@
+[package]
+name = "probe-base"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+flowmaid = { path = "../base" }
+
+[profile.release]
+debug = false
+incremental = false

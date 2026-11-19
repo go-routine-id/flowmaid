@@ -1,0 +1,6 @@
+architecture-beta
+  group g1[One]
+  group g2[Two]
+  service a(server)[A] in g1
+  service b(server)[B] in g2
+  a{group}:R --> L:b{group}

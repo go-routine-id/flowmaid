@@ -1,0 +1,7 @@
+baseline-038.tsv       rows  95  changed cells  260  columns {'bends': 71, 'bends_max': 71, 'straight_max': 60, 'lane_gap_min': 28, 'bends_max_edge': 25, 'straight_max_edge': 4, 'lanes_max': 1}
+ref-start.tsv          rows  95  changed cells  259  columns {'bends': 71, 'bends_max': 71, 'straight_max': 60, 'lane_gap_min': 28, 'bends_max_edge': 24, 'straight_max_edge': 4, 'lanes_max': 1}
+ref-mermaid.tsv        rows  95  changed cells   23  columns {'bends': 15, 'straight_max': 2, 'lane_gap_min': 2, 'bends_max': 2, 'bends_max_edge': 2}
+ref-038-routed.tsv     rows  92  changed cells  264  columns {'bends': 71, 'bends_max': 67, 'straight_max': 55, 'lane_gap_min': 38, 'lanes_max': 2, 'bends_max_edge': 20, 'straight_max_edge': 11}
+ref-start-routed.tsv   rows  92  changed cells  254  columns {'bends': 71, 'bends_max': 67, 'straight_max': 55, 'lane_gap_min': 35, 'bends_max_edge': 18, 'lanes_max': 1, 'straight_max_edge': 7}
+thresholds.json: rules reading a changed reference column at judge time: none
+thresholds-routed.json: rules reading a changed reference column at judge time: none

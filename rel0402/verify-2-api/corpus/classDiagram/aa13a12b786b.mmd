@@ -1,0 +1,8 @@
+classDiagram
+direction RL
+A -- B : uses
+B "1" -- "*" C : has many of
+C ..|> D
+C --|> D
+D *-- A
+B o-- B

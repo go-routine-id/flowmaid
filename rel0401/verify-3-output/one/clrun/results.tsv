@@ -1,0 +1,49 @@
+head/examples/class.mmd	render	same	
+head/examples/class.mmd	scene	same	
+head/examples/class.mmd	r0	same	o=0.0,0.0;vb=0,0;drawn=8
+head/examples/class.mmd	r0c	trans	o=0.0,-73.0;vb=0,-73;drawn=8;cardspot=(101.9,795.5);CARD_NOT_AT_SPOT=1/8
+head/examples/class.mmd	rin	same	o=0.0,0.0;vb=0,0;drawn=8
+head/examples/class.mmd	rn0	same	o=0.0,0.0;vb=0,0;drawn=8
+head/examples/class.mmd	ra0	DIFF num 305.7->108.9 (o -178.3,-119): <text x="305.7" y="847.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">*</text> || <text x="108.9" y="728.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">*</text>	o=-178.3,-119.0;vb=-178.3,-119;drawn=8
+head/examples/class.mmd	ra0c	DIFF num 347.8->126.9 (o -178.3,-192): <text x="347.8" y="561.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">*</text> || <text x="126.9" y="369.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">*</text>	o=-178.3,-192.0;vb=-178.3,-192;drawn=8
+head/examples/class.mmd	rb0	DIFF num 310.6->164.1 (o -178.3,0): <text x="310.6" y="573.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">1..*</text> || <text x="164.1" y="573.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">1..*</text>	o=-178.3,0.0;vb=-178.3,0;drawn=8
+head/examples/class.mmd	rc0	trans	o=0.0,-124.0;vb=0,-124;drawn=8
+head/examples/class.mmd	re0	DIFF num 445.7->108.9 (o -318.3,-229): <text x="445.7" y="957.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">*</text> || <text x="108.9" y="728.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">*</text>	o=-318.2,-229.0;vb=-318.3,-229;drawn=8
+head/examples/class.mmd	rn1	same	o=0.0,0.0;vb=0,0;drawn=8
+head/examples/class.mmd	ra1	DIFF num 274.5->101.9 (o -140.1,-112): <text x="274.5" y="907.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">1</text> || <text x="101.9" y="795.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">1</text>	o=-140.1,-112.0;vb=-140.1,-112;drawn=8
+head/examples/class.mmd	ra1c	DIFF num 274.5->101.9 (o -140.1,-185): <text x="274.5" y="980.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">1</text> || <text x="101.9" y="795.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">1</text>	o=-140.1,-185.0;vb=-140.1,-185;drawn=8
+head/examples/class.mmd	rb1	DIFF num 274.5->101.9 (o -140.1,0): <text x="274.5" y="795.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">1</text> || <text x="101.9" y="795.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">1</text>	o=-140.1,0.0;vb=-140.1,0;drawn=8
+head/examples/class.mmd	rc1	trans	o=0.0,-117.0;vb=0,-117;drawn=8
+head/examples/class.mmd	re1	DIFF num 526.4->227.7 (o -280.1,-222): <text x="526.4" y="534.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">1</text> || <text x="227.7" y="312.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">1</text>	o=-280.1,-222.0;vb=-280.1,-222;drawn=8
+head/examples/class.mmd	rn2	same	o=0.0,0.0;vb=0,0;drawn=8
+head/examples/class.mmd	ra2	DIFF num 279.8->72.2 (o -175.8,-120): <text x="279.8" y="727.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">1..*</text> || <text x="72.2" y="607.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">1..*</text>	o=-175.8,-120.0;vb=-175.8,-120;drawn=8
+head/examples/class.mmd	ra2c	DIFF num 279.8->72.2 (o -175.8,-193): <text x="279.8" y="800.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">1..*</text> || <text x="72.2" y="607.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">1..*</text>	o=-175.8,-193.0;vb=-175.8,-193;drawn=8
+head/examples/class.mmd	rb2	DIFF num 279.8->72.2 (o -175.8,0): <text x="279.8" y="607.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">1..*</text> || <text x="72.2" y="607.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">1..*</text>	o=-175.8,0.0;vb=-175.8,0;drawn=8
+head/examples/class.mmd	rc2	trans	o=0.0,-125.0;vb=0,-125;drawn=8
+head/examples/class.mmd	re2	DIFF num 450.2->101.9 (o -315.8,-230): <text x="450.2" y="1025.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">1</text> || <text x="101.9" y="795.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">1</text>	o=-315.8,-230.0;vb=-315.8,-230;drawn=8
+head/examples/class.mmd	rn3	same	o=0.0,0.0;vb=0,0;drawn=8
+head/examples/class.mmd	ra3	DIFF num 234.2->87.9 (o -178.2,-140): <text x="234.2" y="747.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">1..*</text> || <text x="87.9" y="607.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">1..*</text>	o=-178.2,-140.0;vb=-178.2,-140;drawn=8
+head/examples/class.mmd	ra3c	DIFF num 234.2->87.9 (o -178.2,-213): <text x="234.2" y="820.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">1..*</text> || <text x="87.9" y="607.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">1..*</text>	o=-178.2,-213.0;vb=-178.2,-213;drawn=8
+head/examples/class.mmd	rb3	DIFF num 312.6->101.9 (o -178.2,0): <text x="312.6" y="795.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">1</text> || <text x="101.9" y="795.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">1</text>	o=-178.2,0.0;vb=-178.2,0;drawn=8
+head/examples/class.mmd	rc3	trans	o=0.0,-145.0;vb=0,-145;drawn=8
+head/examples/class.mmd	re3	DIFF num 518->181.2 (o -318.2,-250): <text x="518.0" y="441.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">1</text> || <text x="181.2" y="191.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">1</text>	o=-318.2,-250.0;vb=-318.2,-250;drawn=8
+head/examples/class.mmd	rn4	same	o=0.0,0.0;vb=0,0;drawn=8
+head/examples/class.mmd	ra4	trans	o=-158.2,-120.0;vb=-158.2,-120;drawn=8
+head/examples/class.mmd	ra4c	trans	o=-158.2,-193.0;vb=-158.2,-193;drawn=8
+head/examples/class.mmd	rb4	trans	o=-158.2,0.0;vb=-158.2,0;drawn=8
+head/examples/class.mmd	rc4	DIFF num 177.1->164.5 (o -45.2,-125): <text x="177.1" y="504.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">*</text> || <text x="164.5" y="379.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">*</text>	o=-45.2,-125.0;vb=-45.2,-125;drawn=8
+head/examples/class.mmd	re4	trans	o=-298.2,-230.0;vb=-298.2,-230;drawn=8
+head/examples/class.mmd	rn5	same	o=0.0,0.0;vb=0,0;drawn=8
+head/examples/class.mmd	ra5	DIFF num 280.3->108.3 (o -140.3,-122): <text x="280.3" y="729.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">1..*</text> || <text x="108.3" y="607.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">1..*</text>	o=-140.2,-122.0;vb=-140.3,-122;drawn=8
+head/examples/class.mmd	ra5c	DIFF num 280.3->108.3 (o -140.3,-195): <text x="280.3" y="802.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">1..*</text> || <text x="108.3" y="607.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">1..*</text>	o=-140.2,-195.0;vb=-140.3,-195;drawn=8
+head/examples/class.mmd	rb5	DIFF num 124.8->-48 (o -140.3,0): <text x="124.8" y="795.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">1</text> || <text x="-48.0" y="795.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">1</text>	o=-140.2,0.0;vb=-140.3,0;drawn=8
+head/examples/class.mmd	rc5	DIFF num 229.6->108.3 (o -89.5,-127): <text x="229.6" y="734.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">1..*</text> || <text x="108.3" y="607.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">1..*</text>	o=-89.5,-127.0;vb=-89.5,-127;drawn=8
+head/examples/class.mmd	re5	DIFF num 526.6->227.7 (o -280.3,-232): <text x="526.6" y="544.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">1</text> || <text x="227.7" y="312.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">1</text>	o=-280.2,-232.0;vb=-280.3,-232;drawn=8
+head/examples/class.mmd	rn7	same	o=0.0,0.0;vb=0,0;drawn=8
+head/examples/class.mmd	ra7	DIFF num 263.4->108.9 (o -136,-94): <text x="263.4" y="822.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">*</text> || <text x="108.9" y="728.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">*</text>	o=-136.0,-94.0;vb=-136,-94;drawn=8
+head/examples/class.mmd	ra7c	DIFF num 263.4->108.9 (o -136,-167): <text x="263.4" y="895.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">*</text> || <text x="108.9" y="728.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">*</text>	o=-136.0,-167.0;vb=-136,-167;drawn=8
+head/examples/class.mmd	rb7	DIFF num 263.4->108.9 (o -136,0): <text x="263.4" y="728.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">*</text> || <text x="108.9" y="728.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">*</text>	o=-136.0,0.0;vb=-136,0;drawn=8
+head/examples/class.mmd	rc7	trans	o=0.0,-99.0;vb=0,-99;drawn=8
+head/examples/class.mmd	re7	DIFF num 429.7->186.3 (o -276,-204): <text x="429.7" y="583.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">*</text> || <text x="186.3" y="379.5" dy="0.33em" text-anchor="middle" fill="#232840" font-size="11">*</text>	o=-276.0,-204.0;vb=-276,-204;drawn=8
+head/examples/class.mmd	try	try n=9 acc=[8, 9] some=2 OK	
+head/examples/class.mmd	time	0.10	

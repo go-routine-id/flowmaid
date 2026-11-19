@@ -1,0 +1,28 @@
+architecture-beta
+    group g0(internet)[WWW]
+    group g1(monitoring)[WWW]
+    group g2(nonsense)[Telemetry and Logging Platform]
+    group g3(database)[Backend Services]
+    service s0(server)[Authentication and Authorization Service 0] in g3
+    service s1(cloud)[PostgreSQL Primary 1]
+    service s2(database)[Authentication and Authorization Service 2] in g1
+    service s3(nonsense)[Web App 3] in g2
+    service s4(disk)[Svc 4] in g3
+    service s5(database)[Authentication and Authorization Service 5] in g3
+    service s6(nonsense)[Authentication and Authorization Service 6] in g2
+    service s7(server)[Svc 7] in g0
+    service s8(disk)[Web App 8] in g3
+    service s9(cloud)[Web App 9] in g2
+    s2:B <--> T:s9
+    s2:R --> L:s7
+    s0:L -[reads config]- R:s5
+    s1:L <-[replicates to standby]-> R:s4
+    s2:R -- L:s9
+    s5:R <-[sync]-> L:s4
+    s8{group}:L <--> L:s1
+    s2:L -[replicates to standby]- R:s0{group}
+    s7:T <--> B:s8{group}
+    s2:L --> R:s3
+    s2:T <-[calls]-> B:s5{group}
+    s7:R --> B:s9
+    s7{group}:T <-[sync]-> L:s0{group}

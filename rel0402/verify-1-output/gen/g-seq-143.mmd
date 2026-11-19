@@ -1,0 +1,19 @@
+sequenceDiagram
+participant P0 as 日本語
+participant P1 as beta
+loop beta
+Note left of P0: beta
+P0->>P0: Long label here
+Note left of P1: x
+P0-)P0: gamma
+P0->>P0: gamma
+end
+P1-xP0: x
+opt alpha
+Note over P0,P1: <b>bold</b>
+P1->P0: beta
+loop x
+P1-->P1: alpha
+P1--xP0: alpha
+end
+end

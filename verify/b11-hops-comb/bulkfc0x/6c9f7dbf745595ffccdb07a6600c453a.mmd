@@ -1,0 +1,24 @@
+flowchart TD
+    N0(Report)
+    N1(Store)
+    N2(Store load)
+    N3{Notify check}
+    N4{Parse queue}
+    N5[Store fetch]
+    N6([Store])
+    N7{Store}
+    N8[Retry emit]
+    N9([Store])
+    N0 --> N1
+    N1 -->|fail| N2
+    N1 -->|no| N3
+    N1 --> N4
+    N3 -->|yes| N5
+    N4 -->|fail| N6
+    N5 --> N7
+    N6 --> N8
+    N8 -->|next| N9
+    N2 --> N8
+    N7 --> N9
+    N3 --> N2
+    N9 --> N3

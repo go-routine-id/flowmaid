@@ -1,0 +1,4 @@
+    Finished `release` profile [optimized] target(s) in 3m 35s
+  Executable unittests src/lib.rs (/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/design-a2b/squeeze/target/release/deps/flowmaid-8bbc7e834b3bf7f9)
+  Executable tests/quality.rs (/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/design-a2b/squeeze/target/release/deps/quality-4a6de16462bf1692)
+    Finished `release` profile [optimized] target(s) in 1.25s

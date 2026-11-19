@@ -1,0 +1,412 @@
+classDiagram
+class A.
+%%%%
+classDiagram
+class .A
+%%%%
+classDiagram
+class A..B
+%%%%
+classDiagram
+class A...B
+%%%%
+classDiagram
+class A....B
+%%%%
+classDiagram
+class A..
+%%%%
+classDiagram
+class ..A
+%%%%
+classDiagram
+class A.B.
+%%%%
+classDiagram
+class .A.B
+%%%%
+classDiagram
+class A..B.C
+%%%%
+classDiagram
+class .
+%%%%
+classDiagram
+class A .
+%%%%
+classDiagram
+class  .A
+%%%%
+classDiagram
+class A . . B
+%%%%
+classDiagram
+class A-.
+%%%%
+classDiagram
+class A.~T~
+%%%%
+classDiagram
+class A.B.~T~
+%%%%
+classDiagram
+class A..B~T~
+%%%%
+classDiagram
+class A.:::foo
+%%%%
+classDiagram
+class A.B.:::foo
+%%%%
+classDiagram
+class A..B:::foo
+%%%%
+classDiagram
+class A.["lbl"]
+%%%%
+classDiagram
+class A., B
+%%%%
+classDiagram
+class A, B.
+%%%%
+classDiagram
+class A, .B
+%%%%
+classDiagram
+class A. {
+}
+%%%%
+classDiagram
+class .A {
+}
+%%%%
+classDiagram
+class A...B {
+}
+%%%%
+classDiagram
+<<interface>> A.
+%%%%
+classDiagram
+<<interface>> .A
+%%%%
+classDiagram
+class A
+class B.
+%%%%
+classDiagram
+class A.
+A --> B
+%%%%
+classDiagram
+class A.B
+%%%%
+classDiagram
+class a.b.C
+%%%%
+classDiagram
+class A.-B
+%%%%
+classDiagram
+class A-.B
+%%%%
+classDiagram
+class A._B
+%%%%
+classDiagram
+class A.1
+%%%%
+classDiagram
+class 1.A
+%%%%
+classDiagram
+class A.-
+%%%%
+classDiagram
+class A.B-
+%%%%
+classDiagram
+class A.B~T~
+%%%%
+classDiagram
+class Map~a.b~
+%%%%
+classDiagram
+class A.B {
++x int
+}
+%%%%
+classDiagram
+class A.B.C {
+}
+%%%%
+classDiagram
+class `A.`
+%%%%
+classDiagram
+class `.A`
+%%%%
+classDiagram
+class `A..B`
+%%%%
+classDiagram
+class A.B {
+}
+<<interface>> A.B
+%%%%
+classDiagram
+A.B --> C
+%%%%
+classDiagram
+A..B
+%%%%
+classDiagram
+class A. B
+%%%%
+classDiagram
+class A .B
+%%%%
+classDiagram
+class A . B
+%%%%
+classDiagram
+class A.B["lbl"]
+%%%%
+classDiagram
+class A.B["x.y"]
+%%%%
+classDiagram
+class A["x."]
+%%%%
+classDiagram
+class A.B:::foo
+%%%%
+classDiagram
+class A.B.C
+%%%%
+classDiagram
+class a.b.c.D
+%%%%
+classDiagram
+class A_.
+%%%%
+classDiagram
+class A._
+%%%%
+classDiagram
+class _.A
+%%%%
+classDiagram
+class A.-.
+%%%%
+classDiagram
+class A-.-B
+%%%%
+classDiagram
+class A.{
+}
+%%%%
+classDiagram
+class A.B.{
+}
+%%%%
+classDiagram
+class A.B{
+}
+%%%%
+classDiagram
+namespace a.b {
+class C
+}
+%%%%
+classDiagram
+namespace a. {
+class C
+}
+%%%%
+classDiagram
+namespace .a {
+class C
+}
+%%%%
+classDiagram
+namespace a..b {
+class C
+}
+%%%%
+classDiagram
+namespace N {
+class A.
+}
+%%%%
+classDiagram
+namespace N {
+class A.B
+}
+%%%%
+classDiagram
+namespace N {
+class .A
+}
+%%%%
+classDiagram
+A. --> B
+%%%%
+classDiagram
+.A --> B
+%%%%
+classDiagram
+A.B. --> C
+%%%%
+classDiagram
+A --> B.
+%%%%
+classDiagram
+A ..> B.
+%%%%
+classDiagram
+A --> .B
+%%%%
+classDiagram
+A...B
+%%%%
+classDiagram
+A.. B
+%%%%
+classDiagram
+A. : +x
+%%%%
+classDiagram
+A.B : +x
+%%%%
+classDiagram
+.A : +x
+%%%%
+classDiagram
+class A.B
+A.B : +int x
+%%%%
+classDiagram
+note for A. "x"
+%%%%
+classDiagram
+note for A.B "x"
+%%%%
+classDiagram
+class A
+cssClass "A." foo
+%%%%
+classDiagram
+class A
+style A. fill:#f00
+%%%%
+classDiagram
+class A
+click A. href "x"
+%%%%
+classDiagram
+class A.B
+click A.B href "x"
+%%%%
+classDiagram
+class A.B~T.~
+%%%%
+classDiagram
+class A:::foo.bar
+%%%%
+classDiagram
+class A.  
+%%%%
+classDiagram
+class Ä.Ö
+%%%%
+classDiagram
+class A.Ö
+%%%%
+classDiagram
+class 1.2
+%%%%
+classDiagram
+class A.1.
+%%%%
+classDiagram
+class A.B ["lbl"]
+%%%%
+classDiagram
+class A. .B
+%%%%
+classDiagram
+class A.B, C.D
+%%%%
+classDiagram
+class A.B,C.
+%%%%
+classDiagram
+class A~T~.
+%%%%
+classDiagram
+class A~T~.B
+%%%%
+classDiagram
+class A["lbl"].
+%%%%
+classDiagram
+class A.B["lbl"].
+%%%%
+classDiagram
+class A..B["lbl"]
+%%%%
+classDiagram
+<<interface>> A..B
+%%%%
+classDiagram
+<<interface>> A.B.
+%%%%
+classDiagram
+class A.B
+<<interface>> A.B.
+%%%%
+classDiagram
+class A {
+<<interface>>
+}
+class B.
+%%%%
+classDiagram
+class A {
++x.y int
+}
+%%%%
+classDiagram
+class A {
++method(a.b) void
+}
+%%%%
+classDiagram
+class A.B
+class A.B
+%%%%
+classDiagram
+A <|-- B.
+%%%%
+classDiagram
+A.B <|-- C.D
+%%%%
+classDiagram
+A.B.C <|-- D
+%%%%
+classDiagram
+class A$.
+%%%%
+classDiagram
+class A.$
+%%%%
+classDiagram
+class A-.B.
+%%%%
+classDiagram
+class A.B-.
+%%%%
+classDiagram
+class A.-B.

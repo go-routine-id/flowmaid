@@ -1,0 +1,8 @@
+diagram   nodes  edges  route_ms  partial_ms  chained_ms   speedup
+er          240    220    36.041       5.268       5.420      6.8x
+class       240    220    66.135       9.603       6.800      6.9x
+mindmap    1041   1040     0.784       0.166       0.162      4.7x
+diagram   nodes  edges  route_ms  partial_ms  chained_ms   speedup
+er          240    220    37.540       5.641       5.707      6.7x
+class       240    220    65.164       9.479       7.206      6.9x
+mindmap    1041   1040     0.715       0.148       0.148      4.8x

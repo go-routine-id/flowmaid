@@ -1,0 +1,8 @@
+stateDiagram-v2
+state c <<choice>>
+[*] --> P
+P --> c : check everything twice
+c --> A : the request came from a verified partner
+c --> B : the request is anonymous but rate limited
+c --> B : or it timed out
+c --> C : failed

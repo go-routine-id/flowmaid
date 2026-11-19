@@ -1,0 +1,12 @@
+flowchart BT
+  subgraph P [Platform title]
+    A[First row] --> B[Second row]
+    B --> C[Third row]
+  end
+  subgraph Q [Nested parent]
+    subgraph R [Nested child]
+      D[Deep] -->|label here| E[Deeper]
+    end
+  end
+  C --> D
+  X[Outside] -->|enter| A

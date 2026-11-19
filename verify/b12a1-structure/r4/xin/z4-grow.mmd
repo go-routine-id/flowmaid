@@ -1,0 +1,16 @@
+flowchart TD
+  top[Start] --> a
+  subgraph S[Loop block]
+    a[Read] --> b[Parse]
+    b --> c[Check]
+    c -->|retry| a
+  end
+  c --> done[Done]
+  top --> side[Side path]
+  side --> far[Far end]
+  far --> done
+  subgraph T[Neighbour]
+    t1[n one] --> t2[n two]
+  end
+  top --> t1
+  t2 --> done

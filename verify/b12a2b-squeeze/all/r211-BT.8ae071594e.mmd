@@ -1,0 +1,14 @@
+flowchart BT
+    subgraph G[Payments]
+        m0[w]
+        m1[charge]
+        m2[charge]
+        m0 --> m1
+    end
+    s0[src0] --> m2
+    s0 --> m1
+    s1[src1] --> m2
+    s1 --> m1
+    s2[src2] -- "lbl3" --> m0
+    s3[src3] --> m1
+    s3 --> m1

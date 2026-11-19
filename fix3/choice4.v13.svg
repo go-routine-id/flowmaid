@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="443" height="270" viewBox="0 0 443 270" font-family="Helvetica, Arial, sans-serif" font-size="14" role="img" aria-label="State diagram">
+<title>State diagram</title>
+<rect width="443" height="270" fill="#ffffff"/>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 1 L 9 5 L 0 9 z" fill="#44507a"/></marker></defs>
+<path d="M 42.0 135.0 C 72.0 135.0, 72.0 135.0, 102.0 135.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>start → Order</title></path>
+<path d="M 168.7 135.0 C 198.7 135.0, 198.7 135.0, 228.7 135.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>Order → c</title></path>
+<path d="M 250.4 128.7 C 305.2 128.7, 306.2 54.0, 360.9 54.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>c → A: one</title></path>
+<path d="M 256.7 135.0 C 308.8 135.0, 308.8 135.0, 360.9 135.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>c → B: two</title></path>
+<path d="M 250.4 141.3 C 305.2 141.3, 306.2 216.0, 360.9 216.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>c → C: three</title></path>
+<g><title>c</title>
+<polygon points="242.7,121.0 256.7,135.0 242.7,149.0 228.7,135.0" fill="#fcf2da" stroke="#d99114" stroke-width="1.6"/>
+<text x="242.7" y="135.0" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<g><title>start</title>
+<circle cx="35.0" cy="135.0" r="7.0" fill="#44507a" stroke="#44507a" stroke-width="1.6"/>
+<text x="35.0" y="135.0" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<g><title>Order</title>
+<rect x="102.0" y="116.0" width="66.7" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="135.3" y="135.0" dy="0.33em" text-anchor="middle" fill="#232840">Order</text>
+</g>
+<g><title>A</title>
+<rect x="360.9" y="28.0" width="54.0" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="387.9" y="47.0" dy="0.33em" text-anchor="middle" fill="#232840">A</text>
+</g>
+<g><title>B</title>
+<rect x="360.9" y="116.0" width="54.0" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="387.9" y="135.0" dy="0.33em" text-anchor="middle" fill="#232840">B</text>
+</g>
+<g><title>C</title>
+<rect x="360.9" y="204.0" width="54.0" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="387.9" y="223.0" dy="0.33em" text-anchor="middle" fill="#232840">C</text>
+</g>
+<rect x="301.2" y="63.1" width="37.4" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="319.9" y="73.1" dy="0.33em" text-anchor="middle" fill="#232840">one</text>
+<rect x="302.5" y="125.0" width="35.8" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="320.4" y="135.0" dy="0.33em" text-anchor="middle" fill="#232840">two</text>
+<rect x="296.9" y="186.9" width="46.0" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="319.9" y="196.9" dy="0.33em" text-anchor="middle" fill="#232840">three</text>
+</svg>

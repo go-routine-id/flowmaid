@@ -1,0 +1,27 @@
+stateDiagram-v2
+  [*] --> Draft
+  Draft --> Review : submit
+  state Review {
+    [*] --> Triage
+    Triage --> Deep : complex
+    Triage --> Quick : simple
+    Deep --> Verdict
+    Quick --> Verdict
+    note right of Triage : two reviewers
+  }
+  Review --> Build : accepted
+  state Build {
+    [*] --> Compile
+    Compile --> Link
+    Link --> Package
+  }
+  Build --> Deploy : artefact
+  state Deploy {
+    [*] --> Canary
+    Canary --> Full : healthy
+    Canary --> Rollback : unhealthy
+  }
+  Deploy --> Draft : new cycle
+  Build --> Draft : build broke
+  Rollback --> Review : needs fix
+  Deploy --> [*]

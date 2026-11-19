@@ -1,0 +1,25 @@
+sequenceDiagram
+actor P0 as a&b
+actor P1 as a&b
+actor P2 as Long label here
+P2-->P2: beta
+P2->>P1: Customer Order
+par x
+activate P0
+P0->>P1: act
+deactivate P0
+P0--)P2: Long label here
+par Customer Order
+Note over P0: delta
+opt delta
+P2-)P0: a&b
+P2->>P2: self a&b
+Note over P0,P2: Customer Order
+end
+P1->>P1: self x
+Note left of P0: Long label here
+P0--xP0: beta
+P0-->>P2: x
+P2--)P1: Customer Order
+end
+end

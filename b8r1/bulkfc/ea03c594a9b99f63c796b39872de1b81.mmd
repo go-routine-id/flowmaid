@@ -1,0 +1,5 @@
+flowchart TD
+    A[Start] --> B{Valid?}
+    B -->|no| C[Fix input]
+    C --> B
+    B -->|yes| D[Done]

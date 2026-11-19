@@ -1,0 +1,25 @@
++ cd /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a1-structure/r4/pre
++ CARGO_TARGET_DIR=/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a1-structure/r4/t-pre
++ CARGO_INCREMENTAL=0
++ cargo build --release --bin flowmaid --example quality
++ tail -2
+   Compiling flowmaid v0.38.0 (/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a1-structure/r4/pre)
+    Finished `release` profile [optimized] target(s) in 46.39s
++ cd /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a1-structure/r4/now
++ RUSTFLAGS='--cfg flowmaid_blocks'
++ CARGO_TARGET_DIR=/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a1-structure/r4/t-on
++ CARGO_INCREMENTAL=0
++ cargo build --release --bin flowmaid --example quality
++ tail -2
+   Compiling flowmaid v0.38.0 (/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a1-structure/r4/now)
+    Finished `release` profile [optimized] target(s) in 50.81s
++ cd /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a1-structure/r4/prev
++ RUSTFLAGS='--cfg flowmaid_blocks'
++ CARGO_TARGET_DIR=/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a1-structure/r4/t-prev
++ CARGO_INCREMENTAL=0
++ cargo build --release --bin flowmaid --example quality
++ tail -2
+   Compiling flowmaid v0.38.0 (/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a1-structure/r4/prev)
+    Finished `release` profile [optimized] target(s) in 50.70s
++ echo BUILD-DONE
+BUILD-DONE

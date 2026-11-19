@@ -1,0 +1,10 @@
+[package]
+name = "vp"
+version = "0.1.0"
+edition = "2021"
+[dependencies]
+flowmaid = { path = "/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b11r1/presrc" }
+[[bin]]
+name = "vp"
+path = "../probe/src/main.rs"
+[workspace]

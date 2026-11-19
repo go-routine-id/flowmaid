@@ -1,0 +1,15 @@
+flowchart RL
+    N0{Parse}
+    N1{Fetch validate}
+    N2([Archive])
+    N3(Queue archive)
+    N4{Check queue}
+    N5([Emit])
+    N0 -->|yes| N1
+    N0 --> N2
+    N1 --> N3
+    N3 --> N4
+    N3 --> N5
+    N3 --> N5
+    N5 --> N2
+    N5 -.->|back| N1

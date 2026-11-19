@@ -1,0 +1,11 @@
+stateDiagram-v2
+    direction LR
+    state route <<choice>>
+    [*] --> Received
+    Received --> route
+    route --> Domestic : destination is inside the country
+    route --> International : destination abroad
+    route --> Hold : address missing
+    Domestic --> [*]
+    International --> [*]
+    Hold --> Received : fixed

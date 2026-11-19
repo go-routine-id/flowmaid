@@ -1,0 +1,125 @@
+architecture-beta
+    group g0(disk)[Observability]
+    group g1(cloud)[Edge]
+    group g2(server)[Data]
+    group g3(internet)[Data Storage Layer]
+    group g4(server)[Observability]
+    group g5(server)[Frontend]
+    service s0(monitoring)[Service 0] in g1
+    service s1(internet)[Service 1] in g1
+    service s2(internet)[Service 2] in g3
+    service s3(monitoring)[Service 3] in g1
+    service s4(monitoring)[Service 4] in g5
+    service s5(database)[Service 5]
+    service s6(internet)[Service 6] in g0
+    service s7(internet)[Service 7] in g5
+    service s8(monitoring)[Service 8] in g2
+    service s9(cloud)[Service 9] in g3
+    service s10(disk)[Service 10] in g1
+    service s11(disk)[Service 11]
+    service s12(database)[Service 12] in g4
+    service s13(internet)[Service 13]
+    service s14(server)[Service 14] in g3
+    service s15(database)[Service 15] in g1
+    service s16(disk)[Service 16] in g5
+    service s17(disk)[Service 17] in g4
+    service s18(cloud)[Service 18]
+    service s19(internet)[Service 19] in g5
+    service s20(monitoring)[Service 20] in g2
+    service s21(cloud)[Service 21] in g2
+    service s22(monitoring)[Service 22] in g2
+    service s23(internet)[Service 23] in g4
+    service s24(database)[Service 24] in g5
+    service s25(internet)[Service 25] in g3
+    service s26(internet)[Service 26]
+    service s27(internet)[Service 27] in g2
+    service s28(monitoring)[Service 28] in g1
+    service s29(disk)[Service 29] in g3
+    service s30(monitoring)[Service 30] in g2
+    service s31(server)[Service 31]
+    service s32(monitoring)[Service 32] in g2
+    service s33(server)[Service 33] in g0
+    service s34(database)[Service 34] in g2
+    service s35(monitoring)[Service 35]
+    service s36(cloud)[Service 36]
+    service s37(disk)[Service 37] in g0
+    service s38(database)[Service 38]
+    service s39(internet)[Service 39] in g5
+    service s40(disk)[Service 40]
+    service s41(cloud)[Service 41]
+    service s42(server)[Service 42] in g3
+    service s43(disk)[Service 43] in g0
+    service s44(database)[Service 44] in g5
+    service s45(internet)[Service 45] in g2
+    service s46(internet)[Service 46] in g0
+    service s47(server)[Service 47] in g1
+    s31:L --> B:s23
+    s43:R -- L:s6
+    s17:L -- R:s23
+    s45:B -- T:s2
+    s36:R --> L:s40
+    s45:T -- B:s36
+    s8:T -- B:s18
+    s33:R --> L:s12
+    s45:R -- L:s41
+    s19:R -- R:s20
+    s45:T --> B:s39
+    s11:R -- L:s47
+    s19:B --> R:s27
+    s38:T -- B:s35
+    s27:B --> T:s35
+    s34:B --> T:s6
+    s0:R --> L:s28
+    s37:B -- T:s38
+    s36:R --> B:s7
+    s19:B --> T:s44
+    s39:T -- R:s27
+    s30:L -- T:s0
+    s22:T -- L:s5
+    s32:R --> L:s18
+    s17:B -- R:s4
+    s46:B -- R:s40
+    s1:T --> B:s44
+    s43:B --> B:s44
+    s10:L -- R:s0
+    s0:B -- T:s44
+    s28:L --> R:s37
+    s35:L -- R:s37
+    s33:T --> B:s25
+    s45:L --> R:s0
+    s6:L -- R:s19
+    s8:L --> R:s43
+    s42:R -- L:s4
+    s5:R --> L:s22
+    s29:T --> L:s13
+    s27:B -- T:s43
+    s36:R --> L:s47
+    s7:B -- L:s38
+    s29:R --> L:s14
+    s8:B --> T:s12
+    s39:T -- T:s12
+    s2:B --> B:s21
+    s38:B --> T:s15
+    s32:R -- R:s34
+    s19:L --> R:s26
+    s25:R --> L:s3
+    s34:R -- L:s31
+    s25:L --> L:s26
+    s10:L --> R:s38
+    s20:R -- L:s15
+    s35:B --> T:s43
+    s9:B --> T:s22
+    s37:B -- T:s24
+    s32:L -- R:s4
+    s44:B --> T:s28
+    s6:L --> R:s9
+    s43:R -- L:s4
+    s3:B --> R:s45
+    s35:L -- R:s9
+    s12:T --> B:s40
+    s12:R -- L:s5
+    s25:R --> L:s32
+    s38:L --> R:s16
+    s2:B -- T:s31
+    s0:R -- R:s21
+    s20:T -- B:s13

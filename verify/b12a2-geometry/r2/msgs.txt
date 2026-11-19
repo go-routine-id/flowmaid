@@ -1,0 +1,198 @@
+docs(blocks): say what a frame grown to its title does not yet do (B12a2 fix round #3, #4, #5)
+
+The frame function's doc now names the two consequences of F1 that the
+items after it were to handle and that are not built (stop rule D6 at
+B12.8, see the checkpoint report):
+- the layout keeps the gap beside a grown frame clear of the frame, not
+  of the edge labels it places there, so an LR frame grown along the flow
+  can take a label in (B12.9 G3). On blocks/lr in block mode `lbl_in_end`
+  went 2 -> 4 with bb48c30, whose message does not say so.
+- a frame grown to its title leaves no column past the chip for an entry
+  the chip covers, so the router takes such an entry in through a lateral
+  wall (X2.2's breadth, B12.8 / B12.11); `lateral_x` rose on title-sized
+  frames with bb48c30.
+
+Correction to acacab7's message (and the checkpoint report): the
+linked-frame floor changes blocks/t9b-frames-8px-lr as well, not only
+t9-frames-8px and its two-way variant: its static frames move from 8 to
+13 px apart and the canvas from 284 to 289 px; "LR/RL were 13 already"
+was wrong.
+
+Comment only: no output changes; guard green.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5
+
+fix(blocks): a frame grown to its title holds the title as it is drawn, bold (B12.7 F1; B12a2 fix round #1)
+
+What: subgraph titles are painted `font-weight="bold"`, but the frame
+function measured them with `text_width`, which counts a whole line as
+regular text: Helvetica-Bold advances run about 10% wider, so in a block
+layout (behind the internal switch) a frame grown to its title let a long
+title run 6-15 px past its right border in a browser (blocks/title-hidden
+12 px, title-entry 8, lr 6), and an edge kept off the estimated chip ran
+through the last word of a nested block's title. Now:
+- `layout::bold_text_width` measures a line with a Helvetica-Bold advance
+  table (AFM widths, rounded up to 0.1 px); `scene::title_fit_width`
+  (F1's least breadth / length, and the layout's reservation of it) uses
+  it.
+- A frame F1 grows to its title and nothing else makes broader is
+  title-bound (`SceneCluster::bold_title`, crate-private): its chip is
+  measured bold everywhere the chip is read (`scene::title_text_width`:
+  `title_head`, `fit_cluster_title`, the painter's chip, the label stage's
+  and the harness's chips), and so is the layout's `title_chip` for it
+  (X2.5, the jog count). Every other frame keeps the estimate it always
+  had: measured bold, the chips of frames broader than their titles moved
+  dense-td's layout and broke its A1-held hub fans and gap floor (see the
+  checkpoint report; not built).
+
+Tests: `layout::a_bold_title_is_measured_as_a_browser_draws_it` (widths
+Chromium draws the fixture titles at, measured once, so the estimate is
+not graded by itself), `blockcheck::a_frame_holds_its_bold_title_as_a_browser_draws_it`
+(title-hidden, title-entry, lr and the new blocks/nested-wide-title in all
+four directions: the ink ends a chip pad and a title inset inside the
+border, the title is not cut, a title-bound frame's chip holds the ink and
+no line comes within CHIP_SEP of it).
+
+New fixture `tests/fixtures/blocks/nested-wide-title.mmd` (synthetic): its
+identity row (recorded from the default build, which this change does not
+touch) and its BLOCK_CEILINGS row (all zero, as the default build draws
+it). No gate or snapshot changes. Default build byte-identical
+(off-identity test green); suite-on failing tests are checkpoint A1's
+list with the same texts; the quality corpus's harness rows are unchanged;
+local A1 judge 0 must-fail.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5
+
+feat(blocks): two frames a link joins stand more than route()'s stacking gap apart (B12.9 G1, the linked-frame floor)
+
+What: in a block layout (behind the internal switch) the layer lines
+keep two frames a link joins, one closing on a layer and the other
+opening on the next (either way along the flow, so a turned link
+counts too), `LINKED_FRAME_GAP` = `scene::FLOW_MIN_GAP` + 1 px apart
+instead of the bare `FRAME_GAP` of 8 px (spec 2.6 G1, its second
+floor). `scene::FLOW_MIN_GAP` becomes `pub(crate)` so the layout names
+the gap it has to beat.
+
+Why: `route()` reads two boxes as one after the other only when they
+are `FLOW_MIN_GAP` = 12 px apart. Two linked blocks with nested frames
+on their facing rows stood 8 px apart (blocks/t9-frames-8px and its
+two-way variant), so `route()` at the scene's own centres took them
+for neighbours side by side. The extra pixel keeps the comparison off
+an equality.
+
+Test: `linked_frames_stand_further_apart_than_route_reads_as_stacked`
+(t9-frames-8px, t9b-frames-8px-lr, t9c-frames-8px-two-way, all four
+directions: the two outer frames more than `FLOW_MIN_GAP` apart).
+
+No gate or snapshot changes; the default build is byte-identical
+(off-identity test). Suite-on: the failing tests are checkpoint A1's
+list unchanged; on the repository fixtures only t9-frames-8px and its
+two-way variant change (5 px taller). Local acceptance inputs: the
+musts of checkpoint A1 all hold.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5
+
+revert(blocks): take out the unverified work-in-progress of the coordinates item; the branch is green again (B12.8 not landed)
+
+What: the tree returns to the frame-function commit (bb48c30, B12.7),
+whose guard is green in the default build and whose suite-on failures
+are checkpoint A1's own list. The work-in-progress commit (sibling
+frames levelled along the flow by moving each block as a whole) was
+committed unverified when the machine restarted; verified now, it
+breaks five tests that hold at A1, all on the dense TD fixture's hub
+fan (`a_hubs_fan_keeps_its_order_through_the_bands`,
+`an_end_of_a_title_row_member_keeps_out_of_its_chips_breadth_below_the_jog_room`,
+`combing_is_settled_after_one_pass`,
+`a_block_layouts_comb_is_settled_after_one_pass`,
+`a_line_takes_one_role_across_a_cluster_of_crossings`), and the guard
+fails on them.
+
+Why not a fix in its place: the coordinates item was rebuilt and
+measured in full in the workspace (the per-level squeeze of X2/X3, the
+chain split of X1, the first-row levelling of X4, with a fix for
+merged spines that laid two sibling blocks over each other). Every
+combination that keeps the static A1 holds either breaks bench-75 in
+LR (fan crossings 4 -> 17, its gap floor 15.3 -> 12.5) or, restricted
+to TD/BT, draws two fan crossings in `route()` at the public fixture's
+centres (`a_hub_fan_leaves_in_target_order`, routed half; the
+starting release has 0), which the corridors and routed free pins of
+the route item would have to fix. Nothing that fails a test held at
+A1 is committed (stop rule of the checkpoint); the numbers are in the
+checkpoint report.
+
+No gate, snapshot or test changes; the default build is byte-identical.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5
+
+wip(blocks): coordinates across the flow, in progress when the machine restarted (INCOMPLETE, unverified)
+
+The implementation of the block layout's geometry was stopped by a
+restart of the machine in the middle of its second item (coordinates
+across the flow). This commit keeps what it had written so far so that
+nothing is lost; it has not been built or tested as a whole and the
+next round continues from it.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5
+
+feat(blocks): one frame function for a block layout's box and jog room; a frame is as wide as its title (B12.7, F1 + F2)
+
+What: the static scene's frames come from one function, `scene::frame_boxes`
+(member boxes, title, graph, the jog room of the displaced title-side
+entries -> box). In a block layout (behind the internal switch) a frame
+narrower than its title chip plus `TITLE_INSET` on both sides grows
+equally on both sides to `scene::title_fit_width`: its breadth in TD /
+BT, its length along the flow in LR / RL, where the title runs along the
+flow (spec 2.7 F1, F2). F2's jog room (step 1's `title_jogs`) is the
+function's other growth; `layout::title_cap` is the `cap(m)` it counts
+with. Without the switch, or outside block mode, the function is the old
+`cluster_raw_boxes` to the last bit.
+
+Why: a block layout cut a title wider than its block where the canvas
+ended (blocks/title-hidden, blocks/p03-ext-dir) and let a one-column LR
+block's title run out over the next frame (blocks/lr); mermaid never
+cuts a title.
+
+The layout keeps the room (block mode only):
+- TD / BT: a wall of a block holds its frame's side FRAME_PAD -
+  BORDER_GAP past itself; where the grown frame reaches past that, the
+  wall takes the excess and the breadths are placed again (at most twice,
+  `TITLE_FIT_PASSES`). A frame whose walls already hold it (inner
+  channels keep them apart, and the scene's frame covers those too)
+  changes nothing: dense-td draws as before.
+- LR / RL: the members on the block's first and last layer reach half
+  the shortfall further along the flow, from a lower bound of the
+  frame's length read before the layer lines (`f1_flow_short`).
+- `title_chip` reads the chip from the F1 box (nested frames' pads
+  included), so X2.5 and the jog count see the chip where it is drawn.
+
+Tests (repository fixtures only): `a_frame_is_as_broad_as_its_title`
+(title-hidden, TD and BT: grown, centred on its members, and as before
+outside block mode), `an_lr_frame_is_as_long_as_its_title` (lr, LR and
+RL), `titles_are_drawn_whole_in_every_direction` (title-entry,
+title-hidden, lr in all four directions: `title_cut` 0, no frames meet),
+`jog_room_counts_only_what_crosses_the_title_side` (title-entry: two
+displaced entries take ROW_CLEAR + TRACK_PITCH; a title-row hub whose
+exits leave downstream and a block whose three entries fit beside the
+chip take none).
+
+Changed test: `scene::a_title_overflowing_its_frame_onto_the_canvas_stays_whole`
+now draws its diagram outside block mode for the case it states (a
+title running past its frame onto the canvas, whole) and asserts the
+block-mode half: the frame grows to the title instead. Its diagram has
+an edge across the frame, so in the suite-on run it is laid out as
+blocks, where the overflow no longer exists. No gate or snapshot
+changes; the default build is byte-identical (off-identity test). In
+the suite-on run the failing tests are A1's eight lib tests and seven
+`tests/quality.rs` tests with the same failure texts; on the repository
+fixtures only title-hidden, p03-ext-dir, lr and interleave change
+(titles whole; their frames as wide as their titles). Local acceptance
+inputs: the musts of checkpoint A1 all hold.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5
+

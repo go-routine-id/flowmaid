@@ -1,0 +1,14 @@
+classDiagram
+direction TB
+A <|-- B : has many of
+B ..|> C : uses
+B *-- D
+D ..> E
+B ..> F
+C --|> D
+D --> D : d0
+class B {
+ +int id
+ +run() void
+ +stop()
+}

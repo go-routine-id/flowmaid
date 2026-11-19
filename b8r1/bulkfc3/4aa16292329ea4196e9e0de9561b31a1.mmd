@@ -1,0 +1,21 @@
+flowchart BT
+    N0([Done])
+    N1([Archive queue])
+    N2([Validate])
+    N3{Store fetch}
+    N4([Report archive])
+    N5([Done])
+    N6{Archive queue}
+    N7(Parse)
+    N8(Emit done)
+    N0 -->|no| N1
+    N1 -->|fail| N2
+    N1 --> N3
+    N2 --> N4
+    N4 --> N5
+    N4 --> N6
+    N5 -->|no| N7
+    N6 --> N8
+    N3 -->|rollback| N1
+    N6 -.->|rollback| N3
+    N8 -.->|back| N1

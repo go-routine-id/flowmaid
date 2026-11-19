@@ -1,0 +1,29 @@
+flowchart RL
+  n1["merge api worker"]
+  n2["parse<br/>notify"]
+  n3["pack"]
+  subgraph B0["Storefront"]
+    n4["audit"]
+    subgraph B0s0["Platform 0"]
+      n5["api db worker<br/>pack"]
+    end
+    subgraph B0s1["Back office and finance 1"]
+      n6["billing"]
+    end
+  end
+  subgraph B1["Fulfilment desk"]
+    n7["report"]
+  end
+  n8["db"]
+  n9["db split audit"]
+  n5 --> n8
+  n3 -->|index| n7
+  n9 -.-> n3
+  n4 --> n3
+  n9 ==> n1
+  n8 -->|auth| n6
+  n2 -.->|worker| n6
+  n5 ==> n4
+  n2 -->|audit| n4
+  n2 --> n1
+  n6 --> n3

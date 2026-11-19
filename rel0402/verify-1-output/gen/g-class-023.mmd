@@ -1,0 +1,43 @@
+classDiagram
+C15 --> C19
+C15 *-- C26
+C11 "1" <--> "*" C4
+C12 <|-- C26
+C8 --> C7 : delta
+C25 "1" <|-- "*" C8
+C23 ..|> C2
+C1 "1" o-- "*" C16 : gamma
+C26 "1" -- "*" C18 : delta
+C13 "1" <|-- "*" C11 : x
+C2 <--> C14 : gamma
+C1 --> C24
+C24 -- C4 : <b>bold</b>
+C5 "1" --> "*" C18
+C4 "1" ..|> "*" C26 : a&b
+C16 "1" *-- "*" C15 : x
+C22 *-- C1
+C19 <--> C16
+C1 ..|> C20
+C7 --> C0 : x
+C8 <--> C26 : beta
+C14 --> C14
+C2 --> C0 : <b>bold</b>
+C7 "1" ..|> "*" C12
+C14 ..> C5
+C6 <|-- C3
+class C0 {
+  +int id
+  +name() String
+}
+class C4 {
+  +int id
+  +name() String
+}
+class C5 {
+  +int id
+  +name() String
+}
+class C18 {
+  +int id
+  +name() String
+}

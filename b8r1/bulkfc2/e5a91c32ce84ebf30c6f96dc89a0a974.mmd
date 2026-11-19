@@ -1,0 +1,20 @@
+flowchart TD
+    Ext[External] --> Core
+    subgraph Core [Core System]
+        API --> Svc
+        subgraph Inner [Inner Pool]
+            direction LR
+            P1 --> P2
+            P2 --> P3
+        end
+        Svc ==> P1
+        P3 --> Store[(Store)]
+        Store -.-> API
+    end
+    subgraph Ops [Operations]
+        Mon --> P2
+        Alert --> Mon
+    end
+    Core --> Report
+    Mon -->|watch| Core
+    Alert --> Ops

@@ -1,0 +1,21 @@
+stateDiagram-v2
+  [*] --> Idle
+  Idle --> Check
+  state Check <<choice>>
+  Check --> Ready : ok
+  Check --> Ready : forced
+  Check --> Failed : error
+  Ready --> Running
+  Running --> Done
+  Failed --> Idle : reset
+  note right of Ready : waits for a worker
+  note left of Failed
+    logs the cause
+  end note
+  state Running {
+    [*] --> Fetch
+    Fetch --> Parse
+    Parse --> Store : ok
+    Parse --> Fetch : retry
+  }
+  Done --> [*]

@@ -1,0 +1,13 @@
+[package]
+name = "vprobe"
+version = "0.1.0"
+edition = "2021"
+[[bin]]
+name = "vprobe"
+path = "/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/probe-src/main.rs"
+[dependencies]
+flowmaid = { path = "/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/base" }
+[features]
+head = []
+[profile.release]
+debug = false

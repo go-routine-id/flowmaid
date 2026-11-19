@@ -1,0 +1,12 @@
+flowchart BT
+    N0(Parse load)
+    N1[Queue]
+    N2(Queue)
+    N3{Done store}
+    N4{Retry}
+    N0 --> N1
+    N1 --> N2
+    N2 --> N3
+    N1 -->|next| N4
+    N1 -->|again| N0
+    N3 ==>|retry| N0

@@ -1,0 +1,26 @@
+flowchart TD
+  n1["auth"]
+  n2["pack"]
+  subgraph B0["Ingest"]
+    n3["worker"]
+    n4["report"]
+    subgraph B0s0["Back office and finance 0"]
+      n5["store store auth"]
+    end
+  end
+  subgraph B1["Platform"]
+    n6["merge pack queue<br/>mail"]
+    n7["store worker notify"]
+    n8["api"]
+    n9["pack"]
+  end
+  n10["billing"]
+  n5 --> n10
+  n4 --> n8
+  n9 --> n2
+  n3 --> B0s0
+  n6 ==> n4
+  n7 --> n9
+  n1 --> n4
+  n3 -->|db| n9
+  n4 --> n6

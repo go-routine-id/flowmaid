@@ -1,0 +1,10 @@
+classDiagram
+    direction BT
+    Order "1" *-- "1..*" Line : has
+    Order "1" --> "1" Customer : for
+    Order "*" --> "1" Store : at
+    Order "1" o-- "0..1" Coupon : uses
+    Order "1" ..> "*" Event : emits
+    Line "*" --> "1" Product : of
+    Product "*" --> "1" Store : sold at
+    Customer "1" --> "*" Coupon : holds

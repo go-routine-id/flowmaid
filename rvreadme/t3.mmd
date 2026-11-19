@@ -1,0 +1,15 @@
+classDef hot fill:#fee,stroke:#900
+config lane_gap 36
+config lane_pad_x 10
+config lane_pad_y 30
+config lane_title_h 30
+config node_gap_y 50
+config order topology
+config bogus 3
+lane l "L<br/>two" { a[A]; b[B<br/>b2] }
+lane m "M" {
+  c[C]
+}
+class a,b hot
+a:right -->|x<br/>y| c:top
+style a:right-->c:top color:#123456,stroke-width:3,label-fill:#abcdef

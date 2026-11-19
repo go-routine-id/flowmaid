@@ -1,0 +1,26 @@
+flowchart TB
+  root[root]
+  subgraph G1[group one]
+    subgraph G1a[left]
+      x1
+      x2
+    end
+    subgraph G1b[right]
+      y1 --> y2
+    end
+    g1in[entry]
+  end
+  subgraph G2[group two]
+    z1
+    z2
+    z3
+    z4
+    z5
+  end
+  subgraph G3[group three]
+    q1 --> q2 --> q3
+  end
+  root --> g1in
+  root --> z1
+  root --> q1
+  g1in --> y1

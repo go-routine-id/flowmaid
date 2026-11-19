@@ -1,0 +1,23 @@
+sequenceDiagram
+  autonumber
+  actor User
+  participant Web
+  participant API
+  participant Auth
+  participant DB
+  participant Cache
+  participant Queue
+  participant Mailer
+  actor Admin
+  User->>Web: open
+  Web->>API: request
+  API->>Auth: verify
+  Auth-->>API: ok
+  API->>Cache: get
+  Cache-->>API: miss
+  API->>DB: query
+  DB-->>API: rows
+  API->>Queue: enqueue
+  Queue->>Mailer: send
+  Note over API,DB: slow path
+  Mailer-->>Admin: report

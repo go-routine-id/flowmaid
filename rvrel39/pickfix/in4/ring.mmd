@@ -1,0 +1,19 @@
+architecture-beta
+    service tl(server)[TL]
+    service tm(server)[TM]
+    service tr(server)[TR]
+    service ml(server)[ML]
+    service mr(server)[MR]
+    service bl(server)[BL]
+    service bm(server)[BM]
+    service br(server)[BR]
+    tl:R -- L:tm
+    tm:R -- L:tr
+    tl:B -- T:ml
+    tr:B -- T:mr
+    ml:B -- T:bl
+    mr:B -- T:br
+    bl:R -- L:bm
+    bm:R -- L:br
+    tm:B -- T:bm
+    ml:R -- L:mr

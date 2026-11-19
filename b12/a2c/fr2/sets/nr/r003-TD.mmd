@@ -1,0 +1,12 @@
+flowchart TD
+    subgraph G[Payments]
+        m0[auth service]
+        m1[ledger]
+        m2[x wide member node]
+        m0 --> m1
+    end
+    s0[src0] --> m2
+    s1[src1] --> G
+    s2[src2] --> G
+    m2 --> z[end]
+    G --> z2[after]

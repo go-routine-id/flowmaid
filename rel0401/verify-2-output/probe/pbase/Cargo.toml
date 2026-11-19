@@ -1,0 +1,27 @@
+[package]
+name = "pbase"
+version = "0.0.0"
+edition = "2021"
+
+[[bin]]
+name = "pbase"
+path = "../src/main.rs"
+
+[dependencies]
+flowmaid = { path = "../../base" }
+
+[features]
+default = []
+head = []
+
+[profile.release]
+debug = false
+incremental = false
+
+[[bin]]
+name = "cards"
+path = "../src/cards.rs"
+
+[[bin]]
+name = "parsecase"
+path = "../src/parsecase.rs"

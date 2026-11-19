@@ -1,0 +1,30 @@
+flowchart LR
+  s0["cache"]
+  s1["ship api"]
+  subgraph g0["pay queue zone"]
+    direction LR
+    m0["log"]
+    m1["cart"]
+    m2["notify ship user"]
+    m0 --> m1
+  end
+  subgraph g1["db zone"]
+    m3["index"]
+    m4["pay"]
+    m3 --> m4
+  end
+  subgraph g2["cache zone"]
+    direction LR
+    m5["log billing"]
+    m6["search"]
+    m7["index auth search"]
+    m8["log pay"]
+    m5 --> m6
+    m5 --> m7
+  end
+  s0 --> m0
+  s1 --> g1
+  s1 --> m5
+  s0 --> L9["auth"]
+  s1 --> L10["pay report cache"]
+  s0 --> L11["queue trace"]

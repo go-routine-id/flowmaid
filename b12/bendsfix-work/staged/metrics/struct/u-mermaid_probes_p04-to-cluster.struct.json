@@ -1,0 +1,38 @@
+{"tool":"structdump","flowmaid":"0.38.0","kind":"flowchart","direction":"TD",
+"nodes":[
+ {"id":"x","label":"x","shape":"Rect","sub":null},
+ {"id":"a","label":"a","shape":"Rect","sub":0},
+ {"id":"b","label":"b","shape":"Rect","sub":0},
+ {"id":"c","label":"c","shape":"Rect","sub":0},
+ {"id":"y","label":"y","shape":"Rect","sub":null},
+ {"id":"d","label":"d","shape":"Rect","sub":1},
+ {"id":"e","label":"e","shape":"Rect","sub":1}],
+"subgraphs":[
+ {"id":"S","title":"block S","parent":null,"direction":null,"nodes":[1,2,3]},
+ {"id":"T","title":"block T","parent":null,"direction":null,"nodes":[5,6]}],
+"edges":[
+ {"from":{"n":1},"to":{"n":2},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":1},"to":{"n":3},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":5},"to":{"n":6},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":0},"to":{"s":0},"label":"to block","kind":"Arrow","drawn":true},
+ {"from":{"s":0},"to":{"n":4},"label":"from block","kind":"Arrow","drawn":true},
+ {"from":{"s":0},"to":{"s":1},"label":"block to block","kind":"Arrow","drawn":true}],
+"scene":{"width":269.693,"height":618.000,
+ "nodes":[
+  {"id":"x","x":94.000,"y":28.000,"w":54.000,"h":38.000},
+  {"id":"a","x":94.000,"y":178.000,"w":54.000,"h":38.000},
+  {"id":"b","x":42.000,"y":276.000,"w":54.000,"h":38.000},
+  {"id":"c","x":146.000,"y":276.000,"w":54.000,"h":38.000},
+  {"id":"y","x":42.000,"y":440.000,"w":54.000,"h":38.000},
+  {"id":"d","x":146.000,"y":440.000,"w":54.000,"h":38.000},
+  {"id":"e","x":146.000,"y":538.000,"w":54.000,"h":38.000}],
+ "clusters":[
+  {"id":"S","x":28.000,"y":138.000,"w":186.000,"h":190.000,"depth":0},
+  {"id":"T","x":132.000,"y":400.000,"w":82.000,"h":190.000,"depth":0}],
+ "edges":[
+  {"from":"a","to":"b","routed":true,"label":null,"points":[[106.000,216.000],[106.000,232.000],[106.000,246.000],[92.000,246.000],[83.000,246.000],[69.000,246.000],[69.000,260.000],[69.000,276.000]]},
+  {"from":"a","to":"c","routed":true,"label":null,"points":[[136.000,216.000],[136.000,232.000],[136.000,246.000],[150.000,246.000],[159.000,246.000],[173.000,246.000],[173.000,260.000],[173.000,276.000]]},
+  {"from":"d","to":"e","routed":false,"label":null,"points":[[173.000,478.000],[173.000,508.000],[173.000,508.000],[173.000,538.000]]},
+  {"from":"x","to":"S","routed":false,"label":{"text":"to block","cx":121.000,"cy":102.000,"w":62.600},"points":[[121.000,66.000],[121.000,102.000],[121.000,102.000],[121.000,138.000]]},
+  {"from":"S","to":"y","routed":false,"label":{"text":"from block","cx":69.000,"cy":384.000,"w":79.000},"points":[[69.000,328.000],[69.000,384.000],[69.000,384.000],[69.000,440.000]]},
+  {"from":"S","to":"T","routed":false,"label":{"text":"block to block","cx":191.943,"cy":364.000,"w":99.500},"points":[[192.443,328.000],[192.443,352.000],[192.443,376.000],[192.443,400.000]]}]}}

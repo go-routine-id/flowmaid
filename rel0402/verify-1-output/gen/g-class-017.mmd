@@ -1,0 +1,35 @@
+classDiagram
+direction TB
+C10 <|-- C15
+C22 "1" *-- "*" C1 : beta
+C21 o-- C2 : delta
+C11 -- C6
+C18 ..|> C17
+C21 "1" --> "*" C19
+C7 *-- C19
+C1 <|-- C23 : <b>bold</b>
+C15 <|-- C17
+C3 o-- C8
+C13 "1" ..|> "*" C22 : gamma
+C17 <--> C7
+C14 -- C6
+C1 <--> C22 : Long label here
+C13 ..|> C21
+C8 -- C14
+C11 <--> C17
+class C1 {
+  +int id
+  +name() String
+}
+class C10 {
+  +int id
+  +name() String
+}
+class C16 {
+  +int id
+  +name() String
+}
+class C17 {
+  +int id
+  +name() String
+}

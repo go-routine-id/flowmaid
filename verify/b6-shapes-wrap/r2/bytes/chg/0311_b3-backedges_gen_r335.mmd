@@ -1,0 +1,21 @@
+flowchart LR
+    N0(Validate)
+    N1(Store)
+    N2{Notify store}
+    N3{Parse}
+    N4(Queue)
+    N5{Emit}
+    N6[Validate queue]
+    N7([Done parse])
+    N8[Load]
+    N0 --> N1
+    N0 --> N2
+    N1 -->|ok| N3
+    N2 --> N4
+    N3 --> N5
+    N5 --> N6
+    N6 --> N7
+    N7 --> N8
+    N0 --> N1
+    N7 --> N6
+    N8 ==> N4

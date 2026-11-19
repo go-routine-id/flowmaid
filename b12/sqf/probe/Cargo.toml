@@ -1,0 +1,11 @@
+[package]
+name = "probe"
+version = "0.1.0"
+edition = "2021"
+[dependencies]
+flowmaid = { path = "/home/user/flowmaid" }
+[profile.release]
+debug = "line-tables-only"
+[[bin]]
+name = "dump"
+path = "src/dump.rs"

@@ -1,0 +1,14 @@
+flowchart LR
+    subgraph G[Data ingestion workers]
+        m0[auth service]
+        m1[x wide member node]
+        m2[w]
+        m0 --> m1
+    end
+    s0[src0] -- "lbl1" --> m0
+    s0 --> G
+    s1[src1] --> G
+    s2[src2] --> G
+    s3[src3] -- "lbl1" --> G
+    s3 --> G
+    m2 --> z[end]

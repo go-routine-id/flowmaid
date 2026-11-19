@@ -1,0 +1,16 @@
+flowchart BT
+    N0{Done}
+    N1(Archive)
+    N2(Store validate)
+    N3([Archive])
+    N4{Parse report}
+    N5[(Check parse)]
+    N0 --> N1
+    N0 -->|yes| N2
+    N0 --> N3
+    N3 --> N4
+    N3 --> N5
+    N1 --> N2
+    N1 --> N5
+    N0 --> N3
+    N5 --> N2

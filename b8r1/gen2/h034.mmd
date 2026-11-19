@@ -1,0 +1,22 @@
+flowchart LR
+  s0["order"]
+  subgraph g0["index zone"]
+    m0["user"]
+    m1["auth db"]
+    m0 --> m1
+  end
+  subgraph g1["index ship pay zone"]
+    m2["index"]
+  end
+  subgraph g2["cache log order zone"]
+    direction LR
+    m3["search"]
+  end
+  s0 --> g0
+  s0 --> g1
+  s0 --> m3
+  m1 --> m3
+  m3 --> m2
+  s0 --> L4["store auth trace"]
+  s0 --> L5["store store log"]
+  s0 --> L6["queue cache"]

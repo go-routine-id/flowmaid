@@ -1,0 +1,20 @@
+nest-sib-lbl-BT.routed.svg	s → a1: go	0.0
+nest-sib-lbl-BT.routed.svg	t → b1: kick off	0.1
+nest-sib-lbl-BT.routed.svg	a1 → a2: next	0.0
+nest-sib-lbl-BT.routed.svg	b1 → b2: then	0.1
+nest-sib-lbl-BT.routed.svg	b2 → z: done	0.1
+nest-sib-lbl-LR.routed.svg	s → a1: go	0.0
+nest-sib-lbl-LR.routed.svg	t → b1: kick off	0.0
+nest-sib-lbl-LR.routed.svg	a1 → a2: next	0.0
+nest-sib-lbl-LR.routed.svg	b1 → b2: then	0.0
+nest-sib-lbl-LR.routed.svg	b2 → z: done	0.0
+nest-sib-lbl-RL.routed.svg	s → a1: go	0.0
+nest-sib-lbl-RL.routed.svg	t → b1: kick off	0.0
+nest-sib-lbl-RL.routed.svg	a1 → a2: next	0.0
+nest-sib-lbl-RL.routed.svg	b1 → b2: then	0.0
+nest-sib-lbl-RL.routed.svg	b2 → z: done	0.0
+nest-sib-lbl.routed.svg	s → a1: go	0.0
+nest-sib-lbl.routed.svg	t → b1: kick off	0.0
+nest-sib-lbl.routed.svg	a1 → a2: next	0.0
+nest-sib-lbl.routed.svg	b1 → b2: then	0.0
+nest-sib-lbl.routed.svg	b2 → z: done	0.0

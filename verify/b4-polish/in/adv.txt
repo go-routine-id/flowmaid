@@ -1,0 +1,8 @@
+lane ops "Operations"
+lane data "Data"
+a[Ingest]
+db[(Primary database)]
+c[[Exporter]]
+a -.-> db
+db --> c
+c -.-> a

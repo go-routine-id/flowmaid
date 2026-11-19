@@ -1,0 +1,17 @@
+stateDiagram-v2
+  [*] --> Idle
+  Idle --> Active : start
+  state Active {
+    [*] --> Loading
+    Loading --> Ready
+    Ready --> Loading : refresh
+    state Extra {
+      Cached
+      Stale
+    }
+  }
+  Active --> Idle : stop
+  Active --> Error : fail
+  Error --> Idle : reset
+  note right of Idle : waiting
+  Error --> [*]

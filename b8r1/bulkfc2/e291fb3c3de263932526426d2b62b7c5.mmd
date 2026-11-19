@@ -1,0 +1,8 @@
+flowchart TD
+  A --> B --> C --> D --> E
+  E e1@-->|back| B
+  D e2@-.-> A
+  C --> A
+  e1@{ curve: linear }
+  e2@{ curve: step }
+  linkStyle 6 interpolate stepAfter,stroke:#d33,stroke-width:4px

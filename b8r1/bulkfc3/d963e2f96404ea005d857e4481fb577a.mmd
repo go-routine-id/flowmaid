@@ -1,0 +1,19 @@
+flowchart RL
+    N0([Emit emit])
+    N1((Load))
+    N2(Report check)
+    N3{Archive retry}
+    N4{Validate}
+    N5[Load]
+    N6(Notify check)
+    N7[(Emit fetch)]
+    N8([Retry parse])
+    N0 --> N1
+    N1 --> N2
+    N1 --> N3
+    N1 -->|next| N4
+    N2 -->|next| N5
+    N5 --> N6
+    N4 --> N7
+    N7 --> N8
+    N5 --> N4

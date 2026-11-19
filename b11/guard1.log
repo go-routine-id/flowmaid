@@ -1,0 +1,51 @@
+== fmt
+== clippy
+FAILED: cargo clippy --all-targets -- -D warnings
+    Checking flowmaid v0.38.0 (/home/user/flowmaid)
+error: very complex type used. Consider factoring parts into `type` definitions
+   --> src/comb.rs:295:20
+    |
+295 |     let mut sides: BTreeMap<(EndRef, Side), (Vec<(usize, bool)>, usize)> = BTreeMap::new();
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#type_complexity
+    = note: `-D clippy::type-complexity` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::type_complexity)]`
+
+error: very complex type used. Consider factoring parts into `type` definitions
+   --> src/comb.rs:869:21
+    |
+869 |                  f: &mut dyn FnMut(usize, usize, &[Pt], &[Pt])| {
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#type_complexity
+
+error: very complex type used. Consider factoring parts into `type` definitions
+    --> src/quality.rs:1672:23
+     |
+1672 |         let mut fans: std::collections::BTreeMap<(End, Side), Vec<(usize, f64, bool)>> =
+     |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#type_complexity
+
+error: could not compile `flowmaid` (lib) due to 3 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: very complex type used. Consider factoring parts into `type` definitions
+     --> src/scene.rs:11408:23
+      |
+11408 |     fn strokes(lines: &[((f64, f64), (f64, f64), &str)]) -> Scene {
+      |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      |
+      = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#type_complexity
+
+error: could not compile `flowmaid` (lib test) due to 4 previous errors
+== test
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+== doctest
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.60s
+== msrv
+    Finished dev [unoptimized + debuginfo] target(s) in 25.36s
+== wasm
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 11.37s
+== rustdoc
+GUARD: FAILURES

@@ -1,0 +1,16 @@
+test comb::tests::a_hubs_fan_is_a_comb_in_scene_and_route ... FAILED
+test ports::tests::a_nearly_straight_pair_is_drawn_straight ... FAILED
+test render::tests::advanced_showcase_parses_and_renders ... FAILED
+test scene::tests::a_composite_edge_to_its_own_state_drops_straight_from_the_border ... FAILED
+test scene::tests::a_lane_stays_in_its_frames_in_route_and_on_a_drag_too ... FAILED
+test scene::tests::far_apart_back_edges_and_frame_legs_square_up_alike_in_route ... FAILED
+test scene::tests::note_links_hold_their_ends_and_corners_in_scene_route_and_drag ... FAILED
+test scene::tests::note_links_match_between_scene_and_route ... FAILED
+test result: FAILED. 1146 passed; 8 failed; 5 ignored; 0 measured; 0 filtered out; finished in 163.52s
+test a_one_px_drag_leaves_unrelated_edges_put ... FAILED
+test crossing_gaps_do_not_read_as_dashes ... FAILED
+test channels_keep_edges_apart_and_off_chips ... FAILED
+test block_fixtures_are_not_drawn_worse ... FAILED
+test defect_baseline_gate ... FAILED
+test quality_gate ... FAILED
+test result: FAILED. 9 passed; 6 failed; 0 ignored; 0 measured; 0 filtered out; finished in 10.77s

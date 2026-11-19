@@ -1,0 +1,11 @@
+stateDiagram-v2
+    state check <<choice>>
+    [*] --> Input
+    Input --> check : validate
+    check --> Accepted : score >= 80
+    check --> Review : 50 <= score < 80
+    check --> Input : score < 50 (retry)
+    Review --> Accepted : approved
+    Review --> Rejected : denied
+    Accepted --> [*]
+    Rejected --> [*]

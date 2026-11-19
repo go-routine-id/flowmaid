@@ -1,0 +1,10 @@
+architecture-beta
+    group g0(database)[Frontend]
+    service s0(internet)[Service 0]
+    service s1(disk)[Service 1] in g0
+    service s2(server)[Service 2] in g0
+    service s3(disk)[Service 3]
+    service s4(internet)[Service 4] in g0
+    s2:L --> R:s3
+    s3:R --> L:s2
+    s2:L --> L:s3

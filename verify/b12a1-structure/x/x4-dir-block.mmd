@@ -1,0 +1,14 @@
+flowchart TD
+    in([input]) --> p1
+    subgraph pipe[Pipeline]
+        direction LR
+        p1[parse] --> p2[check] --> p3[plan]
+    end
+    subgraph run[Runtime]
+        r1[exec] --> r2[collect]
+        r2 --> r3[report]
+    end
+    p3 -->|plan| r1
+    r3 -.->|feedback| p1
+    r2 -->|metrics| out([dashboard])
+    pipe --> out

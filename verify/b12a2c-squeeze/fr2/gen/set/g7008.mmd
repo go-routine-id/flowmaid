@@ -1,0 +1,54 @@
+flowchart BT
+  n1["store"]
+  n2["db auth queue"]
+  subgraph B0["Edge services"]
+    n3["mail"]
+    n4["db<br/>api"]
+    n5["index report auth"]
+    subgraph B0s0["Storefront 0"]
+      n6["queue"]
+      n7["ship"]
+    end
+  end
+  subgraph B1["Ingest"]
+    n8["index mail worker"]
+    subgraph B1s0["Data tier 0"]
+      n9["notify"]
+      n10["store queue index"]
+      n11["merge"]
+    end
+  end
+  subgraph B2["Data tier"]
+    n12["api<br/>ingest"]
+  end
+  subgraph B3["Core"]
+    n13["store ship auth"]
+    n14["api"]
+    n15["mail"]
+    n16["auth"]
+    subgraph B3s0["Ingest 0"]
+      n17["report index ship"]
+      n18["api"]
+    end
+  end
+  n19["notify"]
+  n19 -.-> n17
+  n16 -->|split| n9
+  n11 --> n14
+  n13 ==>|report| n9
+  n4 -.-> n8
+  n9 ==> n10
+  n7 -.->|parse| n15
+  n8 -.->|worker| n19
+  n6 -->|db| n17
+  n18 ==> n8
+  n4 -.-> n13
+  n1 ==> n5
+  n18 --> n19
+  n8 ==>|billing| n12
+  n7 -.-> n10
+  n9 --> n8
+  n4 --> n9
+  n4 --> n7
+  n8 -->|queue| n13
+  n5 --> n13

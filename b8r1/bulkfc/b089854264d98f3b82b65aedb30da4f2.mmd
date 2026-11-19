@@ -1,0 +1,13 @@
+flowchart RL
+    N0(Parse archive)
+    N1(Load)
+    N2{{Archive emit}}
+    N3(Store archive)
+    N4([Retry])
+    N0 --> N1
+    N0 --> N2
+    N0 --> N3
+    N1 -->|fail| N4
+    N0 --> N2
+    N2 --> N4
+    N2 -.->|back| N0

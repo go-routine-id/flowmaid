@@ -1,0 +1,3 @@
+55:#[non_exhaustive] 56:pub struct CompactOptions { 
+91:#[non_exhaustive] 92:pub enum FoldSkip { 
+114:#[non_exhaustive] 115:pub struct CompactScene { 

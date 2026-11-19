@@ -1,0 +1,26 @@
+flowchart TD
+  n7 --x n12
+  n13 ==>|thick lbl| n7
+  n11 --o n14
+  n11 o--o n13
+  n6 --o n6
+  n7 ==>|thick lbl| n14
+  n8 ==> n2
+  n7 o--o n2
+  n3 --x n11
+  n4 o--o n3
+  n11 -->|lbl| n8
+  n8 --> n11
+  n4 -.-> n7
+  n0 -.->|dot| n9
+  n6 --o n2
+  n8 x--x n9
+  n6 <--> n12
+  n0 o--o n10
+  n12 --- n1
+  n2 <==> n11
+  n10 --o n12
+  n12 ==> n3
+  n0 x--x n10
+  linkStyle 5 stroke:#c33,stroke-width:7px
+  linkStyle 12 stroke-width:16px

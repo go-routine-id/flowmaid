@@ -1,0 +1,73 @@
+== fmt
+== clippy
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 10.71s
+== test
+FAILED: cargo test --all-targets
+test style::tests::wide_accent_cycle_is_distinct_and_extends_accent ... ok
+test timeline::tests::acc_statements_reach_the_svg ... ok
+test timeline::tests::axis_is_visible_and_task_lines_stay_pale ... ok
+test timeline::tests::breaks_are_folded_and_entities_stay_literal ... ok
+test timeline::tests::colon_without_whitespace_is_literal ... ok
+test timeline::tests::continuation_line_extends_previous_period ... ok
+test timeline::tests::indented_header_keeps_direction ... ok
+test timeline::tests::long_events_and_periods_wrap ... ok
+test timeline::tests::long_titles_fit_and_center_the_content ... ok
+test timeline::tests::parses_period_and_events_inline ... ok
+test timeline::tests::periods_are_bold_and_events_regular ... ok
+test timeline::tests::periods_before_the_first_section_are_kept_with_neutral_ticks ... ok
+test timeline::tests::scene_fits_everything_inside_the_canvas ... ok
+test timeline::tests::section_labels_read_on_every_accent ... ok
+test timeline::tests::sectionless_timeline_has_no_header_band ... ok
+test timeline::tests::task_lines_never_cross_event_text ... ok
+test timeline::tests::tick_is_painted_over_its_task_line ... ok
+test timeline::tests::title_keeps_a_gap_above_the_first_band ... ok
+test timeline::tests::title_section_and_direction_are_parsed ... ok
+test timeline::tests::to_svg_draws_sections_periods_and_events ... ok
+test timeline::tests::wide_section_names_fit_their_band ... ok
+test timeline::tests::wrapped_text_is_balanced_and_keeps_its_style ... ok
+test wrap::tests::balanced_keeps_the_line_count_and_evens_the_lines ... ok
+test wrap::tests::greedy_fills_lines_and_keeps_long_words_whole ... ok
+test wrap::tests::into_lines_agrees_with_the_full_search ... ok
+test wrap::tests::wrap_block_carries_styles_across_its_breaks ... ok
+test wrap::tests::wrap_block_keeps_literal_tags_as_text ... ok
+test wrap::tests::wrap_block_leaves_no_stranded_last_word ... ok
+test scene::tests::squared_ends_face_the_curve_and_keep_near_it_on_every_fixture ... ok
+test scene::tests::glyph_fan_in_never_panics_when_ports_fill_the_side ... ok
+test scene::tests::edge_picking_matches_the_painted_strokes_on_every_fixture ... ok
+
+failures:
+
+---- scene::tests::arrow_tips_land_on_the_border_with_the_stroke_cut_under_the_head stdout ----
+
+thread 'scene::tests::arrow_tips_land_on_the_border_with_the_stroke_cut_under_the_head' (22265) panicked at src/scene.rs:14188:13:
+-->: [(55.0, 66.0), (55.0, 66.76408953004143), (55.0, 67.51522444671123), (54.99999999999999, 68.25363084533241), (55.00000000000001, 68.97953482122793), (55.00000000000001, 69.69316246972078), (55.0, 70.39473988613383), (54.999999999999986, 71.0844931657901), (55.0, 71.76264840401257), (55.00000000000001, 72.42943169612418), (55.00000000000001, 73.0850691374479), (54.999999999999986, 73.72978682330665), (55.0, 74.36381084902348), (55.00000000000001, 74.98736730992124), (55.0, 75.60068230132299), (54.999999999999986, 76.20398191855163), (55.00000000000001, 76.79749225693017), (55.0, 77.38143941178151), (54.99999999999999, 77.95604947842868), (54.99999999999999, 78.52154855219459), (55.0, 79.0781627284022), (55.00000000000001, 79.62611810237456), (55.00000000000001, 80.16564076943453), (54.99999999999999, 80.69695682490506), (55.0, 81.22029236410921), (55.00000000000002, 81.73587348236991), (55.0, 82.24392627501005), (54.99999999999999, 82.74467683735266), (55.000000000000014, 83.23835126472072), (55.000000000000014, 83.72517565243714), (55.0, 84.20537609582487), (54.99999999999999, 84.67917869020692), (54.99999999999999, 85.14680953090625), (54.99999999999999, 85.6084947132458), (55.0, 86.06446033254853), (54.99999999999999, 86.51493248413742), (54.99999999999999, 86.96013726333543), (55.00000000000001, 87.40030076546549), (55.0, 87.83564908585059), (54.999999999999986, 88.26640831981369), (55.0, 88.69280456267775), (55.0, 89.11506390976574), (55.0, 89.5334124564006), (54.999999999999986, 89.94807629790527), (55.00000000000001, 90.35928152960281), (55.00000000000001, 90.76725424681612), (55.0, 91.17222054486811), (54.999999999999986, 91.5744065190818), (55.00000000000001, 91.97403826478016), (55.00000000000001, 92.37134187728616), (55.0, 92.7665434519227), (54.999999999999986, 93.15986908401277), (55.0, 93.55154486887939), (55.00000000000001, 93.94179690184546), (55.000000000000014, 94.33085127823394), (55.0, 94.71893409336778), (55.0, 95.10627144257002), (55.0, 95.49308942116355), (54.99999999999999, 95.87961412447135), (55.0, 96.26607164781639), (55.0, 96.65268808652162), (55.0, 97.03968953591), (55.00000000000001, 97.42730209130454), (54.99999999999999, 97.81575184802811), (55.0, 98.20526490140375), (54.99999999999999, 98.59606734675438), (55.0, 98.988385279403), (55.00000000000001, 99.38244479467258), (55.0, 99.77847198788598), (54.999999999999986, 100.17669295436627), (55.00000000000001, 100.5773337894364), (54.99999999999999, 100.98062058841924), (55.0, 101.38677944663786), (55.0, 101.79603645941519), (55.0, 102.20861772207417), (55.0, 102.62474932993779), (55.0, 103.04465737832899), (54.99999999999999, 103.46856796257072), (55.0, 103.89670717798597), (55.0, 104.3293011198977), (55.0, 104.76657588362886), (55.0, 105.20875756450242), (55.0, 105.65607225784133), (55.0, 106.10874605896856), (55.0, 106.56700506320709), (55.0, 107.03107536587984), (55.0, 107.5011830623098), (55.0, 107.97755424781994), (55.0, 108.4604150177332), (55.0, 108.94999146737254), (55.0, 109.44650969206094), (55.0, 109.95019578712136), (55.0, 110.46127584787678), (55.0, 110.97997596965011), (55.00000000000001, 111.50652224776435), (55.0, 112.04114077754244), (55.0, 112.58405765430736), (55.0, 113.13549897338206), (55.00000000000001, 113.69569083008953), (55.0, 114.26485931975269), (55.0, 114.84323053769452), (55.0, 115.431030579238), (55.0, 116.02848553970607), (55.0, 116.63582151442168), (55.0, 117.25326459870783), (55.00000000000001, 117.88104088788747), (55.0, 118.51937647728353), (55.0, 119.168497462219), (54.99999999999999, 119.82862993801683), (55.0, 120.5)]
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: flowmaid::scene::tests::arrow_tips_land_on_the_border_with_the_stroke_cut_under_the_head
+             at ./src/scene.rs:14188:13
+   3: flowmaid::scene::tests::arrow_tips_land_on_the_border_with_the_stroke_cut_under_the_head::{closure#0}
+             at ./src/scene.rs:14172:74
+   4: <flowmaid::scene::tests::arrow_tips_land_on_the_border_with_the_stroke_cut_under_the_head::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+   5: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+
+failures:
+    scene::tests::arrow_tips_land_on_the_border_with_the_stroke_cut_under_the_head
+
+test result: FAILED. 1157 passed; 1 failed; 5 ignored; 0 measured; 0 filtered out; finished in 181.33s
+
+error: test failed, to rerun pass `--lib`
+== doctest
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.55s
+== msrv
+    Finished dev [unoptimized + debuginfo] target(s) in 5.05s
+== wasm
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.76s
+== rustdoc
+GUARD: FAILURES

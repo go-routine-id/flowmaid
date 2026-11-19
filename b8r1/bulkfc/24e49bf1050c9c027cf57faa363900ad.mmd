@@ -1,0 +1,15 @@
+flowchart LR
+    N0[Report]
+    N1([Report store])
+    N2(Fetch)
+    N3[Report]
+    N4[Notify]
+    N5{Notify}
+    N6{Done}
+    N0 --> N1
+    N0 -->|fail| N2
+    N2 -->|fail| N3
+    N3 --> N4
+    N4 -->|fail| N5
+    N3 -->|fail| N6
+    N6 ==>|rollback| N0

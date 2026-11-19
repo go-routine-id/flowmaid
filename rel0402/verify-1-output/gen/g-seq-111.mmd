@@ -1,0 +1,25 @@
+sequenceDiagram
+autonumber
+actor P0 as beta
+participant P1 as <b>bold</b>
+participant P2 as delta
+Note left of P0: x
+P0-)P2: alpha
+Note over P0,P2: alpha
+P1--)P0: alpha
+alt gamma
+P1->>P1: self delta
+P1-xP1: Long label here
+Note over P0,P2: delta
+P0->P2: Long label here
+else beta
+P0-xP1: delta
+P2-xP0: Long label here
+P1--xP2: x
+P1->>P1: self beta
+P2-->P1: beta
+P0->>P1: gamma
+P2->>P2: self a&b
+P0->>P0: self <b>bold</b>
+P0-->>P1: <b>bold</b>
+end

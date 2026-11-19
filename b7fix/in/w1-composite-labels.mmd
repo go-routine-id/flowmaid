@@ -1,0 +1,13 @@
+stateDiagram-v2
+  [*] --> K0
+  state K0 {
+    [*] --> a
+    a --> b
+  }
+  state K1 {
+    [*] --> c
+    c --> d
+  }
+  K0 --> K1 : go forward
+  K1 --> K0 : back
+  K1 --> [*]

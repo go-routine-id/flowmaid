@@ -1,0 +1,40 @@
+w1-wide-glyph-title-BT.svg	WWW MMM Warehouse Management	10.00 m2 → out	10.00 m2 → out	10.00 m2 → out
+w1-wide-glyph-title-LR.svg	WWW MMM Warehouse Management	24.50 a1 → m1	24.50 a1 → m1	24.50 a1 → m1
+w1-wide-glyph-title-RL.svg	WWW MMM Warehouse Management	25.84 a1 → m1	25.84 a1 → m1	25.84 a1 → m1
+w1-wide-glyph-title-TD.svg	WWW MMM Warehouse Management	10.00 a1 → m1	10.00 a1 → m1	10.00 a1 → m1
+w2-nested-title-rows-BT.svg	Outer platform with quite a long title	22.70 i2 → sink	22.70 i2 → sink	22.70 i2 → sink
+w2-nested-title-rows-BT.svg	Inner Monitoring Workloads	10.00 i2 → sink	10.00 i2 → sink	10.00 i2 → sink
+w2-nested-title-rows-LR.svg	Outer platform with quite a long title	43.54 src2 → i1	43.54 src2 → i1	43.54 src2 → i1
+w2-nested-title-rows-LR.svg	Inner Monitoring Workloads	25.06 src2 → i1	25.06 src2 → i1	25.06 src2 → i1
+w2-nested-title-rows-RL.svg	Outer platform with quite a long title	48.49 src2 → i1	48.49 src2 → i1	48.49 src2 → i1
+w2-nested-title-rows-RL.svg	Inner Monitoring Workloads	39.00 i1 → i2	39.00 i1 → i2	39.00 i1 → i2
+w2-nested-title-rows-TD.svg	Outer platform with quite a long title	20.50 src1 → o1	20.50 src1 → o1	20.50 src1 → o1
+w2-nested-title-rows-TD.svg	Inner Monitoring Workloads	7.50 o1 → i1	7.50 o1 → i1	7.50 o1 → i1
+w3-lr-long-titles-BT.svg	Payment Gateway Mmmm Wwww	10.00 p2 → l1	10.00 p2 → l1	10.00 p2 → l1
+w3-lr-long-titles-BT.svg	Ledger Bookkeeping	63.50 l1 → l2	63.50 l1 → l2	63.50 l1 → l2
+w3-lr-long-titles-LR.svg	Payment Gateway Mmmm Wwww	28.07 u1 → p1	28.07 u1 → p1	28.07 u1 → p1
+w3-lr-long-titles-LR.svg	Ledger Bookkeeping	32.04 u1 → l1	32.04 u1 → l1	32.04 u1 → l1
+w3-lr-long-titles-RL.svg	Payment Gateway Mmmm Wwww	32.60 u1 → p1	32.60 u1 → p1	32.60 u1 → p1
+w3-lr-long-titles-RL.svg	Ledger Bookkeeping	39.00 l1 → l2	39.00 l1 → l2	39.00 l1 → l2
+w3-lr-long-titles-TD.svg	Payment Gateway Mmmm Wwww	9.92 u2 → p1	9.92 u2 → p1	9.92 u2 → p1
+w3-lr-long-titles-TD.svg	Ledger Bookkeeping	10.00 p2 → l1	10.00 p2 → l1	10.00 p2 → l1
+w4-nonascii-titles-BT.svg	Überprüfung der Bestellungen Ärger	10.00 b2 → j1	10.00 b2 → j1	10.00 b2 → j1
+w4-nonascii-titles-BT.svg	注文処理パイプライン監視	63.50 j1 → j2	63.50 j1 → j2	63.50 j1 → j2
+w4-nonascii-titles-LR.svg	Überprüfung der Bestellungen Ärger	32.00 k1 → b1	32.00 k1 → b1	32.00 k1 → b1
+w4-nonascii-titles-LR.svg	注文処理パイプライン監視	27.80 k1 → j1	27.80 k1 → j1	27.80 k1 → j1
+w4-nonascii-titles-RL.svg	Überprüfung der Bestellungen Ärger	28.70 k1 → j1	28.70 k1 → j1	28.70 k1 → j1
+w4-nonascii-titles-RL.svg	注文処理パイプライン監視	39.00 j1 → j2	39.00 j1 → j2	39.00 j1 → j2
+w4-nonascii-titles-TD.svg	Überprüfung der Bestellungen Ärger	9.94 k1 → b1	9.94 k1 → b1	9.94 k1 → b1
+w4-nonascii-titles-TD.svg	注文処理パイプライン監視	10.00 k1 → j1	10.00 k1 → j1	10.00 k1 → j1
+w5-state-composites-BT.svg	Order validation and fraud screening	6.00 Validating → Fulfil	6.00 Validating → Fulfil	6.00 Validating → Fulfil
+w5-state-composites-BT.svg	Warehouse fulfilment	6.55 Fulfil → end	6.55 Fulfil → end	9.62 Fulfil → end
+w5-state-composites-LR.svg	Order validation and fraud screening	29.50 Receiving → pick	29.50 Receiving → pick	29.50 Receiving → pick
+w5-state-composites-LR.svg	Warehouse fulfilment	27.96 Receiving → pick	27.96 Receiving → pick	27.96 Receiving → pick
+w5-state-composites-RL.svg	Order validation and fraud screening	29.50 Receiving → pick	29.50 Receiving → pick	29.50 Receiving → pick
+w5-state-composites-RL.svg	Warehouse fulfilment	39.00 pick → pack	39.00 pick → pack	39.00 pick → pack
+w5-state-composites-TD.svg	Order validation and fraud screening	11.50 Other → Validating	11.50 Other → Validating	11.50 Other → Validating
+w5-state-composites-TD.svg	Warehouse fulfilment	24.50 Receiving → pick	24.50 Receiving → pick	24.50 Receiving → pick
+w6-many-entries-short-member-BT.svg	Mammoth Wombat Pipeline Overview	7.39 y → z	7.39 y → z	7.39 y → z
+w6-many-entries-short-member-LR.svg	Mammoth Wombat Pipeline Overview	24.05 s1 → x	24.05 s1 → x	24.05 s1 → x
+w6-many-entries-short-member-RL.svg	Mammoth Wombat Pipeline Overview	39.00 x → y	39.00 x → y	39.00 x → y
+w6-many-entries-short-member-TD.svg	Mammoth Wombat Pipeline Overview	5.95 s4 → x	5.95 s4 → x	0.36 s4 → x

@@ -1,0 +1,15 @@
+flowchart RL
+    N0(Retry store)
+    N1([Archive])
+    N2{Report}
+    N3(Store)
+    N4(Done)
+    N5([Load])
+    N0 -->|next| N1
+    N0 -->|ok| N2
+    N1 --> N3
+    N2 -->|fail| N4
+    N2 --> N5
+    N5 -->|rollback| N4
+    N5 -->|rollback| N0
+    N2 -->|again| N0

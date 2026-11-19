@@ -1,0 +1,16 @@
+flowchart BT
+  n1["db<br/>search"]
+  subgraph B0["Platform"]
+    n2["auth"]
+    n3["auth<br/>worker"]
+  end
+  subgraph B1["Edge services"]
+    n4["worker"]
+  end
+  n5["audit"]
+  n6["ingest"]
+  n5 -->|ingest| n2
+  n5 --> n4
+  n3 -.-> n5
+  n6 ==> n3
+  n6 -.-> n5

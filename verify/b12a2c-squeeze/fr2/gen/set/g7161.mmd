@@ -1,0 +1,21 @@
+flowchart LR
+  n1["pack billing merge"]
+  subgraph B0["Storefront"]
+    n2["parse"]
+  end
+  subgraph B1["Platform"]
+    n3["queue cache merge"]
+    n4["notify pack pack"]
+    n5["merge"]
+    n6["db"]
+  end
+  n7["pack"]
+  n8["split"]
+  n3 --> n2
+  n5 --> n7
+  n2 -->|notify| n4
+  n2 --> n3
+  n6 ==> n5
+  n2 -.-> n6
+  n1 -.-> n7
+  n5 --> n3

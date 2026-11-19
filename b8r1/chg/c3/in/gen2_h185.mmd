@@ -1,0 +1,29 @@
+flowchart TD
+  s0["metric report"]
+  subgraph g0["db index cache zone"]
+    direction TB
+    m0["auth cache"]
+    m1["order queue"]
+    m2["order search log"]
+    m0 --> m1
+  end
+  subgraph g1["log store metric zone"]
+    m3["db"]
+    m4["log trace billing"]
+    m5["queue pay"]
+    m6["trace pay trace"]
+    m3 --> m4
+    m5 --> m6
+  end
+  subgraph g2["pay api db zone"]
+    m7["store api cart"]
+    m8["log metric"]
+    m9["index index queue"]
+    m7 --> m8
+    m7 --> m9
+  end
+  s0 --> m0
+  s0 --> g1
+  s0 --> m7
+  s0 --> L10["queue"]
+  s0 --> L11["store"]

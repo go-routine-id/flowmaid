@@ -1,0 +1,37 @@
+sequenceDiagram
+autonumber
+actor U as User
+participant API
+U->>+API: a
+API-->>-U: b
+U->API: c
+U-->API: d
+U-xAPI: e
+U--xAPI: f
+U-)API: g
+U--)API: h
+API->>API: self
+X->>U: implicit
+Note over U,API: n1
+Note over U: n2
+Note left of U: n3
+Note right of API: n4
+activate API
+deactivate API
+loop l
+ U->>API: x
+end
+opt o
+ U->>API: x
+end
+alt a
+ U->>API: x
+else b
+ U->>API: y
+end
+par p
+ U->>API: x
+and q
+ U->>API: y
+end
+U->>API: hi %% trailing

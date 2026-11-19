@@ -1,0 +1,53 @@
+flowchart TD
+  n1["queue cache search"]
+  subgraph B0["Storefront"]
+    n2["audit parse worker"]
+    n3["api"]
+    n4["db"]
+    n5["ingest"]
+    subgraph B0s0["Ingest 0"]
+      n6["ingest"]
+      n7["billing"]
+    end
+    subgraph B0s1["Platform 1"]
+      n8["billing"]
+      n9["api"]
+      n10["db search mail<br/>store"]
+    end
+  end
+  subgraph B1["Edge services"]
+    n11["ship ingest billing"]
+    n12["split<br/>notify"]
+    n13["notify worker billing"]
+    n14["cache"]
+  end
+  subgraph B2["Core"]
+    n15["store merge report"]
+    subgraph B2s0["Analytics 0"]
+      n16["report split parse"]
+      n17["billing<br/>store"]
+    end
+  end
+  n18["api"]
+  n19["parse split notify"]
+  n2 --> n16
+  n10 ==> n15
+  n10 -.-> n2
+  n9 --> n19
+  n13 -.-> n19
+  n1 -.->|parse| n2
+  n7 ==> n8
+  n2 -.-> n4
+  n5 -->|index| n13
+  n14 ==> n12
+  n7 -.-> n19
+  n3 ==>|search| n4
+  n10 --> n17
+  n8 --> n19
+  n4 --> n10
+  n18 ==>|ingest| n17
+  n7 -->|ingest| n15
+  n4 --> n16
+  n13 -.-> n8
+  n15 --> n13
+  n9 --> n11

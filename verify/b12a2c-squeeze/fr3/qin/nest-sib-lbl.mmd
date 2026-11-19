@@ -1,0 +1,18 @@
+flowchart TD
+  s[Start] -->|go| a1
+  t[Other start] -->|kick off| b1
+  u[Third] --> c1
+  subgraph P[Parent block]
+    subgraph A[Short first row]
+      a1[a] -->|next| a2["a tall<br/>last<br/>member<br/>node"]
+    end
+    subgraph B[Tall first row]
+      b1["b tall<br/>first<br/>member<br/>node"] -->|then| b2[b]
+    end
+    subgraph C[Another one]
+      c1["c mid<br/>member"] --> c2[c]
+    end
+  end
+  a2 --> z[End]
+  b2 -->|done| z
+  c2 --> z

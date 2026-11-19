@@ -1,0 +1,20 @@
+architecture-beta
+    group client(internet)[Clients]
+    group api(cloud)[API Layer]
+    group data(database)[Data]
+    service browser(web)[Browser] in client
+    service app(mobile)[Mobile App] in client
+    service gw(api)[Gateway] in api
+    service orders(server)[Orders] in api
+    service users(user)[Users] in api
+    service pg(database)[Postgres] in data
+    service cache(cache)[Redis] in data
+    service bus(queue)[Event Bus] in data
+    browser:R -[REST over https]-> L:gw
+    app:R -[https]-> L:gw
+    gw:R -[route]-> L:orders
+    gw:B -[auth]-> T:users
+    orders:R -[sql]-> L:pg
+    orders:B -[publish]-> T:bus
+    users:R -[lookup]-> L:cache
+    users:R -[read replica]-> L:pg

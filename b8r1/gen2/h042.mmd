@@ -1,0 +1,36 @@
+flowchart LR
+  s0["billing"]
+  s1["ship order"]
+  subgraph g0["db ship zone"]
+    direction LR
+    m0["notify ship search"]
+    m1["web"]
+    m0 --> m1
+  end
+  subgraph g1["metric ship notify zone"]
+    direction TB
+    m2["cache queue"]
+    m3["billing"]
+  end
+  subgraph g2["order log cache zone"]
+    direction LR
+    m4["auth api"]
+    m5["user notify trace"]
+    m6["cache"]
+    m7["auth"]
+    m8["store api"]
+    m4 --> m5
+    m5 --> m6
+    m4 --> m7
+    m5 --> m8
+  end
+  subgraph g3["index index zone"]
+    m9["db index"]
+  end
+  s1 --> g0
+  s1 --> m2
+  s1 --> m4
+  s1 --> m9
+  m9 --> m6
+  m9 --> m5
+  s1 --> L10["order store"]

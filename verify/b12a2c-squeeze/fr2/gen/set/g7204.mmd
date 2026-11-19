@@ -1,0 +1,24 @@
+flowchart RL
+  n1["index"]
+  n2["ship pack auth"]
+  n3["pack<br/>cache"]
+  subgraph B0["Edge services"]
+    n4["pack billing parse"]
+    n5["ingest"]
+    n6["queue"]
+  end
+  subgraph B1["Platform"]
+    n7["index<br/>queue"]
+  end
+  n8["split"]
+  n9["worker ingest notify"]
+  n6 ==> n2
+  n7 --> n8
+  n8 --> n7
+  n2 -.-> n7
+  n5 ==> B1
+  n7 -->|worker| n1
+  n8 -->|pack| n6
+  n4 -.-> n6
+  n9 --> n3
+  n9 -->|audit| n6

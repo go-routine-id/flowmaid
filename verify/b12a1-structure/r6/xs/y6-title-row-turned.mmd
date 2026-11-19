@@ -1,0 +1,13 @@
+flowchart TD
+    h1[Gateway] --> m1
+    h2[Scheduler] --> m2
+    subgraph G["Platform services with a long title<br/>and a second line"]
+        m1[auth] --> m3[tokens]
+        m2[jobs] --> m3
+        m4[audit]
+    end
+    m3 --> sink[Sink]
+    m1 --> h2
+    m4 --> h1
+    m2 --> h1
+    sink --> m4

@@ -1,0 +1,12 @@
+flowchart TD
+    H{{Prepare data}} --> P[/Read input/]
+    H --> Q[\Write output\]
+    H --> C[(Store)]
+    P --> T[/Trapezoid\]
+    Q --> U[\Inverted/]
+    C --> D{Check}
+    T --> S([Done])
+    U --> S
+    D --> O((Ok))
+    D --> S
+    S --> H

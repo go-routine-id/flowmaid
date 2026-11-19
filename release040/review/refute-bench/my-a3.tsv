@@ -1,0 +1,5 @@
+name	type	median_ms	min_ms	svg_bytes
+advanced	flowchart	2.091	1.918	11757
+class	class	0.768	0.732	12041
+dense-td	flowchart	30.633	26.427	49811
+state	state	0.932	0.853	8714

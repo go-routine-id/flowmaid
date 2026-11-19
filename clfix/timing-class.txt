@@ -1,0 +1,48 @@
+== hp run 1
+in24_comp_l1_c1_LR.mmd	class scene 4.362	route 4.148
+in38_comp_l1_c1_LR.mmd	class scene 9.470	route 4.191
+in33_inh_l1_c1_LR.mmd	class scene 7.677	route 7.313
+in12_arrow_l1_c1_TB.mmd	class scene 1.026	route 0.920
+class.mmd	class scene 0.147	route 0.119
+43db28555aba1e0e6ff72bb2b4d74814.mmd	class scene 13.130	route 12.364
+in6_l0_c0_TB.mmd	class scene 0.288	route 0.259
+== hk run 1
+in24_comp_l1_c1_LR.mmd	class scene 3.952	route 3.372
+in38_comp_l1_c1_LR.mmd	class scene 7.546	route 4.593
+in33_inh_l1_c1_LR.mmd	class scene 8.340	route 7.845
+in12_arrow_l1_c1_TB.mmd	class scene 1.044	route 0.913
+class.mmd	class scene 0.154	route 0.134
+43db28555aba1e0e6ff72bb2b4d74814.mmd	class scene 14.003	route 13.106
+in6_l0_c0_TB.mmd	class scene 0.442	route 0.369
+== hn run 1
+in24_comp_l1_c1_LR.mmd	class scene 4.845	route 4.539
+in38_comp_l1_c1_LR.mmd	class scene 10.260	route 4.338
+in33_inh_l1_c1_LR.mmd	class scene 8.469	route 8.177
+in12_arrow_l1_c1_TB.mmd	class scene 1.035	route 0.948
+class.mmd	class scene 0.169	route 0.140
+43db28555aba1e0e6ff72bb2b4d74814.mmd	class scene 13.374	route 13.032
+in6_l0_c0_TB.mmd	class scene 0.439	route 0.403
+== hp run 2
+in24_comp_l1_c1_LR.mmd	class scene 4.353	route 4.222
+in38_comp_l1_c1_LR.mmd	class scene 9.698	route 4.364
+in33_inh_l1_c1_LR.mmd	class scene 8.083	route 7.512
+in12_arrow_l1_c1_TB.mmd	class scene 1.570	route 1.123
+class.mmd	class scene 0.287	route 0.200
+43db28555aba1e0e6ff72bb2b4d74814.mmd	class scene 12.350	route 12.399
+in6_l0_c0_TB.mmd	class scene 0.286	route 0.252
+== hk run 2
+in24_comp_l1_c1_LR.mmd	class scene 3.521	route 3.331
+in38_comp_l1_c1_LR.mmd	class scene 7.381	route 4.295
+in33_inh_l1_c1_LR.mmd	class scene 8.204	route 7.874
+in12_arrow_l1_c1_TB.mmd	class scene 1.034	route 0.938
+class.mmd	class scene 0.152	route 0.125
+43db28555aba1e0e6ff72bb2b4d74814.mmd	class scene 12.934	route 12.742
+in6_l0_c0_TB.mmd	class scene 0.373	route 0.338
+== hn run 2
+in24_comp_l1_c1_LR.mmd	class scene 5.015	route 4.935
+in38_comp_l1_c1_LR.mmd	class scene 10.079	route 4.402
+in33_inh_l1_c1_LR.mmd	class scene 8.404	route 7.941
+in12_arrow_l1_c1_TB.mmd	class scene 1.038	route 0.979
+class.mmd	class scene 0.185	route 0.125
+43db28555aba1e0e6ff72bb2b4d74814.mmd	class scene 13.184	route 12.991
+in6_l0_c0_TB.mmd	class scene 0.409	route 0.416

@@ -1,0 +1,16 @@
+classDiagram
+  Animal <|-- Duck
+  Animal <|-- Fish
+  Animal <|-- Zebra
+  Animal "1" *-- "many" Leg : has
+  Duck --> Pond : swims in
+  Fish ..|> Swimmer
+  Zebra <--> Animal : herd
+  Pond o-- Fish
+  Duck --> Duck : quacks
+  class Animal {
+    +int age
+    +isMammal() bool
+  }
+  note for Duck "can fly"
+  note "a free note"

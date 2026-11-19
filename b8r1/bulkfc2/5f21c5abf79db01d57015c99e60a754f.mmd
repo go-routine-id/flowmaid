@@ -1,0 +1,20 @@
+flowchart BT
+  subgraph F0 [Frame 0]
+    n4{{Node 4}}
+    n1(Node 1)
+    n0{{Node 0}}
+  end
+  n5 ---> n3
+  n4 e1@==>|x| n0
+  e1@{ curve: bumpY }
+  n2 -.-> n1
+  n4 <--> n2
+  n2 -.-|x| n5
+  n1 ==> n1
+  n5 === F0
+  n0 ===|no| n2
+  n5 -.-> n2
+  n4 ~~~ n4
+  linkStyle 0 stroke-width:1px,stroke:#3a3
+  linkStyle 2 stroke-width:8px,stroke:#36c,stroke-dasharray:6 3
+  linkStyle 4 stroke-width:12px,stroke:#36c,stroke-dasharray:6 3

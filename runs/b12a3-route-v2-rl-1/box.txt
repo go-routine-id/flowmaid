@@ -1,0 +1,3 @@
+start 17:06:57 rustc=0 load=1.22 2.02 2.87
+mid 17:07:19 rustc=1 load=1.37 1.98 2.84
+end 17:07:30 rustc=1 load=1.47 1.99 2.83

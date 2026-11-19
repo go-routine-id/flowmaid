@@ -1,0 +1,29 @@
+classDiagram
+direction BT
+Alpha "1" --> "*" Beta : e01
+Alpha "1" --> "*" Gamma : e02
+Alpha "1" --> "*" Delta : e03
+Alpha "1" --> "*" Eps : e04
+Alpha "1" --> "*" Zeta : e05
+Alpha --> Alpha : me
+note for Alpha "about Alpha"
+Beta "1" --> "*" Gamma : e12
+Beta "1" --> "*" Delta : e13
+Beta "1" --> "*" Eps : e14
+Beta "1" --> "*" Zeta : e15
+Beta --> Beta : me
+note for Beta "about Beta"
+Gamma "1" --> "*" Delta : e23
+Gamma "1" --> "*" Eps : e24
+Gamma "1" --> "*" Zeta : e25
+Gamma --> Gamma : me
+note for Gamma "about Gamma"
+Delta "1" --> "*" Eps : e34
+Delta "1" --> "*" Zeta : e35
+Delta --> Delta : me
+note for Delta "about Delta"
+Eps "1" --> "*" Zeta : e45
+Eps --> Eps : me
+note for Eps "about Eps"
+Zeta --> Zeta : me
+note for Zeta "about Zeta"

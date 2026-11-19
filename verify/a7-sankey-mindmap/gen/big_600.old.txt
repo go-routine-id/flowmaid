@@ -1,0 +1,1 @@
+big_600.mmd: n=601 canvas 9972x9896 boxfill 2.1% root@(4986,4948) rel (0.50,0.50) trunks 4617-4667 spokes(all) 62-4667 ratio 75.75 time 0.92ms

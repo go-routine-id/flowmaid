@@ -1,0 +1,10 @@
+classDiagram
+A o-- B
+A --|> C
+B o-- D : uses
+A o-- E : owns
+C ..|> F
+C ..|> G : uses
+E -- B
+D ..> B
+E *-- E

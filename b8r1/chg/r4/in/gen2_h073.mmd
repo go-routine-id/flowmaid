@@ -1,0 +1,26 @@
+flowchart TD
+  s0["web log metric"]
+  s1["ship"]
+  subgraph g0["store db zone"]
+    m0["web billing"]
+  end
+  subgraph g1["store zone"]
+    direction TB
+    m1["queue user cache"]
+    m2["metric index search"]
+    m3["db auth"]
+    m1 --> m2
+    m1 --> m3
+  end
+  subgraph g2["store zone"]
+    direction TB
+    m4["trace notify queue"]
+    m5["metric metric metric"]
+    m4 --> m5
+  end
+  s0 --> g0
+  s1 --> m1
+  s1 --> m4
+  s0 --> L6["log index index"]
+  s1 --> L7["log ship"]
+  s0 --> L8["report billing"]

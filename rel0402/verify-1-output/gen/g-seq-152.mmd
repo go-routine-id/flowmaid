@@ -1,0 +1,51 @@
+sequenceDiagram
+participant P0 as delta
+P0--)P0: <b>bold</b>
+P0--)P0: a&b
+P0->>P0: self delta
+activate P0
+P0->>P0: act
+deactivate P0
+P0-)P0: beta
+activate P0
+P0->>P0: act
+deactivate P0
+P0--xP0: x
+P0--)P0: alpha
+P0--)P0: alpha
+Note right of P0: beta
+P0-->>P0: beta
+P0--)P0: x
+Note over P0: x
+Note left of P0: 日本語
+activate P0
+P0->>P0: act
+deactivate P0
+P0-xP0: alpha
+P0-)P0: 日本語
+P0-->P0: 日本語
+Note over P0: gamma
+P0->>P0: self beta
+P0-)P0: a&b
+activate P0
+P0->>P0: act
+deactivate P0
+activate P0
+P0->>P0: act
+deactivate P0
+P0--)P0: 日本語
+P0-xP0: <b>bold</b>
+par beta
+activate P0
+P0->>P0: act
+deactivate P0
+P0-xP0: alpha
+P0->>P0: gamma
+alt x
+activate P0
+P0->>P0: act
+deactivate P0
+end
+and 日本語
+P0--)P0: Long label here
+end

@@ -1,0 +1,22 @@
+flowchart LR
+    N0([Queue])
+    N1([Archive parse])
+    N2([Archive check])
+    N3{{Done check}}
+    N4[Load]
+    N5[Store]
+    N6([Store])
+    N7([Notify])
+    N8[Report fetch]
+    N0 --> N1
+    N0 -->|yes| N2
+    N0 --> N3
+    N3 --> N4
+    N4 --> N5
+    N5 -->|no| N6
+    N5 -->|next| N7
+    N7 --> N8
+    N3 --> N7
+    N3 --> N4
+    N4 -.->|retry| N1
+    N8 -.-> N2

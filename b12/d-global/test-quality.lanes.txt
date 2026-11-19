@@ -1,0 +1,21 @@
+test a_one_px_drag_leaves_unrelated_edges_put ... FAILED
+test channels_keep_edges_apart_and_off_chips ... FAILED
+test crossing_gaps_do_not_read_as_dashes ... FAILED
+test every_fixture_has_a_ceiling ... ok
+test defect_baseline_gate ... FAILED
+test edge_line_order_barely_moves_the_dense_layouts ... ok
+test every_shape_end_sits_on_its_outline ... ok
+test long_labels_wrap_and_dense_labels_do_not_tower ... ok
+test edges_keep_off_frame_borders ... FAILED
+test labels_cover_nothing_they_must_not ... FAILED
+test moving_a_node_declaration_barely_moves_dense_td ... ok
+test layout_shape_gate ... ok
+test quality_gate ... FAILED
+thread 'a_one_px_drag_leaves_unrelated_edges_put' (4436) panicked at tests/quality.rs:1029:5:
+thread 'channels_keep_edges_apart_and_off_chips' (4437) panicked at tests/quality.rs:519:5:
+thread 'crossing_gaps_do_not_read_as_dashes' (4438) panicked at tests/quality.rs:437:5:
+thread 'defect_baseline_gate' (4439) panicked at tests/quality.rs:809:5:
+thread 'edges_keep_off_frame_borders' (4441) panicked at tests/quality.rs:259:5:
+thread 'labels_cover_nothing_they_must_not' (4444) panicked at tests/quality.rs:330:5:
+thread 'quality_gate' (4448) panicked at tests/quality.rs:197:5:
+test result: FAILED. 6 passed; 7 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.15s

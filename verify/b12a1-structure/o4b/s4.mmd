@@ -1,0 +1,10 @@
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> Review
+    state Review {
+        [*] --> Queue
+        Queue --> Check
+        Check --> Approve
+        Check --> Reject
+    }
+    Review --> Done: approved

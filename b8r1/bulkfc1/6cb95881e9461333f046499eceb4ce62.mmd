@@ -1,0 +1,13 @@
+flowchart TD
+    N0(Retry)
+    N1{Parse emit}
+    N2[Fetch]
+    N3([Store])
+    N4[Retry done]
+    N0 --> N1
+    N1 -->|fail| N2
+    N0 --> N3
+    N1 --> N4
+    N2 --> N3
+    N3 --> N4
+    N3 ==>|again| N0

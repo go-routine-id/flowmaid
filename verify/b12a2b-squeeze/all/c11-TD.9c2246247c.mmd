@@ -1,0 +1,16 @@
+flowchart TD
+    a[alpha] --> k1
+    b[beta] --> k1
+    c[gamma] --> K
+    d[delta] --> k2
+    subgraph K[Edge and shared services]
+        k1[one]
+        k2[two node]
+        k1 --> k3[three]
+        k2 --> k3
+    end
+    subgraph L[Lower]
+        l1[sink]
+    end
+    k3 --> l1
+    a --> l1

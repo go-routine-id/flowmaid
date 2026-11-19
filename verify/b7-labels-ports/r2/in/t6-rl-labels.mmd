@@ -1,0 +1,8 @@
+flowchart RL
+  subgraph G1 [Group one]
+    p[Producer] -->|emit event| q[Queue]
+  end
+  q -->|consume| r[Consumer]
+  r -->|ack| q
+  r --> s[(Store)]
+  s -->|replay| p

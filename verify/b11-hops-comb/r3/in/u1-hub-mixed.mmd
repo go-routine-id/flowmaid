@@ -1,0 +1,16 @@
+flowchart TD
+  hub[Dispatcher] --> a1[Alpha]
+  hub -.-> a2[Beta]
+  hub ==> a3[Gamma]
+  hub --> a4[Delta]
+  hub -- retry --> a5[Epsilon]
+  hub --> a6[Zeta]
+  hub --> a7[Eta]
+  a1 --> z[Sink]
+  a7 --> z
+  a2 -.-> a6
+  a3 ==> a5
+  a1 --> a7
+  src[Source] --> hub
+  src --> a7
+  src -.-> a1

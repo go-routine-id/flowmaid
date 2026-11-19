@@ -1,0 +1,24 @@
+classDiagram
+C13 "1" -- "*" C8
+C16 *-- C0 : x
+C13 ..> C12 : Long label here
+C3 ..> C2 : gamma
+C4 *-- C11
+C16 -- C1 : Customer Order
+C2 --> C0
+C4 <--> C7 : Long label here
+note "alpha"
+note "beta"
+note "a&b"
+class C13 {
+  +int id
+  +name() String
+}
+class C15 {
+  +int id
+  +name() String
+}
+class C16 {
+  +int id
+  +name() String
+}

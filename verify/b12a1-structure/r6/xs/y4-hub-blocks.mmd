@@ -1,0 +1,56 @@
+flowchart TD
+    hub[Hub] --> s0a
+    hub[Hub] --> s1a
+    hub[Hub] --> s2a
+    hub[Hub] --> s3a
+    hub[Hub] --> s4a
+    hub[Hub] --> s5a
+    hub[Hub] --> s6a
+    hub[Hub] --> s7a
+    subgraph S0[Service block number 0]
+        s0a[svc 0 api] --> s0b[svc 0 worker]
+    end
+    subgraph S1[Service block number 1]
+        s1a[svc 1 api] --> s1b[svc 1 worker]
+    end
+    subgraph S2[Service block number 2]
+        s2a[svc 2 api] --> s2b[svc 2 worker]
+    end
+    subgraph S3[Service block number 3]
+        s3a[svc 3 api] --> s3b[svc 3 worker]
+    end
+    subgraph S4[Service block number 4]
+        s4a[svc 4 api] --> s4b[svc 4 worker]
+    end
+    subgraph S5[Service block number 5]
+        s5a[svc 5 api] --> s5b[svc 5 worker]
+    end
+    subgraph S6[Service block number 6]
+        s6a[svc 6 api] --> s6b[svc 6 worker]
+    end
+    subgraph S7[Service block number 7]
+        s7a[svc 7 api] --> s7b[svc 7 worker]
+    end
+    s0b --> db[(Store)]
+    s0b --> q0[queue 0]
+    s1b --> db[(Store)]
+    s1b --> q1[queue 1]
+    s2b --> db[(Store)]
+    s2b --> q2[queue 2]
+    s3b --> db[(Store)]
+    s3b --> q0[queue 0]
+    s4b --> db[(Store)]
+    s4b --> q1[queue 1]
+    s5b --> db[(Store)]
+    s5b --> q2[queue 2]
+    s6b --> db[(Store)]
+    s6b --> q0[queue 0]
+    s7b --> db[(Store)]
+    s7b --> q1[queue 1]
+    s0b --> hub
+    s2b --> hub
+    s4b --> hub
+    s6b --> hub
+    q0 --> s1a
+    q1 --> s4a
+    q2 --> s7a

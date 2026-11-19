@@ -1,0 +1,26 @@
+architecture-beta
+    group g0(disk)[Ops]
+    group g1(server)[Edge]
+    service s0(disk)[Web App 0] in g0
+    service s1(database)[Web App 1] in g1
+    service s2(internet)[Svc 2] in g1
+    service s3(nonsense)[Authentication and Authorization Service 3] in g1
+    service s4(cloud)[PostgreSQL Primary 4] in g1
+    service s5(server)[Svc 5] in g1
+    service s6(nonsense)[Web App 6] in g0
+    service s7(monitoring)[Q 7]
+    service s8(cloud)[Authentication and Authorization Service 8] in g0
+    service s9(nonsense)[Q 9] in g0
+    service s10(disk)[PostgreSQL Primary 10] in g0
+    service s11(internet)[Q 11]
+    s0:T <--> T:s1
+    s8:L <-[calls]-> L:s7
+    s10:T -[replicates to standby]-> B:s9
+    s7:T -[publishes order events]- B:s0{group}
+    s11:B -[reads config]-> T:s6
+    s1:L -[replicates to standby]-> R:s10
+    s7:R -[replicates to standby]- L:s5
+    s5{group}:T -[publishes order events]- B:s6
+    s4:L -[reads config]-> R:s6
+    s5:R -[grpc stream]-> L:s1
+    s5:B -[publishes order events]-> T:s6

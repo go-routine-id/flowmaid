@@ -1,0 +1,34 @@
+classDiagram
+    direction RL
+    class Library {
+      +String name
+      +addBook(b) void
+    }
+    class Book {
+      +String isbn
+      +String title
+    }
+    class Member {
+      +String id
+      +borrow(b) Loan
+    }
+    class Loan {
+      +Date due
+      +close() void
+    }
+    class Author
+    class Librarian
+    class Fine {
+      +Money amount
+    }
+    Library "1" *-- "*" Book : holds
+    Library "1" o-- "*" Member : registers
+    Library "1" *-- "*" Librarian : employs
+    Book "*" --> "1..*" Author : written by
+    Member "1" --> "*" Loan : takes
+    Loan "*" --> "1" Book : covers
+    Loan "1" --> "0..1" Fine : may incur
+    Librarian "1" --> "*" Loan : approves
+    Member <|-- Student
+    Member <|-- Staff
+    note for Loan "due in 14 days"

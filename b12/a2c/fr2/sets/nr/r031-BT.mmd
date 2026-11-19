@@ -1,0 +1,13 @@
+flowchart BT
+    subgraph G[Édition générale des données]
+        m0[charge]
+        m1[auth service]
+        m2[db]
+    end
+    s0[src0] --> m0
+    s1[src1] --> G
+    s1 --> G
+    s2[src2] --> m1
+    s3[src3] --> G
+    s4[src4] --> m1
+    s4 --> m2

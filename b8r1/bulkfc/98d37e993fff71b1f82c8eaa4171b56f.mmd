@@ -1,0 +1,11 @@
+flowchart RL
+    N0([Done report])
+    N1(Parse)
+    N2([Report emit])
+    N3[Report report]
+    N4{Load}
+    N0 --> N1
+    N1 --> N2
+    N1 --> N3
+    N2 --> N4
+    N3 ==>|again| N2

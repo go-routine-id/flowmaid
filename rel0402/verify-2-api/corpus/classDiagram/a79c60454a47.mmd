@@ -1,0 +1,12 @@
+classDiagram
+A --|> B
+A --|> C
+C --> D
+D o-- E : has many of
+C <|-- A
+A ..> A : a0
+class B {
+ +int id
+ +run() void
+ +stop()
+}

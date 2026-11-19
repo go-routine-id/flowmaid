@@ -1,0 +1,17 @@
+stateDiagram-v2
+direction LR
+[*] --> Receiving
+Receiving --> Validating
+Other --> Validating
+state "Order validation and fraud screening" as Validating {
+  [*] --> check
+  check --> score
+  score --> [*]
+}
+state "Warehouse fulfilment" as Fulfil {
+  [*] --> pick
+  pick --> pack
+}
+Validating --> Fulfil
+Receiving --> pick
+Fulfil --> [*]

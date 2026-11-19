@@ -1,0 +1,14 @@
+stateDiagram-v2
+  state K0 {
+    [*] --> K0_0
+    state K0N {
+      [*] --> a
+      a --> b
+    }
+    K0_0 --> K0N
+  }
+  state K1 {
+    [*] --> c
+  }
+  K0 --> K1 : g2
+  K1 --> K0 : back

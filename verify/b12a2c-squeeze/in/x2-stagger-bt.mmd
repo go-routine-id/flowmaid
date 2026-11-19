@@ -1,0 +1,18 @@
+flowchart BT
+  top[Entry point] --> a1
+  top --> b1
+  top --> c1
+  subgraph A [Alpha block]
+    a1[One line] --> a2[Second] --> a3[Third]
+  end
+  subgraph B [Beta block with a longer title]
+    b1["Two<br/>lines<br/>tall"] --> b2[Next]
+  end
+  subgraph C [Gamma]
+    c1["A<br/>B"] --> c2[Down] --> c3[Down more]
+  end
+  side[Outside node] -->|feeds the alpha| a2
+  side -->|feeds the beta| b2
+  a3 -->|long label going far| sink[Sink]
+  b2 --> sink
+  c3 -->|gamma result| sink

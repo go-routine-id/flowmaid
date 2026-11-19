@@ -1,0 +1,15 @@
+flowchart BT
+    N0[Retry]
+    N1{Emit notify}
+    N2[/Done/]
+    N3{Retry}
+    N4{Check}
+    N5[Emit validate]
+    N0 --> N1
+    N1 --> N2
+    N2 --> N3
+    N3 --> N4
+    N3 --> N5
+    N2 --> N5
+    N5 --> N2
+    N4 -.-> N0

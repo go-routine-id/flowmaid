@@ -1,0 +1,19 @@
+flowchart LR
+    N0[Check notify]
+    N1{Emit}
+    N2{{Done load}}
+    N3([Done parse])
+    N4([Report])
+    N5{Emit}
+    N6[Retry archive]
+    N7(Emit)
+    N0 --> N1
+    N0 --> N2
+    N2 --> N3
+    N2 --> N4
+    N3 --> N5
+    N3 -->|next| N6
+    N4 -->|next| N7
+    N3 --> N7
+    N5 -.-> N2
+    N4 -.->|back| N0

@@ -1,0 +1,18 @@
+flowchart LR
+    N0[Emit notify]
+    N1[(Report done)]
+    N2([Validate])
+    N3{Parse}
+    N4[Retry]
+    N5(Retry validate)
+    N6(Emit)
+    N0 --> N1
+    N0 --> N2
+    N0 --> N3
+    N1 -->|ok| N4
+    N2 --> N5
+    N3 --> N6
+    N0 --> N4
+    N1 --> N3
+    N1 --> N6
+    N4 ==>|back| N3

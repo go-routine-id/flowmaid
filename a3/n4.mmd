@@ -1,0 +1,15 @@
+stateDiagram-v2
+    [*] --> A
+    A --> B
+    B --> Work
+    state Work {
+        [*] --> X
+        X --> Y
+        note right of X : inner note
+        Y --> [*]
+    }
+    Work --> Done
+    note left of Work : enters work
+    note right of Done
+        all done
+    end note

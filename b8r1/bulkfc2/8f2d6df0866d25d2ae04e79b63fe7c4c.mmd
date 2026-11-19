@@ -1,0 +1,22 @@
+flowchart TD
+    N0([Notify])
+    N1{Parse}
+    N2([Emit])
+    N3(Store)
+    N4{Retry notify}
+    N5{Parse done}
+    N6{Load}
+    N7(Notify)
+    N8[/Load/]
+    N0 --> N1
+    N1 --> N2
+    N2 -->|yes| N3
+    N1 -->|fail| N4
+    N2 --> N5
+    N5 -->|next| N6
+    N5 --> N7
+    N6 -->|no| N8
+    N5 --> N8
+    N3 --> N5
+    N4 --> N7
+    N7 --> N1

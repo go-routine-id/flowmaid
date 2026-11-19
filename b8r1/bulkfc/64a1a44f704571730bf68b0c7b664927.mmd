@@ -1,0 +1,17 @@
+flowchart LR
+    N0{Validate}
+    N1[Emit]
+    N2{Fetch}
+    N3([Validate])
+    N4([Parse])
+    N5[Report]
+    N0 --> N1
+    N0 --> N2
+    N1 -->|next| N3
+    N3 --> N4
+    N2 --> N5
+    N1 --> N2
+    N1 --> N2
+    N3 -->|back| N0
+    N4 -->|retry| N0
+    N4 ==> N2

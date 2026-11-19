@@ -1,0 +1,27 @@
+sequenceDiagram
+participant P0 as beta
+P0-->>P0: 日本語
+Note over P0: delta
+activate P0
+P0->>P0: act
+deactivate P0
+P0->>P0: a&b
+activate P0
+P0->>P0: act
+deactivate P0
+P0--)P0: gamma
+P0->>P0: Long label here
+activate P0
+P0->>P0: act
+deactivate P0
+Note over P0: Customer Order
+Note left of P0: gamma
+P0->P0: gamma
+P0-->>P0: x
+activate P0
+P0->>P0: act
+deactivate P0
+opt Long label here
+P0-->>P0: gamma
+P0-->>P0: x
+end

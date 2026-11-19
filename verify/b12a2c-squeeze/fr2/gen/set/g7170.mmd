@@ -1,0 +1,70 @@
+flowchart TD
+  n1["billing"]
+  subgraph B0["Back office and finance"]
+    n2["merge"]
+  end
+  subgraph B1["Ingest"]
+    n3["store"]
+    n4["auth mail notify<br/>auth"]
+    n5["mail"]
+    n6["split"]
+    subgraph B1s0["Data tier 0"]
+      n7["queue"]
+      n8["index"]
+    end
+  end
+  subgraph B2["Data tier"]
+    n9["mail mail auth"]
+    n10["db"]
+    n11["ingest"]
+    subgraph B2s0["Storefront 0"]
+      n12["index<br/>db"]
+    end
+  end
+  subgraph B3["Fulfilment desk"]
+    n13["pack"]
+    n14["search"]
+    n15["mail index ship<br/>split"]
+    n16["report"]
+    subgraph B3s0["Fulfilment desk 0"]
+      n17["store"]
+      n18["ingest<br/>index"]
+    end
+    subgraph B3s1["Ingest 1"]
+      n19["mail split ship"]
+      n20["notify"]
+      n21["index"]
+    end
+  end
+  n22["mail<br/>ingest"]
+  n23["cache<br/>split"]
+  n5 ==> n1
+  n10 -.->|parse| n2
+  n11 --> B0
+  n8 --> n19
+  n2 --> n14
+  n20 --> n1
+  n13 ==>|merge| n10
+  n9 -.-> n19
+  n4 ==> n5
+  n10 -.-> n17
+  n9 --> n11
+  n17 -.-> n13
+  n4 --> n22
+  n20 --> n6
+  n13 --> n19
+  n9 ==> n12
+  n12 ==> n22
+  n9 --> n18
+  n7 -.-> n8
+  n19 -->|notify| n22
+  n12 -.-> n5
+  n3 --> n18
+  n17 --> n6
+  n4 --> B3s1
+  n9 --> n20
+  n18 ==> n5
+  n22 ==> n23
+  n14 -.->|pack| n18
+  n20 -->|mail| n2
+  n7 --> n18

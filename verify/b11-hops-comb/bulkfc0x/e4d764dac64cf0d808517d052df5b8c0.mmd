@@ -1,0 +1,13 @@
+flowchart LR
+    N0{Load check}
+    N1{Emit retry}
+    N2{Report emit}
+    N3{Emit check}
+    N4{Notify}
+    N0 --> N1
+    N0 --> N2
+    N1 --> N3
+    N2 --> N4
+    N3 -->|again| N0
+    N4 --> N3
+    N2 -->|retry| N1

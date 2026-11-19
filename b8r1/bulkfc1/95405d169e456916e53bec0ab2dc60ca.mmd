@@ -1,0 +1,8 @@
+flowchart LR
+  A[Client] --> B[Queue]
+  B --> B
+  B --> C[Worker]
+  B --> D[Audit]
+  C --> E[Result]
+  D --> E
+  E -->|requeue| B

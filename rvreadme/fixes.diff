@@ -1,0 +1,316 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 270d4de..5926c17 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -98,6 +98,32 @@ or changed.
+   edges bow sideways. The swimlane text-DSL example now renders: it had a
+   trailing `#` comment, and comments are whole lines only. The
+   sub-element example is now complete.
++- **README claims checked against the code.** An independent review of
++  every claim corrected overclaims that had built up:
++  - not every mermaid 12.2 header gets the "not supported yet" error (the
++    newer ones, such as `venn-beta` or `ishikawa`, are read as flowchart
++    text);
++  - sequence diagrams have eight arrows, not all of mermaid's;
++  - per-item `<title>`s exist in flowchart, state, journey and sankey
++    diagrams only;
++  - the 3:1 / 4.5:1 contrast holds for the mermaid themes, with two
++    named exceptions, and only they re-ink text on a dark `style` fill;
++  - an unknown theme name falls back to `flowmaid`;
++  - flowchart edge labels draw `<br/>` as a space;
++  - timeline labels keep entity codes as written;
++  - sankey's default `justify` puts every sink in the last column;
++  - the text DSL takes no `auto` port, and JSON edge styles read `color`,
++    not `stroke`;
++  - git lanes repeat colours past eight;
++  - `bench-75` has 21 nodes and 75 edges, not 75 nodes;
++  - the `--compact` example now folds;
++  - the `gitGraph` and `architecture-beta` version tags are corrected
++    (0.21.0 and 0.23.0);
++  - a block of unlinked members is drawn as a row, where mermaid draws a
++    column.
++- **Benchmark re-measured on 0.37.0:** about 126× faster than mermaid
++  12.2.0 (geometric mean over 25 diagrams; the 0.34.0 table said 105×),
++  SVG 1.5–23× smaller.
+ 
+ ## [0.36.0] - 2026-11-09
+ 
+diff --git a/README.md b/README.md
+index af4d9eb..519a14b 100644
+--- a/README.md
++++ b/README.md
+@@ -11,11 +11,11 @@ A small Mermaid-like diagram engine written in pure std Rust with zero external
+ 
+ **Why flowmaid?**
+ 
+-- **Zero dependencies**, pure std Rust (MSRV 1.75), and `wasm32` out of the box: all twelve diagram types fit in a compact wasm bundle, where mermaid.js is about 2.5 MB.
+-- **Fast:** most hand-written diagrams render in under a millisecond, about **105× faster than mermaid** (see [Performance](#performance)).
++- **Zero dependencies**, pure std Rust (MSRV 1.75), and `wasm32` out of the box: all twelve diagram types fit in a compact wasm bundle, where mermaid.js 12.2.0 is about 5.5 MB minified (1.6 MB gzipped).
++- **Fast:** most hand-written diagrams render in under a millisecond, about **126× faster than mermaid** (see [Performance](#performance)).
+ - **One geometry source** for SVG export and interactive canvases: drag a node and only its edges re-route, pick what is under the pointer, save the graph back as mermaid text (see [Interactive API](#interactive-api)).
+-- **Deterministic, accessible SVG:** byte-identical output for the same input, with `role="img"`, an accessible name and per-node/edge `<title>`s.
+-- **Forgiving input, clear errors:** line-numbered parse errors, UTF-8 BOMs stripped, CRLF fine, and every known-but-unsupported Mermaid header fails with an explicit message instead of a confusing parse error.
++- **Deterministic, accessible SVG:** byte-identical output for the same input, with `role="img"` and an accessible name on every diagram, and per-item `<title>`s in flowchart, state, journey and sankey diagrams.
++- **Forgiving input, clear errors:** line-numbered parse errors, UTF-8 BOMs stripped, CRLF fine, and the unsupported Mermaid headers flowmaid recognises (`gantt`, `quadrantChart`, `xychart-beta`, `kanban`, …) fail with an explicit "not supported yet" message instead of a confusing parse error (see [Diagram types](#diagram-types) for the newer headers it does not recognise yet).
+ 
+ ## Contents
+ 
+@@ -61,7 +61,7 @@ The same `.mmd` source rendered by mermaid 12.2.0 (left, in headless Chromium) a
+ 
+ </details>
+ 
+-Rendering is about **105× faster than mermaid** (geometric mean over 25 diagrams) and the SVG is a fraction of the size — see [Performance](#performance).
++Rendering is about **126× faster than mermaid** (geometric mean over 25 diagrams) and the SVG is a fraction of the size — see [Performance](#performance).
+ 
+ ## Installation
+ 
+@@ -93,8 +93,9 @@ cargo build --release
+ # or through a pipe
+ cat examples/lr.mmd | ./target/release/flowmaid > lr.svg
+ 
+-# fold a long linear chain to fit 300 px along the flow axis
+-./target/release/flowmaid examples/lr.mmd --compact 300 -o lr-compact.svg
++# fold a long linear chain to fit 600 px along the flow axis
++# (a diagram that is not one linear chain is drawn as usual)
++./target/release/flowmaid examples/shapes.mmd --compact 600 -o shapes-compact.svg
+ 
+ # drop the canvas background so the SVG sits on any page colour
+ # (combines with --compact, --advance and --advance-text)
+@@ -160,11 +161,11 @@ let svg = flowmaid::render_svg_advanced("flowchart TD\nA --> B", &opts)?;
+ 
+ - **From the diagram.** A diagram can name its theme the way mermaid reads it: `%%{init: {"theme": "neutral"}}%%` (or `%%{initialize: …}%%`, on one line or several), or `theme:` under a YAML frontmatter's `config:`. `render_svg` / `render_svg_advanced` honour it, and the directive wins over the frontmatter, as in mermaid.
+ - **Theme variables.** `themeVariables` `background`, `primaryColor` (node fill), `primaryBorderColor`, `primaryTextColor`, `lineColor` and `textColor` recolour those roles; other variables are ignored.
+-- **Names.** An unknown theme name is the default theme, without error (mermaid does the same); `base` reads as `default`, `neo` as `neutral`, `neo-dark` as `dark`.
++- **Names.** An unknown theme name falls back to the `flowmaid` theme without an error, as mermaid falls back to its own default (the CLI's `--theme` prints a warning); `base` reads as `default`, `neo` as `neutral`, `neo-dark` as `dark`.
+ - **Precedence.** An explicit `SvgOptions::theme` (or `--theme`) beats the source — its theme name and variables alike — so `Some(Theme::Flowmaid)` renders a themed file in flowmaid's colours. If you parse first and render through a `render::*_with` writer, call `opts.with_source_theme(source)` to honour the source's theme as the CLI does.
+ - **Coverage.** Every theme applies to all twelve diagram types: flowchart and state nodes, frames (still a shade deeper per nesting level), edges, arrowheads, labels and notes. Class boxes, ER tables and sequence participants take the theme's node paint, as mermaid draws them. The charts (pie, journey, timeline, git graph, sankey, mindmap, architecture) keep their categorical colours while their text, lines and canvas follow the theme.
+-- **Contrast.** Every theme keeps text at 4.5:1 and lines and borders at 3:1 on what they are drawn over — the dark one included, where mermaid's own frame borders and label chips fall short.
+-- **Your colours win.** `style`, `classDef` and `linkStyle` colours always win over the theme; a `style` fill without a `color` gets text that reads on it when the theme's ink would not.
++- **Contrast.** The mermaid themes (`default`, `neutral`, `dark`, `forest`) keep text at 4.5:1 and lines and borders at 3:1 on what they are drawn over — the dark one included, where mermaid's own frame borders and label chips fall short. Two exceptions: the faint hairlines round label chips and between ER rows, and, on a white canvas, the amber chart accent (`#d99114`, 2.6:1) that git lanes and mindmap branches keep.
++- **Your colours win.** `style`, `classDef` and `linkStyle` colours always win over the theme. Under the mermaid themes, a `style` or `classDef` fill without a `color` gets text that reads on it when the theme's ink would not; the default `flowmaid` theme keeps its ink, so give a dark fill its own `color` there.
+ - **Hosts.** Hosts painting a `Scene` get the exact colours from `opts.palette()` (`style::Palette`). Marker ids carry a non-default edge colour, so diagrams of different themes can share a page.
+ 
+ ## Diagram types
+@@ -184,7 +185,7 @@ let svg = flowmaid::render_svg_advanced("flowchart TD\nA --> B", &opts)?;
+ | [Sankey](#sankey-diagrams) | `sankey-beta` / `sankey` | `sankey.mmd` | static |
+ | [Architecture](#architecture-diagrams) | `architecture-beta` | `architecture.mmd` | static |
+ 
+-Every example lives in `examples/`. Other Mermaid diagram types (`gantt`, `quadrantChart`, …) are detected and produce an explicit "not supported yet" error instead of a confusing parse failure.
++Every example lives in `examples/`. Most other Mermaid diagram types (`gantt`, `quadrantChart`, `requirementDiagram`, `xychart-beta`, `block-beta`, `packet`, `kanban`, `radar-beta`, `treemap`, `zenuml`, `C4Context` … `C4Deployment`, `swimlane-beta`) are detected and produce an explicit "not supported yet" error instead of a confusing parse failure. Some newer mermaid headers are not recognised yet and are read as flowchart text: the short forms `xychart`, `block` and `requirement`, plus `info`, `ishikawa`, `eventmodeling`, and the `venn-beta`, `treeView-beta`, `usecase-beta`, `wardley-beta` and `cynefin-beta` previews.
+ 
+ ## Flowcharts
+ 
+@@ -232,8 +233,8 @@ Mermaid v11 node metadata works too: `A@{ shape: cyl, label: "DB" }`.
+ 
+ ### Labels, wrapping and markdown
+ 
+-- **Text.** Labels may be quoted to protect special characters (`A["odd [text]"]`) and use `<br/>` for line breaks. Mermaid entity codes are decoded in every label position (`#quot;` → `"`, decimal `#65;` → `A`), matching mermaid.js; control characters are refused.
+-- **Wrapping.** A node label that breaks none of its own lines wraps at 200px (mermaid's `flowchart.wrappingWidth` default), in flowcharts and state diagrams alike:
++- **Text.** Labels may be quoted to protect special characters (`A["odd [text]"]`). In node labels and subgraph titles `<br/>` is a line break; an edge label stays on one line, each `<br/>` drawn as a space (`-->|a<br/>b|` reads `a b`). Mermaid entity codes are decoded in every label position (`#quot;` → `"`, decimal `#65;` → `A`), matching mermaid.js; control characters are refused.
++- **Wrapping.** A node label that breaks none of its own lines wraps at 200px (mermaid 11's `flowchart.wrappingWidth` default; mermaid 12.2's is 120, see *Wrapping width* below), in flowcharts and state diagrams alike:
+   - at its spaces and between CJK characters, into as few lines as fit, evened out so no word is left alone on the last line; `<b>` / `<i>` markup wraps too, re-opened on each line;
+   - a word is never split: one wider than the width keeps its line, and a lone word beside it joins it;
+   - diamonds and circles, which grow both ways with their text, wrap at the width / 1.6 (a rhombus is 1.6× as wide as its text): a long question wraps into a diamond no flatter than 1.6:1, while a short one keeps its compact one-line diamond;
+@@ -247,7 +248,7 @@ Mermaid v11 node metadata works too: `A@{ shape: cyl, label: "DB" }`.
+   - other markdown (headings, lists, links, code, strikethrough) shows as written, which is what mermaid's default HTML labels do;
+   - markdown node labels wrap the same way at the same width, each of their lines on its own: `Node::label` holds the broken lines, `to_mermaid` writes the markdown back as written, and `Graph::set_wrapping_width` lowers it again at the new width;
+   - edge labels and subgraph titles are styled but stay on one line; a bare ``subgraph "`**Two**`"`` takes the markdown text as its id, like mermaid;
+-  - a raw backtick or `"` inside the string is a line-numbered error (write `#96;` / `#quot;`), ``"``"`` is an empty label (mermaid rejects it), and entity codes never act as markdown (`#42;` is a literal `*`);
++  - a raw backtick or `"` inside the string is a line-numbered error (write `#96;` / `#quot;`), ``` "``" ``` is an empty label (mermaid rejects it), and entity codes never act as markdown (`#42;` is a literal `*`);
+   - labels are lowered to flowmaid's `<b>` / `<i>` / newline markup at parse time, so the wrap uses the built-in width estimate even when an embedder supplies real font metrics.
+ - **Math.** `$$…$$` in labels is tokenized: italic TeX passthrough with correct widths (MathML is on the [roadmap](#mermaid-parity-roadmap)).
+ 
+@@ -280,9 +281,9 @@ Mermaid v11 node metadata works too: `A@{ shape: cyl, label: "DB" }`.
+ Subgraphs use mermaid's block syntax — `subgraph id [Title]` … `end` — with arbitrary nesting and an optional `direction LR` line per block (inherited from the parent otherwise). See `examples/subgraph.mmd`.
+ 
+ - **Direction.** A block's `direction` follows mermaid's rule:
+-  - it holds while none of the block's nodes links to a node outside it (edges to or from the block itself, `X --> s` and `s --> Y`, are fine): the block is then laid out on its own, in its direction, and placed in the drawing round it like one node, edges to it meeting its frame. `flowchart TB` with `subgraph s` / `direction LR` / `A --> B --> C` draws A, B and C in a row, and mermaid's documentation example of nested `TB` / `RL` / `BT` blocks draws as mermaid draws it;
+-  - once a member links out (`A --> X`, or a member to its own block, `C --> s`), or an edge reaches into a block nested in it, the block takes the direction round it, as in mermaid;
+-  - members with no links among them already lie in one row across the flow, the row a direction across the flow asks for.
++  - it holds while no edge joins one of the block's nodes to a node outside it (edges to or from the block itself, `X --> s` and `s --> Y`, are fine): the block is then laid out on its own, in its direction, and placed in the drawing round it like one node, edges to it meeting its frame. `flowchart TB` with `subgraph s` / `direction LR` / `A --> B --> C` draws A, B and C in a row, and mermaid's documentation example of nested `TB` / `RL` / `BT` blocks draws as mermaid draws it;
++  - once an edge crosses the block's border to or from a member, in either direction (`A --> X`, `X --> A`, or a member to its own block, `C --> s`), or an edge reaches into a block nested in it, the block takes the direction round it, as in mermaid;
++  - a block whose members have no links among them is not laid out on its own: its members lie side by side across the flow round it (`flowchart TB` with `subgraph s` / `direction LR` / `A` `B` `C` draws A, B and C in a row). Mermaid lays such a block out in its own direction, where unlinked nodes share one rank and stack along it, a column for `direction LR`.
+ - **Membership.** A node mentioned inside a block is claimed by it, mermaid-style, even if it first appeared elsewhere — unless a block that already closed holds it: as in mermaid, the first block to close keeps a node, so mentioning a nested block's node again in the outer block after the nested `end` leaves it where it is.
+ - **Edges and subgraphs.** Edges may freely cross cluster borders, and an edge may target a subgraph *itself* (`CF --> VPC`): it attaches to the cluster box and ranks it after (or before) the other end; forward references (edge before the block) work via a pre-scan.
+ - **Member to its own box.** An edge from a member to its own enclosing box (`Dev --> CI` with `Dev` inside `CI`) cannot reach the box from inside it: it is drawn to the box's entry member (the first member nothing inside the box leads to) and ranks the node before it.
+@@ -326,7 +327,7 @@ Subgraphs use mermaid's block syntax — `subgraph id [Title]` … `end` — wit
+ 
+ ### Examples
+ 
+-`examples/demo.mmd` and `lr.mmd` cover the basics, `advanced.mmd` everything at once (nested subgraphs, all shapes and link types, `<br/>`, custom colors), and `subgraph.mmd`, `shapes.mmd`, `fanout.mmd`, `long-labels.mmd` and `stress.mmd` one topic each.
++`examples/demo.mmd` and `lr.mmd` cover the basics, `advanced.mmd` a lot at once (nested subgraphs, edges to subgraphs, most node shapes, arrow / dotted / thick / invisible links, `<br/>`, custom colors), and `subgraph.mmd`, `shapes.mmd`, `fanout.mmd`, `long-labels.mmd` and `stress.mmd` one topic each.
+ 
+ ## State diagrams
+ 
+@@ -450,7 +451,7 @@ sequenceDiagram
+ Supported subset:
+ 
+ - **Participants.** `participant` / `actor` declarations with `as` aliases. Actors draw as UML stick figures with their name below. Implicit participants are created on first mention, in order of appearance.
+-- **Messages.** All eight arrows: `->>` solid with a filled head, `-->>` dashed with a filled head, `->` / `-->` plain lines without a head, `-x` / `--x` cross ends, and `-)` / `--)` async open arrows. Self-messages (`A->>A:`) draw as a loop beside the lifeline. `autonumber` adds bold `1.` prefixes.
++- **Messages.** Eight arrows: `->>` solid with a filled head, `-->>` dashed with a filled head, `->` / `-->` plain lines without a head, `-x` / `--x` cross ends, and `-)` / `--)` async open arrows. Mermaid's two-way `<<->>` / `<<-->>` and its half-arrows are not parsed yet (a line-numbered "unknown message operator" error). Self-messages (`A->>A:`) draw as a loop beside the lifeline. `autonumber` adds bold `1.` prefixes.
+ - **Notes.** All four forms: `Note over A,B:`, `Note over A:`, `Note left of A:` and `Note right of A:`. The keywords are case-insensitive.
+ - **Activation bars.** Use `activate` / `deactivate` or the `+`/`-` arrow shorthand (`A->>+B:` activates B, `B-->>-A:` deactivates B). Both forms start and end the bar at the message they belong to, and arrows stop at the bar's edge. Unbalanced deactivation is a line-numbered error.
+ - **Frames.** `loop` / `opt` / `alt`+`else` / `par`+`and` draw as labelled boxes with dashed dividers. Each frame's conditions share one column next to its chip. By default, frames are aligned full-width bands that widen to contain their notes. Frontmatter `config: sequence: scopedFrames: true` (a flowmaid key, which mermaid ignores) sizes each frame to the lifelines it covers, as mermaid does.
+@@ -528,7 +529,7 @@ Supported subset:
+ 
+ - **Orientation.** `LR` (default), `TB` and `BT`, including mermaid's `gitGraph TB:` form.
+ - **Commits.** `id`, `tag`, `type: NORMAL|REVERSE|HIGHLIGHT` and `msg`. Merge, REVERSE and HIGHLIGHT commits each get their own glyph, and tags are drawn as luggage labels.
+-- **Branches.** `branch` (with `order:` to place lanes, ties in creation order as in mermaid), `checkout` / `switch`, and `merge` with ids, tags and types. Each lane has its own colour.
++- **Branches.** `branch` (with `order:` to place lanes, ties in creation order as in mermaid), `checkout` / `switch`, and `merge` with ids, tags and types. Lanes take eight accent colours in order, so from the ninth lane on the colours repeat.
+ - **Elbows.** Forks and merges are drawn as mermaid's rounded elbows: a fork leaves its parent across the lanes and runs along the new branch, a merge runs along the merged branch.
+ - **Labels.** Commit ids are horizontal and measured, so they never collide or get struck by a line.
+ - **Accessibility.** `accTitle` / `accDescr` are parsed but not yet drawn.
+@@ -574,7 +575,7 @@ timeline
+ 
+ Supported subset, mirroring mermaid's timeline contract:
+ 
+-- **Syntax.** Optional `title`; `section <name>` groups (periods before the first `section` form a leading unnamed band drawn without a header); `period : event[: event…]` rows with several events inline; a bare `: event` line that continues the previous period's events; `LR` (default) and `TD` direction; `%%` and `#` comments; and `<br>` folding plus `#quot;`/`#NN;` entity decoding.
++- **Syntax.** Optional `title`; `section <name>` groups (periods before the first `section` form a leading unnamed band drawn without a header); `period : event[: event…]` rows with several events inline; a bare `: event` line that continues the previous period's events; `LR` (default) and `TD` direction; `%%` and `#` comments; and `<br>` folding. Entity codes such as `#quot;` or `#35;` are kept as literal text, as in mermaid's timeline.
+ - **Colons.** A `:` in event text is literal unless followed by whitespace — so `https://example.com` and `::` survive intact, and a `:` in the *period* position (`2004 : e1 : e2`) separates events.
+ - **Drawing.** Colours cycle through the stable accent palette per named section; the unnamed leading group gets neutral ticks. Period labels are bold, and the dashed task line is drawn only between events (never through their text).
+ - **Wrapping.** Periods or events wider than 160px wrap, balanced, keeping their `<b>`/`<i>` styling across lines.
+@@ -605,7 +606,7 @@ Electricity,Losses,10
+ Supported subset:
+ 
+ - **Syntax.** Rows of exactly three fields; double-quoted fields, where `""` is one literal quote, so a label may contain commas; `%%` comments and blank lines; repeated labels reusing one node; and `sankey` accepted as a spelling variant of `sankey-beta`.
+-- **Columns.** Layout follows d3-sankey, which is what mermaid wraps. A node sits in the column of its **longest** path from a source, so every ribbon points rightwards, and its thickness is the larger of its inflow and outflow — a node that merely splits its input never shrinks.
++- **Columns.** Layout follows d3-sankey, which is what mermaid wraps. A node's column starts as its **longest** path from a source, so every ribbon points rightwards; `nodeAlignment` then moves nodes as d3-sankey does (the default `justify` puts every sink in the last column, `left` keeps the longest-path column, `right` pushes each node as far right as its distance to a sink allows, and `center` pulls a node with no inputs up against its earliest target). A node's thickness is the larger of its inflow and outflow, so a node that merely splits its input never shrinks.
+ - **Order.** Within a column, nodes are ordered by the barycentre of their neighbours to reduce crossings (minimising crossings exactly is NP-hard, so this is the standard heuristic), with ties broken by declaration order, which keeps the SVG a stable function of the input. The ordering sweeps in both directions and keeps the one with the fewest ribbon crossings.
+ - **Colours.** Each node takes a colour from a sixteen-colour palette that differs from every node it shares a ribbon with and from its neighbours above and below.
+ - **Labels** are measured: one that would overprint another label or sit on another node slides along its node or moves to the other side. A first- or last-column label with no room inside may hang off the canvas edge, the columns draw in to make room, and labels that still do not fit wrap onto more lines, so the canvas keeps its configured `width` when it can. When labels between columns still print on each other or on a node (long names at a narrow `width`), the columns spread apart instead — the canvas grows rather than letting labels overprint.
+@@ -671,7 +672,7 @@ The input is plain JSON (no mermaid header):
+ 
+ - **Rendering.** `advance::render_advance_svg(&str)` goes straight from JSON to SVG (CLI: `--advance`), and `advance::layout_advance` returns the positioned geometry (`AdvanceScene`) for GUI painters.
+ - **Dragging.** Drag-mode re-renders come from `advance::render_advance_routed` (node centre positions) and `advance::render_advance_routed_with_lanes` (plus caller-controlled lane widths, margin, and inter-lane gap). Content dragged outside the canvas is translated back into view, and the canvas grows to hold any route that leaves the lanes.
+-- **Same features as the text form**, additively: nodes and edges carry `style` (`fill`/`stroke`/`stroke-width`/`color`; edges add `dash`/`label-fill`), edges accept `from_side`/`to_side` (`"left"|"right"|"top"|"bottom"|"auto"`), nodes take `anchors` (`{id, side, offset}`), `elements` (nested, each with its own `anchors`/`elements`/`layout`) and `layout`, and `from`/`to` accept the full reference grammar (`"cpu.core1@irq"`).
++- **Same features as the text form**, additively: nodes carry `style` (`fill`/`stroke`/`stroke-width`/`color`, the label text colour) and edges carry `style` (`color`, the line colour, plus `stroke-width`/`dash`/`label-fill`), edges accept `from_side`/`to_side` (`"left"|"right"|"top"|"bottom"|"auto"`), nodes take `anchors` (`{id, side, offset}`), `elements` (nested, each with its own `anchors`/`elements`/`layout`) and `layout`, and `from`/`to` accept the full reference grammar (`"cpu.core1@irq"`).
+ - **Scene.** The scene exposes each node's placed `elements` and resolved `anchors`, each edge's `from_point`/`to_point`, and `crossings` — how many pairs of edges cross in the drawing, which the router minimises and a host can display.
+ - **Picking.** `AdvanceScene` offers drag-and-drop picking: `hit_test`, `anchor_at`, `element_at`, `node_at`, `edge_at`, `lane_at`, and `nearest_node`.
+ 
+@@ -703,8 +704,8 @@ style c fill:#fff8e1
+   - `classDef <name> k:v,k:v` defines a reusable class; `class a,b <name>` (or the `a::name` shorthand) applies it.
+   - `style <id> k:v,k:v` styles a node by id, or an edge by literal `from-->to` (ports allowed: `style a:right-->b:top ...`).
+   - Node keys: `fill`, `stroke`, `stroke-width`, `color` (label text). Edge keys: `color`, `stroke-width`, `dash` (space-separated values, e.g. `dash:4 2`), `label-fill`.
+-- **Ports** — an endpoint can pin its anchor side: `a:right --> b:top` (`left`/`right`/`top`/`bottom`/`auto`; `auto`/missing = automatic routing). A ported edge's first/last segments leave the sides perpendicularly.
+-- **`<br/>`** — normalised to a line break in node labels, edge labels (`-->|a<br/>b|`), and lane titles.
++- **Ports** — an endpoint can pin its anchor side: `a:right --> b:top` (`left`/`right`/`top`/`bottom`; leave the side off for automatic routing — `auto` is a JSON `from_side`/`to_side` value only). A ported edge's first/last segments leave the sides perpendicularly.
++- **`<br/>`** — a line break in node labels. In edge labels (`-->|a<br/>b|`) and lane titles it is kept as a `\n` in the parsed diagram and in `AdvanceScene`, so a GUI painter can break the line, but the SVG still draws those labels on one line.
+ - **Comments** — a line starting with `#` (whole lines only).
+ 
+ ### Sub-elements and named anchors
+@@ -747,7 +748,7 @@ Beyond static SVG, the engine exposes the geometry it draws, so GUI apps can pai
+ 
+ ### Scene, drag and re-route
+ 
+-- **`scene::scene(&graph)`** returns a `Scene`: the position, size and shape of every node plus the bezier curve of every edge, in final coordinates, ready to draw with any painter. A static `Scene`'s `width` × `height` and node centres are exactly the SVG's canvas and coordinates. Nodes and edges keep a stable identity (`SceneNode.id`, `SceneEdge.from`/`to`).
++- **`scene::scene(&graph)`** returns a `Scene`: the position, size and shape of every node plus the path of every edge, in final coordinates, ready to draw with any painter. An edge with empty `SceneEdge::waypoints` is the single cubic `SceneEdge::bezier`; a long edge, a back-edge lane or a rerouted edge carries the polyline it threads through in `waypoints`, and a painter splines a smooth curve through those points (the edge's mermaid `curve`, if it sets one), `bezier` being only a fallback. A static `Scene`'s `width` × `height` and node centres are exactly the SVG's canvas and coordinates. Nodes and edges keep a stable identity (`SceneNode.id`, `SceneEdge.from`/`to`).
+ - **`scene::route(&graph, &positions)`** re-routes every edge for custom node positions (a user's drag) *without* re-running layout, so nodes never jump back.
+ - **`scene::route_partial`** re-routes only the edges a move can affect, keeping the rest of a base drawing: a drag frame costs what lies near the drag, not the whole drawing (see [Interactive editing](#interactive-editing)). `scene::box_edge_bezier` gives flowmaid's curve for one edge between two freely placed boxes, for hosts that own their node model.
+ - **`scene::to_svg(&scene)`** exports any state, including after drags. `render()` is just a wrapper over the same pipeline, so the SVG and the interactive flow always agree.
+@@ -793,13 +794,13 @@ Flowcharts (and state, class and ER diagrams, which map onto the same graph) go
+ 
+ 1. **Parse** (`parser.rs`) — a hand-written character-cursor parser. Each line becomes a chain of nodes and edges in the shared model (`model.rs`: `Graph`, `Node`, `Edge`, shape and direction enums), with line-numbered error messages.
+ 2. **Layout** (`layout.rs`) — a Sugiyama pipeline following [dagre](https://github.com/dagrejs/dagre) (the algorithm mermaid.js uses), computed in abstract coordinates (breadth × layer) so all four directions are one transform at the end:
+-   - **Cycles.** A depth-first walk marks the *back-edges* that would break the layering — twice, following each node's links in source order and in the order their targets were declared, keeping the walk that reverses fewer edges, so the drawing does not depend on the order the edge lines happen to be written in.
++   - **Cycles.** A depth-first walk marks the *back-edges* that would break the layering. On a graph of up to 400 nodes plus edges it walks twice, following each node's links in source order and in the order their targets were declared, and keeps the walk that reverses fewer edges (source order on a tie), so the drawing depends much less on the order the edge lines happen to be written in; larger graphs keep the walk in source order, which draws large random graphs better.
+    - **Layers.** *Longest-path layering* assigns nodes to layers. A subgraph fed from outside every subgraph starts on the row below the topmost node that feeds it, together with its members nothing links into, instead of on the drawing's first layer beside the feeder — unless that would stretch another node's edges, the subgraph is fed only from other subgraphs, or a cycle breaker reaches a member from outside.
+-   - **Narrowing.** A drawing broader than 2.5 : 1 is narrowed — a subgraph stacked below its sibling, a row of sibling subgraphs folded into two, sources pulled down beside their targets, leaves staggered into two rows — only where that adds at most 2% to its area and 10% to its edges' length (a stacked or folded subgraph at most 15% along the flow).
+    - **Dummy chains.** Long edges are split into per-layer dummy chains so they reserve straight routing channels; a labelled long edge sizes the middle dummy of its chain to its label, so converging labels claim their own slots.
+    - **Ordering** reduces crossings with weighted-median sweeps plus a local adjacent-swap transpose, keeping the ordering with the fewest crossings across eight rounds. *Border-node walls* keep each subgraph's members in a compact band, so cross-cluster edges route through the gaps, not the boxes.
+    - **Coordinates.** *Brandes-Köpf* runs four vertical alignments (up/down × left/right) and blends them by the per-node median, so long edges come out as straight runs and fan-in/out nodes centre over their neighbours.
+    - **Room for labels.** A gap between adjacent layers that carries an edge label grows to hold the label clear of the arrowhead (72px down the page for a one-line label; along LR the label's width, the head — both heads of a `<-->` edge — and a clearance, plus a 15px run of stroke either side for a dotted, thick or `linkStyle`-painted edge so its style still reads; a `linkStyle` width that repeats the plain 2px is no style). So does the gap between two stacked subgraphs that a labelled edge crosses from border to border, and a subgraph's title strip takes room only above its first row.
++   - **Narrowing.** Once the drawing is placed, one broader than 2.5 : 1 is narrowed by trying other layerings, each laid out again in full — a subgraph stacked below its sibling, a row of sibling subgraphs folded into two, sources pulled down beside their targets, leaves staggered into two rows — and a candidate is kept only where it adds at most 2% to the area and 10% to the edges' length (a stacked or folded subgraph at most 15% along the flow), so a hub feeding a column of subgraphs keeps them in one column. A diagram of more than 600 nodes plus edges skips this search.
+    - **Subgraphs in their own direction** (`compound.rs`) are laid out on their own, recursively, and placed in the pass round them as one node the size of their frame.
+ 3. **Scene** (`scene.rs`) — maps the layout to final coordinates and builds every edge (a back-edge in an orthogonal lane, `lanes.rs`), then finishes the edges in fixed stages shared by `scene()`, `route()` and `route_partial()` (`edgepass.rs`): distinct, ordered ports on every node side (`ports.rs`); obstacle-aware repair of edges that pass through a node or a foreign frame or run on top of another edge, then a channel nudge that spreads shared channels and rounds corners (`router.rs`); collision-aware label placement (`labels.rs`); and a canvas grown over whatever moved.
+ 4. **SVG** (`scene::to_svg`) — writes the scene, trims each stroke under its arrowhead, and cuts a small gap in the stroke that passes under each crossing (`casing.rs`). `render.rs` is just scene → SVG.
+@@ -818,41 +819,41 @@ What every flowchart drawing guarantees:
+ 
+ ### Next to mermaid
+ 
+-25 sample diagrams — flowcharts from a handful of nodes up to 75, plus every other diagram type — rendered from the same `.mmd` source. flowmaid is about **105× faster** (geometric mean) and its SVG is 1.5–24× smaller.
++25 sample diagrams — flowcharts from a handful of nodes up to 52 nodes or 75 edges, plus every other diagram type — rendered from the same `.mmd` source. flowmaid is about **126× faster** (geometric mean) and its SVG is 1.5–23× smaller.
+ 
+ | diagram | type | flowmaid ms | mermaid ms | speed-up × | flowmaid SVG KB | mermaid SVG KB |
+ |---|---|--:|--:|--:|--:|--:|
+-| advanced | flowchart | 1.64 | 122.4 | 75× | 10.9 | 58.0 |
+-| architecture | architecture | 0.12 | 65.2 | 567× | 4.0 | 18.4 |
+-| back-edge | flowchart | 0.53 | 62.5 | 118× | 3.5 | 78.5 |
+-| bench-75 | flowchart | 47.71 | 368.7 | 8× | 69.6 | 194.6 |
+-| class | class | 0.56 | 206.5 | 371× | 11.8 | 53.5 |
+-| demo | flowchart | 0.36 | 88.0 | 247× | 3.5 | 78.5 |
+-| dense-lr | flowchart | 26.71 | 569.3 | 21× | 51.0 | 489.0 |
+-| dense-td | flowchart | 47.01 | 588.5 | 13× | 53.9 | 487.0 |
+-| er | er | 0.47 | 155.1 | 332× | 14.8 | 127.3 |
+-| fanout-frames | flowchart | 4.45 | 187.4 | 42× | 12.5 | 298.1 |
+-| fanout | flowchart | 1.37 | 88.4 | 64× | 5.8 | 84.7 |
+-| gitgraph | gitgraph | 0.12 | 24.7 | 211× | 5.8 | 13.0 |
+-| journey | journey | 0.06 | 9.6 | 168× | 3.8 | 13.2 |
+-| long-labels | flowchart | 0.50 | 53.2 | 107× | 3.2 | 34.7 |
+-| lr | flowchart | 0.74 | 74.6 | 100× | 3.9 | 80.4 |
+-| mindmap | mindmap | 1.29 | 101.8 | 79× | 8.7 | 48.7 |
+-| pie | pie | 0.06 | 9.6 | 168× | 2.8 | 5.5 |
+-| sankey | sankey | 0.35 | 20.7 | 59× | 6.8 | 10.3 |
+-| sequence | sequence | 0.22 | 45.7 | 209× | 10.3 | 39.0 |
+-| shapes | flowchart | 0.58 | 81.3 | 141× | 5.0 | 81.6 |
+-| state | state | 1.51 | 188.8 | 125× | 8.3 | 70.4 |
+-| stress | flowchart | 0.49 | 58.9 | 119× | 3.7 | 37.7 |
+-| subgraph | flowchart | 0.47 | 68.8 | 146× | 4.5 | 38.5 |
+-| timeline | timeline | 0.04 | 8.9 | 212× | 3.7 | 15.9 |
+-| wide-labels | flowchart | 0.82 | 76.3 | 92× | 5.7 | 42.1 |
+-
+-**Method.** Each cell is the median of 30 timed renders after warm-ups (flowmaid 3, mermaid 2). flowmaid: `flowmaid::render_svg` (parse + layout + SVG string) in a release build, `cargo run --release --example bench -- files <file.mmd>...`. mermaid: `mermaid.render()` 12.2.0 (parse + layout + SVG string, including its in-browser text measurement) in headless Chromium 153 via Playwright. Speed-up = mermaid median ÷ flowmaid median. SVG KB = length of the returned SVG string. Machine: 4 vCPUs, Intel Xeon @ 2.10 GHz, rustc 1.97; the box was shared with a background build, so expect ±20 % on both sides.
++| advanced | flowchart | 1.58 | 147.2 | 93× | 10.9 | 58.0 |
++| architecture | architecture | 0.10 | 49.1 | 506× | 4.0 | 18.5 |
++| back-edge | flowchart | 0.38 | 76.6 | 200× | 3.5 | 78.5 |
++| bench-75 | flowchart | 48.75 | 449.1 | 9× | 69.6 | 194.7 |
++| class | class | 0.50 | 194.7 | 389× | 11.8 | 53.5 |
++| demo | flowchart | 0.34 | 66.1 | 193× | 3.5 | 78.5 |
++| dense-lr | flowchart | 24.35 | 491.5 | 20× | 51.0 | 489.0 |
++| dense-td | flowchart | 31.27 | 522.8 | 17× | 53.9 | 487.0 |
++| er | er | 0.28 | 141.9 | 516× | 14.8 | 127.3 |
++| fanout-frames | flowchart | 3.08 | 157.9 | 51× | 13.0 | 298.3 |
++| fanout | flowchart | 1.01 | 79.6 | 79× | 5.8 | 84.4 |
++| gitgraph | gitgraph | 0.08 | 23.3 | 291× | 5.8 | 13.0 |
++| journey | journey | 0.04 | 9.8 | 258× | 3.8 | 13.2 |
++| long-labels | flowchart | 0.26 | 48.0 | 188× | 3.2 | 35.0 |
++| lr | flowchart | 0.64 | 55.6 | 87× | 3.9 | 80.4 |
++| mindmap | mindmap | 0.82 | 104.1 | 127× | 8.7 | 49.0 |
++| pie | pie | 0.04 | 11.0 | 297× | 2.8 | 5.5 |
++| sankey | sankey | 0.23 | 21.3 | 91× | 6.8 | 10.3 |
++| sequence | sequence | 0.17 | 54.6 | 314× | 10.3 | 39.0 |
++| shapes | flowchart | 0.58 | 90.8 | 156× | 5.0 | 81.9 |
++| state | state | 1.18 | 135.4 | 115× | 8.5 | 70.6 |
++| stress | flowchart | 0.57 | 52.6 | 92× | 3.7 | 37.7 |
++| subgraph | flowchart | 0.47 | 77.1 | 163× | 4.5 | 38.5 |
++| timeline | timeline | 0.04 | 10.6 | 252× | 3.7 | 15.9 |
++| wide-labels | flowchart | 0.73 | 61.1 | 83× | 5.7 | 42.1 |
++
++**Method.** Each cell is the median of 30 timed renders after warm-ups (flowmaid 3, mermaid 2). flowmaid: `flowmaid::render_svg` (parse + layout + SVG string) in a release build, `cargo run --release --example bench -- files <file.mmd>...`. mermaid: `mermaid.render()` 12.2.0 (parse + layout + SVG string, including its in-browser text measurement) in headless Chromium 153 via Playwright. Speed-up = mermaid median ÷ flowmaid median. SVG KB = length of the returned SVG string. Measured on 0.37.0. Machine: 4 vCPUs, Intel Xeon @ 2.10 GHz, rustc 1.97; the box was shared with a background build, so expect ±20 % on both sides.
+ 
+ ### Interactive editing
+ 
+-Dragging a node does not re-run layout: `route_partial` re-routes only the edges the move can affect. Over every drag frame of the quality harness it averages about **4.7 ms on the densest sample (75 nodes)** and about 3 ms on the other dense samples; small diagrams stay well under a millisecond. Picking (`Scene::hit_test`, `edge_at`, `hits_in_rect`) follows the painted stroke and costs microseconds.
++Dragging a node does not re-run layout: `route_partial` re-routes only the edges the move can affect. Over every drag frame of the quality harness it averages about **4.7 ms on the densest sample (`bench-75`: 21 nodes, 75 edges)** and about 3 ms on the other dense samples; small diagrams stay well under a millisecond. Picking (`Scene::hit_test`, `edge_at`, `hits_in_rect`) follows the painted stroke and costs microseconds.
+ 
+ ### Large graphs
+ 
+@@ -882,8 +883,8 @@ The goal: **mermaid.js functionality, pure-Rust edition.** The progress board wi
+ - [x] `stateDiagram-v2` *(v0.11.0)*
+ - [x] `mindmap` *(v0.13.0)*
+ - [x] `journey` *(v0.14.0)*
+-- [x] `gitGraph` *(v0.22.0)*
+-- [x] `architecture-beta` *(v0.24.0)*
++- [x] `gitGraph` *(v0.21.0)*
++- [x] `architecture-beta` *(v0.23.0)*
+ - [x] `timeline` *(v0.28.1)*
+ - [x] `sankey-beta` *(v0.29.0)*
+ - [ ] The rest of the mermaid catalog, tracked on the board: `swimlane-beta` · `gantt` · `quadrantChart` · `requirementDiagram` · `C4` · `zenuml` · `xychart` · `block` · `packet` · `kanban` · `radar` · `eventmodeling` · `treemap` · `venn` · `ishikawa` · `wardley` · `cynefin` · `treeview`
+@@ -909,7 +910,7 @@ The goal: **mermaid.js functionality, pure-Rust edition.** The progress board wi
+ - [x] Accessible, deterministic SVG *(v0.18.0)*
+ - [x] Injectable font metrics for embedders using a real font (`layout::intrinsic_size_with` / `intrinsic_size_wrapped`, `scene::scene_sized_with`, `TEXT_CALIBRATION`) *(v0.18.0)*
+ - [x] `flowchart-elk` header accepted as a `flowchart` alias
+-- [x] Explicit "not supported yet" errors for every known mermaid header
++- [x] Explicit "not supported yet" errors for the mermaid headers flowmaid recognises but cannot draw yet; `eventmodeling`, `venn`, `ishikawa`, `wardley`, `cynefin`, `treeview` and a few short forms are not recognised yet (see [Diagram types](#diagram-types))
+ - [ ] `$$…$$` math in labels, KaTeX-style — Phase A (italic TeX passthrough, correct widths) done in v0.20.0; next: MathML subset → native — [#12](https://github.com/go-routine-id/flowmaid/issues/12)
+ 
+ ## Limitations

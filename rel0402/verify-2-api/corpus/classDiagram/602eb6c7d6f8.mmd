@@ -1,0 +1,13 @@
+classDiagram
+A o-- B
+A "1" ..> "*" C
+A o-- D
+D ..> E
+B ..|> F
+F ..|> G
+A *-- G
+E -- G
+G --> G
+G ..> G : g1
+G o-- G : g2
+G "1" --> "*" G : g3

@@ -1,0 +1,68 @@
+flowchart LR
+  n1["pack"]
+  n2["pack"]
+  n3["cache"]
+  subgraph B0["Ops"]
+    n4["store<br/>api"]
+    n5["billing<br/>cache"]
+    subgraph B0s0["Storefront 0"]
+      n6["audit"]
+    end
+    subgraph B0s1["Analytics 1"]
+      n7["merge"]
+      n8["parse audit mail"]
+    end
+  end
+  subgraph B1["Storefront"]
+    n9["worker"]
+    subgraph B1s0["Platform 0"]
+      n10["merge"]
+      n11["parse cache merge"]
+      n12["search"]
+    end
+  end
+  subgraph B2["Ingest"]
+    n13["billing worker search"]
+    n14["pack<br/>auth"]
+    n15["worker"]
+    subgraph B2s0["Core 0"]
+      n16["cache split search"]
+      n17["auth"]
+      n18["audit"]
+    end
+  end
+  subgraph B3["Storefront"]
+    n19["worker"]
+    n20["parse"]
+  end
+  n21["store"]
+  n22["cache"]
+  n5 --> n1
+  n16 ==> B3
+  n10 --> n20
+  n18 ==> n7
+  n2 -.-> n20
+  n7 --> n22
+  n14 --> n5
+  n2 -->|db| n13
+  n17 -.-> n22
+  n18 ==> n5
+  n12 -.->|api| n8
+  n13 --> n2
+  n7 ==> B0s1
+  n2 --> n9
+  n14 --> n4
+  n16 -->|billing| n14
+  n2 --> n17
+  n12 -->|report| n17
+  n21 -.-> n17
+  n8 --> n21
+  n15 ==>|ship| n13
+  n21 ==>|search| B0s1
+  n6 -->|queue| n7
+  n8 --> n14
+  n14 ==> n15
+  n13 --> n15
+  n8 -.-> n3
+  n11 -->|parse| n18
+  n8 --> n7

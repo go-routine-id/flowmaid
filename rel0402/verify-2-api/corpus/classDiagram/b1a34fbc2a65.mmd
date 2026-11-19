@@ -1,0 +1,14 @@
+classDiagram
+direction LR
+A ..> B
+B *-- C
+B --|> D
+C "1" -- "*" E
+B --> B : b0
+B --> B : b1
+E o-- E : e0
+class E {
+ +int id
+ +run() void
+ +stop()
+}

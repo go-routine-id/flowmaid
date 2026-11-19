@@ -1,0 +1,10 @@
+flowchart TB
+  S --> f@{ shape: fork }
+  f --> blk
+  f --> Q
+  subgraph blk [Block]
+    direction LR
+    a --> b --> c --> d
+  end
+  blk --> j@{ shape: join }
+  Q --> j

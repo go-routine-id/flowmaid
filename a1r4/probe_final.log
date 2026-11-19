@@ -1,0 +1,206 @@
+c1_cycle_bt/scene: nodes=6 edges=8 rels=8 notes=0 w=521 h=516
+c1_cycle_bt/route-id: nodes=6 edges=8 rels=8 notes=0 w=445 h=516
+c1_cycle_bt: drag route+to_svg avg 1.183 ms, worst route 1.052 ms (acc 376634)
+  c1_cycle_bt/swap01: pick at mid of edge 6 returned None
+  c1_cycle_bt/swap01: edge 5 final leg 14.5px
+  c1_cycle_bt/swap01: edge 5 first leg 14.5px
+  c1_cycle_bt/swap01: edge 6 first leg 14.5px
+c1_cycle_bt/swap01: nodes=6 edges=8 rels=8 notes=0 w=445 h=516
+c1_cycle_bt/negative: nodes=6 edges=8 rels=8 notes=0 w=445 h=516
+  c1_cycle_bt/flipped: pick at mid of edge 4 returned None
+  c1_cycle_bt/flipped: edge 4 final leg 14.5px
+  c1_cycle_bt/flipped: edge 6 final leg 14.5px
+c1_cycle_bt/flipped: nodes=6 edges=8 rels=8 notes=0 w=445 h=502
+c2_cycle_cards/scene: nodes=6 edges=8 rels=8 notes=0 w=521 h=516
+c2_cycle_cards/route-id: nodes=6 edges=8 rels=8 notes=0 w=445 h=516
+c2_cycle_cards: drag route+to_svg avg 1.187 ms, worst route 1.025 ms (acc 376874)
+  c2_cycle_cards/swap01: pick at mid of edge 6 returned None
+  c2_cycle_cards/swap01: edge 5 final leg 14.5px
+  c2_cycle_cards/swap01: edge 5 first leg 14.5px
+  c2_cycle_cards/swap01: edge 6 first leg 14.5px
+c2_cycle_cards/swap01: nodes=6 edges=8 rels=8 notes=0 w=445 h=516
+c2_cycle_cards/negative: nodes=6 edges=8 rels=8 notes=0 w=445 h=516
+  c2_cycle_cards/flipped: pick at mid of edge 4 returned None
+  c2_cycle_cards/flipped: edge 4 final leg 14.5px
+  c2_cycle_cards/flipped: edge 6 final leg 14.5px
+c2_cycle_cards/flipped: nodes=6 edges=8 rels=8 notes=0 w=445 h=502
+f1_fanin_lr/scene: nodes=9 edges=8 rels=8 notes=0 w=603 h=516
+f1_fanin_lr/route-id: nodes=9 edges=8 rels=8 notes=0 w=603 h=516
+f1_fanin_lr: drag route+to_svg avg 1.608 ms, worst route 2.494 ms (acc 492252)
+  f1_fanin_lr/swap01: edge 7 first leg 14.5px
+f1_fanin_lr/swap01: nodes=9 edges=8 rels=8 notes=0 w=603 h=516
+  f1_fanin_lr/negative: pick at mid of edge 3 returned None
+  f1_fanin_lr/negative: edge 3 first leg 14.5px
+f1_fanin_lr/negative: nodes=9 edges=8 rels=8 notes=0 w=603 h=516
+f1_fanin_lr/flipped: nodes=9 edges=8 rels=8 notes=0 w=603 h=502
+f2_fanin_cards/scene: nodes=9 edges=8 rels=8 notes=0 w=594 h=516
+f2_fanin_cards/route-id: nodes=9 edges=8 rels=8 notes=0 w=594 h=516
+f2_fanin_cards: drag route+to_svg avg 1.331 ms, worst route 2.677 ms (acc 497532)
+  f2_fanin_cards/swap01: card of rel 1 (ServiceB->Logger) end 0 at (54,122) is 24px from own end but 16px from rel 3 end 0
+f2_fanin_cards/swap01: nodes=9 edges=8 rels=8 notes=0 w=594 h=516
+  f2_fanin_cards/negative: pick at mid of edge 3 returned None
+  f2_fanin_cards/negative: edge 3 first leg 14.5px
+f2_fanin_cards/negative: nodes=9 edges=8 rels=8 notes=0 w=594 h=516
+f2_fanin_cards/flipped: nodes=9 edges=8 rels=8 notes=0 w=594 h=502
+f3_fanin_cards_tb/scene: nodes=8 edges=7 rels=7 notes=0 w=736 h=436
+f3_fanin_cards_tb/route-id: nodes=8 edges=7 rels=7 notes=0 w=736 h=436
+f3_fanin_cards_tb: drag route+to_svg avg 0.699 ms, worst route 0.584 ms (acc 449912)
+  f3_fanin_cards_tb/swap01: card of rel 1 (ServiceB->Logger) end 0 at (129,-12) is 79px from own end but 42px from rel 1 end 1
+  f3_fanin_cards_tb/swap01: card of rel 1 end 0 is 79px from its end
+  f3_fanin_cards_tb/swap01: card of rel 2 (ServiceC->Logger) end 1 at (187,91) is 41px from own end but 25px from rel 3 end 0
+  f3_fanin_cards_tb/swap01: card of rel 2 end 1 is 41px from its end
+  f3_fanin_cards_tb/swap01: card of rel 3 end 0 is 47px from its end
+  f3_fanin_cards_tb/swap01: card of rel 4 end 0 is 47px from its end
+f3_fanin_cards_tb/swap01: nodes=8 edges=7 rels=7 notes=0 w=736 h=436
+  f3_fanin_cards_tb/negative: pick at mid of edge 3 returned None
+  f3_fanin_cards_tb/negative: edge 3 first leg 14.5px
+f3_fanin_cards_tb/negative: nodes=8 edges=7 rels=7 notes=0 w=736 h=436
+f3_fanin_cards_tb/flipped: nodes=8 edges=7 rels=7 notes=0 w=760 h=422
+f4_nolabels/scene: nodes=8 edges=7 rels=7 notes=0 w=736 h=436
+f4_nolabels/route-id: nodes=8 edges=7 rels=7 notes=0 w=736 h=436
+f4_nolabels: drag route+to_svg avg 0.471 ms, worst route 0.175 ms (acc 399678)
+  f4_nolabels/swap01: card of rel 1 (ServiceB->Logger) end 0 at (129,-12) is 79px from own end but 42px from rel 1 end 1
+  f4_nolabels/swap01: card of rel 1 end 0 is 79px from its end
+  f4_nolabels/swap01: card of rel 2 (ServiceC->Logger) end 1 at (187,91) is 41px from own end but 25px from rel 3 end 0
+  f4_nolabels/swap01: card of rel 2 end 1 is 41px from its end
+  f4_nolabels/swap01: card of rel 3 end 0 is 47px from its end
+  f4_nolabels/swap01: card of rel 4 end 0 is 47px from its end
+f4_nolabels/swap01: nodes=8 edges=7 rels=7 notes=0 w=736 h=436
+  f4_nolabels/negative: pick at mid of edge 3 returned None
+  f4_nolabels/negative: edge 3 first leg 14.5px
+f4_nolabels/negative: nodes=8 edges=7 rels=7 notes=0 w=736 h=436
+f4_nolabels/flipped: nodes=8 edges=7 rels=7 notes=0 w=760 h=422
+f5_nocards/scene: nodes=8 edges=7 rels=7 notes=0 w=736 h=436
+f5_nocards/route-id: nodes=8 edges=7 rels=7 notes=0 w=736 h=436
+f5_nocards: drag route+to_svg avg 0.750 ms, worst route 0.917 ms (acc 404386)
+f5_nocards/swap01: nodes=8 edges=7 rels=7 notes=0 w=736 h=436
+  f5_nocards/negative: pick at mid of edge 3 returned None
+  f5_nocards/negative: edge 3 first leg 14.5px
+f5_nocards/negative: nodes=8 edges=7 rels=7 notes=0 w=736 h=436
+f5_nocards/flipped: nodes=8 edges=7 rels=7 notes=0 w=760 h=422
+f6_three/scene: nodes=4 edges=3 rels=3 notes=0 w=444 h=260
+f6_three/route-id: nodes=4 edges=3 rels=3 notes=0 w=444 h=260
+f6_three: drag route+to_svg avg 0.227 ms, worst route 0.136 ms (acc 192350)
+f6_three/swap01: nodes=4 edges=3 rels=3 notes=0 w=444 h=252
+f6_three/negative: nodes=4 edges=3 rels=3 notes=0 w=444 h=260
+f6_three/flipped: nodes=4 edges=3 rels=3 notes=0 w=468 h=238
+f7_three_plain/scene: nodes=6 edges=5 rels=5 notes=0 w=736 h=248
+f7_three_plain/route-id: nodes=6 edges=5 rels=5 notes=0 w=736 h=248
+f7_three_plain: drag route+to_svg avg 0.283 ms, worst route 0.128 ms (acc 263554)
+f7_three_plain/swap01: nodes=6 edges=5 rels=5 notes=0 w=736 h=240
+f7_three_plain/negative: nodes=6 edges=5 rels=5 notes=0 w=736 h=248
+f7_three_plain/flipped: nodes=6 edges=5 rels=5 notes=0 w=760 h=226
+f8_inherit/scene: nodes=6 edges=5 rels=5 notes=0 w=736 h=244
+f8_inherit/route-id: nodes=6 edges=5 rels=5 notes=0 w=736 h=244
+f8_inherit: drag route+to_svg avg 0.542 ms, worst route 0.583 ms (acc 281852)
+f8_inherit/swap01: nodes=6 edges=5 rels=5 notes=0 w=736 h=276
+f8_inherit/negative: nodes=6 edges=5 rels=5 notes=0 w=736 h=244
+  f8_inherit/flipped: pick at mid of edge 4 returned None
+f8_inherit/flipped: nodes=6 edges=5 rels=5 notes=0 w=736 h=230
+fan5/scene: nodes=7 edges=6 rels=6 notes=0 w=882 h=232
+fan5/route-id: nodes=7 edges=6 rels=6 notes=0 w=882 h=232
+fan5: drag route+to_svg avg 0.380 ms, worst route 0.348 ms (acc 269449)
+fan5/swap01: nodes=7 edges=6 rels=6 notes=0 w=882 h=232
+fan5/negative: nodes=7 edges=6 rels=6 notes=0 w=882 h=232
+  fan5/flipped: pick at mid of edge 5 returned None
+fan5/flipped: nodes=7 edges=6 rels=6 notes=0 w=882 h=218
+fan6_test/scene: nodes=7 edges=6 rels=6 notes=0 w=882 h=232
+fan6_test/route-id: nodes=7 edges=6 rels=6 notes=0 w=882 h=232
+fan6_test: drag route+to_svg avg 0.281 ms, worst route 0.232 ms (acc 268769)
+fan6_test/swap01: nodes=7 edges=6 rels=6 notes=0 w=882 h=232
+fan6_test/negative: nodes=7 edges=6 rels=6 notes=0 w=882 h=232
+  fan6_test/flipped: pick at mid of edge 5 returned None
+fan6_test/flipped: nodes=7 edges=6 rels=6 notes=0 w=882 h=218
+fan8/scene: nodes=9 edges=8 rels=8 notes=0 w=1174 h=246
+fan8/route-id: nodes=9 edges=8 rels=8 notes=0 w=1174 h=246
+fan8: drag route+to_svg avg 0.483 ms, worst route 0.407 ms (acc 369210)
+fan8/swap01: nodes=9 edges=8 rels=8 notes=0 w=1174 h=246
+fan8/negative: nodes=9 edges=8 rels=8 notes=0 w=1174 h=246
+fan8/flipped: nodes=9 edges=8 rels=8 notes=0 w=1174 h=232
+g1_generic_rl/scene: nodes=4 edges=4 rels=4 notes=0 w=848 h=249
+g1_generic_rl/route-id: nodes=4 edges=4 rels=4 notes=0 w=848 h=219
+g1_generic_rl: drag route+to_svg avg 0.236 ms, worst route 0.253 ms (acc 231482)
+  g1_generic_rl/swap01: edge 2 first leg 14.5px
+g1_generic_rl/swap01: nodes=4 edges=4 rels=4 notes=0 w=865 h=243
+g1_generic_rl/negative: nodes=4 edges=4 rels=4 notes=0 w=848 h=219
+g1_generic_rl/flipped: nodes=4 edges=4 rels=4 notes=0 w=848 h=169
+g2_generic_rl/scene: nodes=4 edges=4 rels=4 notes=0 w=848 h=249
+g2_generic_rl/route-id: nodes=4 edges=4 rels=4 notes=0 w=848 h=219
+g2_generic_rl: drag route+to_svg avg 0.243 ms, worst route 0.239 ms (acc 231482)
+  g2_generic_rl/swap01: edge 2 first leg 14.5px
+g2_generic_rl/swap01: nodes=4 edges=4 rels=4 notes=0 w=865 h=243
+g2_generic_rl/negative: nodes=4 edges=4 rels=4 notes=0 w=848 h=219
+g2_generic_rl/flipped: nodes=4 edges=4 rels=4 notes=0 w=848 h=169
+n1_notes/scene: nodes=6 edges=3 rels=1 notes=4 w=730 h=410
+n1_notes/route-id: nodes=6 edges=3 rels=1 notes=4 w=730 h=410
+n1_notes: drag route+to_svg avg 0.323 ms, worst route 0.375 ms (acc 148938)
+n1_notes/swap01: nodes=6 edges=3 rels=1 notes=4 w=775 h=426
+n1_notes/negative: nodes=6 edges=3 rels=1 notes=4 w=586 h=274
+n1_notes/flipped: nodes=6 edges=3 rels=1 notes=4 w=775 h=262
+n2_onlynotes/scene: nodes=2 edges=0 rels=0 notes=2 w=436 h=89
+n2_onlynotes/route-id: nodes=2 edges=0 rels=0 notes=2 w=436 h=89
+r1_library/scene: nodes=10 edges=11 rels=10 notes=1 w=730 h=784
+r1_library/route-id: nodes=10 edges=11 rels=10 notes=1 w=730 h=784
+r1_library: drag route+to_svg avg 0.914 ms, worst route 0.681 ms (acc 576377)
+  r1_library/swap01: pick at mid of edge 5 returned None
+  r1_library/swap01: edge 2 first leg 19.2px
+  r1_library/swap01: edge 5 final leg 14.5px
+  r1_library/swap01: edge 7 final leg 14.5px
+r1_library/swap01: nodes=10 edges=11 rels=10 notes=1 w=630 h=784
+  r1_library/negative: pick at mid of edge 7 returned None
+  r1_library/negative: edge 0 first leg 14.5px
+  r1_library/negative: edge 7 final leg 14.5px
+  r1_library/negative: edge 7 first leg 14.5px
+r1_library/negative: nodes=10 edges=11 rels=10 notes=1 w=586 h=648
+  r1_library/flipped: pick at mid of edge 2 returned None
+  r1_library/flipped: edge 6 final leg 14.5px
+r1_library/flipped: nodes=10 edges=11 rels=10 notes=1 w=638 h=770
+r2_shapes/scene: nodes=7 edges=7 rels=7 notes=0 w=915 h=364
+r2_shapes/route-id: nodes=7 edges=7 rels=7 notes=0 w=915 h=364
+r2_shapes: drag route+to_svg avg 0.309 ms, worst route 0.277 ms (acc 350810)
+  r2_shapes/swap01: pick at mid of edge 0 returned None
+  r2_shapes/swap01: edge 1 first leg 14.5px
+r2_shapes/swap01: nodes=7 edges=7 rels=7 notes=0 w=915 h=364
+  r2_shapes/negative: pick at mid of edge 1 returned None
+  r2_shapes/negative: edge 1 first leg 14.5px
+  r2_shapes/negative: edge 3 first leg 14.5px
+r2_shapes/negative: nodes=7 edges=7 rels=7 notes=0 w=915 h=364
+r2_shapes/flipped: nodes=7 edges=7 rels=7 notes=0 w=915 h=350
+s1_selfpar/scene: nodes=2 edges=6 rels=6 notes=0 w=332 h=280
+s1_selfpar/route-id: nodes=2 edges=6 rels=6 notes=0 w=341 h=280
+s1_selfpar: drag route+to_svg avg 0.798 ms, worst route 1.467 ms (acc 215557)
+s1_selfpar/swap01: nodes=2 edges=6 rels=6 notes=0 w=324 h=302
+s1_selfpar/negative: nodes=2 edges=6 rels=6 notes=0 w=324 h=148
+s1_selfpar/flipped: nodes=2 edges=6 rels=6 notes=0 w=324 h=270
+s2_selfagg/scene: nodes=2 edges=2 rels=2 notes=0 w=288 h=276
+s2_selfagg/route-id: nodes=2 edges=2 rels=2 notes=0 w=288 h=276
+s2_selfagg: drag route+to_svg avg 0.109 ms, worst route 0.083 ms (acc 119570)
+s2_selfagg/swap01: nodes=2 edges=2 rels=2 notes=0 w=288 h=260
+s2_selfagg/negative: nodes=2 edges=2 rels=2 notes=0 w=288 h=276
+s2_selfagg/flipped: nodes=2 edges=2 rels=2 notes=0 w=288 h=246
+s3_twoloops/scene: nodes=2 edges=3 rels=3 notes=0 w=402 h=276
+s3_twoloops/route-id: nodes=2 edges=3 rels=3 notes=0 w=402 h=276
+s3_twoloops: drag route+to_svg avg 0.181 ms, worst route 0.176 ms (acc 139060)
+s3_twoloops/swap01: nodes=2 edges=3 rels=3 notes=0 w=402 h=260
+s3_twoloops/negative: nodes=2 edges=3 rels=3 notes=0 w=402 h=276
+s3_twoloops/flipped: nodes=2 edges=3 rels=3 notes=0 w=402 h=246
+s4_twoloops_lr/scene: nodes=2 edges=3 rels=3 notes=0 w=373 h=280
+  s4_twoloops_lr/route-id: card of rel 2 (Employee->Department) end 0 at (206,156) is 24px from own end but 16px from rel 1 end 0
+s4_twoloops_lr/route-id: nodes=2 edges=3 rels=3 notes=0 w=465 h=203
+s4_twoloops_lr: drag route+to_svg avg 0.175 ms, worst route 0.207 ms (acc 134323)
+  s4_twoloops_lr/swap01: card of rel 2 (Employee->Department) end 0 at (149,168) is 35px from own end but 27px from rel 0 end 1
+s4_twoloops_lr/swap01: nodes=2 edges=3 rels=3 notes=0 w=354 h=227
+s4_twoloops_lr/negative: nodes=2 edges=3 rels=3 notes=0 w=465 h=203
+  s4_twoloops_lr/flipped: card of rel 2 (Employee->Department) end 0 at (206,6) is 35px from own end but 27px from rel 1 end 1
+s4_twoloops_lr/flipped: nodes=2 edges=3 rels=3 notes=0 w=465 h=110
+s5_min/scene: nodes=1 edges=2 rels=2 notes=0 w=372 h=152
+s5_min/route-id: nodes=1 edges=2 rels=2 notes=0 w=372 h=152
+s5_min: drag route+to_svg avg 0.093 ms, worst route 0.125 ms (acc 70404)
+class/scene: nodes=9 edges=8 rels=8 notes=1 w=610 h=940
+class/route-id: nodes=9 edges=8 rels=8 notes=1 w=610 h=940
+class: drag route+to_svg avg 0.430 ms, worst route 0.311 ms (acc 477832)
+  class/swap01: pick at mid of edge 1 returned None
+  class/swap01: edge 1 final leg 14.5px
+class/swap01: nodes=9 edges=8 rels=8 notes=1 w=520 h=940
+class/negative: nodes=9 edges=8 rels=8 notes=1 w=520 h=940
+class/flipped: nodes=9 edges=8 rels=8 notes=1 w=520 h=898

@@ -1,0 +1,16 @@
+flowchart RL
+    N0([Parse])
+    N1[/Parse parse/]
+    N2([Archive report])
+    N3[Check fetch]
+    N4(Emit done)
+    N5(Emit load)
+    N6[Fetch archive]
+    N0 --> N1
+    N0 -->|no| N2
+    N2 --> N3
+    N2 --> N4
+    N3 --> N5
+    N4 -->|yes| N6
+    N6 ==> N5
+    N5 --> N0

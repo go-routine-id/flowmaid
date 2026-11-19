@@ -1,0 +1,35 @@
+flowchart RL
+  n1["queue<br/>billing"]
+  n2["merge split pack"]
+  subgraph B0["Platform"]
+    n3["report"]
+    n4["ingest"]
+    subgraph B0s0["Analytics 0"]
+      n5["ship<br/>merge"]
+      n6["notify"]
+    end
+    subgraph B0s1["Fulfilment desk 1"]
+      n7["cache"]
+      n8["cache"]
+    end
+  end
+  subgraph B1["Storefront"]
+    n9["report search search"]
+    n10["ingest"]
+    n11["queue"]
+  end
+  n12["queue<br/>ship"]
+  n13["audit"]
+  n4 ==> n12
+  n5 --> n13
+  n13 ==> n5
+  n5 -.-> n9
+  n7 -.->|audit| n10
+  n5 -.-> n7
+  n12 --> n4
+  n10 --> n9
+  n7 -->|db| n4
+  n8 --> n10
+  n3 -.-> n12
+  n9 -->|report| n3
+  n3 ==> B0s1

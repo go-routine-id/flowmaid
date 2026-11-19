@@ -1,0 +1,20 @@
+flowchart TD
+  A[Thick] ==> B[Normal]
+  A --> C[Wide 8px]
+  A --> D[Thin 1px]
+  A --> E[Six px]
+  B <==> F[Two way thick]
+  C --x G[Cross]
+  D --o H[Circle]
+  E x--x I[XX]
+  F o--o J[OO]
+  G -.-> K[Dotted]
+  H e1@--> L[Linear]
+  I ==> M[Step]
+  J --> N[Rounded]
+  e1@{ curve: linear }
+  linkStyle 1 stroke:#e11d48,stroke-width:8px
+  linkStyle 2 stroke-width:1px
+  linkStyle 3 stroke:#0a0,stroke-width:6px
+  linkStyle 11 interpolate stepBefore
+  linkStyle 12 stroke:#00f,stroke-width:5.5px,interpolate:rounded

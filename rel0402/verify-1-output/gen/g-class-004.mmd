@@ -1,0 +1,17 @@
+classDiagram
+C3 ..|> C11
+C0 <|-- C6
+C8 o-- C3 : x
+C7 <--> C2
+C6 o-- C3
+C4 -- C3 : Customer Order
+note "alpha"
+note for C7 "delta"
+class C8 {
+  +int id
+  +name() String
+}
+class C9 {
+  +int id
+  +name() String
+}

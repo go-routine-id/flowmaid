@@ -1,0 +1,176 @@
+diff --git a/src/blockcheck.rs b/src/blockcheck.rs
+index 604c867..09a28f4 100644
+--- a/src/blockcheck.rs
++++ b/src/blockcheck.rs
+@@ -4230,6 +4230,38 @@ fn a_frames_pins_move_past_its_entries_only_where_that_draws_no_worse() {
+     }
+ }
+ 
++#[test]
++fn a_nudged_entry_does_not_land_on_a_pin_whose_move_was_refused() {
++    // The channel nudge spreads a group's legs together, a stroke
++    // spacing apart, and then judges each edge's move on its own. An
++    // entry rerouted past its frame's title chip and the frame's pin
++    // from the same node were spread together; the pin's move was
++    // refused and the entry's kept, 1 px beside the pin, the two heads
++    // into the frame one on the other. In a block layout drawn TD / BT
++    // such a move goes back where it was.
++    let src = "flowchart TD
++    subgraph A[Shipping and returns desk]
++        a0[a0]
++        a1[a1 wide node]
++        a2[a2 wide node]
++    end
++    subgraph B[Shipping and returns desk two]
++        b0[b0 wide node]
++        b1[b1]
++    end
++    a0 -- \"x\" --> b0
++    a1 --> b0
++    a1 --> b1
++    p[p] --> B
++    q[q] --> B
++    q --> b0";
++    let rep = crate::levels::with_blocks(true, || crate::quality::measure_source(src, false))
++        .expect("a flowchart");
++    assert!(rep.block_mode);
++    let m = &rep.statik;
++    assert_eq!(m.overlap_pairs, 0, "{:?}", m.details);
++}
++
+ #[test]
+ fn a_block_layouts_chips_keep_clear_of_other_lines() {
+     // B12 G3: a block layout's chip keeps `CLEAR_GAP` from every other
+diff --git a/src/edgepass.rs b/src/edgepass.rs
+index c5cebb6..d08b675 100644
+--- a/src/edgepass.rs
++++ b/src/edgepass.rs
+@@ -489,35 +489,65 @@ fn stages(g: &Graph, sc: &mut Scene, cx: Ctx, mode: Mode) {
+     }
+ }
+ 
++fn dbg_dump(sc: &Scene, stage: &str) {
++    if let Ok(w) = std::env::var("FMDBG_EDGE") {
++        for e in &sc.edges {
++            let k = format!("{}->{}", e.from, e.to);
++            if w.split(',').any(|x| x == k) {
++                let p: Vec<String> = if e.waypoints.is_empty() {
++                    e.bezier
++                        .iter()
++                        .map(|p| format!("({:.1},{:.1})", p.0, p.1))
++                        .collect()
++                } else {
++                    e.waypoints
++                        .iter()
++                        .map(|p| format!("({:.1},{:.1})", p.0, p.1))
++                        .collect()
++                };
++                eprintln!("[{stage}] {k}: {}", p.join(" "));
++            }
++        }
++    }
++}
++
+ /// [`stages`] with the ortho stage's `pins_as_set`; returns whether a
+ /// title side was dealt with its pins as one set.
+ fn stages_with(g: &Graph, sc: &mut Scene, mut cx: Ctx, mode: Mode, pins_as_set: bool) -> bool {
+     let mut moved = vec![false; sc.edges.len()];
+     crate::ports::assign(g, sc, &cx, mode, &mut moved);
++    dbg_dump(sc, "ports");
+     // Every edge on the axes, its corners rounded (report §2.1): from the
+     // ends the ports stage settled, before the router judges them.
+     let pins_moved = crate::ortho::orthogonalize(g, sc, &mut cx, mode, pins_as_set);
++    dbg_dump(sc, "ortho");
+     crate::router::repair(g, sc, &cx, mode, &mut moved);
++    dbg_dump(sc, "repair");
+     // A rerouted end may have switched to another side of its node and
+     // landed on a port another edge already holds: space those groups
+     // again. Groups the router left alone are already spaced and stay
+     // byte-identical.
+     crate::ports::respace(g, sc, &cx, mode, &mut moved);
++    dbg_dump(sc, "respace");
+     // After the ports are spaced again, so the channel nudge sees (and
+     // keeps) the final ends; in the static scene it ends by putting each
+     // side's ends in the order their paths now head (G9).
+     crate::router::nudge(g, sc, &cx, mode, &mut moved);
++    dbg_dump(sc, "nudge");
+     // Then two unrelated edges the nudge (or the builder) left side by
+     // side under the spacing get one moved clear, where that costs
+     // nothing else (G4).
+     crate::router::spread_close(g, sc, &cx, mode, &mut moved);
++    dbg_dump(sc, "spread");
+     // Then a fan's teeth nest: the ports, the tracks and the turns of
+     // each side's ends in one order (report B4, see [`crate::comb`]).
+     crate::comb::comb(sc, &cx, &mut moved);
++    dbg_dump(sc, "comb");
+     glyph_stubs(sc, &cx, &mut moved);
+     straight_cubics(sc, &cx);
+     square_s_cubics(sc, &cx);
+     snap_ends(sc, &cx);
++    dbg_dump(sc, "snap");
+     // A corner a moved end left far from its rounding point turns as a
+     // rounded corner again (see `ports::reround`). An edge a drag keeps
+     // ([`Ctx::fixed`]) keeps its geometry, whoever drew it (a fold's
+diff --git a/src/router.rs b/src/router.rs
+index d952ca3..9d47179 100644
+--- a/src/router.rs
++++ b/src/router.rs
+@@ -4678,10 +4678,58 @@ pub(crate) fn nudge(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mut
+             }
+         }
+     }
++    // In a block layout's static scene drawn TD or BT, a path kept on
++    // its nudged line where it counted on a neighbour's move that the
++    // judging then refused goes back to where it was, when it now comes
++    // within [`EDGE_SEP_MIN`] of that neighbour, nearer than before: the
++    // spread places a group's legs together, a stroke spacing apart.
++    // (An entry rerouted past a frame's title chip and that frame's pin
++    // from the same node were spread together; the pin's move was
++    // refused and the entry ran 1 px beside it, the two heads into the
++    // frame one on the other.)
++    if cx.blocks
++        && mode == Mode::Static
++        && matches!(
++            g.direction,
++            crate::model::Direction::TD | crate::model::Direction::BT
++        )
++    {
++        let refused: Vec<usize> = (0..ne)
++            .filter(|&k| nudged[k].is_some() && kept[k] == before[k])
++            .collect();
++        if !refused.is_empty() {
++            let drawn: Vec<Vec<Pt>> = sc.edges.iter().map(edge_polyline).collect();
++            for i in 0..ne {
++                if infos[i].is_none() || before[i].is_none() || kept[i] == before[i] {
++                    continue;
++                }
++                let crowds = refused.iter().any(|&k| {
++                    let gap_now = poly_gap(&drawn[i], &drawn[k]);
++                    k != i
++                        && gap_now < EDGE_SEP_MIN
++                        && gap_now < poly_gap(&polys[i], &drawn[k]) - EPS
++                });
++                if crowds {
++                    let e = &mut sc.edges[i];
++                    (e.waypoints, e.bezier) = was[i].clone();
++                }
++            }
++        }
++    }
+     reorder(g, sc, cx, mode, moved, &w, &infos, acc);
+     mark_crossed_labels(&w, sc, &was, moved);
+ }
+ 
++/// The least distance (px) between polylines `a` and `b`.
++fn poly_gap(a: &[Pt], b: &[Pt]) -> f64 {
++    a.windows(2)
++        .flat_map(|s| {
++            b.windows(2)
++                .map(move |t| seg_seg_dist(s[0], s[1], t[0], t[1]))
++        })
++        .fold(f64::INFINITY, f64::min)
++}
++
+ /// Steps (px) [`spread_close`] tries to slide a free curve's middle
+ /// (along the flow) or a router leg (across it) by, nearest first.
+ const CLOSE_SHIFTS: [f64; 8] = [4.0, -4.0, 8.0, -8.0, 12.0, -12.0, 16.0, -16.0];

@@ -1,0 +1,54 @@
+flowchart RL
+  n1["merge"]
+  n2["queue"]
+  subgraph B0["Platform"]
+    n3["ship"]
+    n4["ingest"]
+    n5["billing"]
+    n6["index"]
+    subgraph B0s0["Back office and finance 0"]
+      n7["mail"]
+      n8["store"]
+    end
+    subgraph B0s1["Ops 1"]
+      n9["ingest worker store<br/>report"]
+      n10["merge"]
+    end
+  end
+  subgraph B1["Ops"]
+    n11["cache"]
+    subgraph B1s0["Platform 0"]
+      n12["ingest report split<br/>search"]
+    end
+    subgraph B1s1["Ops 1"]
+      n13["worker"]
+      n14["store billing store"]
+      n15["split"]
+    end
+  end
+  subgraph B2["Data tier"]
+    n16["mail"]
+  end
+  n17["billing"]
+  n3 --> n6
+  n13 ==> B0s0
+  n14 -.-> n4
+  n2 --> n8
+  n12 --> n1
+  n4 --> n16
+  n17 ==> n14
+  n6 -.-> n8
+  n11 --> n8
+  n1 --> n17
+  n5 -.->|auth| n12
+  n12 ==> B0
+  n13 --> n15
+  n11 -->|billing| n1
+  n11 -.-> n6
+  n17 -.-> n13
+  n13 --> n5
+  n12 ==> n17
+  n16 --> n1
+  n7 --> n4
+  n5 ==> n13
+  n3 -.-> n10

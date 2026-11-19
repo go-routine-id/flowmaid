@@ -1,0 +1,10 @@
+flowchart BT
+  subgraph S[Scope]
+    P[Producer] --> Q[Queue]
+    Q -->|ack| P
+  end
+  Q --> R[Reader one]
+  Q --> W[Writer two]
+  W -.->|nack with a long label| Q
+  R --> X[Out]
+  X --> X

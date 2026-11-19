@@ -55,7 +55,7 @@ case "$mode" in
     echo "wrote $out/metrics.tsv" >&2 ;;
   judge)
     out=${2:?outdir}; shift 2
-    "$M/judge" "$out/metrics.tsv" --baseline "$M/baseline-038.tsv" --start "$M/ref-start.tsv" --mermaid "$M/ref-mermaid.tsv" --thresholds "$M/thresholds.json" "$@" ;;
+    "$M/judge" "$out/metrics.tsv" --baseline "$M/baseline-038.tsv" --start "$M/ref-start.tsv" --mermaid "$M/ref-mermaid.tsv" --thresholds "$M/thresholds.json" --struct-dir "$ST" "$@" ;;
   judge-routed)
     out=${2:?outdir}; shift 2
     "$M/judge" "$out/metrics-routed.tsv" --baseline "$M/ref-038-routed.tsv" --start "$M/ref-start-routed.tsv" --mermaid "$M/ref-mermaid.tsv" --thresholds "$M/thresholds-routed.json" "$@" ;;

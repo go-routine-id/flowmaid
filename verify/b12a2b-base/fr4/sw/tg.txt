@@ -1,0 +1,160 @@
+comb-m-BT.svg	MMMM WWWW	7.50 x1 → z	7.50 x1 → z	7.50 x1 → z
+comb-m-LR.svg	MMMM WWWW	1000000000.00 	1000000000.00 	1000000000.00 
+comb-m-RL.svg	MMMM WWWW	1000000000.00 	1000000000.00 	1000000000.00 
+comb-m-TD.svg	MMMM WWWW	7.50 h → x1	7.50 h → x1	7.50 h → x1
+comb-n-BT.svg	Édition générale des données	7.35 x1 → z	7.35 x1 → z	7.35 x1 → z
+comb-n-LR.svg	Édition générale des données	1000000000.00 	1000000000.00 	1000000000.00 
+comb-n-RL.svg	Édition générale des données	1000000000.00 	1000000000.00 	1000000000.00 
+comb-n-TD.svg	Édition générale des données	9.62 h → x2	9.62 h → x2	9.62 h → x2
+comb-s-BT.svg	Shipping and returns desk	7.39 x1 → z	7.39 x1 → z	7.39 x1 → z
+comb-s-LR.svg	Shipping and returns desk	1000000000.00 	1000000000.00 	1000000000.00 
+comb-s-RL.svg	Shipping and returns desk	1000000000.00 	1000000000.00 	1000000000.00 
+comb-s-TD.svg	Shipping and returns desk	0.52 h → x2	0.52 h → x2	0.52 h → x2
+comb-w-BT.svg	WWW Mammoth Wombat Warehouse Overview	7.20 x1 → z	7.20 x1 → z	7.20 x1 → z
+comb-w-LR.svg	WWW Mammoth Wombat Warehouse Overview	1000000000.00 	1000000000.00 	1000000000.00 
+comb-w-RL.svg	WWW Mammoth Wombat Warehouse Overview	1000000000.00 	1000000000.00 	1000000000.00 
+comb-w-TD.svg	WWW Mammoth Wombat Warehouse Overview	7.20 h → x1	7.20 h → x1	7.20 h → x1
+exits-m-BT.svg	MMMM WWWW	37.50 x → o1	37.50 x → o1	37.50 x → o1
+exits-m-LR.svg	MMMM WWWW	1000000000.00 	1000000000.00 	1000000000.00 
+exits-m-RL.svg	MMMM WWWW	10.00 x → o1	10.00 x → o1	10.00 x → o1
+exits-m-TD.svg	MMMM WWWW	1000000000.00 	1000000000.00 	1000000000.00 
+exits-n-BT.svg	Édition générale des données	6.83 x → o2	1.13 x → o2	1.13 x → o2
+exits-n-LR.svg	Édition générale des données	38.27 x → o1	38.27 x → o1	38.27 x → o1
+exits-n-RL.svg	Édition générale des données	10.00 x → o1	10.00 x → o1	10.00 x → o1
+exits-n-TD.svg	Édition générale des données	1000000000.00 	1000000000.00 	1000000000.00 
+exits-s-BT.svg	Shipping and returns desk	6.92 x → o2	10.00 x → o1	2.02 x → o2
+exits-s-LR.svg	Shipping and returns desk	1000000000.00 	1000000000.00 	1000000000.00 
+exits-s-RL.svg	Shipping and returns desk	10.00 x → o1	10.00 x → o1	10.00 x → o1
+exits-s-TD.svg	Shipping and returns desk	1000000000.00 	1000000000.00 	1000000000.00 
+exits-w-BT.svg	WWW Mammoth Wombat Warehouse Overview	7.29 y → o3	7.29 y → o3	7.29 y → o3
+exits-w-LR.svg	WWW Mammoth Wombat Warehouse Overview	10.00 x → o1	10.00 x → o1	10.00 x → o1
+exits-w-RL.svg	WWW Mammoth Wombat Warehouse Overview	10.00 x → o1	10.00 x → o1	10.00 x → o1
+exits-w-TD.svg	WWW Mammoth Wombat Warehouse Overview	1000000000.00 	1000000000.00 	1000000000.00 
+labels-m-BT.svg	MMMM WWWW	1000000000.00 	1000000000.00 	1000000000.00 
+labels-m-LR.svg	MMMM WWWW	25.05 s1 → x: first label	25.05 s1 → x: first label	25.05 s1 → x: first label
+labels-m-RL.svg	MMMM WWWW	1000000000.00 	1000000000.00 	1000000000.00 
+labels-m-TD.svg	MMMM WWWW	10.00 s1 → x: first label	25.80 s2 → x: second	10.00 s1 → x: first label
+labels-n-BT.svg	Édition générale des données	7.47 y → z	7.47 y → z	7.47 y → z
+labels-n-LR.svg	Édition générale des données	25.05 s1 → x: first label	25.05 s1 → x: first label	25.05 s1 → x: first label
+labels-n-RL.svg	Édition générale des données	1000000000.00 	1000000000.00 	1000000000.00 
+labels-n-TD.svg	Édition générale des données	6.93 s1 → x: first label	11.70 s4 → G: to frame	0.00 s1 → x: first label
+labels-s-BT.svg	Shipping and returns desk	7.50 y → z	7.50 y → z	7.50 y → z
+labels-s-LR.svg	Shipping and returns desk	25.05 s1 → x: first label	25.05 s1 → x: first label	25.05 s1 → x: first label
+labels-s-RL.svg	Shipping and returns desk	1000000000.00 	1000000000.00 	1000000000.00 
+labels-s-TD.svg	Shipping and returns desk	6.92 s1 → x: first label	11.69 s4 → G: to frame	0.00 s1 → x: first label
+labels-w-BT.svg	WWW Mammoth Wombat Warehouse Overview	10.00 y → z	10.00 y → z	10.00 y → z
+labels-w-LR.svg	WWW Mammoth Wombat Warehouse Overview	25.05 s1 → x: first label	25.05 s1 → x: first label	25.05 s1 → x: first label
+labels-w-RL.svg	WWW Mammoth Wombat Warehouse Overview	1000000000.00 	1000000000.00 	1000000000.00 
+labels-w-TD.svg	WWW Mammoth Wombat Warehouse Overview	10.00 s1 → x: first label	10.00 s1 → x: first label	10.00 s1 → x: first label
+mix-m-BT.svg	MMMM WWWW	1000000000.00 	1000000000.00 	1000000000.00 
+mix-m-LR.svg	MMMM WWWW	24.50 a → x	24.50 a → x	24.50 a → x
+mix-m-RL.svg	MMMM WWWW	1000000000.00 	1000000000.00 	1000000000.00 
+mix-m-TD.svg	MMMM WWWW	9.90 a → x	9.40 a → x	9.90 a → x
+mix-n-BT.svg	Édition générale des données	1000000000.00 	1000000000.00 	1000000000.00 
+mix-n-LR.svg	Édition générale des données	24.50 a → x	24.50 a → x	24.50 a → x
+mix-n-RL.svg	Édition générale des données	1000000000.00 	1000000000.00 	1000000000.00 
+mix-n-TD.svg	Édition générale des données	7.35 a → x	7.35 a → x	7.35 a → x
+mix-s-BT.svg	Shipping and returns desk	1000000000.00 	1000000000.00 	1000000000.00 
+mix-s-LR.svg	Shipping and returns desk	24.50 a → x	24.50 a → x	24.50 a → x
+mix-s-RL.svg	Shipping and returns desk	1000000000.00 	1000000000.00 	1000000000.00 
+mix-s-TD.svg	Shipping and returns desk	10.00 a → x	10.00 a → x	10.00 a → x
+mix-w-BT.svg	WWW Mammoth Wombat Warehouse Overview	7.39 w → out	7.39 w → out	7.39 w → out
+mix-w-LR.svg	WWW Mammoth Wombat Warehouse Overview	24.50 a → x	24.50 a → x	24.50 a → x
+mix-w-RL.svg	WWW Mammoth Wombat Warehouse Overview	25.74 a → x	25.74 a → x	25.74 a → x
+mix-w-TD.svg	WWW Mammoth Wombat Warehouse Overview	10.00 a → x	10.00 a → x	10.00 a → x
+nested-m-BT.svg	MMMM WWWW	1000000000.00 	1000000000.00 	1000000000.00 
+nested-m-BT.svg	MMMM WWWW inner	24.27 x → k	24.27 x → k	24.27 x → k
+nested-m-LR.svg	MMMM WWWW	24.68 a → x	24.68 a → x	24.68 a → x
+nested-m-LR.svg	MMMM WWWW inner	38.50 a → x	38.50 a → x	38.50 a → x
+nested-m-RL.svg	MMMM WWWW	1000000000.00 	1000000000.00 	1000000000.00 
+nested-m-RL.svg	MMMM WWWW inner	1000000000.00 	1000000000.00 	1000000000.00 
+nested-m-TD.svg	MMMM WWWW	24.50 a → x	24.50 a → x	24.50 a → x
+nested-m-TD.svg	MMMM WWWW inner	14.00 b → I	14.00 b → I	14.00 b → I
+nested-n-BT.svg	Édition générale des données	1000000000.00 	1000000000.00 	1000000000.00 
+nested-n-BT.svg	Édition générale des données inner	10.00 x → k	10.00 x → k	10.00 x → k
+nested-n-LR.svg	Édition générale des données	33.00 a → x	33.00 a → x	33.00 a → x
+nested-n-LR.svg	Édition générale des données inner	7.50 a → x	7.50 a → x	7.50 a → x
+nested-n-RL.svg	Édition générale des données	1000000000.00 	1000000000.00 	1000000000.00 
+nested-n-RL.svg	Édition générale des données inner	7.50 a → x	7.50 a → x	7.50 a → x
+nested-n-TD.svg	Édition générale des données	24.50 a → x	21.13 b → I	24.50 a → x
+nested-n-TD.svg	Édition générale des données inner	10.00 a → x	10.00 a → x	10.00 a → x
+nested-s-BT.svg	Shipping and returns desk	1000000000.00 	9.12 k → z	1000000000.00 
+nested-s-BT.svg	Shipping and returns desk inner	7.32 x → k	7.32 x → k	7.32 x → k
+nested-s-LR.svg	Shipping and returns desk	33.00 a → x	33.00 a → x	33.00 a → x
+nested-s-LR.svg	Shipping and returns desk inner	7.51 a → x	7.51 a → x	7.51 a → x
+nested-s-RL.svg	Shipping and returns desk	1000000000.00 	1000000000.00 	1000000000.00 
+nested-s-RL.svg	Shipping and returns desk inner	7.51 a → x	7.51 a → x	7.51 a → x
+nested-s-TD.svg	Shipping and returns desk	13.32 a → x	13.32 a → x	13.32 a → x
+nested-s-TD.svg	Shipping and returns desk inner	7.32 a → x	7.22 a → x	7.32 a → x
+nested-w-BT.svg	WWW Mammoth Wombat Warehouse Overview	7.50 k → z	7.50 k → z	7.50 k → z
+nested-w-BT.svg	WWW Mammoth Wombat Warehouse Overview inner	10.00 x → k	10.00 x → k	10.00 x → k
+nested-w-LR.svg	WWW Mammoth Wombat Warehouse Overview	43.60 a → x	43.60 a → x	43.60 a → x
+nested-w-LR.svg	WWW Mammoth Wombat Warehouse Overview inner	7.50 a → x	7.50 a → x	7.50 a → x
+nested-w-RL.svg	WWW Mammoth Wombat Warehouse Overview	1000000000.00 	1000000000.00 	1000000000.00 
+nested-w-RL.svg	WWW Mammoth Wombat Warehouse Overview inner	39.00 a → x	39.00 a → x	39.00 a → x
+nested-w-TD.svg	WWW Mammoth Wombat Warehouse Overview	0.00 b → I	0.00 b → I	0.00 b → I
+nested-w-TD.svg	WWW Mammoth Wombat Warehouse Overview inner	10.00 a → x	10.00 a → x	10.00 a → x
+pins-m-BT.svg	MMMM WWWW	7.50 y → z	7.50 y → z	7.50 y → z
+pins-m-LR.svg	MMMM WWWW	1000000000.00 	1000000000.00 	1000000000.00 
+pins-m-RL.svg	MMMM WWWW	1000000000.00 	1000000000.00 	1000000000.00 
+pins-m-TD.svg	MMMM WWWW	7.50 s4 → x	7.50 s4 → x	7.50 s4 → x
+pins-n-BT.svg	Édition générale des données	10.00 y → z	10.00 y → z	10.00 y → z
+pins-n-LR.svg	Édition générale des données	1000000000.00 	1000000000.00 	1000000000.00 
+pins-n-RL.svg	Édition générale des données	1000000000.00 	1000000000.00 	1000000000.00 
+pins-n-TD.svg	Édition générale des données	10.00 s4 → x	10.00 s4 → x	10.00 s4 → x
+pins-s-BT.svg	Shipping and returns desk	10.00 y → z	10.00 y → z	10.00 y → z
+pins-s-LR.svg	Shipping and returns desk	1000000000.00 	1000000000.00 	1000000000.00 
+pins-s-RL.svg	Shipping and returns desk	1000000000.00 	1000000000.00 	1000000000.00 
+pins-s-TD.svg	Shipping and returns desk	10.00 s4 → x	10.00 s4 → x	10.00 s4 → x
+pins-w-BT.svg	WWW Mammoth Wombat Warehouse Overview	10.00 y → z	10.00 y → z	10.00 y → z
+pins-w-LR.svg	WWW Mammoth Wombat Warehouse Overview	1000000000.00 	1000000000.00 	1000000000.00 
+pins-w-RL.svg	WWW Mammoth Wombat Warehouse Overview	1000000000.00 	1000000000.00 	1000000000.00 
+pins-w-TD.svg	WWW Mammoth Wombat Warehouse Overview	10.00 s4 → x	10.00 s4 → x	10.00 s4 → x
+state-m-BT.svg	MMMM WWWW	6.00 G → D	6.00 G → D	6.00 G → D
+state-m-LR.svg	MMMM WWWW	26.38 X → Y	26.38 X → Y	26.38 X → Y
+state-m-RL.svg	MMMM WWWW	1000000000.00 	1000000000.00 	1000000000.00 
+state-m-TD.svg	MMMM WWWW	10.00 X → Y	10.00 X → Y	10.00 X → Y
+state-n-BT.svg	Édition générale des données	6.00 G → D	6.00 G → D	6.00 G → D
+state-n-LR.svg	Édition générale des données	24.73 X → Y	24.73 X → Y	24.73 X → Y
+state-n-RL.svg	Édition générale des données	25.16 X → Y	25.16 X → Y	25.16 X → Y
+state-n-TD.svg	Édition générale des données	10.00 X → Y	10.00 X → Y	10.00 X → Y
+state-s-BT.svg	Shipping and returns desk	6.00 G → D	6.00 G → D	6.00 G → D
+state-s-LR.svg	Shipping and returns desk	24.81 X → Y	24.81 X → Y	24.81 X → Y
+state-s-RL.svg	Shipping and returns desk	25.13 X → Y	25.13 X → Y	25.13 X → Y
+state-s-TD.svg	Shipping and returns desk	10.00 X → Y	10.00 X → Y	10.00 X → Y
+state-w-BT.svg	WWW Mammoth Wombat Warehouse Overview	6.00 G → D	6.00 G → D	6.00 G → D
+state-w-LR.svg	WWW Mammoth Wombat Warehouse Overview	33.05 X → Y	33.05 X → Y	33.05 X → Y
+state-w-RL.svg	WWW Mammoth Wombat Warehouse Overview	34.19 X → Y	34.19 X → Y	34.19 X → Y
+state-w-TD.svg	WWW Mammoth Wombat Warehouse Overview	9.99 X → Y	9.99 X → Y	9.99 X → Y
+twin-m-BT.svg	MMMM WWWW	24.50 a1 → b1	24.50 a1 → b1	24.50 a1 → b1
+twin-m-BT.svg	MMMM WWWW two	1000000000.00 	1000000000.00 	1000000000.00 
+twin-m-LR.svg	MMMM WWWW	1000000000.00 	1000000000.00 	1000000000.00 
+twin-m-LR.svg	MMMM WWWW two	1000000000.00 	1000000000.00 	1000000000.00 
+twin-m-RL.svg	MMMM WWWW	32.00 a1 → b1	32.00 a1 → b1	32.00 a1 → b1
+twin-m-RL.svg	MMMM WWWW two	1000000000.00 	1000000000.00 	1000000000.00 
+twin-m-TD.svg	MMMM WWWW	37.50 q → b1	37.50 q → b1	37.50 q → b1
+twin-m-TD.svg	MMMM WWWW two	7.50 q → b1	7.50 q → b1	7.50 q → b1
+twin-n-BT.svg	Édition générale des données	6.70 a1 → b2	1.03 a1 → b2	1.03 a1 → b2
+twin-n-BT.svg	Édition générale des données two	1000000000.00 	1000000000.00 	1000000000.00 
+twin-n-LR.svg	Édition générale des données	32.00 a1 → b1	32.00 a1 → b1	32.00 a1 → b1
+twin-n-LR.svg	Édition générale des données two	1000000000.00 	1000000000.00 	1000000000.00 
+twin-n-RL.svg	Édition générale des données	32.00 a1 → b1	32.00 a1 → b1	32.00 a1 → b1
+twin-n-RL.svg	Édition générale des données two	1000000000.00 	1000000000.00 	1000000000.00 
+twin-n-TD.svg	Édition générale des données	20.50 p → a2	20.50 p → a2	20.50 p → a2
+twin-n-TD.svg	Édition générale des données two	10.00 q → b1	10.00 q → b1	9.45 a1 → b2
+twin-s-BT.svg	Shipping and returns desk	6.78 a1 → b2	0.71 a1 → b2	0.71 a1 → b2
+twin-s-BT.svg	Shipping and returns desk two	1000000000.00 	1000000000.00 	1000000000.00 
+twin-s-LR.svg	Shipping and returns desk	32.00 a1 → b1	32.00 a1 → b1	32.00 a1 → b1
+twin-s-LR.svg	Shipping and returns desk two	1000000000.00 	1000000000.00 	1000000000.00 
+twin-s-RL.svg	Shipping and returns desk	32.00 a1 → b1	32.00 a1 → b1	32.00 a1 → b1
+twin-s-RL.svg	Shipping and returns desk two	1000000000.00 	1000000000.00 	1000000000.00 
+twin-s-TD.svg	Shipping and returns desk	21.75 p → a2	21.75 p → a2	21.75 p → a2
+twin-s-TD.svg	Shipping and returns desk two	0.04 a1 → b1	10.00 a1 → b1	10.00 a1 → b1
+twin-w-BT.svg	WWW Mammoth Wombat Warehouse Overview	10.00 a1 → b2	10.00 a1 → b2	10.00 a1 → b2
+twin-w-BT.svg	WWW Mammoth Wombat Warehouse Overview two	1000000000.00 	1000000000.00 	1000000000.00 
+twin-w-LR.svg	WWW Mammoth Wombat Warehouse Overview	32.00 a1 → b1	32.00 a1 → b1	32.00 a1 → b1
+twin-w-LR.svg	WWW Mammoth Wombat Warehouse Overview two	1000000000.00 	1000000000.00 	1000000000.00 
+twin-w-RL.svg	WWW Mammoth Wombat Warehouse Overview	32.00 a1 → b1	32.00 a1 → b1	32.00 a1 → b1
+twin-w-RL.svg	WWW Mammoth Wombat Warehouse Overview two	1000000000.00 	1000000000.00 	1000000000.00 
+twin-w-TD.svg	WWW Mammoth Wombat Warehouse Overview	10.00 p → a2	10.00 p → a2	10.00 p → a2
+twin-w-TD.svg	WWW Mammoth Wombat Warehouse Overview two	10.00 a2 → b2	10.00 a2 → b2	10.00 a2 → b2

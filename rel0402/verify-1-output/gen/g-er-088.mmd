@@ -1,0 +1,29 @@
+erDiagram
+E1 }|..|{ E2 : has
+E0 ||--|{ E3 : "two words"
+E1 ||--|| E0 : has
+E2 }|..|{ E0 : "two words"
+E1 ||--o{ E0 : r4
+E0 }o--o{ E3 : "two words"
+E4 }o--o{ E1 : "two words"
+E1 |o--|| E2 : has
+E4 ||--|{ E3 : r8
+E1 ||--|{ E3 : "two words"
+E2 ||--o{ E1 : "two words"
+E3 }|..|{ E2 : "two words"
+E1 ||--|{ E4 : has
+E0 |o--|| E2 : has
+E1 }|..|{ E1 : has
+E2 }o--o{ E1 : r15
+E1 {
+  int id PK
+  string name "comment"
+}
+E2 {
+  int id PK
+  string name "comment"
+}
+E3 {
+  int id PK
+  string name "comment"
+}

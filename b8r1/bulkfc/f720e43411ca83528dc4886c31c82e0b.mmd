@@ -1,0 +1,7 @@
+flowchart LR
+  S[Start] --> A[Worker]
+  A -->|retry once| A
+  A -->|retry twice| A
+  A -->|give up later| A
+  A --> B[Next step]
+  B -.->|again| S

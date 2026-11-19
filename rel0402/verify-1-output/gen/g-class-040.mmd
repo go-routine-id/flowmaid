@@ -1,0 +1,56 @@
+classDiagram
+C12 <--> C16 : delta
+C11 o-- C10
+C8 "1" o-- "*" C28
+C11 -- C11 : x
+C10 o-- C28 : Customer Order
+C8 *-- C26
+C29 <|-- C5
+C4 *-- C4
+C25 ..|> C14
+C8 "1" o-- "*" C18 : Customer Order
+C6 "1" <--> "*" C29
+C3 o-- C26
+C12 ..> C23 : <b>bold</b>
+C13 "1" -- "*" C7
+C10 *-- C20
+C5 <|-- C17
+C13 "1" --> "*" C1 : Customer Order
+C27 ..> C12 : Long label here
+note for C3 "delta"
+class C3 {
+  +int id
+  +name() String
+}
+class C13 {
+  +int id
+  +name() String
+}
+class C18 {
+  +int id
+  +name() String
+}
+class C21 {
+  +int id
+  +name() String
+}
+class C23 {
+  +int id
+  +name() String
+}
+class C24 {
+  +int id
+  +name() String
+}
+class C26 {
+  +int id
+  +name() String
+}
+class C28 {
+  +int id
+  +name() String
+}
+class C29 {
+  +int id
+  +name() String
+}

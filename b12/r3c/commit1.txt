@@ -1,0 +1,53 @@
+fix(blocks): route() of a block layout starts from the layout; a drag follows a layout column only where that adds nothing (B12.13, fix round 1)
+
+Lead decision of 2026-11-19 (option A) and the verifier's findings 1, 4-9
+on the package's previous head:
+
+- The second internal setting is gone (`--cfg flowmaid_route_layout`,
+  `quality::with_route_from_layout`): wherever the block layout's switch
+  is on, route() of a block-mode part starts from the static layout's
+  drawing of it (ruling 1). One internal switch again, as spec 4.1 has it.
+- scene() of a block layout hands its drawing to that memo, so the first
+  route() after scene() on a thread does not lay the graph out again.
+- A drag's followed path (an edge redrawn because an end moved, kept on
+  the layout's columns) that adds a crossing, a crossing within its fan,
+  or a node or frame its base path did not meet is drawn as the release
+  before redrew it (`refuse_costly_follows`). blocks/hub5 with `invoice`
+  dragged by (60, 25): `bill` no longer crosses `token -> invoice`.
+- A redrawn frame keeps the layout's room only on a side where that room
+  takes in no node or frame it does not hold and no path the drag draws
+  afresh; elsewhere it takes its members' frame (R6). examples/advanced
+  with Job Queue dragged by (-150, 80): Async Workers no longer grows
+  over Redis, and the kept gateway / Redis edges cross nothing.
+- A followed edge's label stays on its leg at the same share, its chip
+  clear of the leg's turns (or no nearer than the base had it); every
+  path a block layout's drag draws turns its corners as the router
+  rounds them (a slid end leg left a rounding point 20 px off a corner);
+  a node a host moves and resizes in one call carries its followed ends
+  onto its new box.
+- A route_partial() fallback for a whole-drawing pan goes through
+  route(), which moves the layout's drawing.
+
+Default build byte-identical (guard green, off-identity tests).
+Suite-on: failing tests 15 -> 8 against 157117e, none newly failing
+(route_partial_hands_a_mostly_redrawn_frame_to_route kept green by the
+pan fallback). The routed rows at the scene's centres now equal the
+static rows: the routed cells and copies that are worse than 157117e's
+routed drawing are each equal to their static twin (the lead's declared
+trade of ruling 1; static rows owned by the squeeze package and step 4):
+DEFECT_BASELINE routed lat_wiggles, lat_backtrack, band_pairs, band_len,
+end_kink; block_fixtures blocks/self-member routed x_drawn and hard
+zeros (own-box edges, B12.14). No snapshot or gate value changed.
+Drag sums over the verifier's block inputs at (60, 25) and (-150, 80):
+defects, fan_x, x_drawn and edge_node_x no worse than 157117e.
+
+Tests: a_drag_keeps_a_layout_column_only_where_it_adds_no_crossing,
+a_redrawn_frame_keeps_its_room_off_what_it_does_not_hold,
+a_followed_path_is_rounded_as_the_router_rounds_one,
+a_followed_label_stays_on_its_leg_clear_of_the_turn,
+a_resized_node_carries_its_followed_ends_onto_its_new_box,
+scene_hands_a_block_layouts_drawing_to_route; route_at_the_scenes_*
+and route_follows_a_drag_* run without the removed setting.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

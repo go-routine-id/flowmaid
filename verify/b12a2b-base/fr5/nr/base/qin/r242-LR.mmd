@@ -1,0 +1,9 @@
+flowchart LR
+    subgraph G[Édition générale des données]
+        m0[charge]
+        m1[queue]
+        m0 --> m1
+    end
+    s0[src0] --> G
+    s1[src1] --> G
+    s2[src2] -- "lbl4" --> G

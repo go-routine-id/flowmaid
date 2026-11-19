@@ -1,0 +1,29 @@
+flowchart LR
+  s0["user"]
+  subgraph g0["index zone"]
+    direction LR
+    m0["queue report"]
+    m1["web cache billing"]
+    m2["store metric report"]
+    m3["cache cache notify"]
+    m0 --> m2
+    m0 --> m3
+  end
+  subgraph g1["billing cart billing zone"]
+    m4["api db order"]
+    m5["api order user"]
+    m6["auth"]
+    m4 --> m5
+    m5 --> m6
+  end
+  subgraph g2["index zone"]
+    m7["auth db search"]
+    m8["store index auth"]
+    m9["web store"]
+    m7 --> m8
+    m7 --> m9
+  end
+  s0 --> g0
+  s0 --> g1
+  s0 --> m7
+  m8 --> m4

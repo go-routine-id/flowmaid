@@ -1,0 +1,70 @@
+flowchart BT
+  n1["audit"]
+  n2["notify"]
+  n3["auth"]
+  subgraph B0["Back office and finance"]
+    n4["worker"]
+    n5["ship mail index"]
+    n6["parse"]
+    n7["ship"]
+  end
+  subgraph B1["Back office and finance"]
+    n8["worker"]
+    n9["db"]
+    n10["api"]
+    subgraph B1s0["Edge services 0"]
+      n11["mail<br/>billing"]
+      n12["queue"]
+      n13["report"]
+    end
+  end
+  subgraph B2["Ops"]
+    n14["parse"]
+    n15["search"]
+    n16["search parse audit"]
+    n17["api"]
+  end
+  subgraph B3["Fulfilment desk"]
+    n18["worker"]
+    subgraph B3s0["Storefront 0"]
+      n19["ingest"]
+      n20["worker"]
+    end
+    subgraph B3s1["Ingest 1"]
+      n21["worker"]
+    end
+  end
+  n22["worker"]
+  n23["index mail cache<br/>index"]
+  n21 --> n16
+  n6 -.->|mail| n18
+  n14 --> n18
+  n21 --> n15
+  n4 -.-> n17
+  n4 -.-> n20
+  n1 ==>|store| n10
+  n19 ==>|cache| n20
+  n16 --> n19
+  n3 -.-> n7
+  n16 -.-> n2
+  n21 -.-> n11
+  n15 --> n4
+  n5 -.-> n6
+  n6 -->|mail| n17
+  n23 --> B0
+  n12 ==>|api| n7
+  n10 -.-> n8
+  n12 -.-> n9
+  n13 --> n16
+  n23 -.->|split| n11
+  n6 ==> n7
+  n18 -->|report| n21
+  n18 --> n19
+  n11 --> n2
+  n23 -.-> n4
+  n20 --> n2
+  n19 ==> n21
+  n18 --> n8
+  n18 ==>|merge| n5
+  n13 ==> n15
+  n15 ==> n5

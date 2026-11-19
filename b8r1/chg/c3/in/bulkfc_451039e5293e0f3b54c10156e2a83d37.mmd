@@ -1,0 +1,22 @@
+flowchart RL
+  subgraph F1 [Frame one with a long title]
+    a1[Alpha] --> a2[Beta]
+    a2 --> a3[Gamma]
+  end
+  subgraph F2 [Two]
+    b1[Delta] --> b2[Epsilon]
+  end
+  s([Start]) --> a1
+  s --> b1
+  a3 --> s
+  b2 --> s
+  a3 --> b1
+  b2 --> F1
+  F2 --> a1
+  a1 --> a1
+  a3 --x a1
+  b2 --o b1
+  z{{Hex}} --> s
+  a3 --> z
+  linkStyle 2 stroke-width:16px,stroke:#c33
+  linkStyle 3 stroke-width:6px

@@ -1,0 +1,52 @@
+{
+  "v": 3,
+  "assetGroups": {
+    "Logos": {
+      "files": {
+        "as-mark.svg": {
+          "blob": "9ee0950409d0b8d43c35ff5dca54e403",
+          "name": "as-mark.svg",
+          "size": 354,
+          "type": "image/svg+xml"
+        }
+      },
+      "name": "Logos",
+      "order": [
+        "as-mark.svg"
+      ],
+      "tile": "l"
+    }
+  },
+  "blobs": {},
+  "createdOnFiles": {
+    "at": "2026-10-31T06:11:30Z",
+    "v": 1
+  },
+  "docs": {
+    "readme": "project/README.md",
+    "sections": []
+  },
+  "groups": [
+    "Logos"
+  ],
+  "lastChange": {
+    "at": "2026-10-31T18:29:00Z",
+    "by": "Claude",
+    "via": "Claude",
+    "note": "Crumpled paper edge under the hero: new CrumpleEdge component, Hero edge=\"crumple\" + edgeSeed, fold-hi / fold-lo / fold-shadow / nav-fold-hi / nav-fold-lo tokens, Paper crease section in the brand book."
+  },
+  "layout": "files",
+  "libraries": [
+    {
+      "name": "react",
+      "version": "18"
+    },
+    {
+      "name": "react-dom",
+      "version": "18"
+    }
+  ],
+  "namespace": "AS",
+  "sections": {},
+  "title": "Arian Saputra"
+}

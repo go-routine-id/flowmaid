@@ -1,0 +1,16 @@
+architecture-beta
+    group g0(database)[Private API]
+    group g1(disk)[Frontend]
+    service s0(internet)[Service 0]
+    service s1(internet)[Service 1] in g0
+    service s2(cloud)[Service 2]
+    service s3(server)[Service 3] in g1
+    service s4(disk)[Service 4]
+    service s5(database)[Service 5]
+    service s6(database)[Service 6] in g0
+    service s7(server)[Service 7] in g0
+    s0:L -- R:s2
+    s4:R --> B:s2
+    s6:R --> R:s4
+    s2:R -- B:s3
+    s5:R --> L:s6

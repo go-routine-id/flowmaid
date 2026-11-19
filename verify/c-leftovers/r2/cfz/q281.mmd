@@ -1,0 +1,24 @@
+classDiagram
+A --|> B
+B ..> C : uses
+B ..> D
+A <|-- E
+B --|> F : has many of
+E ..|> F
+D -- B
+D *-- D : d0
+D *-- D : d1
+D *-- D : d2
+D *-- D : d3
+D ..> D : d4
+D --> D
+D "1" --> "*" D : d6
+D ..> D : d7
+A *-- A
+A *-- A : a1
+A o-- A : a2
+A o-- A : a3
+A ..> A : a4
+A --> A : a5
+A *-- A : a6
+A --> A : a7

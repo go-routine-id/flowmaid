@@ -1,0 +1,11 @@
+architecture-beta
+    service s0(monitoring)[Service 0]
+    service s1(monitoring)[Service 1]
+    service s2(disk)[Service 2]
+    s1:R -- L:s0
+    s1:L -- R:s2
+    s2:T --> B:s0
+    s0:B --> T:s1
+    s0:T -- L:s1
+    s0:R --> B:s1
+    s2:R --> L:s0

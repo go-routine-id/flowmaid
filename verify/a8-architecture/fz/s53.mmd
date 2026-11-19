@@ -1,0 +1,27 @@
+architecture-beta
+    group g0(disk)[Ops]
+    group g1(disk)[Edge] in g0
+    service s0(database)[Service 0] in g1
+    service s1(internet)[Service 1] in g1
+    service s2(database)[Service 2]
+    service s3(server)[Service 3]
+    service s4(internet)[Service 4]
+    service s5(monitoring)[Service 5] in g0
+    service s6(server)[Service 6] in g0
+    service s7(monitoring)[Service 7] in g1
+    service s8(database)[Service 8] in g1
+    service s9(database)[Service 9] in g0
+    service s10(internet)[Service 10] in g1
+    service s11(disk)[Service 11] in g0
+    service s12(cloud)[Service 12] in g1
+    s3:R --> L:s9
+    s5:B -- T:s2
+    s8:T --> B:s1
+    s7:L --> R:s4
+    s10:L --> R:s7
+    s11:L --> T:s12
+    s10:T --> B:s2
+    s10:R --> L:s11
+    s10:T --> R:s12
+    s4:L -- L:s2
+    s12:B -- L:s9

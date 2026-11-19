@@ -1,0 +1,11 @@
+flowchart LR
+    subgraph G[Payments]
+        m0[w]
+        m1[auth service]
+        m0 --> m1
+    end
+    s0[src0] --> G
+    s0 --> G
+    s1[src1] --> G
+    s2[src2] --> m1
+    G --> z2[after]

@@ -1,0 +1,23 @@
+flowchart TB
+  H0 ==>|ok| N15
+  H0 -->|x| N9
+  H0 -.-> N9
+  H0 -.->|ok| N1
+  H0 --> N9
+  H0 -.->|express| N9
+  H0 ==> N6
+  H0 ==>|yes| N0
+  H1 --- N2
+  H1 ---|gift wrap| N12
+  H1 ==> N12
+  H1 ---|x| N6
+  H2 -.-> N10
+  H2 -->|gift wrap| N6
+  H2 --> N1
+  H2 ==> N4
+  H2 ==>|no| N1
+  H2 -.->|a much longer label here| N2
+  H2 ==>|ok| N2
+  H2 --- N2
+  H2 ---|a much longer label here| N2
+  H2 ==> N0

@@ -1,0 +1,15 @@
+classDef primary fill:#e8f0fe,stroke:#4285f4,stroke-width:3
+config margin 24
+
+lane backend "Backend" {
+  a[Auth]::primary
+  b[API Gateway]
+  a --> b
+}
+lane web "Web" {
+  c{Check}
+  # ported edge: enter b through its top
+  c:bottom --> b:right
+}
+style a-->b color:#188038,dash:4 2
+style c fill:#fff8e1

@@ -1,0 +1,12 @@
+stateDiagram-v2
+direction LR
+[*] --> Work
+state Work {
+  [*] --> A
+  A --> B
+  A --> C
+  B --> C
+  note left of C : a note here
+}
+Work --> Done
+Done --> [*]

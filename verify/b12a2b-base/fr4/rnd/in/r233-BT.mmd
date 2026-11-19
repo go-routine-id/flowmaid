@@ -1,0 +1,19 @@
+flowchart BT
+    subgraph O[Core]
+        subgraph G[Édition générale des données]
+            m0[queue]
+            m1[auth service]
+            m2[charge]
+        end
+        k[k]
+    end
+    m0 --> k
+    m2 --> k
+    s0[src0] --> m2
+    s1[src1] --> G
+    s2[src2] --> G
+    s2 --> G
+    s3[src3] -- "lbl3" --> m2
+    s3 --> G
+    m2 --> z[end]
+    G --> z2[after]

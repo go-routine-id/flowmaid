@@ -1,0 +1,16 @@
+flowchart LR
+    subgraph O[Édition générale des données]
+        subgraph G[MMMM WWWW QQQQ]
+            m0[charge]
+            m1[charge]
+        end
+        k[k]
+    end
+    m0 --> k
+    m1 --> k
+    s0[src0] --> G
+    s1[src1] --> G
+    s1 --> m0
+    s2[src2] --> m0
+    s3[src3] --> m0
+    G --> z2[after]

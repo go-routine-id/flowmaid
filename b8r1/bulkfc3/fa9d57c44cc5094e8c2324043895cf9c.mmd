@@ -1,0 +1,19 @@
+flowchart TD
+    N0{Notify retry}
+    N1{Queue}
+    N2[/Validate queue/]
+    N3(Fetch)
+    N4[Parse notify]
+    N5{Notify}
+    N6([Check])
+    N7[Check]
+    N8([Load])
+    N0 --> N1
+    N1 -->|fail| N2
+    N2 --> N3
+    N2 --> N4
+    N4 --> N5
+    N4 -->|yes| N6
+    N6 --> N7
+    N7 --> N8
+    N2 -.-> N1

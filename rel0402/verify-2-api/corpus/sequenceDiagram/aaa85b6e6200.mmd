@@ -1,0 +1,30 @@
+sequenceDiagram
+    autonumber
+    participant A as Alice
+    participant B as Bob
+    participant C as Carol
+    A->>+B: start
+    alt everything is fine
+        B->>C: ask
+        Note right of C: a fairly long note on the right side
+    else something failed badly
+        B-->>A: error
+        Note left of A: left note in else
+    else third branch
+        B->>B: retry once more
+    end
+    B-->>-A: done
+    loop every 30 seconds
+        opt only when idle
+            Note left of A: nested left note
+            A->>A: think hard about it
+        end
+        par fan out
+            A->>B: one
+        and second branch label
+            A->>C: two
+        end
+    end
+    loop last
+        C->>C: a self-message label beside the last lifeline
+    end

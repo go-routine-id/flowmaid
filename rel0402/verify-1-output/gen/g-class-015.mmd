@@ -1,0 +1,43 @@
+classDiagram
+direction LR
+C5 "1" --> "*" C9
+C4 "1" ..|> "*" C17 : 日本語
+C4 *-- C0 : gamma
+C17 ..|> C17 : beta
+C2 --> C10
+C3 <--> C4
+C5 -- C1
+C3 "1" *-- "*" C0
+C9 --> C3
+C11 "1" o-- "*" C5
+note for C10 "Customer Order"
+note for C8 "gamma"
+note for C6 "beta"
+class C1 {
+  +int id
+  +name() String
+}
+class C2 {
+  +int id
+  +name() String
+}
+class C4 {
+  +int id
+  +name() String
+}
+class C9 {
+  +int id
+  +name() String
+}
+class C14 {
+  +int id
+  +name() String
+}
+class C17 {
+  +int id
+  +name() String
+}
+class C19 {
+  +int id
+  +name() String
+}

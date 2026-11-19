@@ -1,0 +1,12 @@
+flowchart LR
+  H0 ==>|retry| N6
+  H0 -.-> N1
+  H0 ==>|gift wrap| N0
+  H0 --> N3
+  H0 ---|gift wrap| N0
+  H0 ---|x| N5
+  N4 --> N0
+  N1 -->|yes| N1
+  N5 --> N1
+  N7 -->|ok| N1
+  N3 --> N7

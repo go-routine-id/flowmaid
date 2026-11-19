@@ -1,0 +1,28 @@
+stateDiagram-v2
+direction RL
+[*] --> A
+state K0 {
+  [*] --> K0_0
+  K0_0 --> K0_1
+  note left of K0_1 : in533
+  K0_0 --> [*]
+}
+state K1 {
+  direction LR
+  [*] --> K1_0
+  K1_0 --> K1_1
+  K1_0 --> K1_2
+  K1_1 --> K1_3
+}
+A --> K0 : g1
+A --> K1 : g2
+K0 --> B0
+K0 --> B1
+B0 --> K1 : back
+note left of K1 : on619
+note right of K1 : on574
+note left of A
+  on75 line one
+  second line
+end note
+note left of K1 : on762

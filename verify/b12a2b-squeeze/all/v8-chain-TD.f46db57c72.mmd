@@ -1,0 +1,22 @@
+flowchart TD
+    subgraph A[Data ingestion workers]
+        a1[a1 wide node]
+        a2[a2]
+    end
+    subgraph B[Data ingestion workers two]
+        b1[b1]
+        b2[b2 wide node]
+    end
+    subgraph C[Data ingestion workers three]
+        c1[c1]
+        c2[c2 wide node]
+    end
+    a1 --> b1
+    a1 --> b2
+    b1 --> c1
+    b1 --> c2
+    a2 --> c2
+    p[p] --> B
+    p --> b1
+    q[q] --> C
+    q --> c1

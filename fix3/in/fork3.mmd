@@ -1,0 +1,12 @@
+stateDiagram-v2
+    state fork_state <<fork>>
+    [*] --> fork_state
+    fork_state --> State2
+    fork_state --> AVeryLongStateNameThatIsWide
+    fork_state --> S4
+    state join_state <<join>>
+    State2 --> join_state
+    AVeryLongStateNameThatIsWide --> join_state
+    S4 --> join_state
+    join_state --> State4
+    State4 --> [*]

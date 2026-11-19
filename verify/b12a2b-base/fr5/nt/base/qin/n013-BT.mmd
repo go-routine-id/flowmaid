@@ -1,0 +1,16 @@
+flowchart BT
+    subgraph A[Édition générale]
+        a0[a0]
+        a1[a1]
+    end
+    subgraph B[Édition générale x]
+        b0[b0]
+        b1[b1]
+    end
+    a0 --> b0
+    a1 --> b0
+    a1 --> b1
+    p[p] --> B
+    p --> b0
+    q[q] --> B
+    q --> b1

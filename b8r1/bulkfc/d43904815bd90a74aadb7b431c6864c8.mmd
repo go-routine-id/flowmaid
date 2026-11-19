@@ -1,0 +1,20 @@
+flowchart TD
+    S1[Source one] --> H{{Hexagon hub}}
+    S2[Source two] --> H
+    S3[Source three] --> H
+    S4[Source four] --> H
+    H --> P[/Parallelogram out/]
+    H --> Q[\Lean left out\]
+    H --> D[(Database store)]
+    H --> T[/Trapezoid shape\]
+    P e1@--> D
+    Q --> D
+    T --> D
+    D --> C((Circle))
+    D --> St([Stadium end])
+    H --> H
+    P --> P
+    D --> D
+    e1@{ curve: step }
+    D -.-> S1
+    linkStyle 4 stroke:#c00,stroke-width:4px

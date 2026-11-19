@@ -1,0 +1,13 @@
+flowchart TD
+  subgraph X[Outer frame]
+    subgraph Y[Source side]
+      a[alpha] --> b[beta] --> b2[gamma]
+    end
+    subgraph Z[A much longer inner target title here]
+      c[c] --> c2[delta] --> c3[epsilon]
+    end
+    b2 --> c
+    a --> c2
+    a --> c3
+  end
+  c3 --> out[Out]

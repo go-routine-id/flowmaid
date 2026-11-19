@@ -1,0 +1,22 @@
+classDiagram
+direction LR
+A ..|> B : owns
+A "1" -- "*" C
+C "1" *-- "*" D
+D --> E
+E ..> F : x
+C *-- A
+E --|> C
+D o-- D
+D *-- D : d1
+D *-- D : d2
+D o-- D : d3
+D ..> D
+D --> D
+E ..> E : e0
+E --> E : e1
+E ..> E : e2
+E o-- E
+E "1" --> "*" E
+E *-- E
+C "1" --> "*" C

@@ -1,0 +1,609 @@
+Merge origin/dev into the subgraphs-as-blocks work branch
+
+Brings 0.39.0 (crossing hops, comb), 0.40.0 (class diagrams, state
+composite bars), the roadmap page and the README and docs-site changes
+into step 1 of the block layout. Dev's code is kept exactly; the block
+layout stays behind its switch, which is off.
+
+Conflicts and how each was resolved:
+- src/scene.rs, route_labelled: dev split it into route_labelled and
+  route_fitted (bars fitted once; the rest of a split graph and
+  route_partial's fallbacks call route_fitted directly). Dev's split is
+  kept as written. The block layout's test-only record of the mode an
+  entry point decides (levels::note_used for Entry::Route) moves from
+  route_labelled into route_fitted, so every part route() draws is still
+  recorded once, the rest of a split graph included.
+- src/levels.rs: dev derives PartialEq for Graph; BlockLinks, the type
+  of the Graph field the block layout adds, derives it too.
+- Cargo.toml, src/compound.rs, src/layout.rs, src/model.rs and the rest
+  of src/scene.rs merged without conflict: dev's version and lint table
+  next to the block switch's check-cfg entry, dev's bar fitting next to
+  compound::any_part, dev's PartialEq derives next to block_links. The
+  block code adds no Scene literal, so the plain_crossings sync needs no
+  change; both cfgs build without warnings.
+
+Re-recorded: tests/fixtures/identity.tsv, which pins the default build,
+was recorded again from a build of origin/dev itself (f9aa9c0, in a
+scratch worktree with the identity test ported and the package's
+fixtures copied in; dev has no switch, and the class column was carried
+over and is checked by this tree's own test). All 116 rows came out byte
+for byte as recorded at the start, so only the header comment changes.
+BLOCK_CEILINGS and dev's DEFECT_BASELINE, GAP_FLOORS and ceilings are
+unchanged.
+
+Byte identity, default build, origin/dev against this merge: 12,095
+inputs (the repository's fixtures and examples, the 25-file render
+corpus, the 17-file perf corpus, stress inputs and generated bulk sets)
+through render_svg, 2,320 of them flowcharts or state diagrams also
+through scene(), route() and route_partial() (SVG and geometry), and 169
+through the CLI: 0 differences. tests/fixtures/quality/dense-td.mmd has
+the same drawing as on dev.
+
+Block mode: harness tables on the repository fixtures and examples equal
+10e336d's row for row (timing aside); the public fixture and its
+permutations 6 crossings (bt 7), dense-td 49, nested-chain lateral_x 0;
+local acceptance inputs: unchanged, all musts met. With the switch on,
+scene(), route() and route_partial() draw every flowchart and state input
+above exactly as 10e336d does; the class diagrams that differ from
+10e336d are dev's 0.40.0 changes, equal to dev's output. The block sweep
+is unchanged (200 diagrams, blocks add hard zeros on the same 8), and
+the suite-on failing tests are the same 8 library tests and 7 quality
+gates as at 10e336d, with the same messages.
+
+Docs: roadmap row 1 and the dense test diagram's numbers (49 crossings
+in block mode against 66 today, static drawing), last-updated date;
+CHANGELOG [Unreleased] Internal line.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5
+
+Merge pull request #132 from go-routine-id/main
+
+Sync main → dev after the docs roadmap promote
+Merge pull request #131 from go-routine-id/dev
+
+Promote dev → main: roadmap on the docs page (docs only)
+Merge pull request #130 from go-routine-id/docs/docs-roadmap
+
+docs(site): roadmap section on the docs page, read from docs/ROADMAP.md
+docs(site): roadmap on the docs page, read from docs/ROADMAP.md so it never goes stale
+
+Merge pull request #129 from go-routine-id/main
+
+Sync main → dev after the docs page promote
+Merge pull request #128 from go-routine-id/dev
+
+Promote dev → main: restyled docs page (docs only)
+Merge pull request #127 from go-routine-id/docs/docs-restyle
+
+docs(site): restyle the docs page like the landing, fit phones, update to 0.40.0
+docs(site): docs page in the landing's ink/paper style, fits phones, numbers from 0.40.0
+
+Merge pull request #126 from go-routine-id/main
+
+Sync main → dev after the README benchmark promote
+Merge pull request #125 from go-routine-id/dev
+
+Promote dev → main: benchmark at the top of the README (docs only)
+Merge pull request #124 from go-routine-id/docs/readme-benchmark-top
+
+docs(readme): benchmark at the top
+docs(readme): benchmark right after the pitch, so the speed claim shows its numbers first
+
+Merge pull request #123 from go-routine-id/main
+
+Sync main → dev after the roadmap promote
+Merge pull request #122 from go-routine-id/dev
+
+Promote dev → main: roadmap page (docs only)
+Merge pull request #121 from go-routine-id/ccr-ccc6d89a-5cxd7e-par
+
+docs: add a roadmap page (docs/ROADMAP.md)
+docs: a roadmap page (docs/ROADMAP.md), linked from the README
+
+What the drawing-quality work has shipped release by release (0.34.0 to
+0.40.0), the subgraph layout in progress with its four steps and its
+open question, what is listed for later with the open issues, and how a
+step is reviewed before it is merged. Syntax coverage stays on the board
+in issue #10.
+
+README: one bullet under "Mermaid parity roadmap" links the page; the
+sentence that every board item has its own issue is dropped, since most
+of the board's open items have none.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5
+
+Merge pull request #120 from go-routine-id/main
+
+Sync main (0.40.0) back into dev
+Merge pull request #119 from go-routine-id/release/0.40.0
+
+Release 0.40.0 — dotted class names, class fans and self-relations, fork and join bars under a drag
+docs(release): drop one timing example the fix check found mislabelled
+
+The cost list named a 'slowest input 3 -> 5.5 ms to render'. The figure
+is one input's, that input is not the slowest of the set, and the 5.5 ms
+shows in few runs. The two examples the review measured stay.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5
+
+docs(release): 0.40.0 notes as the claim review leaves them
+
+A review of every claim in the release text found 13 real points; this
+is their fix. No behaviour changes (one code comment).
+
+CHANGELOG [0.40.0]
+- A placeholder stood where the benchmark bullet belongs. The bullet now
+  says the 0.39.0 table stands, how the two releases were compared
+  (fastest of three alternated rounds per sample: 0.99x; single rounds
+  0.76x to 1.07x) and what two whole-table runs gave.
+- The costs of the new loop sharing were scoped to classes with four or
+  more self-relations. Two of them are wider: loop ends hang past the
+  corners from three loops on a class without members, and under a drag
+  a loop changes face more often whatever the number of loops. All four
+  measured rates are quoted, and the timing cost is stated as measured
+  (10-14 % in total over the review's 244 inputs, single ones up to
+  three times as long).
+- Dotted names: a dot at an end of a name is an error in a relation, an
+  inline member and a note; a class declaration takes it as written, as
+  before.
+- The fan entry's 3.5 px matched nothing drawn; the figure is dropped
+  (also in the test comment).
+- State composites: mermaid follows the diagram's direction when a
+  transition crosses the composite's border either way, and drops a
+  composite's own direction also for a note on the composite itself.
+
+README
+- The two state rows of the differences table say the same.
+- Self-relation labels sit beside the loops where there is room.
+- The benchmark note names how 0.99x was computed and which run the
+  last parenthesis means.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5
+
+Merge pull request #118 from go-routine-id/ccr-ccc6d89a-5cxd7e-par
+
+C-leftovers: class and state follow-ups (dotted class names, fans of six, self-relations, fork/join bars under drag)
+release: 0.40.0 — dotted class names, class fans and self-relations, fork and join bars under a drag
+
+- Version 0.40.0. CHANGELOG [0.40.0] gains a Highlights summary; the costs
+  the package's independent review measured on classes with four or more
+  self-relations are listed with the entry under Fixed.
+- README: version mentions; the benchmark table stands as measured on
+  0.39.0, since 0.40.0 draws all 25 samples byte for byte the same and in
+  the same time (three alternated rounds of both releases: 0.99x in the
+  geometric mean); two runs of the whole table on a busier box gave 127x
+  and 134x and are named in the method note.
+- docs/img/compare: re-rendered with the 0.40.0 caption (the drawings are
+  unchanged).
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5
+
+Merge dev (0.39.0) into the C-leftovers branch
+
+README: the three C-leftovers edits are ported into the README as 0.39.0
+rewrote it (dotted class names are supported; how a class's self-relations
+are shared among its faces; a state composite with no direction of its
+own), with the differences from mermaid as rows of the differences table.
+CHANGELOG: the C-leftovers entries stand under [Unreleased]; the 0.39.0
+section is as released.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5
+
+fix(class): each self-loop under a box counts, and loops are shared again against the routes (C-leftovers review r2 #1-#9)
+
+Review r2 #1/#2 (blocking): with a relation on one more face of a class
+(`P <|-- A/B/C`, `B --> Q`, five `B --> B`, `A --> A`) all five loops of
+B went to one face, the outer two under the sibling C, where 3abbfeb
+drew none under a box. `loop_faces` ranked a sharing by (hits, near,
+pref): a face's loops and labels were one region, and a region meeting a
+box (or an end on the face) one hit however many loops lay in the box,
+the same as a label chip within LOOP_CLEAR of a box, so `near` (a
+neighbour's loop) picked the deep stack.
+
+- A sharing now costs (loops under a box, clutter, boxes close by,
+  preference). Each loop is measured by itself as it would be drawn, so
+  what lies under a box is exact and comes before all else. The clutter
+  (LOOP_CLUTTER) counts a loop on a face per relation ending there, the
+  crossings with lines passing by (a relation, also one of the class
+  ending on another face, a neighbour's loop, the class's own loops
+  round a corner), labels on a box, under a line or on a label.
+- `part_self_loops` runs twice: before `orthogonalize` (which spreads a
+  face's relation ends round the loop ends it finds) against the
+  relations as the layout drew them, an estimate, and again afterwards
+  against the routes as drawn and every other loop in its place. In the
+  second run no loop moves onto a face where relations end.
+- Cost: loops are measured against the field lazily (most classes keep
+  the first sharing tried), routes by their corners, loop pairs once.
+  Class scene()/route()/drag over 91 loop-heavy inputs: 160/121/127 ms
+  before, 165/127/134 ms now in total (best of 7, two runs).
+
+Measured against 3abbfeb with the verifier's counters (classq2), scene():
+- its 432-input sweep (r2/lp): loops under a box 12 inputs -> 0 (r1: 69),
+  crossings worse 0 / better 163, labels struck worse 0 / better 375;
+- 1,700 random loop diagrams (r2/cfz, cfz2): loops under a box worse 0 /
+  better 9, crossings worse 4 / better 209 (r1: 12 / 64);
+- its 6,343-file class set (cq2): no counter worse in any scene();
+  25,368 drags: loops under a box worse 0 / better 30 (r1: 5 / 9),
+  crossings worse 10 / better 1,299 (r1: 27 / 823).
+The repros named in the review (TB_b5/TB_b4/LR_b6, q204, q252, q064,
+q438, p0045, q260 6->4 crossings, q002 0->0, LR_b8 dragC) are clean.
+What is left: q000, q108, q158, p0931 draw 1-3 crossings more (eight
+loops on a class with relations on three faces), and where every face is
+taken a loop goes round a relation's end.
+
+Non-blocking items:
+- #5 README class bullet says what the sharing does and what it cannot.
+- #6 CHANGELOG: the fan entry's "none worse" is scene()/route(); the
+  drag frames that trade crossings for struck labels are named.
+- #7 compound.rs: the LAID_MAX comment and the CHANGELOG say what a
+  diagram with more than 32 bar-read blocks pays (every route lays them
+  out; output unchanged).
+- #8 parser: an `o` glued to the line before a dot is the first part of
+  a dotted name (`x.o--o.y`, `A--o.B`), as the README says.
+- #9 the public `route_partial` doc and the CHANGELOG state the
+  unmoved-block case (a bar inside a block none of whose nodes moved
+  keeps `base`'s length).
+
+Tests: self_loops_stay_off_boxes_whatever_ends_on_the_other_faces (the
+review's family, scene and route in place),
+loop_faces_count_each_loop_and_hold_the_faces_where_relations_end,
+dotted_names_in_relations extended. No snapshot or gate changed;
+flowchart and state output unchanged (perf.sh quality columns identical
+to the round before, timings within the drag budget).
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5
+
+fix(state): every builder fits a bar to a block's static frame, kept from the last layout (C-leftovers review r1 #1, #3; B9)
+
+Review r1 #1 (blocking): the bar fix of 2e5dacd was incomplete.
+- A fork or join that branches to a plain composite holding a block
+  (`f --> Outer`, `Outer` holds `Inner` with `direction LR`) was still
+  resized by `route()` and `route_sized()`: 335 px in `scene()` and
+  `route_partial()`, 460 with `d` dragged 250 px. `rest_sizes` swapped
+  the static frame in only for a proxy with a direct edge to a bar,
+  while `fit_bars` measures a composite branch over its members,
+  proxies included. The proxies a bar's length reads are now those
+  `scene::bar_branches` names, built from the same spans `fit_bars`
+  walks (`bar_spans`).
+- `route_partial()` with a base that is not this graph's (an edge label
+  edited) drew the rest afresh with the bar fitted to the proxy's box
+  as the drag left it (446 px where `route()` drew 321). The rest's
+  bars no longer come from `base`: `compound::route_partial` fits them
+  as `compound::route` does (`rest_sizes`) and hands them to
+  `route_partial_with` as given boxes, which it uses as they are in the
+  drag frame and in every fallback route. So the two builders agree
+  whatever `base` holds. (A part none of whose nodes moved is still
+  returned as `base` drew it, as an unmoved graph is.)
+
+Review r1 #3 (blocking, drag budget): to learn that frame `route()` ran
+a full static layout of every block a bar branches to on every call:
+a 60-state block 3.0 -> 7.2 ms, 120 states 11.6 -> 31 ms. The frame is
+now kept from the last layout of the same block (`compound::LAID`, a
+thread-local memo like `layout::WRAP_MEMO`: keyed by the block's whole
+part graph, node sizes and labels compared for equality, 32 blocks at
+most, oldest dropped first; `scene()` fills it as it draws). Output is
+the same with or without it; only a `route()` of a graph or sizes not
+laid out since pays for the layout, once. Timings, 3abbfeb / 2e5dacd /
+now, best of three alternated runs (the other track was running; the
+three runs agree): fork to a 60-state block `route()` 2.9-3.1 /
+7.2-8.6 / 3.0-3.2 ms; 25 states 0.58-0.68 / 1.57-1.67 / 0.59-0.62;
+four 15-state blocks 0.34 / 0.93-1.03 / 0.34-0.39; 120 states
+11.6-11.7 / 31-32 / 11.7-11.9; x7 0.036-0.040 / 0.07 / 0.037-0.042;
+r0_y2_state_nested 0.64-0.75 / 1.32-1.42 / 0.64-0.71. `route_partial`
+on those: 1.9-2.8 / 1.9-2.7 / 1.9-2.6 and 4.3-5.8 / 3.8-3.9 / 3.8-4.9.
+
+For the memo's key `model::Graph`, `Node`, `Edge`, `Subgraph` and
+`SubEdge` derive `PartialEq` (additive).
+
+Checks: over 146 state diagrams with bars (every tenth node dragged by
+three offsets; route, route_sized, route_partial and the drag back) no
+bar differs from the static one (3abbfeb: 369 did); the static and
+routed SVG of 4,846 flowchart and state inputs (scene, route, three
+drags each by route and route_partial) are byte-identical to 3abbfeb
+except four state diagrams whose bars a drag used to stretch; the
+25-diagram corpus is byte-identical. No snapshot or gate changed.
+Tests: `a_drag_inside_a_block_resizes_no_bar` (now also a composite
+holding a block and a block in a block), new
+`a_stale_base_fits_a_bar_as_route_does`,
+`the_kept_block_frames_change_no_bar`,
+`scene::bar_branches_are_the_sizes_a_bar_reads`. CHANGELOG updated.
+
+Correction to db4d89b's message: of the 26 class inputs it returns to
+3abbfeb's bytes, 15 had measured worse (the review's twelve fans, bulk
+`aa81d3da` and two fans of an earlier sweep) and 11 had changed without
+a measured difference.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5
+
+fix(class): a curve without a place leaves its fan stacked; `o.A` names documented (C-leftovers review r1 #2, #4, #5)
+
+Review r1 #2 (blocking): since 842051c a curve that would be a Z joins
+the jogs of its gap when they are stacked (`nest_jogs`). In a wide `LR`
+fan with cardinalities the two outermost relations have no lane, so
+their group found no drawing at all, and then the group's routes, which
+stack into a staircase without the curves, were left as first drawn:
+`in24_comp_l1_c1_LR` 20 -> 76 crossings, `in38_comp_l1_c1_LR` 32 -> 182,
+bulk `aa81d3da` 24 -> 110, label chips struck, the two curves still
+curves. (The cause was this skipped stacking; `before = usize::MAX`
+only made a group that did place every jog win at any cost.)
+
+`nest_jogs` now runs in passes (`nest_pass`): with every such curve;
+if a curve's group finds no drawing to keep, again from the routes as
+laid with that curve left alone; and, should that leave another without
+one, with none - the stacking of 3abbfeb. A group holding a curve keeps
+its new routes only when they cost less than the drawing with the
+curve, the curve counted at what it crosses and covers (`curve_cost`:
+`drawing_cost` reads a curve as free).
+
+Against 3abbfeb, over the reviewer's 2,784 generated fans (scene, route
+and two drags each) 96 drawings are better and none worse; the 11
+inputs the review named, and 15 more that had changed without a
+measured difference, are byte-identical to 3abbfeb again. Against
+842051c nothing else changes (6,378 class inputs, scene, route and two
+drags: 26 differ, all of them back to 3abbfeb's bytes).
+
+Review r1 #4 (docs): the CHANGELOG said no other class diagram tried
+draws differently. Of the reviewer's 1,949 class inputs, six diagrams
+of the bulk corpus lose their curves (1-2 -> 0, crossings 4-36 -> 0-2)
+and two more trade one curve for a route in `route()`; the entry says
+so, and what a curve without a place keeps.
+
+Review r1 #5 (docs): a dotted name whose first part is `o` (`o.A --> B`,
+`class o.A`, `o.A : +x int`) is accepted here and rejected by mermaid's
+lexer, like the `pkg.o` cases: documented (CHANGELOG, README) and
+tested with them.
+
+Tests: `a_wide_fan_keeps_its_staircase_beside_a_curve_without_a_place`
+(fails on 842051c: 24 x `--*` routes cross), `dotted_names_in_relations`
+extended. No snapshot or gate changed; the 25-diagram corpus and the
+examples are byte-identical.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5
+
+Merge pull request #117 from go-routine-id/main
+
+Sync main (0.39.0) back into dev
+Merge pull request #116 from go-routine-id/release/0.39.0
+
+Release 0.39.0: crossing lines hop, a hub's fan is a comb
+docs(changelog): 0.39.0 highlights name the shorter README
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5
+
+docs(readme): only what is flowmaid's own; mermaid's syntax is linked, not restated
+
+The README taught mermaid syntax again (shape and arrow tables, a
+sample per diagram type) and ran long. It now assumes a reader who
+knows mermaid or can open its docs:
+
+- one table of the twelve diagram types with a link to mermaid's
+  syntax page for each, and one table of the other mermaid headers;
+- one table of the differences from mermaid (same source, different
+  result), gathered from the sections they were scattered over;
+- per type: the supported subset, what is not supported yet, and what
+  flowmaid adds or guarantees, as short bullets;
+- themes, --compact, the advance swimlane input, the interactive API,
+  how it works, performance and limitations kept, in shorter words.
+
+928 lines / 87 KB -> 618 lines / 54 KB. Unchanged byte for byte: the
+comparison images section, the install snippets, the benchmark and
+large-graph tables with their method note. No new claims: every
+sentence is backed by the old text or the code. Three independent
+audits (lost facts, accuracy, long-windedness) and a last check; their
+findings are applied, among them a wrong sentence on a subgraph's
+direction that compression had introduced.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5
+
+docs(scene): what plain_crossings means for to_svg, class and ER
+
+From the second check of the picking fix (verdict: sound, outputs
+byte-identical before and after): the field's comment said every scene
+to_svg paints has it false; to_svg is public and, handed an
+architecture or gitGraph scene, now draws its crossings without hops
+too. Class and ER scenes stay plain by paint_width, not by this field.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5
+
+fix(state): a drag inside a block resizes no fork or join; choice label gates (C-leftovers; B9 and phase A a3-state leftovers)
+
+B9 verification leftover: a fork or join that branches to a composite
+laid out in its own direction (a block, `compound.rs`) spans the block's
+frame, and the rest of the graph fitted the bar to its proxy — the frame
+as it stood. Dragging a state inside the block stretches the frame, so
+the bar stretched too (`f` 321 -> 446 px for `d` pulled 250 px), in
+`route()`, `route_sized()` and `route_partial()`, against the rule that
+a drag never resizes a bar (`fit_bars`, CHANGELOG 0.34.0); and since the
+fit only grows, a host passing its drawn sizes back kept the long bar.
+
+Now every builder draws the bar `scene()` draws:
+- `compound::route` fits the rest's bars to each block's frame as the
+  static layout draws it (`rest_sizes`: the block is laid out once more,
+  only where a bar of the rest branches to it — no cost otherwise) and
+  routes the rest through the new `scene::route_fitted`, which fits no
+  bar again;
+- `route_partial_with`, among proxies, keeps each bar at the size `base`
+  drew it, also when it falls back to a full route of the part (a base
+  that is not this graph's still fits afresh, as before).
+`fit_bars`' doc states the rule for block branches. Without proxies the
+paths are unchanged: `route_fitted(fit_bars(..))` is what
+`route_labelled` ran.
+
+Phase A state leftovers, both cleared by the flowchart label, port and
+orthogonal-edge work since and now locked:
+- twins3 (three transitions to one state): 'two' lay half over the
+  'three' stroke. `a_choice_twins_middle_label_keeps_beside_its_line`
+  let one twin stroke under a label through and checked one direction;
+  it now asks for none, each label within 1 px of its own line, in
+  TB/BT/LR/RL, in scene(), route() and drags across the flow (gate
+  tightened 1 -> 0: the old value locked the defect).
+- wide_lr (labels as long as the gap in an LR choice): the long chip
+  covered the start of a sibling transition. New
+  `a_wide_choice_label_keeps_off_its_siblings_lines`: no label has
+  another transition under it and each sits on or just beside its line,
+  same directions and builders.
+A choice dragged toward its targets leaves a gap shorter than its labels
+and still falls back to the general placer (accepted in phase A).
+
+Not done here, by plan: the top-down default mermaid gives a composite
+without a `direction` (it would send many more state diagrams down the
+block path whose placement B12 reworks; README and CHANGELOG now state
+the difference instead of claiming mermaid's rule), block order by
+declaration, and the proxy widening its layer.
+
+Output: static and routed SVG of 1 594 unique flowchart and state inputs
+(scene, route, three drags each), the 25-diagram corpus, the examples
+and every fixture are byte-identical; no snapshot changed. Test:
+`compound::a_drag_inside_a_block_resizes_no_bar`.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5
+
+fix(class): a fan of six nests, loops keep off a neighbour's loops, dotted names (C-leftovers; phase A a1-class leftovers)
+
+Three findings the phase A class verifiers left open.
+
+A plain fan of six (r4 `in6_l0_c0_TB`: `Svc0 --> Hub` … `Svc5 --> Hub`)
+drew its two outermost relations as curves across their neighbours'
+routes, 4 crossings where mermaid has none. The gap holds three lanes;
+the innermost jog took the middle one and the next the lane below, and
+the outermost — its leg into the hub 3.5 px beside the innermost's leg
+out of its class — had no lane left under both, so `ortho_pass` kept its
+curve, which `nest_jogs` (routes only) never saw. A curve between two
+facing faces (`stray_z`) now joins the jogs of its gap as the Z it would
+be: its group is drawn again in nesting order whether or not two jogs
+cross, and keeps the new routes whenever every jog finds a place, as the
+pass takes any route over a curve. A curve tied to no other jog stays.
+Fan-in and fan-out, every relation kind, TB/BT/LR/RL: 0 curves, 0
+crossings, three lanes a lane's room apart. The same rescues eleven
+labelled, carded classes into one in LR (8 crossings -> 0).
+
+Five and more self-loops beside a sibling (r6 `loopk/k5_TB`): a class's
+loops kept off the other boxes only, so B's loop on the side facing A
+set its label on A's own loop; eight unlabelled loops ran four deep
+through a sibling's loop and label, and two siblings with three loops
+each wove them together. `part_self_loops` now hands `loop_faces` the
+boxes of the loops and loop labels drawn so far (classes go in source
+order); a box, an end or the class's own loops still count before any
+number of a neighbour's loops, so no loop is sent into a box to spare
+one. Over 96 generated loop diagrams (1-8 loops, three mixes, four
+directions) loop/label collisions fall 210 -> 0.
+
+Dotted names (`A.B --> C`, `com.example.Order`), valid in mermaid, were
+parse errors in a relation, an inline member and a `note for`. A bare
+name is now runs of name chars joined by single dots; `..` stays the
+dotted line, a dot never starts or ends a name (errors, as in mermaid),
+and a name part that is just `o` is no aggregation glyph (`pkg.o--B`).
+
+Output: of some 950 class inputs (phase A verification sets, examples,
+generated fans) only the two repros, the generated fans of six and the
+LR fan of eleven change; examples/class.mmd, the 25-diagram corpus and
+every test fixture are byte-identical. No snapshot or gate changed.
+Tests: `a_fan_of_six_nests_without_a_curve`,
+`self_loops_keep_off_a_neighbours_loops`, `dotted_names_in_relations`.
+README (class routing notes, dotted names) and CHANGELOG updated.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5
+
+chore: drop the retired greedy wrapper; tidy a compound test (C-leftovers)
+
+`layout::wrap_text` and its `lines_at` helper have had no caller since
+journeys and timelines moved to the balanced wrapper (phase A follow-up
+c1-nonflow); `wrap::RETIRED_GREEDY_WRAP` only kept the unused function
+from failing the `-D warnings` build until `layout.rs` could drop it.
+All three go, with the wrapper's own unit test (the greedy filling it
+checked is still covered by `wrap::greedy`'s tests, the function the
+balanced wrapper falls back on), and `wrap::greedy` is private again.
+
+B9 verification nit: `let (labels, sizes) = …; let _ = labels;` in
+`a_bar_lies_across_its_blocks_own_flow` becomes `let (_, sizes) = …`.
+
+No output changes; no snapshot or gate changed.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5
+
+test(pick): the plain-scene tests bite, on a drawing the router makes
+
+From the independent check of 75f04ae (no blocking finding):
+- a_routed_architecture_crossing_is_picked_plain: an architecture
+  source whose router really draws a straight level edge across a
+  straight plumb one; a point pick and a marquee (hits_in_rect) on the
+  would-be arc find nothing, the crossing answers the later stroke, and
+  with the mark off both follow the hop.
+- a_gitgraph_scene_is_picked_plain probes at the radius a hop would
+  have over its 5 px strokes (8, read from the planner), where the
+  earlier probe at 5 passed with or without the fix.
+- Docs on ArchScene::scene and GitScene::scene: the mark travels with
+  the scene as built, cloned or edited in place; one rebuilt from
+  Scene::empty is picked as the flowchart painter draws.
+All three tests fail with the two reads of the mark switched off.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5
+
+docs: the 0.39.0 notes as the release review leaves them
+
+Highlights: a crossing right at an arrowhead or an edge's end is drawn
+plain (it keeps no gap); a comb nests a fan's teeth where that leaves
+fewer crossings and nothing else worse (fans can still cross: fan_x
+9 | 13); the benchmark sentence says where the rise from 106x to 113x
+comes from (er, journey and gitgraph took half their 0.38.0 time with
+no change to their code; flowchart and state 73x in both runs) and
+gives bench-75's SVG in the table's unit. Entry and README: hops join
+when closer than a radius (lines under 15 px apart), not a hop's width;
+architecture and gitGraph scenes are picked plain. README method note:
+single sub-millisecond rows move more than 20 %. Website install
+snippet 0.17 -> 0.39.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5
+
+fix(pick): an architecture or gitGraph scene is picked plain
+
+Their own painters stroke every edge plain, but since B11 a pick on
+their scenes (Scene::edge_at, hits_in_rect) worked out hops as the
+flowchart painter draws them: where a straight level edge crossed a
+straight plumb one, the pick followed a 5 px arc that is not painted.
+Found by the 0.39.0 release review.
+
+Scene::plain_crossings (crate-private, set by the architecture and
+gitGraph scene builders) switches the hops off for such a scene, in
+hops::legs_for_pick (the painter's and the picker's one source) and in
+the picker's quick test. Flowchart, state, class and ER scenes are
+unchanged (class and ER were already excluded by paint_width).
+
+Tests: a_crossing_in_an_architecture_scene_is_picked_plain,
+a_gitgraph_scene_is_picked_plain (both fail without the switch: one hop
+found, the arc picked).
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5
+
+release: 0.39.0 — crossing lines hop, a hub's fan is a comb
+
+Version 0.39.0 = phase B package B11 (report M15 and B4).
+CHANGELOG: [0.39.0] with Highlights. README: version mentions, the
+benchmark table and the large-graph table re-measured on 0.39.0 (both
+sides of the mermaid comparison in one sitting: 113x geometric mean),
+route() averages from the quality example. Comparison images redrawn.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5
+
+Merge pull request #115 from go-routine-id/ccr-ccc6d89a-5cxd7e
+
+B11: crossing lines hop, a hub's fan is a comb

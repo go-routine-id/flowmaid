@@ -1,0 +1,10 @@
+[package]
+name = "sweepprev"
+version = "0.0.0"
+edition = "2021"
+[dependencies]
+flowmaid = { path = "/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/a3-state/r6/prev-src" }
+[workspace]
+[profile.release]
+debug-assertions = true
+overflow-checks = true

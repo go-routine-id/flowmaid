@@ -1,0 +1,53 @@
+sequenceDiagram
+participant P0 as 日本語
+participant P1 as x
+P1->>P0: gamma
+P0--xP1: a&b
+P0-xP0: <b>bold</b>
+P0->P1: <b>bold</b>
+P0-xP0: a&b
+Note over P0: <b>bold</b>
+P0-->P1: <b>bold</b>
+P0-->P1: 日本語
+P1->>P1: delta
+Note over P0,P1: beta
+activate P0
+P0->>P1: act
+deactivate P0
+Note over P1: Customer Order
+loop alpha
+P0->>P0: self beta
+Note left of P1: gamma
+Note left of P0: x
+end
+P1-xP1: <b>bold</b>
+activate P0
+P0->>P1: act
+deactivate P0
+activate P1
+P1->>P0: act
+deactivate P1
+P0--)P1: alpha
+P0->>P0: self Customer Order
+Note left of P0: x
+activate P0
+P0->>P0: act
+deactivate P0
+P1--)P1: x
+Note over P0,P1: x
+P0->>P0: self a&b
+P1->>P1: self 日本語
+Note over P0,P1: Customer Order
+activate P1
+P1->>P0: act
+deactivate P1
+Note left of P1: <b>bold</b>
+P0--xP1: alpha
+P0--)P1: 日本語
+activate P0
+P0->>P0: act
+deactivate P0
+P0->>P1: a&b
+P1-xP0: <b>bold</b>
+P1-xP1: beta
+P1-xP1: alpha

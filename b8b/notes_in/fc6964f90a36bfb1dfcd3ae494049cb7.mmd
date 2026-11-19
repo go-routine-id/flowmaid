@@ -1,0 +1,7 @@
+stateDiagram-v2
+direction LR
+[*] --> Draft
+Draft --> Review
+Review --> Draft : changes
+Review --> Done
+note right of Draft : author edits

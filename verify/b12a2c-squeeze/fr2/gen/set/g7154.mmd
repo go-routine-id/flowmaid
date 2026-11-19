@@ -1,0 +1,16 @@
+flowchart LR
+  n1["ingest"]
+  n2["audit pack index"]
+  subgraph B0["Platform"]
+    n3["pack report ship"]
+  end
+  subgraph B1["Edge services"]
+    n4["search merge split"]
+    n5["index merge pack"]
+  end
+  n6["db"]
+  n7["db"]
+  n6 --> n3
+  n7 ==>|ingest| n2
+  n1 ==> n2
+  n5 ==>|billing| n3

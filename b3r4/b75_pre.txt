@@ -1,0 +1,160 @@
+back-edge	static	C->D idiom scubic
+back-edge	static	C->E idiom scubic
+bench-75	static	alerts->dash end_tilt end on dash 76.8deg
+bench-75	static	dash->user band svc5->ext 178px
+bench-75	static	db->svc2 idiom scubic
+bench-75	static	gw->lb band gw->svc6 110px
+bench-75	static	gw->lb idiom scubic
+bench-75	static	gw->svc2 band alerts->gw 180px
+bench-75	static	gw->svc2 end_tilt end on svc2 67.7deg
+bench-75	static	gw->svc4 band gw->svc6 204px
+bench-75	static	gw->svc4 end_tilt end on svc4 17.0deg
+bench-75	static	gw->svc5 end_tilt end on svc5 47.2deg
+bench-75	static	job1->db band job2->db 408px
+bench-75	static	job1->db band job3->db 490px
+bench-75	static	job1->ext band svc6->ext 130px
+bench-75	static	job2->db band db->metrics 112px
+bench-75	static	job3->db band job1->svc1 544px
+bench-75	static	job3->ext band job3->logs 216px
+bench-75	static	lb->svc1 idiom scubic
+bench-75	static	lb->svc2 band svc5->logs 194px
+bench-75	static	lb->svc3 idiom scubic
+bench-75	static	lb->svc4 band svc2->db 134px
+bench-75	static	lb->svc4 band svc5->objects 150px
+bench-75	static	lb->svc5 idiom scubic
+bench-75	static	lb->svc6 idiom scubic
+bench-75	static	logs->dash idiom scubic
+bench-75	static	metrics->alerts idiom scubic
+bench-75	static	objects->logs band job3->logs 864px
+bench-75	static	queue->metrics end_tilt end on metrics 75.1deg
+bench-75	static	queue->metrics idiom scubic
+bench-75	static	svc1->cache band svc3->cache 696px
+bench-75	static	svc1->cache band svc3->queue 372px
+bench-75	static	svc1->db band job1->svc1 622px
+bench-75	static	svc1->db band svc3->db 334px
+bench-75	static	svc1->db band svc5->db 334px
+bench-75	static	svc1->logs band svc3->logs 316px
+bench-75	static	svc1->logs band svc6->logs 686px
+bench-75	static	svc1->metrics band alerts->gw 724px
+bench-75	static	svc1->objects band svc1->metrics 554px
+bench-75	static	svc1->objects band svc3->objects 130px
+bench-75	static	svc1->objects band svc6->ext 286px
+bench-75	static	svc1->queue band svc4->queue 578px
+bench-75	static	svc2->cache end_tilt end on cache 75.1deg
+bench-75	static	svc2->cache idiom scubic
+bench-75	static	svc2->db band db->svc2 234px
+bench-75	static	svc2->logs band gw->logs 286px
+bench-75	static	svc2->queue band svc2->metrics 344px
+bench-75	static	svc2->queue band svc3->queue 194px
+bench-75	static	svc2->queue band svc4->metrics 184px
+bench-75	static	svc3->cache band svc3->metrics 314px
+bench-75	static	svc3->cache band svc3->objects 274px
+bench-75	static	svc3->db band job1->svc1 414px
+bench-75	static	svc3->db band svc5->db 248px
+bench-75	static	svc3->db idiom scubic
+bench-75	static	svc4->cache idiom scubic
+bench-75	static	svc4->db idiom scubic
+bench-75	static	svc4->logs band metrics->dash 390px
+bench-75	static	svc5->cache band svc5->objects 190px
+bench-75	static	svc5->db band job1->svc1 472px
+bench-75	static	svc5->ext band lb->metrics 318px
+bench-75	static	svc5->objects band svc4->logs 338px
+bench-75	static	svc5->queue band db->svc2 148px
+bench-75	static	svc5->queue band lb->metrics 160px
+bench-75	static	svc5->queue band svc5->ext 104px
+bench-75	static	svc5->queue band svc6->queue 366px
+bench-75	static	svc6->cache band svc6->queue 494px
+bench-75	static	svc6->db band svc6->cache 420px
+bench-75	static	svc6->ext band lb->metrics 410px
+bench-75	static	user->gw idiom scubic
+bench-75	static	user->lb end_tilt end on lb 48.4deg
+dense-lr	static	n12->n16 band n6->n22 118px
+dense-lr	static	n12->n17 band n12->n44 232px
+dense-lr	static	n12->n22 idiom scubic
+dense-lr	static	n12->n26 band n12->n22 240px
+dense-lr	static	n12->n26 band n12->n36 368px
+dense-lr	static	n12->n26 idiom scubic
+dense-lr	static	n12->n30 band n12->n27 304px
+dense-lr	static	n12->n33 band n6->n22 432px
+dense-lr	static	n12->n36 idiom scubic
+dense-lr	static	n12->n38 band n12->n36 1204px
+dense-lr	static	n12->n38 idiom scubic
+dense-lr	static	n12->n43 idiom scubic
+dense-lr	static	n15->n12 idiom scubic
+dense-lr	static	n16->n42 idiom scubic
+dense-lr	static	n17->n47 idiom scubic
+dense-lr	static	n18->n19 idiom scubic
+dense-lr	static	n22->n44 band n26->n47 842px
+dense-lr	static	n42->n44 idiom scubic
+dense-lr	static	n44->n48 idiom scubic
+dense-lr	static	n45->n46 idiom scubic
+dense-lr	static	n46->n49 idiom scubic
+dense-lr	static	n50->n13 idiom scubic
+dense-lr	static	n51->g4 idiom scubic
+dense-lr	static	n51->n5 band n51->g4 232px
+dense-lr	static	n51->n5 band n52->n6 544px
+dense-lr	static	n51->n5 idiom scubic
+dense-lr	static	n52->n6 band n51->g4 140px
+dense-lr	static	n52->n6 idiom scubic
+dense-lr	static	n8->n11 idiom scubic
+dense-td	static	n1->n5 idiom scubic
+dense-td	static	n11->n37 band n25->n42 556px
+dense-td	static	n11->n37 idiom scubic
+dense-td	static	n15->n38 band n25->n38 108px
+dense-td	static	n15->n38 band n25->n42 726px
+dense-td	static	n15->n38 idiom scubic
+dense-td	static	n16->n17 band n22->n40 178px
+dense-td	static	n16->n17 idiom scubic
+dense-td	static	n16->n21 idiom scubic
+dense-td	static	n16->n23 band n16->n29 452px
+dense-td	static	n16->n23 band n22->n40 580px
+dense-td	static	n16->n23 idiom scubic
+dense-td	static	n16->n31 band n16->n29 906px
+dense-td	static	n16->n32 band n16->n35 950px
+dense-td	static	n16->n37 band n22->n40 338px
+dense-td	static	n16->n37 end_tilt end on n37 54.7deg
+dense-td	static	n16->n40 band n16->n43 976px
+dense-td	static	n16->n41 band n16->n44 1428px
+dense-td	static	n16->n43 band n16->n44 138px
+dense-td	static	n16->n43 band n43->n16 1724px
+dense-td	static	n16->n44 band n43->n16 1736px
+dense-td	static	n2->n7 idiom scubic
+dense-td	static	n21->n16 idiom scubic
+dense-td	static	n22->n40 idiom scubic
+dense-td	static	n25->n42 idiom scubic
+dense-td	static	n28->n42 band n11->n37 234px
+dense-td	static	n28->n42 band n15->n38 482px
+dense-td	static	n28->n42 band n25->n38 1532px
+dense-td	static	n28->n42 band n25->n42 836px
+dense-td	static	n28->n42 band n31->n38 700px
+dense-td	static	n29->n31 idiom scubic
+dense-td	static	n29->n38 band n15->n38 182px
+dense-td	static	n29->n38 band n25->n38 126px
+dense-td	static	n29->n38 band n25->n42 474px
+dense-td	static	n3->n7 idiom scubic
+dense-td	static	n31->n38 band n15->n38 1062px
+dense-td	static	n31->n38 band n25->n38 274px
+dense-td	static	n31->n38 band n25->n42 1646px
+dense-td	static	n31->n38 band n29->n38 360px
+dense-td	static	n31->n38 idiom scubic
+dense-td	static	n33->n16 idiom scubic
+dense-td	static	n38->n39 idiom scubic
+dense-td	static	n4->n30 idiom scubic
+dense-td	static	n46->g1 idiom scubic
+dense-td	static	n5->n7 idiom scubic
+dense-td	static	n7->n33 idiom scubic
+dense-td	static	n8->n42 band n11->n37 456px
+dense-td	static	n8->n42 band n25->n42 464px
+dense-td	static	n8->n42 band n28->n42 224px
+dense-td	static	n8->n42 idiom scubic
+fanout-frames	static	n0->g1 band n0->g3 268px
+fanout-frames	static	n0->g1 idiom scubic
+fanout-frames	static	n0->g2 idiom scubic
+fanout-frames	static	n0->g4 idiom scubic
+fanout-frames	static	n0->g5 idiom scubic
+wide-labels	static	A->B band B->A 148px
+wide-labels	static	B->A band A->C 184px
+wide-labels	static	B->C band A->C 112px
+wide-labels	static	B->C idiom scubic
+wide-labels	static	C->E idiom scubic
+wide-labels	static	F->D idiom scubic

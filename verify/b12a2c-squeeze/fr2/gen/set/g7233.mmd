@@ -1,0 +1,38 @@
+flowchart LR
+  n1["queue store split<br/>cache"]
+  n2["split"]
+  subgraph B0["Back office and finance"]
+    n3["index"]
+    n4["cache"]
+    n5["ingest"]
+    subgraph B0s0["Analytics 0"]
+      n6["queue"]
+      n7["cache"]
+      n8["ship"]
+    end
+  end
+  subgraph B1["Ops"]
+    n9["store billing index"]
+  end
+  subgraph B2["Ingest"]
+    n10["pack<br/>audit"]
+    n11["report<br/>audit"]
+    n12["billing<br/>api"]
+    n13["search"]
+  end
+  n14["queue mail split<br/>auth"]
+  n15["audit"]
+  n4 ==> B2
+  n1 -->|notify| n13
+  n14 ==> n1
+  n7 --> n14
+  n8 ==>|index| n5
+  n15 -.-> n5
+  n5 -->|pack| n14
+  n8 -.->|index| n14
+  n3 --> n2
+  n12 -->|search| n8
+  n9 ==>|api| n1
+  n15 -->|report| n7
+  n8 -.->|pack| n13
+  n4 --> n6

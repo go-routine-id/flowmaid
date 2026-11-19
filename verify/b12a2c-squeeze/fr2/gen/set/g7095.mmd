@@ -1,0 +1,55 @@
+flowchart RL
+  n1["split"]
+  subgraph B0["Ops"]
+    n2["pack"]
+    subgraph B0s0["Analytics 0"]
+      n3["db"]
+      n4["auth"]
+      n5["api<br/>index"]
+    end
+  end
+  subgraph B1["Core"]
+    n6["report"]
+    n7["search"]
+    n8["mail index search"]
+    n9["mail"]
+    subgraph B1s0["Back office and finance 0"]
+      n10["auth"]
+      n11["db"]
+      n12["ship"]
+    end
+  end
+  subgraph B2["Ops"]
+    n13["auth"]
+    subgraph B2s0["Fulfilment desk 0"]
+      n14["report mail report"]
+      n15["worker"]
+    end
+    subgraph B2s1["Back office and finance 1"]
+      n16["index<br/>split"]
+    end
+  end
+  n17["audit"]
+  n18["split"]
+  n4 ==> n6
+  n14 --> n6
+  n8 ==> n13
+  n10 ==> n16
+  n14 --> n15
+  n15 --> n12
+  n6 -.-> n2
+  n8 --> n4
+  n10 -.->|report| n7
+  n7 -.-> n17
+  n10 --> n15
+  n9 -.-> n4
+  n4 -->|pack| n16
+  n4 -->|pack| n17
+  n3 --> n17
+  n5 --> n12
+  n9 -.-> n7
+  n10 -.->|merge| n11
+  n8 --> n14
+  n12 --> n9
+  n8 --> n11
+  n3 ==> n9

@@ -1,0 +1,14 @@
+flowchart LR
+    subgraph O[Order processing]
+        subgraph G[MMMM WWWW QQQQ]
+            m0[w]
+            m1[queue]
+        end
+        k[k]
+    end
+    m1 --> k
+    s0[src0] -- "lbl1" --> m0
+    s1[src1] -- "lbl9" --> m1
+    s2[src2] --> O
+    s2 --> m0
+    m1 --> z[end]

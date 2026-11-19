@@ -1,0 +1,122 @@
+diff --git a/src/labels.rs b/src/labels.rs
+index 6ff761a..34673e4 100644
+--- a/src/labels.rs
++++ b/src/labels.rs
+@@ -1523,6 +1523,10 @@ impl Field<'_> {
+ }
+ 
+ /// One label's spots along its drawn curve, kept across rounds.
++/// The frames a label keeps off (B12 G3's end blocks, (x0, y0, x1, y1))
++/// and, when it lies in one, its spot ([`Track::new`]).
++type OffEnds = (Vec<(f64, f64, f64, f64)>, Option<(f64, f64)>);
++
+ struct Track {
+     /// The densified curve.
+     spots: Vec<(f64, f64)>,
+@@ -1550,7 +1554,14 @@ struct Track {
+ }
+ 
+ impl Track {
+-    fn new(pts: &[(f64, f64)], prefer: f64, w: f64, keep: f64, field: &Field) -> Self {
++    fn new(
++        pts: &[(f64, f64)],
++        prefer: f64,
++        w: f64,
++        keep: f64,
++        field: &Field,
++        off: &OffEnds,
++    ) -> Self {
+         let spots = densify(pts);
+         let mut arc = Vec::with_capacity(spots.len());
+         let mut s = 0.0;
+@@ -1561,13 +1572,38 @@ impl Track {
+             arc.push(s);
+         }
+         let (lo, hi) = (s * LABEL_SCAN_END, s * (1.0 - LABEL_SCAN_END));
+-        let mid = s * prefer;
++        let mut mid = s * prefer;
+         let mut inner: Vec<usize> = (0..spots.len())
+             .filter(|&k| arc[k] >= lo && arc[k] <= hi)
+             .collect();
+         if inner.is_empty() {
+             inner = (0..spots.len()).collect();
+         }
++        // A block layout's label keeps off the frames that hold one end of
++        // its edge and not the other (B12 G3, `off`): the spots whose chip
++        // would meet one are not tried, unless no other is left.
++        // A label that lies in one is preferred where its line leaves it
++        // nearest the spot it held (the outside spot nearest that), not
++        // at the line's middle: so it stays as near its end as the frames
++        // let it (a long edge's middle lay 818 px from either end, the
++        // chip had sat 465 px from one).
++        if !off.0.is_empty() {
++            let meets = |k: usize| {
++                let r = label_rect(spots[k], w);
++                off.0
++                    .iter()
++                    .any(|f| r.0 < f.2 && r.2 > f.0 && r.1 < f.3 && r.3 > f.1)
++            };
++            if inner.iter().any(|&k| !meets(k)) {
++                inner.retain(|&k| !meets(k));
++                if let Some(p) = off.1 {
++                    let d2 = |k: usize| (spots[k].0 - p.0).powi(2) + (spots[k].1 - p.1).powi(2);
++                    if let Some(&k) = inner.iter().min_by(|&&a, &&b| d2(a).total_cmp(&d2(b))) {
++                        mid = arc[k];
++                    }
++                }
++            }
++        }
+         // A long curve is scanned at a coarser stride, so a label costs
+         // at most LABEL_MAX_SPOTS spots (route() runs on every drag).
+         let stride = inner.len().div_ceil(LABEL_MAX_SPOTS).max(1);
+@@ -1773,6 +1809,23 @@ fn place_long(
+             (edge_drawn(e) && !matches!(e.kind, EdgeKind::Invisible)).then(|| edge_polyline(e))
+         })
+         .collect();
++    // Per edge, the frames its label keeps off in a block layout (B12
++    // G3's end blocks; [`Track::new`]), and the label's spot when it lies
++    // in one.
++    let off_ends: Vec<OffEnds> = edges
++        .iter()
++        .map(|e| match (&e.label, blocks) {
++            (Some((_, at, w)), true) => {
++                let rects = end_blocks(e, nodes, frames);
++                let r = label_rect(*at, *w);
++                let inside = rects
++                    .iter()
++                    .any(|f| r.0 < f.2 && r.2 > f.0 && r.1 < f.3 && r.3 > f.1);
++                (rects, inside.then_some(*at))
++            }
++            _ => (Vec::new(), None),
++        })
++        .collect();
+ 
+     let mut fixed = Fixed::new();
+     for n in nodes {
+@@ -1990,7 +2043,7 @@ fn place_long(
+             return false;
+         };
+         let track =
+-            tracks[ei].get_or_insert_with(|| Track::new(pts, hub[ei].0, w, keep[ei], &field));
++            tracks[ei].get_or_insert_with(|| Track::new(pts, hub[ei].0, w, keep[ei], &field, &off_ends[ei]));
+         let f = track.share_at(at);
+         (if from_point { f } else { 1.0 - f }) < FAN_FAR
+     };
+@@ -2033,7 +2086,7 @@ fn place_long(
+             let up = restack.contains(if from_point { &e.from } else { &e.to });
+             if up {
+                 let w = e.label.as_ref().map_or(0.0, |l| l.2);
+-                tracks[ei].get_or_insert_with(|| Track::new(pts, hub[ei].0, w, keep[ei], &field));
++                tracks[ei].get_or_insert_with(|| Track::new(pts, hub[ei].0, w, keep[ei], &field, &off_ends[ei]));
+             }
+             up
+         })
+@@ -2152,7 +2205,7 @@ fn place_long(
+                 continue;
+             }
+             if tracks[ei].is_none() {
+-                tracks[ei] = Some(Track::new(pts, hub[ei].0, *w, keep[ei], &field));
++                tracks[ei] = Some(Track::new(pts, hub[ei].0, *w, keep[ei], &field, &off_ends[ei]));
+             }
+             todo.push((ei, off_line));
+         }

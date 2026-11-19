@@ -1,0 +1,27 @@
+architecture-beta
+    group g0(monitoring)[Backend Services]
+    service s0(disk)[Service 0] in g0
+    service s1(cloud)[Service 1] in g0
+    service s2(database)[Service 2] in g0
+    service s3(database)[Service 3] in g0
+    service s4(internet)[Service 4]
+    service s5(server)[Service 5] in g0
+    service s6(server)[Service 6] in g0
+    service s7(disk)[Service 7] in g0
+    service s8(server)[Service 8] in g0
+    service s9(database)[Service 9] in g0
+    service s10(disk)[Service 10] in g0
+    service s11(monitoring)[Service 11] in g0
+    s8:B -- T:s7
+    s5:L -- T:s10
+    s7:R -- L:s10
+    s10:R --> R:s4
+    s0:B --> T:s11
+    s3:R --> L:s7
+    s8:T -- B:s0
+    s7:T -- B:s3
+    s0:R --> L:s4
+    s0:T --> R:s8
+    s7:R --> L:s2
+    s5:B -- T:s6
+    s10:T -- R:s11

@@ -1,0 +1,41 @@
+classDiagram
+C1 <--> C16 : gamma
+C15 o-- C6 : delta
+C4 "1" <--> "*" C8 : gamma
+C14 "1" --> "*" C7
+C15 ..|> C14 : Customer Order
+C15 "1" *-- "*" C4 : Customer Order
+C5 <--> C3
+C6 --> C0
+C8 <--> C16 : gamma
+C16 <--> C12 : x
+C14 "1" ..> "*" C16
+C11 --> C3 : gamma
+class C3 {
+  +int id
+  +name() String
+}
+class C4 {
+  +int id
+  +name() String
+}
+class C5 {
+  +int id
+  +name() String
+}
+class C6 {
+  +int id
+  +name() String
+}
+class C8 {
+  +int id
+  +name() String
+}
+class C10 {
+  +int id
+  +name() String
+}
+class C16 {
+  +int id
+  +name() String
+}

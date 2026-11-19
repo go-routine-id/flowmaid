@@ -1,0 +1,13 @@
+classDiagram
+direction TB
+A <|-- B
+A ..|> C : uses
+A ..> D
+C ..> C : c0
+C ..> C
+C ..> C
+class C {
+ +int id
+ +run() void
+ +stop()
+}

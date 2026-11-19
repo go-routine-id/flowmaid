@@ -1,0 +1,11 @@
+stateDiagram-v2
+  [*] --> A
+  state K {
+    [*] --> W
+    W --> C
+    state C <<choice>>
+    C --> W : a
+    C --> W : b
+  }
+  A --> K
+  A --> B

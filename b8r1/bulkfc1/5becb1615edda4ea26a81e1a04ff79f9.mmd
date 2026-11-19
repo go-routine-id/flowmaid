@@ -1,0 +1,10 @@
+flowchart LR
+  A[Hub] --> B1[one]
+  A --> B2[two]
+  A --> B3[three]
+  A --> B4[four]
+  A --> B5[five]
+  A --> B6[six]
+  B6 --> Z[Far]
+  Z -->|back| B6
+  B1 -->|return to hub| A

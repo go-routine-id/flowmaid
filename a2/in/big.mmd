@@ -1,0 +1,206 @@
+erDiagram
+  T0 {
+    int col0 PK
+    int col1 FK "note 1 for t0"
+    int col2 FK
+  }
+  T1 {
+    int col0 PK "note 0 for t1"
+    int col1 FK
+    int col2 FK "note 2 for t1"
+    int col3 "note 3 for t1"
+    int col4 FK
+  }
+  T2 {
+    int col0 PK
+    int col1 FK
+  }
+  T3 {
+    int col0 PK "note 0 for t3"
+    int col1 FK
+    int col2 FK
+    int col3 FK "note 3 for t3"
+    int col4 "note 4 for t3"
+  }
+  T4 {
+    int col0 PK "note 0 for t4"
+    int col1 FK
+  }
+  T5 {
+    int col0 PK
+  }
+  T6 {
+    int col0 PK
+  }
+  T7 {
+    int col0 PK "note 0 for t7"
+    int col1
+    int col2 "note 2 for t7"
+    int col3 FK "note 3 for t7"
+    int col4
+  }
+  T8 {
+    int col0 PK "note 0 for t8"
+    int col1 "note 1 for t8"
+  }
+  T9 {
+    int col0 PK
+    int col1 "note 1 for t9"
+    int col2 "note 2 for t9"
+  }
+  T10 {
+    int col0 PK "note 0 for t10"
+    int col1 FK "note 1 for t10"
+    int col2
+  }
+  T11 {
+    int col0 PK
+    int col1
+    int col2 "note 2 for t11"
+    int col3 FK
+    int col4 FK "note 4 for t11"
+  }
+  T12 {
+    int col0 PK
+    int col1 "note 1 for t12"
+    int col2
+    int col3 FK
+    int col4 "note 4 for t12"
+    int col5 "note 5 for t12"
+  }
+  T13 {
+    int col0 PK
+    int col1 FK "note 1 for t13"
+  }
+  T14 {
+    int col0 PK "note 0 for t14"
+    int col1 "note 1 for t14"
+    int col2 FK
+  }
+  T15 {
+    int col0 PK "note 0 for t15"
+    int col1 FK "note 1 for t15"
+    int col2 "note 2 for t15"
+    int col3
+  }
+  T16 {
+    int col0 PK
+    int col1 FK
+    int col2 FK "note 2 for t16"
+    int col3 "note 3 for t16"
+    int col4 FK
+    int col5 "note 5 for t16"
+  }
+  T17 {
+    int col0 PK
+    int col1 FK "note 1 for t17"
+    int col2
+  }
+  T18 {
+    int col0 PK
+    int col1 "note 1 for t18"
+    int col2
+    int col3
+    int col4 FK "note 4 for t18"
+    int col5 FK
+  }
+  T19 {
+    int col0 PK
+  }
+  T20 {
+    int col0 PK "note 0 for t20"
+    int col1 FK "note 1 for t20"
+    int col2 FK "note 2 for t20"
+    int col3 "note 3 for t20"
+  }
+  T21 {
+    int col0 PK "note 0 for t21"
+  }
+  T22 {
+    int col0 PK
+    int col1 FK "note 1 for t22"
+  }
+  T23 {
+    int col0 PK
+    int col1 FK "note 1 for t23"
+    int col2 "note 2 for t23"
+  }
+  T24 {
+    int col0 PK "note 0 for t24"
+    int col1 FK "note 1 for t24"
+    int col2 FK "note 2 for t24"
+    int col3 FK
+  }
+  T25 {
+    int col0 PK "note 0 for t25"
+  }
+  T26 {
+    int col0 PK "note 0 for t26"
+    int col1
+    int col2 FK
+    int col3 FK
+    int col4
+  }
+  T27 {
+    int col0 PK "note 0 for t27"
+    int col1 "note 1 for t27"
+  }
+  T28 {
+    int col0 PK "note 0 for t28"
+    int col1 "note 1 for t28"
+    int col2
+    int col3
+    int col4 FK
+  }
+  T29 {
+    int col0 PK "note 0 for t29"
+    int col1
+    int col2
+    int col3 "note 3 for t29"
+    int col4 "note 4 for t29"
+  }
+  T23 }o--o| T11 : "rel 0"
+  T3 }|--o{ T7 : "rel 1"
+  T6 ||..o{ T15 : "rel 2"
+  T25 ||--|{ T20 : "rel 3"
+  T25 |o..o| T22 : "rel 4"
+  T13 }o--|{ T25 : "rel 5"
+  T14 ||--o| T12 : "rel 6"
+  T4 |o..o| T0 : "rel 7"
+  T19 }|..o| T26 : "rel 8"
+  T17 |o--|| T18 : "rel 9"
+  T25 ||--|{ T23 : "rel 10"
+  T27 |o--o{ T6 : "rel 11"
+  T6 |o..o{ T9 : "rel 12"
+  T17 |o--o{ T13 : "rel 13"
+  T28 }|--o| T14 : "rel 14"
+  T16 ||..o| T17 : "rel 15"
+  T19 |o--o| T0 : "rel 16"
+  T15 ||--o{ T19 : "rel 17"
+  T21 }|--|| T16 : "rel 18"
+  T7 }o--|| T6 : "rel 19"
+  T16 ||--|{ T14 : "rel 20"
+  T10 |o..|{ T19 : "rel 21"
+  T16 }|--o{ T17 : "rel 22"
+  T29 |o..o| T17 : "rel 23"
+  T13 }|..o{ T3 : "rel 24"
+  T2 |o..|| T21 : "rel 25"
+  T6 }o--o| T21 : "rel 26"
+  T22 }o--o{ T20 : "rel 27"
+  T28 }|--|| T4 : "rel 28"
+  T12 }|--o| T28 : "rel 29"
+  T5 }|..o{ T22 : "rel 30"
+  T13 }o..|| T6 : "rel 31"
+  T23 ||..|{ T11 : "rel 32"
+  T14 ||..o{ T22 : "rel 33"
+  T16 }o--|| T19 : "rel 34"
+  T29 |o--|| T25 : "rel 35"
+  T8 ||--o{ T9 : "rel 36"
+  T24 }|..|{ T4 : "rel 37"
+  T4 }|..|| T17 : "rel 38"
+  T8 |o..|| T1 : "rel 39"
+  T8 ||..|| T0 : "rel 40"
+  T19 |o--o{ T27 : "rel 41"
+  T27 }|--o{ T3 : "rel 42"
+  T17 }o--|| T13 : "rel 43"
+  T16 |o--o| T22 : "rel 44"

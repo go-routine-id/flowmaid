@@ -1,0 +1,16 @@
+flowchart TD
+    r --> a1
+    r --> b1
+    r --> c1
+    subgraph A[A]
+        a1 --> a2
+    end
+    subgraph B[B]
+        b1 --> b2 --> b3
+    end
+    subgraph C[C]
+        c1
+    end
+    a2 --> z
+    b3 --> z
+    c1 --> z

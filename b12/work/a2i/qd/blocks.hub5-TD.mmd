@@ -1,0 +1,26 @@
+flowchart TD
+    HUB[Gateway]
+    subgraph A[Auth]
+        a1[login] --> a2[token]
+    end
+    subgraph B[Billing]
+        b1[invoice] --> b2[ledger]
+    end
+    subgraph C[Catalog]
+        c1[search] --> c2[index]
+    end
+    subgraph D[Delivery]
+        d1[queue] --> d2[worker]
+    end
+    subgraph E[Email]
+        e1[render] --> e2[send]
+    end
+    HUB -->|auth| a1
+    HUB -->|bill| b1
+    HUB -->|find| c1
+    HUB -->|ship| d1
+    HUB -->|mail| e1
+    a2 --> b1
+    b2 --> d1
+    d2 --> e1
+    e2 -.->|bounce| a1

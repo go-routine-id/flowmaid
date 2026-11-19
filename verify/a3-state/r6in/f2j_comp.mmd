@@ -1,0 +1,14 @@
+stateDiagram-v2
+state f <<fork>>
+state j <<join>>
+[*] --> f
+f --> Work
+f --> Audit
+state Work {
+  [*] --> W1
+  W1 --> W2
+}
+Work --> j
+Audit --> j
+f --> j
+j --> [*]

@@ -1,0 +1,12 @@
+stateDiagram-v2
+direction LR
+state c <<choice>>
+[*] --> P
+P --> c
+c --> A : the request came from a verified partner
+c --> B : the request is anonymous but rate limited
+c --> C : failed
+c --> D : the caller sent a token that has expired already
+c --> E : retry
+A --> [*]
+B --> [*]

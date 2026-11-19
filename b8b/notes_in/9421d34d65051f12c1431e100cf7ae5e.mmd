@@ -1,0 +1,9 @@
+stateDiagram-v2
+    note left of Later : before decl
+    [*] --> A
+    A --> Later
+    state Later {
+        [*] --> x
+        x --> y
+    }
+    Later --> [*]

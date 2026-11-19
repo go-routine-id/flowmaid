@@ -1,0 +1,12 @@
+stateDiagram-v2
+  [*] --> Outer
+  state Outer {
+    direction LR
+    x --> In
+    state In {
+      p --> q
+      q --> r
+    }
+    In --> y
+  }
+  Outer --> Z

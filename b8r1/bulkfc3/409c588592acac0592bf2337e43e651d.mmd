@@ -1,0 +1,43 @@
+flowchart RL
+  subgraph F0 [Frame 0]
+    n12([Node 12])
+    n8((Node 8))
+  end
+  subgraph F1 [Frame 1]
+    direction LR
+    n10(Node 10)
+  end
+  subgraph F2 [Frame 2]
+    n1(Node 1)
+    n5[Node 5]
+  end
+  n3 <==> n8
+  n13 --- n4
+  n8 <-.-> n8
+  n2 --x n13
+  n11 ==> n11
+  n6 -.-> n2
+  n7 --> n12
+  n7 --> n12
+  n1 --- n1
+  n3 --x n1
+  n7 ==> n9
+  n3 ==> n3
+  n2 <--> n8
+  n2 ==> n11
+  n10 <--> n11
+  n9 ==> F2
+  n13 o--o F2
+  n9 <==> F0
+  n11 --- F0
+  n5 <--> n5
+  n5 -.-> n2
+  n13 <--> n9
+  n7 --o n2
+  n9 -.->|dot| n3
+  n7 -.-> n8
+  n4 -->|lbl| n13
+  n11 --x F2
+  linkStyle 15 stroke-width:3px
+  linkStyle 0 stroke:#c33,stroke-width:5px
+  linkStyle 3 stroke:#3a3,stroke-width:12px

@@ -1,0 +1,14 @@
+flowchart LR
+    subgraph O[Order processing]
+        subgraph G[Core]
+            m0[y]
+            m1[w]
+        end
+        k[k]
+    end
+    m0 --> k
+    m1 --> k
+    s0[src0] -- "lbl7" --> m1
+    s1[src1] --> G
+    s2[src2] --> G
+    m1 --> z[end]

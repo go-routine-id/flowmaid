@@ -1,0 +1,44 @@
+flowchart TD
+  n1["queue"]
+  n2["pack api pack"]
+  n3["report"]
+  subgraph B0["Ingest"]
+    n4["billing"]
+  end
+  subgraph B1["Back office and finance"]
+    n5["api auth notify"]
+    n6["merge"]
+    n7["notify notify queue"]
+    subgraph B1s0["Ingest 0"]
+      n8["billing billing pack"]
+      n9["ingest<br/>audit"]
+      n10["notify store audit"]
+    end
+    subgraph B1s1["Data tier 1"]
+      n11["pack"]
+      n12["mail search parse"]
+    end
+  end
+  subgraph B2["Data tier"]
+    n13["queue worker queue"]
+    n14["worker"]
+    n15["search worker api"]
+  end
+  subgraph B3["Core"]
+    n16["cache"]
+  end
+  n17["notify<br/>audit"]
+  n15 --> n7
+  n14 -.-> n12
+  n13 -->|db| n17
+  n8 --> n9
+  n3 -.->|auth| n11
+  n17 --> n3
+  n9 --> n8
+  n4 --> n14
+  n8 --> n17
+  n11 --> n14
+  n11 -->|mail| n8
+  n15 ==> n2
+  n3 -.->|ship| n7
+  n7 ==> n9

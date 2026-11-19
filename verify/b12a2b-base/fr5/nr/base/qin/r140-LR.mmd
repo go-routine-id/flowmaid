@@ -1,0 +1,17 @@
+flowchart LR
+    subgraph O[Payments]
+        subgraph G[MMMM WWWW QQQQ]
+            m0[charge]
+            m1[ledger]
+            m2[queue]
+        end
+        k[k]
+    end
+    m0 --> k
+    m1 --> k
+    m2 --> k
+    s0[src0] --> m1
+    s0 --> O
+    s1[src1] --> G
+    m2 --> z[end]
+    G --> z2[after]

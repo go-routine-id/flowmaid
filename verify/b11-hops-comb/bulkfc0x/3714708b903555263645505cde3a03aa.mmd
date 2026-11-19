@@ -1,0 +1,14 @@
+flowchart RL
+    N0{Emit store}
+    N1([Done])
+    N2{Check}
+    N3[Parse]
+    N4{Fetch}
+    N5[Report parse]
+    N0 -->|ok| N1
+    N0 --> N2
+    N0 --> N3
+    N2 --> N4
+    N2 --> N5
+    N4 --> N5
+    N5 -.-> N4

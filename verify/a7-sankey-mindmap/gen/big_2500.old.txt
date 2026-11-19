@@ -1,0 +1,1 @@
+big_2500.mmd: n=2501 canvas 39880x39799 boxfill 0.6% root@(19942,19899) rel (0.50,0.50) trunks 18674-18727 spokes(all) -45-18727 ratio 18727243888680.39 time 3.18ms

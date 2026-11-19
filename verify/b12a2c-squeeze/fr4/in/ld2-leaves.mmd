@@ -1,0 +1,17 @@
+flowchart TD
+    dns[name server] -->|resolve| gw[gateway]
+    dns --> px[operator]
+    gw -->|sync| a1
+    gw --> a2
+    px -->|proxy| b1
+    mon[monitor] -->|scrape| b2
+    a2 -->|report| out[report sink]
+    b3 --> out
+    subgraph A[Standby site<br/>small shared machine<br/>hosts other sites too]
+        a1[standby copy]
+        a2[public website]
+    end
+    subgraph B[Staging and production]
+        b1[ingress proxy] --> b2[production app]
+        b2 --> b3[git server]
+    end

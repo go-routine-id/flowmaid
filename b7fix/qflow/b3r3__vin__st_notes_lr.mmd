@@ -1,0 +1,10 @@
+stateDiagram-v2
+    direction LR
+    [*] --> A
+    A --> B : go
+    B --> C : next
+    C --> [*]
+    note right of A : right of A
+    note left of C : left of C
+    note right of B : another on B
+    note left of B : and left of B

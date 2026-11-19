@@ -1,0 +1,22 @@
+diff --git a/src/ports.rs b/src/ports.rs
+index c930ccd..cd67096 100644
+--- a/src/ports.rs
++++ b/src/ports.rs
+@@ -876,8 +876,15 @@ fn move_end(e: &mut SceneEdge, src: bool, old: Pt, delta: Pt, side: Side, back:
+     let (pi, ci) = if src { (0, 1) } else { (3, 2) };
+     if e.waypoints.is_empty() {
+         // A back-edge drawn across the gap leaves along its side's
+-        // normal like a forward edge: its control moves with the end.
+-        let bowed = back && !across(&e.bezier, src, old);
++        // normal like a forward edge: its control moves with the end —
++        // as does one whose control at this end runs straight out of it
++        // (a labelled 2-cycle's twin bowed at its other end only,
++        // `scene::bowed`: pulled back, its head swung 30 deg off square
++        // in state `lr_right`).
++        let (ct, _) = split(side, e.bezier[ci]);
++        let (ot, _) = split(side, old);
++        let straight = (ct - ot).abs() < STUB_EPS;
++        let bowed = back && !straight && !across(&e.bezier, src, old);
+         add(&mut e.bezier[pi]);
+         if bowed {
+             // A bowed back-edge's controls set its bow round the nodes it

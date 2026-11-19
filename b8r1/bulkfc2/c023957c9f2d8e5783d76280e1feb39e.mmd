@@ -1,0 +1,14 @@
+flowchart TD
+  A --> B --> C --> D
+  A --> C
+  A --> D
+  B --> D
+  A e7@--> E
+  E e8@--> D
+  e7@{ curve: stepAfter }
+  e8@{ curve: step }
+  linkStyle 4 interpolate step,stroke-width:16px
+  linkStyle 5 interpolate stepBefore,stroke-width:21px
+  linkStyle 3 interpolate stepAfter,stroke-width:2px
+  linkStyle 6 stroke-width:19px
+  linkStyle 7 stroke-width:13px

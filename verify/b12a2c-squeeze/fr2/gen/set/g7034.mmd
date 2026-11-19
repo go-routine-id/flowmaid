@@ -1,0 +1,52 @@
+flowchart RL
+  n1["report"]
+  n2["api"]
+  subgraph B0["Data tier"]
+    n3["pack"]
+    subgraph B0s0["Data tier 0"]
+      n4["db"]
+      n5["mail index notify"]
+    end
+  end
+  subgraph B1["Data tier"]
+    n6["db"]
+    n7["index<br/>worker"]
+    n8["queue pack ship"]
+    subgraph B1s0["Data tier 0"]
+      n9["store"]
+      n10["pack"]
+    end
+    subgraph B1s1["Analytics 1"]
+      n11["audit worker ship"]
+    end
+  end
+  subgraph B2["Core"]
+    n12["mail"]
+  end
+  subgraph B3["Analytics"]
+    n13["worker<br/>ship"]
+  end
+  n14["split"]
+  n15["ingest"]
+  n4 ==> n1
+  n8 --> B1s0
+  n6 --> n14
+  n3 ==> n5
+  n13 -->|worker| n1
+  n10 --> n4
+  n14 -->|cache| n4
+  n11 -->|mail| n4
+  n15 ==> n11
+  n2 -->|notify| n11
+  n4 ==> n15
+  n13 --> n6
+  n12 --> n10
+  n8 --> n6
+  n12 --> n14
+  n1 -.->|parse| n3
+  n10 --> n15
+  n6 -->|notify| n4
+  n10 --> n6
+  n5 -->|audit| n8
+  n11 -->|db| n8
+  n7 --> B0

@@ -1,0 +1,58 @@
+architecture-beta
+    group g0(cloud)[Group 0]
+    service s0_0(server)[Service 0.0] in g0
+    service s0_1(server)[Service 0.1] in g0
+    service s0_2(server)[Service 0.2] in g0
+    service s0_3(server)[Service 0.3] in g0
+    service s0_4(server)[Service 0.4] in g0
+    service s0_5(server)[Service 0.5] in g0
+    group g1(cloud)[Group 1]
+    service s1_0(server)[Service 1.0] in g1
+    service s1_1(server)[Service 1.1] in g1
+    service s1_2(server)[Service 1.2] in g1
+    service s1_3(server)[Service 1.3] in g1
+    service s1_4(server)[Service 1.4] in g1
+    service s1_5(server)[Service 1.5] in g1
+    group g2(cloud)[Group 2]
+    service s2_0(server)[Service 2.0] in g2
+    service s2_1(server)[Service 2.1] in g2
+    service s2_2(server)[Service 2.2] in g2
+    service s2_3(server)[Service 2.3] in g2
+    service s2_4(server)[Service 2.4] in g2
+    service s2_5(server)[Service 2.5] in g2
+    group g3(cloud)[Group 3]
+    service s3_0(server)[Service 3.0] in g3
+    service s3_1(server)[Service 3.1] in g3
+    service s3_2(server)[Service 3.2] in g3
+    service s3_3(server)[Service 3.3] in g3
+    service s3_4(server)[Service 3.4] in g3
+    service s3_5(server)[Service 3.5] in g3
+    s0_0:R --> L:s0_1
+    s0_0:B --> T:s0_4
+    s0_1:R --> L:s0_2
+    s0_1:B --> T:s0_5
+    s0_2:R --> L:s0_3
+    s0_4:R --> L:s0_5
+    s0_3:R --> L:s1_0
+    s1_0:R --> L:s1_1
+    s1_0:B --> T:s1_4
+    s1_1:R --> L:s1_2
+    s1_1:B --> T:s1_5
+    s1_2:R --> L:s1_3
+    s1_4:R --> L:s1_5
+    s1_5:B --> T:s2_0
+    s2_0:R --> L:s2_1
+    s2_0:B --> T:s2_4
+    s2_1:R --> L:s2_2
+    s2_1:B --> T:s2_5
+    s2_2:R --> L:s2_3
+    s2_4:R --> L:s2_5
+    s2_3:R --> L:s3_0
+    s2_0:T -- B:s0_5
+    s3_0:R --> L:s3_1
+    s3_0:B --> T:s3_4
+    s3_1:R --> L:s3_2
+    s3_1:B --> T:s3_5
+    s3_2:R --> L:s3_3
+    s3_4:R --> L:s3_5
+    s3_1:T -- B:s1_0

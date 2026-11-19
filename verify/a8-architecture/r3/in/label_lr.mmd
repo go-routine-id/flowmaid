@@ -1,0 +1,9 @@
+architecture-beta
+    service a(server)[Alpha]
+    service b(database)[Beta]
+    service c(disk)[Gamma]
+    service d(cloud)[Delta]
+    a:R -[calls the main api endpoint]-> L:b
+    b:R -[stores]-> L:c
+    a:B -[authenticates with oauth]-> T:d
+    d:R -[emits metrics]-> B:c

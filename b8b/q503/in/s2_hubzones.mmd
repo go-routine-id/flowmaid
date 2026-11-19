@@ -1,0 +1,20 @@
+flowchart LR
+  hub[Gateway]
+  subgraph A[Zone A]
+    a1[api]
+    a2[cache]
+    a3[worker] --> a4[queue]
+  end
+  subgraph B[Zone B]
+    b1[db]
+    b2[replica]
+  end
+  subgraph C[Zone C]
+    direction TB
+    c1[auth]
+    c2[ldap]
+    c3[tokens]
+  end
+  hub --> a1
+  hub --> b1
+  hub --> c1

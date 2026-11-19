@@ -1,0 +1,16 @@
+flowchart TD
+    N0[Load]
+    N1([Notify])
+    N2(Report)
+    N3([Done queue])
+    N4[(Parse)]
+    N5{Done}
+    N0 --> N1
+    N0 --> N2
+    N0 --> N3
+    N2 -->|yes| N4
+    N3 -->|fail| N5
+    N0 --> N4
+    N1 --> N4
+    N2 --> N5
+    N2 -->|retry| N1

@@ -1,0 +1,9 @@
+stateDiagram-v2
+  [*] --> Polling
+  Polling --> Polling : wait
+  Polling --> Fetching : ready
+  Polling --> Error : fail
+  Fetching --> Parsing
+  Parsing --> Polling : next
+  Error --> Polling : recover
+  Parsing --> [*]

@@ -1,0 +1,7 @@
+architecture-beta
+    service a(server)[A]
+    service b(server)[B]
+    service c(server)[C]
+    a:R -[this is an extremely long edge label that goes on and on and on]-> L:b
+    b:B -[short]-> T:c
+    c:L -[another quite long label to see placement]-> B:a

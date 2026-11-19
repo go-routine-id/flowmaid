@@ -1,0 +1,68 @@
+[package]
+name = "hn"
+version = "0.1.0"
+edition = "2021"
+[dependencies]
+flowmaid = { path = "/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/wt/par" }
+[profile.release]
+debug = false
+[[bin]]
+name = "dump"
+path = "../h/src/bin/dump.rs"
+[[bin]]
+name = "contract"
+path = "../h/src/bin/contract.rs"
+[[bin]]
+name = "classq"
+path = "../h/src/bin/classq.rs"
+[[bin]]
+name = "bars"
+path = "../h/src/bin/bars.rs"
+[[bin]]
+name = "rtime"
+path = "../h/src/bin/rtime.rs"
+[[bin]]
+name = "dragt"
+path = "../h/src/bin/dragt.rs"
+[[bin]]
+name = "clsdump"
+path = "../h/src/bin/clsdump.rs"
+[[bin]]
+name = "clsdrag"
+path = "../h/src/bin/clsdrag.rs"
+[[bin]]
+name = "zero"
+path = "../h/src/bin/zero.rs"
+[[bin]]
+name = "stale"
+path = "../h/src/bin/stale.rs"
+[[bin]]
+name = "memo"
+path = "../r2/src/bin/memo.rs"
+[[bin]]
+name = "stale2"
+path = "../r2/src/bin/stale2.rs"
+[[bin]]
+name = "classq2"
+path = "../r2/src/bin/classq2.rs"
+[[bin]]
+name = "clsvg"
+path = "../r2/src/bin/clsvg.rs"
+[[bin]]
+name = "tm"
+path = "../r2/src/bin/tm.rs"
+[[bin]]
+name = "clspick"
+path = "../r2/src/bin/clspick.rs"
+[[bin]]
+name = "loopends"
+path = "../r3/src/bin/loopends.rs"
+[[bin]]
+name = "clsflick"
+path = "../r3/src/bin/clsflick.rs"
+[[bin]]
+name = "clstime"
+path = "../r3/src/bin/clstime.rs"
+[[bin]]
+name = "clsdegen"
+path = "../r3/src/bin/clsdegen.rs"

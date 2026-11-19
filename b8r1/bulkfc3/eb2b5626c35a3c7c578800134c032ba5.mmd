@@ -1,0 +1,15 @@
+flowchart TD
+    A[Start] --> B[Middle one]
+    B --> C[Middle two]
+    B --> X[Side]
+    C --> D[End]
+    D e1@-->|linear back| A
+    D e2@-.->|step back| B
+    C e3@==> A
+    D --> C
+    e1@{ curve: linear }
+    e2@{ curve: step }
+    e3@{ curve: rounded }
+    linkStyle 6 stroke:#e03131,stroke-width:5px,color:#e03131
+    linkStyle 5 interpolate bumpY stroke:#1971c2
+    linkStyle 7 interpolate linear stroke-dasharray:4 3

@@ -1,0 +1,16 @@
+flowchart TD
+    U([user])
+    subgraph FRONT[A front tier whose title is far longer than its two members]
+        w1[web] --> w2[api]
+    end
+    subgraph BACK[Back]
+        d1[(db)] --> d2[cache]
+    end
+    subgraph SIDE[Side]
+        s1[mail]
+    end
+    U -->|a rather long request label| w1
+    w2 -->|query with a wide label| d1
+    w2 -->|notify| s1
+    d2 -.->|refresh the very long label here| w1
+    s1 -->|x| d2

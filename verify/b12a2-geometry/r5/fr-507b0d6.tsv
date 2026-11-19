@@ -1,0 +1,399 @@
+v1-nonascii-titles-BT	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+v1-nonascii-titles-LR	bm=1	along=0.0	D	across=0.0	tcut_s=0	tcut_r=0
+v1-nonascii-titles-RL	bm=1	along=0.0	A	across=0.0	tcut_s=0	tcut_r=0
+v1-nonascii-titles-TD	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+v1-nonascii-titles	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+v2-short-labels-lr-BT	bm=1	along=0.0		across=26.4	tcut_s=0	tcut_r=0
+v2-short-labels-lr-LR	bm=1	along=0.0		across=13.5	tcut_s=0	tcut_r=0
+v2-short-labels-lr-RL	bm=1	along=0.0	CORE	across=13.5	tcut_s=0	tcut_r=0
+v2-short-labels-lr-TD	bm=1	along=0.0		across=26.4	tcut_s=0	tcut_r=0
+v2-short-labels-lr	bm=1	along=0.0		across=13.5	tcut_s=0	tcut_r=0
+v3-nested-entries-BT	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+v3-nested-entries-LR	bm=1	along=0.0	INN	across=0.0	tcut_s=0	tcut_r=0
+v3-nested-entries-RL	bm=1	along=0.0	INN	across=0.0	tcut_s=0	tcut_r=0
+v3-nested-entries-TD	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+v3-nested-entries	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+v4-state-composite	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+v5-title-entry-bt-BT	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+v5-title-entry-bt-LR	bm=1	along=0.0	G	across=0.0	tcut_s=0	tcut_r=0
+v5-title-entry-bt-RL	bm=1	along=0.0	G	across=0.0	tcut_s=0	tcut_r=0
+v5-title-entry-bt-TD	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+v5-title-entry-bt	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.b9-inside-BT	bm=1	along=0.0		across=89.7	tcut_s=0	tcut_r=0
+blocks.b9-inside-LR	bm=1	along=0.0		across=56.0	tcut_s=0	tcut_r=0
+blocks.b9-inside-RL	bm=1	along=0.0		across=63.0	tcut_s=0	tcut_r=0
+blocks.b9-inside-TD	bm=1	along=0.0		across=164.4	tcut_s=0	tcut_r=0
+blocks.b9-inside2-BT	bm=1	along=12.5	OUTER	across=65.7	tcut_s=0	tcut_r=0
+blocks.b9-inside2-LR	bm=1	along=0.0		across=40.0	tcut_s=0	tcut_r=0
+blocks.b9-inside2-RL	bm=1	along=0.0		across=40.0	tcut_s=0	tcut_r=0
+blocks.b9-inside2-TD	bm=1	along=0.0		across=65.7	tcut_s=0	tcut_r=0
+blocks.blocks-overview-BT	bm=1	along=12.5	ORD	across=42.3	tcut_s=0	tcut_r=0
+blocks.blocks-overview-LR	bm=1	along=0.0	EDGE	across=44.8	tcut_s=0	tcut_r=0
+blocks.blocks-overview-RL	bm=1	along=0.0	ORD	across=44.8	tcut_s=0	tcut_r=0
+blocks.blocks-overview-TD	bm=1	along=0.0		across=42.3	tcut_s=0	tcut_r=0
+blocks.blocks-overview-actors-reversed-BT	bm=1	along=12.5	ORD	across=42.3	tcut_s=0	tcut_r=0
+blocks.blocks-overview-actors-reversed-LR	bm=1	along=0.0	EDGE	across=44.8	tcut_s=0	tcut_r=0
+blocks.blocks-overview-actors-reversed-RL	bm=1	along=0.0	ORD	across=44.8	tcut_s=0	tcut_r=0
+blocks.blocks-overview-actors-reversed-TD	bm=1	along=0.0		across=42.3	tcut_s=0	tcut_r=0
+blocks.blocks-overview-bt-BT	bm=1	along=12.5	ORD	across=42.3	tcut_s=0	tcut_r=0
+blocks.blocks-overview-bt-LR	bm=1	along=0.0	EDGE	across=44.8	tcut_s=0	tcut_r=0
+blocks.blocks-overview-bt-RL	bm=1	along=0.0	ORD	across=44.8	tcut_s=0	tcut_r=0
+blocks.blocks-overview-bt-TD	bm=1	along=0.0		across=42.3	tcut_s=0	tcut_r=0
+blocks.blocks-overview-edges-reversed-BT	bm=1	along=12.5	ORD	across=42.3	tcut_s=0	tcut_r=0
+blocks.blocks-overview-edges-reversed-LR	bm=1	along=0.0	EDGE	across=44.8	tcut_s=0	tcut_r=0
+blocks.blocks-overview-edges-reversed-RL	bm=1	along=0.0	ORD	across=44.8	tcut_s=0	tcut_r=0
+blocks.blocks-overview-edges-reversed-TD	bm=1	along=0.0		across=42.3	tcut_s=0	tcut_r=0
+blocks.blocks-overview-edges-rotated-BT	bm=1	along=12.5	ORD	across=42.3	tcut_s=0	tcut_r=0
+blocks.blocks-overview-edges-rotated-LR	bm=1	along=0.0	EDGE	across=44.8	tcut_s=0	tcut_r=0
+blocks.blocks-overview-edges-rotated-RL	bm=1	along=0.0	ORD	across=44.8	tcut_s=0	tcut_r=0
+blocks.blocks-overview-edges-rotated-TD	bm=1	along=0.0		across=42.3	tcut_s=0	tcut_r=0
+blocks.blocks-overview-lr-BT	bm=1	along=12.5	ORD	across=42.3	tcut_s=0	tcut_r=0
+blocks.blocks-overview-lr-LR	bm=1	along=0.0	EDGE	across=44.8	tcut_s=0	tcut_r=0
+blocks.blocks-overview-lr-RL	bm=1	along=0.0	ORD	across=44.8	tcut_s=0	tcut_r=0
+blocks.blocks-overview-lr-TD	bm=1	along=0.0		across=42.3	tcut_s=0	tcut_r=0
+blocks.blocks-overview-rl-BT	bm=1	along=12.5	ORD	across=42.3	tcut_s=0	tcut_r=0
+blocks.blocks-overview-rl-LR	bm=1	along=0.0	EDGE	across=44.8	tcut_s=0	tcut_r=0
+blocks.blocks-overview-rl-RL	bm=1	along=0.0	ORD	across=44.8	tcut_s=0	tcut_r=0
+blocks.blocks-overview-rl-TD	bm=1	along=0.0		across=42.3	tcut_s=0	tcut_r=0
+blocks.blocks-overview-subgraphs-reversed-BT	bm=1	along=12.5	ORD	across=42.3	tcut_s=0	tcut_r=0
+blocks.blocks-overview-subgraphs-reversed-LR	bm=1	along=0.0	EDGE	across=44.8	tcut_s=0	tcut_r=0
+blocks.blocks-overview-subgraphs-reversed-RL	bm=1	along=0.0	ORD	across=44.8	tcut_s=0	tcut_r=0
+blocks.blocks-overview-subgraphs-reversed-TD	bm=1	along=0.0		across=42.3	tcut_s=0	tcut_r=0
+blocks.cycle2-BT	bm=1	along=12.5	A	across=45.2	tcut_s=0	tcut_r=0
+blocks.cycle2-LR	bm=1	along=0.0		across=43.5	tcut_s=0	tcut_r=0
+blocks.cycle2-RL	bm=1	along=0.0		across=43.5	tcut_s=0	tcut_r=0
+blocks.cycle2-TD	bm=1	along=0.0		across=45.2	tcut_s=0	tcut_r=0
+blocks.cycle2-tie-BT	bm=1	along=0.0		across=16.7	tcut_s=0	tcut_r=0
+blocks.cycle2-tie-LR	bm=1	along=0.0		across=11.2	tcut_s=0	tcut_r=0
+blocks.cycle2-tie-RL	bm=1	along=0.0		across=11.2	tcut_s=0	tcut_r=0
+blocks.cycle2-tie-TD	bm=1	along=0.0		across=16.7	tcut_s=0	tcut_r=0
+blocks.cycle2-tie-swapped-BT	bm=1	along=0.0		across=19.4	tcut_s=0	tcut_r=0
+blocks.cycle2-tie-swapped-LR	bm=1	along=0.0	B	across=11.2	tcut_s=0	tcut_r=0
+blocks.cycle2-tie-swapped-RL	bm=1	along=0.0	A	across=11.2	tcut_s=0	tcut_r=0
+blocks.cycle2-tie-swapped-TD	bm=1	along=0.0		across=19.4	tcut_s=0	tcut_r=0
+blocks.empty-target-BT	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.empty-target-LR	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.empty-target-RL	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.empty-target-TD	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.hub5-BT	bm=1	along=0.0		across=122.4	tcut_s=0	tcut_r=0
+blocks.hub5-LR	bm=1	along=0.0		across=131.5	tcut_s=0	tcut_r=0
+blocks.hub5-RL	bm=1	along=0.0		across=131.5	tcut_s=0	tcut_r=0
+blocks.hub5-TD	bm=1	along=0.0		across=122.4	tcut_s=0	tcut_r=0
+blocks.interleave-BT	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.interleave-LR	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.interleave-RL	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.interleave-TD	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.iso-lane-BT	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.iso-lane-LR	bm=0	along=0.0		across=2.0	tcut_s=0	tcut_r=0
+blocks.iso-lane-RL	bm=0	along=0.0		across=2.0	tcut_s=0	tcut_r=0
+blocks.iso-lane-TD	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.iso-lane-lr-BT	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.iso-lane-lr-LR	bm=0	along=0.0		across=2.0	tcut_s=0	tcut_r=0
+blocks.iso-lane-lr-RL	bm=0	along=0.0		across=2.0	tcut_s=0	tcut_r=0
+blocks.iso-lane-lr-TD	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.iso-nest-BT	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.iso-nest-LR	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.iso-nest-RL	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.iso-nest-TD	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.iso-state	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.l5loop-BT	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.l5loop-LR	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.l5loop-RL	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.l5loop-TD	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.lane-beside	bm=1	along=0.0		across=77.8	tcut_s=0	tcut_r=0
+blocks.lr-BT	bm=1	along=0.0		across=82.8	tcut_s=0	tcut_r=0
+blocks.lr-LR	bm=1	along=0.0		across=68.0	tcut_s=0	tcut_r=0
+blocks.lr-RL	bm=1	along=0.0		across=68.0	tcut_s=0	tcut_r=0
+blocks.lr-TD	bm=1	along=0.0		across=82.8	tcut_s=0	tcut_r=0
+blocks.nested-BT	bm=1	along=0.0		across=44.7	tcut_s=0	tcut_r=0
+blocks.nested-LR	bm=1	along=0.0		across=43.2	tcut_s=0	tcut_r=0
+blocks.nested-RL	bm=1	along=0.0		across=43.2	tcut_s=0	tcut_r=0
+blocks.nested-TD	bm=1	along=0.0		across=44.7	tcut_s=0	tcut_r=0
+blocks.nested-cases-BT	bm=1	along=0.0		across=112.7	tcut_s=0	tcut_r=0
+blocks.nested-cases-LR	bm=1	along=0.0		across=68.5	tcut_s=0	tcut_r=0
+blocks.nested-cases-RL	bm=1	along=0.0		across=68.5	tcut_s=0	tcut_r=0
+blocks.nested-cases-TD	bm=1	along=0.0		across=112.7	tcut_s=0	tcut_r=0
+blocks.nested-chain-BT	bm=1	along=12.5	Y	across=7.4	tcut_s=0	tcut_r=0
+blocks.nested-chain-LR	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.nested-chain-RL	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.nested-chain-TD	bm=1	along=12.5	Z	across=5.5	tcut_s=0	tcut_r=0
+blocks.nested-self-only-BT	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.nested-self-only-LR	bm=0	along=0.0	OUT	across=0.0	tcut_s=0	tcut_r=0
+blocks.nested-self-only-RL	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.nested-self-only-TD	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.nested-wide-title-BT	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.nested-wide-title-LR	bm=1	along=0.0	IN	across=0.0	tcut_s=0	tcut_r=0
+blocks.nested-wide-title-RL	bm=1	along=0.0	OUT	across=0.0	tcut_s=0	tcut_r=0
+blocks.nested-wide-title-TD	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.note-edge-row	bm=1	along=0.0		across=22.3	tcut_s=0	tcut_r=0
+blocks.own-centre-BT	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.own-centre-LR	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.own-centre-RL	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.own-centre-TD	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.p01-iso-BT	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.p01-iso-LR	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.p01-iso-RL	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.p01-iso-TD	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.p02-iso-dir-BT	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.p02-iso-dir-LR	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.p02-iso-dir-RL	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.p02-iso-dir-TD	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.p03-ext-dir-BT	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.p03-ext-dir-LR	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.p03-ext-dir-RL	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.p03-ext-dir-TD	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.p04-to-cluster-BT	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.p04-to-cluster-LR	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.p04-to-cluster-RL	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.p04-to-cluster-TD	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.p05-siblings-BT	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.p05-siblings-LR	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.p05-siblings-RL	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.p05-siblings-TD	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.p06-block-cycle-BT	bm=1	along=0.0		across=12.4	tcut_s=0	tcut_r=0
+blocks.p06-block-cycle-LR	bm=1	along=0.0		across=11.2	tcut_s=0	tcut_r=0
+blocks.p06-block-cycle-RL	bm=1	along=0.0		across=11.2	tcut_s=0	tcut_r=0
+blocks.p06-block-cycle-TD	bm=1	along=0.0		across=12.4	tcut_s=0	tcut_r=0
+blocks.p07-nested-BT	bm=1	along=0.0		across=5.5	tcut_s=0	tcut_r=0
+blocks.p07-nested-LR	bm=1	along=0.0		across=9.5	tcut_s=0	tcut_r=0
+blocks.p07-nested-RL	bm=1	along=0.0		across=9.5	tcut_s=0	tcut_r=0
+blocks.p07-nested-TD	bm=1	along=12.5	O	across=5.5	tcut_s=0	tcut_r=0
+blocks.p08-chain3-BT	bm=1	along=0.0		across=10.7	tcut_s=0	tcut_r=0
+blocks.p08-chain3-LR	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.p08-chain3-RL	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.p08-chain3-TD	bm=1	along=0.0		across=10.7	tcut_s=0	tcut_r=0
+blocks.p09-disconnected-BT	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.p09-disconnected-LR	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.p09-disconnected-RL	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.p09-disconnected-TD	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.p10-mixed-rank-BT	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.p10-mixed-rank-LR	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.p10-mixed-rank-RL	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.p10-mixed-rank-TD	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.p11-lr-BT	bm=1	along=0.0		across=6.8	tcut_s=0	tcut_r=0
+blocks.p11-lr-LR	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.p11-lr-RL	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.p11-lr-TD	bm=1	along=0.0		across=6.8	tcut_s=0	tcut_r=0
+blocks.p12-state	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.p13-inner-dir-ext-BT	bm=0	along=0.0		across=0.0	tcut_s=1	tcut_r=1
+blocks.p13-inner-dir-ext-LR	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.p13-inner-dir-ext-RL	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.p13-inner-dir-ext-TD	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.p14-empty-and-self-BT	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.p14-empty-and-self-LR	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.p14-empty-and-self-RL	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.p14-empty-and-self-TD	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.ratio2-BT	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.ratio2-LR	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.ratio2-RL	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.ratio2-TD	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.ratio2x4-BT	bm=1	along=0.0		across=8.1	tcut_s=0	tcut_r=0
+blocks.ratio2x4-LR	bm=1	along=0.0		across=11.2	tcut_s=0	tcut_r=0
+blocks.ratio2x4-RL	bm=1	along=0.0		across=11.2	tcut_s=0	tcut_r=0
+blocks.ratio2x4-TD	bm=1	along=0.0		across=8.1	tcut_s=0	tcut_r=0
+blocks.ratio3-BT	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.ratio3-LR	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.ratio3-RL	bm=1	along=0.0	A	across=0.0	tcut_s=0	tcut_r=0
+blocks.ratio3-TD	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.ratio4-BT	bm=1	along=0.0		across=8.1	tcut_s=0	tcut_r=0
+blocks.ratio4-LR	bm=1	along=0.0		across=11.2	tcut_s=0	tcut_r=0
+blocks.ratio4-RL	bm=1	along=0.0		across=11.2	tcut_s=0	tcut_r=0
+blocks.ratio4-TD	bm=1	along=0.0		across=8.1	tcut_s=0	tcut_r=0
+blocks.ratio4mask-BT	bm=1	along=0.0		across=8.1	tcut_s=0	tcut_r=0
+blocks.ratio4mask-LR	bm=1	along=0.0		across=11.2	tcut_s=0	tcut_r=0
+blocks.ratio4mask-RL	bm=1	along=0.0		across=11.2	tcut_s=0	tcut_r=0
+blocks.ratio4mask-TD	bm=1	along=0.0		across=8.1	tcut_s=0	tcut_r=0
+blocks.reqresp-BT	bm=1	along=0.0		across=25.6	tcut_s=0	tcut_r=0
+blocks.reqresp-LR	bm=1	along=0.0		across=11.2	tcut_s=0	tcut_r=0
+blocks.reqresp-RL	bm=1	along=0.0	B	across=11.2	tcut_s=0	tcut_r=0
+blocks.reqresp-TD	bm=1	along=0.0		across=25.6	tcut_s=0	tcut_r=0
+blocks.reqresp22-BT	bm=1	along=0.0		across=25.6	tcut_s=0	tcut_r=0
+blocks.reqresp22-LR	bm=1	along=0.0		across=11.2	tcut_s=0	tcut_r=0
+blocks.reqresp22-RL	bm=1	along=0.0		across=11.2	tcut_s=0	tcut_r=0
+blocks.reqresp22-TD	bm=1	along=0.0		across=25.6	tcut_s=0	tcut_r=0
+blocks.self-member-BT	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.self-member-LR	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.self-member-RL	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.self-member-TD	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.selfsub-nested-BT	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.selfsub-nested-LR	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.selfsub-nested-RL	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.selfsub-nested-TD	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.state-note	bm=1	along=0.0		across=98.5	tcut_s=0	tcut_r=0
+blocks.sub-nested-self-BT	bm=1	along=0.0		across=26.5	tcut_s=0	tcut_r=0
+blocks.sub-nested-self-LR	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.sub-nested-self-RL	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.sub-nested-self-TD	bm=1	along=0.0		across=26.5	tcut_s=0	tcut_r=0
+blocks.swim-cycle-BT	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.swim-cycle-LR	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.swim-cycle-RL	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.swim-cycle-TD	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.swim-nested-BT	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.swim-nested-LR	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.swim-nested-RL	bm=1	along=0.0	A	across=0.0	tcut_s=0	tcut_r=0
+blocks.swim-nested-TD	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.swimlane-BT	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.swimlane-LR	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.swimlane-RL	bm=1	along=0.0	A	across=0.0	tcut_s=0	tcut_r=0
+blocks.swimlane-TD	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.swimlane-nested-BT	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.swimlane-nested-LR	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.swimlane-nested-RL	bm=1	along=0.0	B	across=0.0	tcut_s=0	tcut_r=0
+blocks.swimlane-nested-TD	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.t1-nest-own-BT	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.t1-nest-own-LR	bm=0	along=0.0	OUT	across=0.0	tcut_s=0	tcut_r=0
+blocks.t1-nest-own-RL	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.t1-nest-own-TD	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.t2-self-nested-BT	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.t2-self-nested-LR	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.t2-self-nested-RL	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.t2-self-nested-TD	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.t2b-self-nested-order-BT	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.t2b-self-nested-order-LR	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.t2b-self-nested-order-RL	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.t2b-self-nested-order-TD	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.t9-frames-8px-BT	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.t9-frames-8px-LR	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.t9-frames-8px-RL	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.t9-frames-8px-TD	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.t9b-frames-8px-lr-BT	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.t9b-frames-8px-lr-LR	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.t9b-frames-8px-lr-RL	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.t9b-frames-8px-lr-TD	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.t9c-frames-8px-two-way-BT	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.t9c-frames-8px-two-way-LR	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.t9c-frames-8px-two-way-RL	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.t9c-frames-8px-two-way-TD	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.title-entry-BT	bm=1	along=0.0	S	across=0.0	tcut_s=0	tcut_r=0
+blocks.title-entry-LR	bm=1	along=0.0	S	across=0.0	tcut_s=0	tcut_r=0
+blocks.title-entry-RL	bm=1	along=0.0	S	across=0.0	tcut_s=0	tcut_r=0
+blocks.title-entry-TD	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.title-hidden-BT	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.title-hidden-LR	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.title-hidden-RL	bm=1	along=0.0	S	across=0.0	tcut_s=0	tcut_r=0
+blocks.title-hidden-TD	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+blocks.turned-blocks-BT	bm=1	along=0.0		across=66.1	tcut_s=0	tcut_r=0
+blocks.turned-blocks-LR	bm=1	along=0.0		across=26.5	tcut_s=0	tcut_r=0
+blocks.turned-blocks-RL	bm=1	along=0.0	QA	across=26.5	tcut_s=0	tcut_r=0
+blocks.turned-blocks-TD	bm=1	along=12.5	SHIP	across=121.7	tcut_s=0	tcut_r=0
+blocks.wide-stroke-BT	bm=1	along=0.0		across=33.7	tcut_s=0	tcut_r=0
+blocks.wide-stroke-LR	bm=1	along=0.0		across=40.0	tcut_s=0	tcut_r=0
+blocks.wide-stroke-RL	bm=1	along=0.0	C	across=40.0	tcut_s=0	tcut_r=0
+blocks.wide-stroke-TD	bm=1	along=0.0		across=33.7	tcut_s=0	tcut_r=0
+examples.advanced-BT	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+examples.advanced-LR	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+examples.advanced-RL	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+examples.advanced-TD	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+examples.demo-BT	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+examples.demo-LR	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+examples.demo-RL	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+examples.demo-TD	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+examples.fanout-BT	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+examples.fanout-LR	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+examples.fanout-RL	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+examples.fanout-TD	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+examples.long-labels-BT	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+examples.long-labels-LR	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+examples.long-labels-RL	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+examples.long-labels-TD	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+examples.lr-BT	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+examples.lr-LR	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+examples.lr-RL	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+examples.lr-TD	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+examples.shapes-BT	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+examples.shapes-LR	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+examples.shapes-RL	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+examples.shapes-TD	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+examples.state	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+examples.stress-BT	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+examples.stress-LR	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+examples.stress-RL	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+examples.stress-TD	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+examples.subgraph-BT	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+examples.subgraph-LR	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+examples.subgraph-RL	bm=1	along=0.0	platform	across=0.0	tcut_s=0	tcut_r=0
+examples.subgraph-TD	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+fans.fan011-BT	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+fans.fan011-LR	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+fans.fan011-RL	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+fans.fan011-TD	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+fans.fan020-BT	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+fans.fan020-LR	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+fans.fan020-RL	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+fans.fan020-TD	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+fans.fan038-BT	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+fans.fan038-LR	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+fans.fan038-RL	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+fans.fan038-TD	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+fans.fan047-BT	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+fans.fan047-LR	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+fans.fan047-RL	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+fans.fan047-TD	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+fans.fan050-BT	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+fans.fan050-LR	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+fans.fan050-RL	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+fans.fan050-TD	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+fans.fan073-BT	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+fans.fan073-LR	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+fans.fan073-RL	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+fans.fan073-TD	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+fans.fan085-BT	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+fans.fan085-LR	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+fans.fan085-RL	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+fans.fan085-TD	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+fans.fan099-BT	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+fans.fan099-LR	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+fans.fan099-RL	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+fans.fan099-TD	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+notes.fork-twins	bm=1	along=0.0		across=42.5	tcut_s=0	tcut_r=0
+notes.near-drag	bm=1	along=0.0	K0	across=0.0	tcut_s=0	tcut_r=0
+notes.nested-composite	bm=1	along=0.0		across=20.0	tcut_s=0	tcut_r=0
+notes.routed-around	bm=1	along=0.0		across=72.0	tcut_s=0	tcut_r=0
+notes.spread-bottom	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+notes.spread-face	bm=1	along=0.0		across=40.0	tcut_s=0	tcut_r=0
+notes.straight-link	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+notes.wide-frames	bm=1	along=12.5	K0NN	across=0.0	tcut_s=0	tcut_r=0
+outline.fans-BT	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+outline.fans-LR	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+outline.fans-RL	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+outline.fans-TD	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+outline.fans-lr-BT	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+outline.fans-lr-LR	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+outline.fans-lr-RL	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+outline.fans-lr-TD	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+outline.loops-BT	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+outline.loops-LR	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+outline.loops-RL	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+outline.loops-TD	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+outline.shapes-lr-BT	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+outline.shapes-lr-LR	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+outline.shapes-lr-RL	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+outline.shapes-lr-TD	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+outline.shapes-td-BT	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+outline.shapes-td-LR	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+outline.shapes-td-RL	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+outline.shapes-td-TD	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+quality.back-edge-BT	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+quality.back-edge-LR	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+quality.back-edge-RL	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+quality.back-edge-TD	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+quality.bench-75-BT	bm=1	along=75.0	edge	across=507.0	tcut_s=0	tcut_r=0
+quality.bench-75-LR	bm=1	along=0.0		across=459.5	tcut_s=0	tcut_r=0
+quality.bench-75-RL	bm=1	along=0.0		across=459.5	tcut_s=0	tcut_r=0
+quality.bench-75-TD	bm=1	along=12.5	edge	across=538.2	tcut_s=0	tcut_r=0
+quality.dense-lr-BT	bm=1	along=0.0	g3	across=1039.5	tcut_s=0	tcut_r=0
+quality.dense-lr-LR	bm=1	along=0.0		across=471.0	tcut_s=0	tcut_r=0
+quality.dense-lr-RL	bm=1	along=0.0	g10	across=471.0	tcut_s=0	tcut_r=0
+quality.dense-lr-TD	bm=1	along=12.5	g11	across=1001.0	tcut_s=0	tcut_r=0
+quality.dense-td-BT	bm=1	along=12.5	g2	across=22.6	tcut_s=0	tcut_r=0
+quality.dense-td-LR	bm=1	along=0.0		across=1076.1	tcut_s=0	tcut_r=0
+quality.dense-td-RL	bm=1	along=0.0	g5	across=1076.1	tcut_s=0	tcut_r=0
+quality.dense-td-TD	bm=1	along=37.5	g8	across=49.9	tcut_s=0	tcut_r=0
+quality.fanout-frames-BT	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+quality.fanout-frames-LR	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+quality.fanout-frames-RL	bm=1	along=0.0	g3	across=0.0	tcut_s=0	tcut_r=0
+quality.fanout-frames-TD	bm=1	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+quality.wide-labels-BT	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+quality.wide-labels-LR	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+quality.wide-labels-RL	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0
+quality.wide-labels-TD	bm=0	along=0.0		across=0.0	tcut_s=0	tcut_r=0

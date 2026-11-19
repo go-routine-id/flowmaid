@@ -1,0 +1,23 @@
+MUST FAIL     infra-overview                     lbl_endpx_mean         558  must <= 386       target <= 340       [0.38 309, start 316, mermaid 558]  4.3 (a): the smaller of mermaid's and 1.25 x 0.38's
+MUST FAIL     infra-overview                     area               5184964  must <= 4267593.75 target <= -         [0.38 3414075, start 3414075, mermaid 5184964]  4.3 (a): the smaller of mermaid's and 1.25 x 0.38's
+MUST FAIL     infra-overview-v2                  sib_stagger              1  must <= 0         target <= -         [0.38 1, start 1, mermaid 1]  4.3 (b) v2
+MUST FAIL     infra-overview-v2                  lbl_endpx_mean         496  must <= 329       target <= 290       [0.38 263, start 263, mermaid 496]  4.3 (b): the smaller of mermaid's and 1.25 x 0.38's
+MUST FAIL     infra-overview-v2                  area               5366494  must <= 3209880   target <= -         [0.38 2567904, start 2567904, mermaid 5366494]  4.3 (b): 1.25 x 0.38's
+MUST FAIL     perm-a-edges-reversed              bands            GH / PROD / U2 U1 T1 DR / EXT / STG  must == = infra-overview: U2 U1 T1 / EXT GH / PROD / DR STG (a different number of bands) target == -         [0.38 NA, start NA, mermaid NA]  4.3 (b): the same band order as the analog
+MUST FAIL     perm-b-subgraphs-reversed          bands            U1 T1 U2 / GH EXT / PROD / STG DR  must == = infra-overview: U2 U1 T1 / EXT GH / PROD / DR STG (GH and EXT have different links) target == -         [0.38 NA, start NA, mermaid NA]  4.3 (b): the same band order as the analog
+accepted      perm-c-actors-reversed             bands            U1 U2 T1 / EXT GH / PROD / DR STG  == infra-overview: U2 U1 T1 / EXT GH / PROD / DR STG  up to crossing-neutral units: U1~U2 (both: out DNS); U2~U1 (both: out DNS)
+accepted      perm-d-edges-rotated               bands            U1 T1 U2 / EXT GH / PROD / DR STG  == infra-overview: U2 U1 T1 / EXT GH / PROD / DR STG  up to crossing-neutral units: U1~U2 (both: out DNS); T1~U1 (both: out DNS); U2~T1 (both: out DNS)
+MUST FAIL     perm-e-one-more-inner-edge         bands            U2 T1 U1 / GH EXT / PROD / STG DR  must == = infra-overview: U2 U1 T1 / EXT GH / PROD / DR STG (GH and EXT have different links) target == -         [0.38 NA, start NA, mermaid NA]  4.3 (b): the same band order as the analog
+MUST FAIL     perm-b-subgraphs-reversed          breadth               2422  must == 1979.1..2418.9 target == -         [0.38 2787, start 2787, mermaid 2422]  4.3 (b): canvas breadth within 10 % of the analog's
+MUST FAIL     perm-e-one-more-inner-edge         breadth               2419  must == 1979.1..2418.9 target == -         [0.38 2857, start 2857, mermaid 2419]  4.3 (b): canvas breadth within 10 % of the analog's
+target missed blocks-overview-edges-reversed     crossings                6  must <= 7         target <= 5         [0.38 7, start 6, mermaid 6]  4.3 (c): mermaid's 5 + 2
+MUST FAIL     blocks-overview                    lbl_endpx_mean         332  must <= 295       target <= -         [0.38 268, start 268, mermaid 332]  4.3 (c): 1.1 x 0.38's 268
+MUST FAIL     blocks-overview-edges-rotated      lbl_endpx_mean         332  must <= 295       target <= -         [0.38 250, start 251, mermaid 332]  4.3 (c): 1.1 x 0.38's 268
+MUST FAIL     blocks-overview-actors-reversed    lbl_endpx_mean         332  must <= 295       target <= -         [0.38 231, start 231, mermaid 332]  4.3 (c): 1.1 x 0.38's 268
+MUST FAIL     blocks-overview-subgraphs-reversed lbl_endpx_mean         332  must <= 295       target <= -         [0.38 202, start 202, mermaid 332]  4.3 (c): 1.1 x 0.38's 268
+MUST FAIL     blocks-overview-edges-reversed     bands            OPS / SHOP OBS / CI EDGE / WEB / ORD / DATA  must == = blocks-overview: SHOP OPS / EDGE CI / WEB / ORD / DATA / OBS (band 1 holds other units) target == -         [0.38 NA, start NA, mermaid NA]  4.3 (c): the same band order across its four permutations
+MUST FAIL     blocks-overview-edges-reversed     breadth               1332  must == 1085.4..1326.6 target == -         [0.38 1375, start 1375, mermaid 1332]  4.3 (c): canvas breadth within 10 %
+target missed bench-75                           lateral_x                3  must <= 3         target <= 0         [0.38 43, start 43, mermaid 3]  4.3 (d): not above mermaid's count (3 / 0 / 1), target 0
+target missed dense-td                           lateral_x                1  must <= 1         target <= 0         [0.38 93, start 93, mermaid 1]  4.3 (d): not above mermaid's count (3 / 0 / 1), target 0
+judge: --due A2: 10 rule(s) due at a later checkpoint left out
+judge: 444 checks on 95 diagram(s): 16 must-fail, 3 target missed

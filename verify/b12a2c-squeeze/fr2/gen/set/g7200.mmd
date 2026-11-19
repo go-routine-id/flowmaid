@@ -1,0 +1,71 @@
+flowchart BT
+  n1["mail<br/>worker"]
+  n2["parse<br/>ship"]
+  subgraph B0["Data tier"]
+    n3["mail"]
+    n4["billing"]
+    n5["cache"]
+    subgraph B0s0["Data tier 0"]
+      n6["cache"]
+      n7["split auth pack"]
+      n8["queue billing audit<br/>pack"]
+    end
+    subgraph B0s1["Back office and finance 1"]
+      n9["api queue pack"]
+      n10["cache merge worker"]
+    end
+  end
+  subgraph B1["Analytics"]
+    n11["split audit store"]
+    n12["merge"]
+    n13["store"]
+    n14["index pack index"]
+  end
+  subgraph B2["Fulfilment desk"]
+    n15["search"]
+    n16["notify merge billing"]
+    n17["index"]
+  end
+  subgraph B3["Platform"]
+    n18["split queue ship<br/>cache"]
+    n19["api worker ship"]
+    n20["worker split pack<br/>ingest"]
+    n21["index"]
+    subgraph B3s0["Fulfilment desk 0"]
+      n22["parse report db"]
+      n23["pack"]
+      n24["ingest"]
+    end
+  end
+  n25["index"]
+  n22 ==> n25
+  n20 --> n19
+  n11 --> n16
+  n12 --> n14
+  n21 -->|pack| n6
+  n23 ==>|billing| n6
+  n5 -.-> n9
+  n25 --> n11
+  n13 ==> n6
+  n3 --> n6
+  n11 ==>|index| n9
+  n12 --> n17
+  n21 -.->|db| n15
+  n11 --> n22
+  n18 -->|search| n3
+  n18 --> n4
+  n9 ==>|pack| n3
+  n14 --> n17
+  n10 --> n23
+  n19 ==> n3
+  n19 ==>|ingest| n9
+  n25 ==> n22
+  n15 --> n23
+  n14 -.-> n2
+  n10 --> n13
+  n9 -->|db| n8
+  n25 --> n20
+  n24 --> n5
+  n11 -.-> n21
+  n1 --> n8
+  n16 -->|notify| n17

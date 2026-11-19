@@ -1,0 +1,34 @@
+flowchart RL
+  n1["ship store store"]
+  subgraph B0["Data tier"]
+    n2["mail<br/>store"]
+    n3["split<br/>auth"]
+    n4["notify"]
+    n5["queue"]
+  end
+  subgraph B1["Core"]
+    n6["parse cache worker"]
+    n7["parse report pack"]
+    subgraph B1s0["Back office and finance 0"]
+      n8["audit"]
+      n9["billing"]
+      n10["notify"]
+    end
+  end
+  n11["ship api queue<br/>notify"]
+  n12["ship"]
+  n11 -.-> n6
+  n12 -.-> n6
+  n5 -->|ingest| n10
+  n10 ==> n8
+  n9 --> B1s0
+  n10 -->|parse| n5
+  n6 ==>|merge| n8
+  n4 --> n2
+  n9 -.-> n6
+  n8 --> n2
+  n1 --> n12
+  n4 --> n12
+  n12 --> n4
+  n11 -->|split| n1
+  n3 ==> n2

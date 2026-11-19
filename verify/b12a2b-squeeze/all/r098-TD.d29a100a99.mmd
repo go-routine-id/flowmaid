@@ -1,0 +1,17 @@
+flowchart TD
+    subgraph O[Core]
+        subgraph G[Payments]
+            m0[y]
+            m1[charge]
+            m2[auth service]
+        end
+        k[k]
+    end
+    m0 --> k
+    m1 --> k
+    m2 --> k
+    s0[src0] --> G
+    s0 -- "lbl5" --> G
+    s1[src1] --> O
+    s1 --> m2
+    m2 --> z[end]

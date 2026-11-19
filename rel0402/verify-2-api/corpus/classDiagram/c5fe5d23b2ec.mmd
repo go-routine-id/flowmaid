@@ -1,0 +1,27 @@
+classDiagram
+direction BT
+A *-- B : uses
+B o-- C : has many of
+C <|-- D
+B ..|> D
+A -- B
+D o-- D : d0
+D o-- D
+D --> D : d2
+D *-- D : d3
+D *-- D : d4
+D "1" --> "*" D
+D ..> D : d6
+D o-- D : d7
+A ..> A : a0
+A *-- A : a1
+A ..> A : a2
+A *-- A
+A ..> A
+A --> A
+C "1" --> "*" C
+C ..> C : c1
+C ..> C : c2
+C "1" --> "*" C : c3
+C "1" --> "*" C
+C ..> C : c5

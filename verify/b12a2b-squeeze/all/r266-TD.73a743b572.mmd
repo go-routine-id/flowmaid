@@ -1,0 +1,14 @@
+flowchart TD
+    subgraph G[Core]
+        m0[y]
+        m1[charge]
+    end
+    s0[src0] --> m0
+    s0 -- "lbl7" --> m1
+    s1[src1] --> G
+    s1 --> G
+    s2[src2] --> G
+    s3[src3] --> G
+    s3 --> m0
+    s4[src4] --> m1
+    G --> z2[after]

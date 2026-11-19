@@ -1,0 +1,19 @@
+flowchart TD
+    subgraph O[Édition générale des données]
+        subgraph G[Data ingestion workers]
+            m0[w]
+            m1[ledger]
+            m2[db]
+        end
+        k[k]
+    end
+    m0 --> k
+    m1 --> k
+    m2 --> k
+    s0[src0] --> G
+    s0 -- "lbl8" --> G
+    s1[src1] --> O
+    s2[src2] --> m2
+    s2 --> m0
+    s3[src3] --> G
+    G --> z2[after]

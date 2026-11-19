@@ -1,0 +1,15 @@
+classDiagram
+    direction LR
+    class Logger {
+      +log(msg) void
+      +warn(msg) void
+      +error(msg) void
+    }
+    ServiceA "1..*" --> "1" Logger : logs to
+    ServiceB "many" --> "one" Logger : logs to
+    ServiceC "0..1" ..> "1" Logger : uses
+    ServiceD "*" o-- "1" Logger : shares
+    ServiceE "1" *-- "1" Logger : owns
+    Logger <|-- FileLogger : is a
+    Logger <|-- NetLogger : is a
+    Logger "1" --> "*" Sink : writes

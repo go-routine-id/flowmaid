@@ -1,0 +1,11 @@
+flowchart TD
+    src[entry] --> a1
+    subgraph OUT[Outer]
+        subgraph IN["A nested block whose title runs far past its one member"]
+            a1[n]
+        end
+        a2[m]
+    end
+    a1 --> dst[exit]
+    a2 --> dst
+    src --> a2

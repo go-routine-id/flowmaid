@@ -1,0 +1,9 @@
+classDiagram
+A <|-- B
+A <|-- C
+A "1" ..|> "*" D : uses
+D "1" <|-- "*" E : has many of
+E o-- F
+D ..> B
+B "1" --> "*" B : b0
+B --> B : b1

@@ -1,0 +1,24 @@
+flowchart LR
+    N0[Load]
+    N1([Notify])
+    N2[Report]
+    N3(Queue report)
+    N4([Emit])
+    N5([Load emit])
+    N6[Validate]
+    N7([Parse])
+    N8[Archive]
+    N9([Parse])
+    N0 --> N1
+    N0 -->|no| N2
+    N2 -->|fail| N3
+    N2 --> N4
+    N4 --> N5
+    N5 --> N6
+    N6 --> N7
+    N5 -->|yes| N8
+    N6 -->|no| N9
+    N0 --> N5
+    N2 --> N6
+    N7 --> N8
+    N8 -.->|again| N4

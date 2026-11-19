@@ -1,0 +1,11 @@
+classDiagram
+    note for Ghost "I point at a class nobody declares"
+    note for Later "attached to a class declared after me"
+    note "free floating\nsecond line"
+    class Later {
+      +int x
+      +run() void
+    }
+    class Other
+    Later <|-- Other : extends
+    note for Other "child note<br/>two lines"

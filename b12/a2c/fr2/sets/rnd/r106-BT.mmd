@@ -1,0 +1,13 @@
+flowchart BT
+    subgraph G[Payments]
+        m0[auth service]
+        m1[auth service]
+        m2[w]
+    end
+    s0[src0] --> m0
+    s1[src1] --> m2
+    s2[src2] --> G
+    s3[src3] -- "lbl9" --> G
+    s3 -- "lbl4" --> m2
+    m2 --> z[end]
+    G --> z2[after]

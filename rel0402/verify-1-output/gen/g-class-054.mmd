@@ -1,0 +1,42 @@
+classDiagram
+C7 <|-- C7
+C8 *-- C2
+C15 -- C16 : beta
+C10 "1" -- "*" C3
+C0 *-- C7 : <b>bold</b>
+C3 <|-- C11
+C18 ..|> C3 : a&b
+C13 ..> C12
+C20 o-- C6 : Long label here
+C7 --> C12 : Long label here
+C19 ..|> C14 : alpha
+C9 "1" <|-- "*" C18
+C3 --> C8 : x
+C14 *-- C9
+C8 <|-- C5
+C3 "1" <--> "*" C21
+C11 <--> C12
+C10 *-- C9
+note for C1 "alpha"
+note for C5 "alpha"
+note "<b>bold</b>"
+class C1 {
+  +int id
+  +name() String
+}
+class C11 {
+  +int id
+  +name() String
+}
+class C13 {
+  +int id
+  +name() String
+}
+class C16 {
+  +int id
+  +name() String
+}
+class C18 {
+  +int id
+  +name() String
+}

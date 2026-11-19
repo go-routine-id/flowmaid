@@ -1,0 +1,17 @@
+flowchart RL
+  H0 ==>|retry| N27
+  H0 -.->|a much longer label here| N0
+  H0 --> N28
+  H0 -.-> N0
+  H0 -.->|no| N21
+  H0 -.->|yes| N4
+  H0 --> N5
+  N28 --> N29
+  N13 --> N15
+  N14 -->|x| N1
+  N18 --> N29
+  N28 --> N6
+  N17 -->|retry| N27
+  N1 --> N20
+  N4 --> N20
+  N5 -->|a much longer label here| N12

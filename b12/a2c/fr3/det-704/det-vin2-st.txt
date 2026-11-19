@@ -1,0 +1,20 @@
+nest-sib-lbl-BT.static.svg	s → a1: go	0.1
+nest-sib-lbl-BT.static.svg	t → b1: kick off	0.1
+nest-sib-lbl-BT.static.svg	a1 → a2: next	0.0
+nest-sib-lbl-BT.static.svg	b1 → b2: then	0.1
+nest-sib-lbl-BT.static.svg	b2 → z: done	0.0
+nest-sib-lbl-LR.static.svg	s → a1: go	0.0
+nest-sib-lbl-LR.static.svg	t → b1: kick off	0.0
+nest-sib-lbl-LR.static.svg	a1 → a2: next	0.0
+nest-sib-lbl-LR.static.svg	b1 → b2: then	0.0
+nest-sib-lbl-LR.static.svg	b2 → z: done	0.0
+nest-sib-lbl-RL.static.svg	s → a1: go	0.0
+nest-sib-lbl-RL.static.svg	t → b1: kick off	0.0
+nest-sib-lbl-RL.static.svg	a1 → a2: next	0.0
+nest-sib-lbl-RL.static.svg	b1 → b2: then	0.0
+nest-sib-lbl-RL.static.svg	b2 → z: done	0.0
+nest-sib-lbl.static.svg	s → a1: go	0.0
+nest-sib-lbl.static.svg	t → b1: kick off	0.0
+nest-sib-lbl.static.svg	a1 → a2: next	0.0
+nest-sib-lbl.static.svg	b1 → b2: then	0.0
+nest-sib-lbl.static.svg	b2 → z: done	21.6

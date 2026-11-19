@@ -1,0 +1,54 @@
+flowchart RL
+  n1["worker"]
+  subgraph B0["Ops"]
+    n2["api<br/>index"]
+    subgraph B0s0["Analytics 0"]
+      n3["search"]
+      n4["worker"]
+    end
+    subgraph B0s1["Data tier 1"]
+      n5["auth"]
+      n6["notify"]
+      n7["search"]
+    end
+  end
+  subgraph B1["Back office and finance"]
+    n8["billing<br/>report"]
+    n9["report billing worker"]
+    n10["report"]
+    n11["worker"]
+  end
+  subgraph B2["Edge services"]
+    n12["audit"]
+    n13["split"]
+  end
+  subgraph B3["Core"]
+    n14["pack"]
+    subgraph B3s0["Core 0"]
+      n15["api"]
+      n16["search"]
+    end
+  end
+  n17["billing ship store"]
+  n18["billing"]
+  n16 -->|ingest| n14
+  n8 -.-> n6
+  n12 --> n16
+  n17 -.-> n16
+  n8 -->|audit| n15
+  n7 --> n15
+  n4 --> n11
+  n3 --> n15
+  n5 ==> n18
+  n15 ==> n2
+  n7 --> n17
+  n6 --> n18
+  n18 -.-> n17
+  n13 --> n2
+  n14 --> n7
+  n18 --> n2
+  n13 --> n5
+  n7 ==> n6
+  n1 -->|search| n3
+  n8 --> B2
+  n5 --> n15

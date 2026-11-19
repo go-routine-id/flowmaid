@@ -1,0 +1,58 @@
+flowchart TD
+  n0["elit<br/>dolor<br/>sed"]
+  subgraph g0["sit"]
+    direction LR
+    n1(["do labore amet veniam<br/>sit"])
+    n2[("sit labore sed dolor<br/>dolor adipiscing veniam ut")]
+    n1 --> n2
+  end
+  subgraph g1["sit elit lorem ipsum incididunt sit ullamco"]
+    direction LR
+    n3[("incididunt adipiscing do do<br/>sed lorem incididunt")]
+  end
+  subgraph g2["veniam"]
+    direction LR
+    n4(["tempor veniam ipsum<br/>dolor ipsum"])
+    n5("aliqua nostrud labore laboris")
+    n6[("ut<br/>consectetur amet amet aliqua<br/>elit ullamco veniam")]
+  end
+  subgraph g3["incididunt sed sit elit sit elit ipsum eiusmod consectetur eiusmod lorem"]
+    n7[("tempor aliqua magna<br/>sed<br/>dolor amet ipsum eiusmod")]
+    n8("labore adipiscing tempor elit<br/>eiusmod adipiscing<br/>do do adipiscing elit")
+    n9(["ullamco tempor eiusmod<br/>ut dolor labore"])
+    n10["sit labore aliqua elit<br/>lorem sed incididunt"]
+    n7 --> n8
+  end
+  subgraph g4["ipsum tempor elit sit elit aliqua ipsum"]
+    direction LR
+    n11("nostrud ut<br/>aliqua do eiusmod")
+    n12(["nostrud aliqua<br/>do"])
+    n13(["laboris"])
+    n14("dolor lorem sit<br/>sit magna tempor ullamco")
+    n15(["sed<br/>labore do sed"])
+    n11 --> n12
+  end
+  subgraph g5["lorem ullamco consectetur do consectetur incididunt amet tempor ullamco"]
+    n16("sit magna lorem<br/>ut lorem incididunt")
+    n17("incididunt<br/>ipsum sed<br/>adipiscing elit eiusmod incididunt")
+    n16 --> n17
+  end
+  subgraph g6["tempor veniam veniam sit"]
+    direction TB
+    n18("eiusmod laboris eiusmod ullamco<br/>do adipiscing elit laboris")
+    n19["veniam sit do nostrud<br/>labore do sed sed"]
+  end
+  n20(["dolor sed nostrud incididunt<br/>magna veniam lorem sit"])
+  n21(["nostrud veniam<br/>eiusmod laboris<br/>amet do"])
+  n22(["nostrud dolor laboris<br/>do eiusmod incididunt labore"])
+  n0 -.-> g0
+  n0 ==> n3
+  n0 ==> g2
+  n0 ==> g3
+  n0 ==> g4
+  n0 ==> n16
+  n0 ==> g6
+  n0 --> n20
+  n0 --> n21
+  n0 --> n22
+  n18 --> n2

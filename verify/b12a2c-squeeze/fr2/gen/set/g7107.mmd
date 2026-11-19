@@ -1,0 +1,40 @@
+flowchart TD
+  n1["search<br/>index"]
+  subgraph B0["Analytics"]
+    n2["cache audit mail"]
+    n3["search"]
+    n4["store"]
+    n5["mail"]
+  end
+  subgraph B1["Analytics"]
+    n6["db"]
+    n7["audit<br/>api"]
+    n8["ship<br/>audit"]
+    n9["audit"]
+    subgraph B1s0["Platform 0"]
+      n10["db"]
+      n11["store"]
+    end
+  end
+  subgraph B2["Edge services"]
+    n12["billing audit report"]
+    n13["mail"]
+  end
+  n14["auth"]
+  n15["merge<br/>billing"]
+  n13 -.-> n14
+  n6 -->|worker| n2
+  n2 ==> n10
+  n2 -->|mail| n4
+  n9 -->|queue| n5
+  n14 --> n8
+  n14 --> n2
+  n11 -.-> n12
+  n4 --> n14
+  n13 --> n7
+  n12 --> n5
+  n12 ==> n6
+  n10 --> n14
+  n1 --> n6
+  n11 ==> n9
+  n9 -.->|store| n3

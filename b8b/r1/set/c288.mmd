@@ -1,0 +1,31 @@
+flowchart LR
+  subgraph F0 [Frame 0]
+    n0([Node 0 with a long label])
+  end
+  subgraph F1 [Frame 1]
+    n9{{Node 9}}
+    n6([Node 6])
+    n7[[Node 7]]
+  end
+  n8 ---|a longer label| n2
+  n5 -.- n6
+  n7 --o n0
+  n0 e3@--x n2
+  e3@{ curve: basis }
+  n5 e4@<--> n8
+  e4@{ curve: linear }
+  n3 ==> n9
+  n3 -.-> n2
+  n5 -.- n3
+  n5 <==> n5
+  n7 --o n3
+  n3 ---> n3
+  n4 -.->|a longer label| n9
+  n9 -.-> n5
+  n1 -.- n4
+  linkStyle 3 stroke-width:16px,stroke:#3a3
+  linkStyle 5 stroke-width:8px
+  linkStyle 8 stroke-width:1px,stroke:#c33
+  linkStyle 9 stroke-width:16px,stroke:#c33
+  linkStyle 11 stroke-width:20px
+  linkStyle 12 stroke-width:40px

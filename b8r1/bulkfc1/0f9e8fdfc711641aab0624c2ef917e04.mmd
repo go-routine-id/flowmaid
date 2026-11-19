@@ -1,0 +1,18 @@
+flowchart BT
+    N0{Load}
+    N1{Load retry}
+    N2(Validate emit)
+    N3{Report}
+    N4[Parse]
+    N5([Validate archive])
+    N6(Validate validate)
+    N0 --> N1
+    N1 --> N2
+    N2 --> N3
+    N3 -->|next| N4
+    N2 --> N5
+    N4 -->|fail| N6
+    N0 --> N3
+    N4 -.->|retry| N0
+    N4 -->|rollback| N3
+    N6 -->|back| N5

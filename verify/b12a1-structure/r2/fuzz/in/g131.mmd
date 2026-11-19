@@ -1,0 +1,26 @@
+flowchart TD
+  subgraph A[Block A title]
+    an0[A 0]
+    an1[A 1]
+    an2[A 2]
+    an3[A 3]
+  end
+  subgraph B[Block B title]
+    bn0[B 0]
+    bn1[B 1]
+    subgraph Bx[Block Bx title]
+      bxn0[Bx 0]
+      bxn1[Bx 1]
+      bxn2[Bx 2]
+    end
+  end
+  f0([free f0])
+  f1([free f1])
+  an0 --> an1
+  an1 --> an2
+  an2 --> an3
+  bn0 --> bn1
+  an0 -.-> f0
+  f0 -.-> an0
+  bxn1 --> bn0
+  an0 --> an1

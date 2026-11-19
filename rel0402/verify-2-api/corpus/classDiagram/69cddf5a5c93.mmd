@@ -1,0 +1,9 @@
+classDiagram
+    direction BT
+    class Employee {
+      +String name
+      +manage() void
+    }
+    Employee <|-- Employee : refines
+    Employee ..> Employee : calls
+    Department "1" *-- "*" Employee : staff

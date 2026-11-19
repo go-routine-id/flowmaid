@@ -1,0 +1,14 @@
+flowchart LR
+    subgraph G[Édition générale des données]
+        m0[auth service]
+        m1[auth service]
+        m2[queue]
+    end
+    s0[src0] --> m2
+    s0 --> m0
+    s1[src1] --> m2
+    s1 -- "lbl2" --> m1
+    s2[src2] --> m1
+    s3[src3] --> G
+    s4[src4] --> m0
+    m2 --> z[end]

@@ -1,0 +1,15 @@
+flowchart RL
+    subgraph G[Shipping and returns desk]
+        m0[y]
+        m1[auth service]
+        m2[db]
+        m0 --> m1
+    end
+    s0[src0] --> m1
+    s0 --> m0
+    s1[src1] --> G
+    s1 --> m0
+    s2[src2] --> G
+    s2 --> m2
+    s3[src3] -- "lbl8" --> G
+    s3 --> G

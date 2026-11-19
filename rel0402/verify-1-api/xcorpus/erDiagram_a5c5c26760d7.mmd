@@ -1,0 +1,19 @@
+erDiagram
+    CUSTOMER ||--o{ ORDER : places
+    CUSTOMER {
+        string name
+        string custNumber PK "unique customer number"
+        string sector
+    }
+    ORDER ||--|{ LINE-ITEM : contains
+    ORDER {
+        int orderNumber PK
+        string deliveryAddress "free-form, validated later"
+    }
+    LINE-ITEM {
+        string productCode FK "references PRODUCT"
+        int quantity "must be > 0"
+        float pricePerUnit
+    }
+    CUSTOMER }|..|{ DELIVERY-ADDRESS : uses
+    PRODUCT ||--o{ LINE-ITEM : "ordered in"

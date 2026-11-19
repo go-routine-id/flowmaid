@@ -1,0 +1,12 @@
+flowchart RL
+    N0(Done)
+    N1([Queue report])
+    N2{Fetch}
+    N3(Store)
+    N4[Check load]
+    N0 --> N1
+    N1 --> N2
+    N1 --> N3
+    N3 --> N4
+    N0 --> N4
+    N3 --> N0

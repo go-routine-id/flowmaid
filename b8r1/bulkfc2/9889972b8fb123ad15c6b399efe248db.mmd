@@ -1,0 +1,20 @@
+flowchart BT
+    N0(Notify)
+    N1{Load}
+    N2([Fetch])
+    N3(Retry fetch)
+    N4([Notify fetch])
+    N5[Validate]
+    N6([Check])
+    N7(Emit)
+    N0 --> N1
+    N1 --> N2
+    N2 --> N3
+    N2 --> N4
+    N3 --> N5
+    N3 --> N6
+    N4 -->|fail| N7
+    N0 --> N2
+    N4 ==>|back| N3
+    N7 -.->|rollback| N5
+    N5 ==> N2

@@ -1,0 +1,9 @@
+stateDiagram-v2
+ direction LR
+ state c <<choice>>
+ [*] --> P
+ P --> c
+ c --> B : one
+ c --> B : two
+ c --> D : three
+ note right of P : hello

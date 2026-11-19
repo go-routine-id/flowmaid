@@ -1,0 +1,32 @@
+flowchart TD
+  s0["billing"]
+  s1["api notify api"]
+  subgraph g0["api billing notify zone"]
+    direction LR
+    m0["pay"]
+    m1["api"]
+    m0 --> m1
+  end
+  subgraph g1["user zone"]
+    direction LR
+    m2["auth db report"]
+    m3["cache"]
+    m4["search"]
+    m5["db"]
+    m6["notify cart"]
+    m2 --> m3
+    m4 --> m5
+    m3 --> m6
+  end
+  subgraph g2["trace store zone"]
+    m7["ship"]
+    m8["report"]
+    m9["billing report queue"]
+    m8 --> m9
+  end
+  s1 --> m0
+  s0 --> g1
+  s1 --> g2
+  m7 --> m4
+  s1 --> L10["db"]
+  s0 --> L11["ship store"]

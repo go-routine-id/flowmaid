@@ -1,0 +1,15 @@
+flowchart TD
+    N0(Done)
+    N1[Emit]
+    N2([Queue fetch])
+    N3([Done])
+    N4([Queue])
+    N5{{Emit}}
+    N0 --> N1
+    N0 --> N2
+    N2 -->|next| N3
+    N1 -->|fail| N4
+    N4 --> N5
+    N3 ==>|again| N1
+    N4 -.->|back| N1
+    N5 ==> N3

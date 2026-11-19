@@ -1,0 +1,40 @@
+flowchart RL
+  n1["cache"]
+  subgraph B0["Platform"]
+    n2["audit db search<br/>db"]
+    n3["search"]
+    n4["mail"]
+    n5["auth notify cache<br/>db"]
+    subgraph B0s0["Platform 0"]
+      n6["merge"]
+      n7["queue search merge"]
+      n8["parse<br/>search"]
+    end
+  end
+  subgraph B1["Back office and finance"]
+    n9["index"]
+    n10["pack audit report"]
+    n11["worker"]
+    subgraph B1s0["Platform 0"]
+      n12["index"]
+    end
+  end
+  n13["worker<br/>worker"]
+  n6 --> n8
+  n13 --> n6
+  n12 -.->|search| n11
+  n10 --> n13
+  n3 --> n10
+  n5 --> n8
+  n9 --> n2
+  n2 --> n10
+  n1 ==> n8
+  n7 ==> n9
+  n4 --> n3
+  n1 -->|ingest| n12
+  n7 ==> n11
+  n12 ==> n6
+  n4 ==>|db| n13
+  n4 -->|ingest| n6
+  n10 ==>|queue| n2
+  n13 --> n8

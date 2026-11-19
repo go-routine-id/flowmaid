@@ -1,0 +1,9 @@
+ON-after-OFF differs: /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/c-leftovers/r2/fz/z162.mmd scene=false route=true partial=true
+OFF-after-ON differs: /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/c-leftovers/r2/fz/z162.mmd scene=false route=true partial=true
+ON-after-OFF differs: /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/c-leftovers/r2/fz/z017.mmd scene=false route=true partial=true
+OFF-after-ON differs: /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/c-leftovers/r2/fz/z017.mmd scene=false route=true partial=true
+ON-after-OFF differs: /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/c-leftovers/r2/fz/z028.mmd scene=false route=true partial=true
+OFF-after-ON differs: /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/c-leftovers/r2/fz/z028.mmd scene=false route=true partial=true
+ON-after-OFF differs: /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/c-leftovers/r2/fz/z251.mmd scene=false route=true partial=true
+OFF-after-ON differs: /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/c-leftovers/r2/fz/z251.mmd scene=false route=true partial=true
+checked 374 inputs with bars and a direction; on-after-off differs 4, off-after-on differs 4

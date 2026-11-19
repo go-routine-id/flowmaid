@@ -1,0 +1,15 @@
+flowchart TD
+    N0(Validate emit)
+    N1([Retry])
+    N2{Store fetch}
+    N3{Notify}
+    N4(Fetch)
+    N0 --> N1
+    N0 --> N2
+    N2 -->|fail| N3
+    N3 -->|ok| N4
+    N2 --> N3
+    N1 --> N3
+    N3 --> N4
+    N4 --> N0
+    N2 -->|back| N0

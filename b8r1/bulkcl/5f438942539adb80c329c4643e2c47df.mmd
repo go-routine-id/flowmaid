@@ -1,0 +1,17 @@
+classDiagram
+direction BT
+class Hub
+class Other
+Hub --> Other
+Hub "0" --> "*" Hub : L0
+Hub ..> Hub : lab1
+Hub <|-- Hub
+Hub "3" --> "*" Hub : L3
+Hub ..> Hub : lab4
+Hub <|-- Hub
+Hub "6" --> "*" Hub : L6
+Hub ..> Hub : lab7
+Hub <|-- Hub
+Hub "9" --> "*" Hub : L9
+Hub ..> Hub : lab10
+Hub <|-- Hub

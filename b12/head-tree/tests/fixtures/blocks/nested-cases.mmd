@@ -1,0 +1,23 @@
+flowchart TD
+    start([start]) --> O
+    subgraph O[Outer]
+        o1[outer one] --> I
+        subgraph I[Inner]
+            i1[inner one] --> i2[inner two]
+        end
+        subgraph E[Empty-ish]
+            e1[lonely]
+        end
+        i2 --> o2[outer two]
+        o2 --> O
+    end
+    subgraph X[Other]
+        x1[x one] --> x2[x two]
+    end
+    I --> X
+    x2 --> o1
+    X --> done([done])
+    hub{{hub}} --> i1
+    hub --> x1
+    hub --> e1
+    o1 ~~~ x1

@@ -1,0 +1,282 @@
+  advanced       scene    edges= 20 maxgap= 163.5 (Rollback->Platform) picks=265 misses=0 size=807x757
+  advanced       route    edges= 20 maxgap= 155.0 (Auth->Users) picks=394 misses=0 size=764x757
+  [advanced part0] export shift (0,17) from 18/19 starts
+  advanced       part0    edges= 20 maxgap= 205.6 (Scan->Dev) picks=365 misses=0 size=764x757
+  [advanced drag0] export shift (0,17) from 18/19 starts
+  advanced       drag0    edges= 20 maxgap= 205.6 (Scan->Dev) picks=365 misses=0 size=762x757
+  advanced       part3    edges= 20 maxgap= 155.0 (Auth->Users) picks=399 misses=0 size=764x757
+  advanced       drag5    edges= 20 maxgap= 144.0 (Scan->Dev) picks=359 misses=0 size=764x757
+  advanced       part6    edges= 20 maxgap= 155.0 (Auth->Users) picks=373 misses=0 size=764x757
+  [advanced part9] export shift (-23,0) from 18/19 starts
+  advanced       part9    edges= 20 maxgap= 155.0 (Auth->Users) picks=390 misses=0 size=764x757
+  advanced       drag10   edges= 20 maxgap= 144.0 (Scan->Dev) picks=477 misses=0 size=764x757
+  [advanced part12] export shift (0,0) from 18/19 starts
+  advanced       part12   edges= 20 maxgap= 155.0 (Auth->Users) picks=394 misses=0 size=764x757
+  advanced       worst route_partial (single, unwarmed) 0.64 ms
+  state          scene    edges= 16 maxgap=   0.0 () picks=106 misses=0 size=517x1109
+  state          route    edges= 16 maxgap=   0.0 () picks=101 misses=0 size=450x1109
+  [state part0] export shift (0,17) from 11/16 starts
+  state          part0    edges= 16 maxgap=   0.0 () picks=101 misses=0 size=450x1109
+  [state drag0] export shift (0,17) from 11/16 starts
+  state          drag0    edges= 16 maxgap=   0.0 () picks=101 misses=0 size=450x1109
+  state          part3    edges= 16 maxgap=   0.0 () picks=117 misses=0 size=450x1109
+  state          drag5    edges= 16 maxgap=   0.0 () picks=104 misses=0 size=450x1109
+  state          part6    edges= 16 maxgap=   0.0 () picks=98 misses=0 size=450x1109
+  [state part9] export shift (-21.8,0) from 14/16 starts
+  state          part9    edges= 16 maxgap=   0.0 () picks=101 misses=0 size=450x1109
+  state          drag10   edges= 16 maxgap=   0.0 () picks=119 misses=0 size=450x1109
+  state          part12   edges= 16 maxgap=   0.0 () picks=99 misses=0 size=450x1109
+  state          worst route_partial (single, unwarmed) 0.37 ms
+  demo           scene    edges=  6 maxgap=   0.0 () picks=75 misses=0 size=383x532
+  demo           route    edges=  6 maxgap=   0.0 () picks=71 misses=0 size=345x532
+  [demo part0] export shift (0,17) from 6/6 starts
+  demo           part0    edges=  6 maxgap=   0.0 () picks=82 misses=0 size=345x532
+  [demo drag0] export shift (0,17) from 6/6 starts
+  demo           drag0    edges=  6 maxgap=   0.0 () picks=82 misses=0 size=345x532
+  [demo part3] export shift (-23,0) from 6/6 starts
+  demo           part3    edges=  6 maxgap=   0.0 () picks=80 misses=0 size=345x532
+  demo           drag5    edges=  6 maxgap=   0.0 () picks=72 misses=0 size=345x515
+  demo           worst route_partial (single, unwarmed) 0.16 ms
+  subgraph       scene    edges=  8 maxgap=   0.0 () picks=104 misses=0 size=382x786
+  subgraph       route    edges=  8 maxgap=  73.0 (C2->Store) picks=128 misses=0 size=382x786
+  [subgraph part0] export shift (0,17) from 7/8 starts
+  subgraph       part0    edges=  8 maxgap=  73.0 (C2->Store) picks=139 misses=0 size=382x786
+  [subgraph drag0] export shift (0,17) from 7/8 starts
+  subgraph       drag0    edges=  8 maxgap=  73.0 (C2->Store) picks=139 misses=0 size=382x786
+  subgraph       part3    edges=  8 maxgap=  73.0 (C2->Store) picks=146 misses=0 size=382x786
+  [subgraph drag5] export shift (-23,0) from 6/8 starts
+  subgraph       drag5    edges=  8 maxgap=  73.0 (C2->Store) picks=126 misses=0 size=382x786
+  subgraph       part6    edges=  8 maxgap=  99.5 (C2->Store) picks=129 misses=0 size=405x786
+  subgraph       worst route_partial (single, unwarmed) 0.16 ms
+  fanout-frames  scene    edges=  7 maxgap= 499.5 (n0->n21) picks=361 misses=0 size=838x1661
+  fanout-frames  route    edges=  7 maxgap= 575.0 (n0->n21) picks=310 misses=0 size=838x1661
+  [fanout-frames part0] export shift (-23,0) from 7/7 starts
+  fanout-frames  part0    edges=  7 maxgap= 412.5 (n0->n21) picks=317 misses=0 size=838x1661
+  [fanout-frames drag0] export shift (-23,0) from 7/7 starts
+  fanout-frames  drag0    edges=  7 maxgap= 412.5 (n0->n21) picks=317 misses=0 size=838x1661
+  fanout-frames  part3    edges=  7 maxgap= 575.0 (n0->n21) picks=310 misses=0 size=838x1661
+  fanout-frames  drag5    edges=  7 maxgap= 575.0 (n0->n21) picks=310 misses=0 size=838x1661
+  fanout-frames  part6    edges=  7 maxgap= 575.0 (n0->n21) picks=310 misses=0 size=838x1661
+  fanout-frames  part9    edges=  7 maxgap= 575.0 (n0->n21) picks=310 misses=0 size=861x1661
+  [fanout-frames drag10] export shift (0,17) from 7/7 starts
+  fanout-frames  drag10   edges=  7 maxgap= 575.0 (n0->n21) picks=310 misses=0 size=846x1661
+  fanout-frames  part12   edges=  7 maxgap= 575.0 (n0->n21) picks=310 misses=0 size=852x1661
+  fanout-frames  part15   edges=  7 maxgap= 575.0 (n0->n21) picks=310 misses=0 size=838x1661
+  fanout-frames  drag15   edges=  7 maxgap= 560.5 (n0->n21) picks=312 misses=0 size=838x1661
+  fanout-frames  part18   edges=  7 maxgap= 575.0 (n0->n21) picks=310 misses=0 size=838x1661
+  fanout-frames  drag20   edges=  7 maxgap= 575.0 (n0->n21) picks=310 misses=0 size=838x1661
+  [fanout-frames part21] export shift (0,0) from 7/7 starts
+  fanout-frames  part21   edges=  7 maxgap= 558.0 (n0->n21) picks=311 misses=0 size=838x1661
+  fanout-frames  worst route_partial (single, unwarmed) 1.06 ms
+  [dense-td scene] export shift (-315.1,0) from 42/47 starts
+  dense-td       scene    edges= 47 maxgap=3095.1 (n45->g8) picks=2947 misses=0 size=4871x1823
+  [dense-td route] export shift (-315.1,0) from 42/47 starts
+  dense-td       route    edges= 47 maxgap=2565.3 (n29->n38) picks=2606 misses=0 size=4539x1823
+  [dense-td part0] export shift (-338.1,0) from 42/47 starts
+  dense-td       part0    edges= 47 maxgap=3093.6 (n45->g8) picks=2660 misses=0 size=4539x1823
+  [dense-td drag0] export shift (-338.1,0) from 42/47 starts
+  dense-td       drag0    edges= 47 maxgap=3093.6 (n45->g8) picks=2660 misses=0 size=4539x1823
+  [dense-td part3] export shift (-315.1,0) from 43/47 starts
+  dense-td       part3    edges= 47 maxgap=2565.3 (n29->n38) picks=2612 misses=0 size=4539x1823
+  [dense-td drag5] export shift (-315.1,0) from 42/47 starts
+  dense-td       drag5    edges= 47 maxgap=2565.3 (n29->n38) picks=2622 misses=0 size=4539x1823
+  [dense-td part6] export shift (-315.1,0) from 42/47 starts
+  dense-td       part6    edges= 47 maxgap=2565.3 (n29->n38) picks=2573 misses=0 size=4539x1823
+  [dense-td part9] export shift (-315.1,0) from 42/47 starts
+  dense-td       part9    edges= 47 maxgap=2565.3 (n29->n38) picks=2606 misses=0 size=4539x1823
+  [dense-td drag10] export shift (-315.1,0) from 42/47 starts
+  dense-td       drag10   edges= 47 maxgap=2565.3 (n29->n38) picks=2606 misses=0 size=4539x1823
+  [dense-td part12] export shift (-315.1,0) from 42/47 starts
+  dense-td       part12   edges= 47 maxgap=2565.3 (n29->n38) picks=2690 misses=0 size=4539x1823
+  [dense-td part15] export shift (-315.1,0) from 42/47 starts
+  dense-td       part15   edges= 47 maxgap=2565.3 (n29->n38) picks=2606 misses=0 size=4539x1823
+  [dense-td drag15] export shift (-315.1,0) from 42/47 starts
+  dense-td       drag15   edges= 47 maxgap=2565.3 (n29->n38) picks=2606 misses=0 size=4539x1823
+  [dense-td part18] export shift (-315.1,0) from 42/47 starts
+  dense-td       part18   edges= 47 maxgap=2565.3 (n29->n38) picks=2687 misses=0 size=4539x1823
+  [dense-td drag20] export shift (-315.1,0) from 42/47 starts
+  dense-td       drag20   edges= 47 maxgap=2565.3 (n29->n38) picks=2523 misses=0 size=4539x1823
+  [dense-td part21] export shift (-315.1,0) from 42/47 starts
+  dense-td       part21   edges= 47 maxgap=2565.3 (n29->n38) picks=2608 misses=0 size=4539x1823
+  [dense-td part24] export shift (-315.1,0) from 42/47 starts
+  dense-td       part24   edges= 47 maxgap=2565.3 (n29->n38) picks=2607 misses=0 size=4539x1823
+  [dense-td drag25] export shift (-315.1,0) from 42/47 starts
+  dense-td       drag25   edges= 47 maxgap=2565.3 (n29->n38) picks=2606 misses=0 size=4539x1823
+  [dense-td part27] export shift (-315.1,0) from 42/47 starts
+  dense-td       part27   edges= 47 maxgap=2565.3 (n29->n38) picks=2606 misses=0 size=4539x1823
+  [dense-td part30] export shift (-315.1,0) from 42/47 starts
+  dense-td       part30   edges= 47 maxgap=2542.3 (n29->n38) picks=2608 misses=0 size=4539x1823
+  [dense-td drag30] export shift (-315.1,0) from 42/47 starts
+  dense-td       drag30   edges= 47 maxgap=2542.3 (n29->n38) picks=2608 misses=0 size=4539x1823
+  [dense-td part33] export shift (-315.1,0) from 42/47 starts
+  dense-td       part33   edges= 47 maxgap=2565.3 (n29->n38) picks=2683 misses=0 size=4539x1823
+  [dense-td drag35] export shift (-315.1,17) from 42/47 starts
+  dense-td       drag35   edges= 47 maxgap=2565.3 (n29->n38) picks=2606 misses=0 size=4539x1823
+  [dense-td part36] export shift (-315.1,0) from 42/47 starts
+  dense-td       part36   edges= 47 maxgap=2565.3 (n29->n38) picks=2861 misses=0 size=4539x1823
+  [dense-td part39] export shift (-315.1,0) from 41/47 starts
+  dense-td       part39   edges= 47 maxgap=2591.6 (n29->n38) picks=2720 misses=0 size=4539x1823
+  dense-td       worst route_partial (single, unwarmed) 6.29 ms
+  [x1_nested scene] export shift (-26.6,0) from 11/12 starts
+  x1_nested      scene    edges= 12 maxgap= 415.0 (P2->P3) picks=276 misses=0 size=301x929
+  [x1_nested route] export shift (-35.6,0) from 11/12 starts
+  x1_nested      route    edges= 12 maxgap= 394.5 (Mon->P2) picks=202 misses=0 size=301x929
+  [x1_nested part0] export shift (-35.6,0) from 10/12 starts
+  x1_nested      part0    edges= 12 maxgap= 394.5 (Mon->P2) picks=202 misses=0 size=319x929
+  [x1_nested drag0] export shift (-35.6,0) from 10/12 starts
+  x1_nested      drag0    edges= 12 maxgap= 394.5 (Mon->P2) picks=202 misses=0 size=319x929
+  [x1_nested part3] export shift (-35.6,0) from 10/12 starts
+  x1_nested      part3    edges= 12 maxgap= 394.5 (Mon->P2) picks=212 misses=0 size=318x929
+  [x1_nested drag5] export shift (-21.8,0) from 12/12 starts
+  x1_nested      drag5    edges= 12 maxgap= 411.5 (Mon->P2) picks=245 misses=0 size=318x929
+  [x1_nested part6] export shift (-35.6,0) from 10/12 starts
+  x1_nested      part6    edges= 12 maxgap= 394.5 (Mon->P2) picks=232 misses=0 size=324x929
+  [x1_nested part9] export shift (-35.6,0) from 11/12 starts
+  x1_nested      part9    edges= 12 maxgap= 394.5 (Mon->P2) picks=197 misses=0 size=314x929
+  x1_nested      worst route_partial (single, unwarmed) 1.08 ms
+  x2_ownbox_lr   scene    edges=  7 maxgap=   0.0 () picks=78 misses=0 size=664x206
+  x2_ownbox_lr   route    edges=  7 maxgap=   0.0 () picks=67 misses=0 size=664x184
+  [x2_ownbox_lr part0] export shift (-23,17) from 7/7 starts
+  x2_ownbox_lr   part0    edges=  7 maxgap=   0.0 () picks=61 misses=0 size=664x180
+  [x2_ownbox_lr drag0] export shift (-23,17) from 7/7 starts
+  x2_ownbox_lr   drag0    edges=  7 maxgap=   0.0 () picks=61 misses=0 size=664x180
+  [x2_ownbox_lr part3] export shift (0,17) from 7/7 starts
+  x2_ownbox_lr   part3    edges=  7 maxgap=   0.0 () picks=59 misses=0 size=664x184
+  x2_ownbox_lr   worst route_partial (single, unwarmed) 1.36 ms
+  x3_cycles      scene    edges= 11 maxgap= 193.5 (a3->a1) picks=238 misses=0 size=290x455
+  [x3_cycles route] export shift (-15.5,0) from 11/11 starts
+  x3_cycles      route    edges= 11 maxgap=  56.0 (b3->C) picks=138 misses=0 size=337x455
+  [x3_cycles part0] export shift (7.2,0) from 10/11 starts
+  x3_cycles      part0    edges= 11 maxgap= 110.0 (a3->a1) picks=234 misses=0 size=337x455
+  [x3_cycles drag0] export shift (7.2,0) from 10/11 starts
+  x3_cycles      drag0    edges= 11 maxgap= 110.0 (a3->a1) picks=234 misses=0 size=339x455
+  [x3_cycles part3] export shift (-15.5,0) from 11/11 starts
+  x3_cycles      part3    edges= 11 maxgap=  56.0 (b3->C) picks=135 misses=0 size=337x455
+  [x3_cycles drag5] export shift (52,12) from 10/11 starts
+  x3_cycles      drag5    edges= 11 maxgap=  56.0 (b3->C) picks=176 misses=0 size=329x455
+  [x3_cycles part6] export shift (-15.5,17) from 11/11 starts
+  x3_cycles      part6    edges= 11 maxgap=  56.0 (b3->C) picks=138 misses=0 size=359x455
+  x3_cycles      worst route_partial (single, unwarmed) 0.79 ms
+  [x4_bows scene] export shift (0,0) from 7/7 starts
+  x4_bows        scene    edges=  7 maxgap=   0.0 () picks=108 misses=0 size=606x389
+  [x4_bows route] export shift (0,24.5) from 7/7 starts
+  x4_bows        route    edges=  7 maxgap= 233.0 (E->A) picks=284 misses=0 size=606x151
+  [x4_bows part0] export shift (0,24.5) from 7/7 starts
+  x4_bows        part0    edges=  7 maxgap= 368.0 (E->A) picks=210 misses=0 size=629x151
+  [x4_bows drag0] export shift (9.1,21.3) from 7/7 starts
+  x4_bows        drag0    edges=  7 maxgap= 416.5 (E->A) picks=207 misses=0 size=629x148
+  [x4_bows part3] export shift (0,45.1) from 5/7 starts
+  x4_bows        part3    edges=  7 maxgap= 233.0 (E->A) picks=266 misses=0 size=606x151
+  x4_bows        worst route_partial (single, unwarmed) 0.30 ms
+  x5_state       scene    edges=  9 maxgap=   0.0 () picks=55 misses=0 size=218x764
+  [x5_state route] export shift (0,0) from 9/9 starts
+  x5_state       route    edges=  9 maxgap=   0.0 () picks=43 misses=0 size=175x764
+  [x5_state part0] export shift (0,17) from 9/9 starts
+  x5_state       part0    edges=  9 maxgap=   0.0 () picks=43 misses=0 size=175x764
+  [x5_state drag0] export shift (0,17) from 9/9 starts
+  x5_state       drag0    edges=  9 maxgap=   0.0 () picks=43 misses=0 size=175x764
+  x5_state       part3    edges=  9 maxgap=   0.0 () picks=56 misses=0 size=176x764
+  x5_state       drag5    edges=  9 maxgap=   0.0 () picks=51 misses=0 size=198x764
+  [x5_state part6] export shift (22,0) from 9/9 starts
+  x5_state       part6    edges=  9 maxgap=   0.0 () picks=35 misses=0 size=176x764
+  x5_state       worst route_partial (single, unwarmed) 1.27 ms
+  y1             scene    edges=  4 maxgap=   0.0 () picks=21 misses=0 size=710x148
+  y1             route    edges=  4 maxgap=   0.0 () picks=21 misses=0 size=710x148
+  [y1 part0] export shift (0,17) from 4/4 starts
+  y1             part0    edges=  4 maxgap=   0.0 () picks=21 misses=0 size=710x148
+  [y1 drag0] export shift (0,17) from 4/4 starts
+  y1             drag0    edges=  4 maxgap=   0.0 () picks=21 misses=0 size=710x148
+  [y1 part3] export shift (-23,17) from 4/4 starts
+  y1             part3    edges=  4 maxgap=   0.0 () picks=24 misses=0 size=710x148
+  y1             worst route_partial (single, unwarmed) 0.11 ms
+  y2             scene    edges=  4 maxgap=   0.0 () picks=24 misses=0 size=526x148
+  y2             route    edges=  4 maxgap=   0.0 () picks=24 misses=0 size=526x148
+  [y2 part0] export shift (-23,17) from 4/4 starts
+  y2             part0    edges=  4 maxgap=   0.0 () picks=21 misses=0 size=526x148
+  [y2 drag0] export shift (-23,17) from 4/4 starts
+  y2             drag0    edges=  4 maxgap=   0.0 () picks=21 misses=0 size=526x148
+  y2             part3    edges=  4 maxgap=   0.0 () picks=24 misses=0 size=549x148
+  y2             worst route_partial (single, unwarmed) 0.05 ms
+  [y3 scene] export shift (0,0) from 5/5 starts
+  y3             scene    edges=  5 maxgap=   0.0 () picks=52 misses=0 size=148x493
+  [y3 route] export shift (0,0) from 5/5 starts
+  y3             route    edges=  5 maxgap=   0.0 () picks=51 misses=0 size=148x493
+  [y3 part0] export shift (0,17) from 5/5 starts
+  y3             part0    edges=  5 maxgap=   0.0 () picks=62 misses=0 size=167x493
+  [y3 drag0] export shift (0,17) from 5/5 starts
+  y3             drag0    edges=  5 maxgap=   0.0 () picks=62 misses=0 size=167x493
+  [y3 part3] export shift (0,0) from 5/5 starts
+  y3             part3    edges=  5 maxgap=   0.0 () picks=31 misses=0 size=168x476
+  y3             worst route_partial (single, unwarmed) 0.17 ms
+PROBLEMS: 71
+  state scene: path 0 title start → Idle vs edge 0 __start_root->Idle
+  state scene: path 1 title start → Syntax vs edge 1 __start_0->Syntax
+  state scene: path 3 title Semantics → end vs edge 3 Semantics->__end_0
+  state scene: path 12 title Rejected → note vs edge 12 Rejected->__note_13
+  state scene: path 13 title Done → end vs edge 13 Done->__end_root
+  state route: path 0 title start → Idle vs edge 0 __start_root->Idle
+  state route: path 1 title start → Syntax vs edge 1 __start_0->Syntax
+  state route: path 3 title Semantics → end vs edge 3 Semantics->__end_0
+  state route: path 12 title Rejected → note vs edge 12 Rejected->__note_13
+  state route: path 13 title Done → end vs edge 13 Done->__end_root
+  state part0: path 0 title start → Idle vs edge 0 __start_root->Idle
+  state part0: path 1 title start → Syntax vs edge 1 __start_0->Syntax
+  state part0: path 3 title Semantics → end vs edge 3 Semantics->__end_0
+  state part0: path 12 title Rejected → note vs edge 12 Rejected->__note_13
+  state part0: path 13 title Done → end vs edge 13 Done->__end_root
+  state drag0: path 0 title start → Idle vs edge 0 __start_root->Idle
+  state drag0: path 1 title start → Syntax vs edge 1 __start_0->Syntax
+  state drag0: path 3 title Semantics → end vs edge 3 Semantics->__end_0
+  state drag0: path 12 title Rejected → note vs edge 12 Rejected->__note_13
+  state drag0: path 13 title Done → end vs edge 13 Done->__end_root
+  state part3: path 0 title start → Idle vs edge 0 __start_root->Idle
+  state part3: path 1 title start → Syntax vs edge 1 __start_0->Syntax
+  state part3: path 3 title Semantics → end vs edge 3 Semantics->__end_0
+  state part3: path 12 title Rejected → note vs edge 12 Rejected->__note_13
+  state part3: path 13 title Done → end vs edge 13 Done->__end_root
+  state drag5: path 0 title start → Idle vs edge 0 __start_root->Idle
+  state drag5: path 1 title start → Syntax vs edge 1 __start_0->Syntax
+  state drag5: path 3 title Semantics → end vs edge 3 Semantics->__end_0
+  state drag5: path 12 title Rejected → note vs edge 12 Rejected->__note_13
+  state drag5: path 13 title Done → end vs edge 13 Done->__end_root
+  state part6: path 0 title start → Idle vs edge 0 __start_root->Idle
+  state part6: path 1 title start → Syntax vs edge 1 __start_0->Syntax
+  state part6: path 3 title Semantics → end vs edge 3 Semantics->__end_0
+  state part6: path 12 title Rejected → note vs edge 12 Rejected->__note_13
+  state part6: path 13 title Done → end vs edge 13 Done->__end_root
+  state part9: path 0 title start → Idle vs edge 0 __start_root->Idle
+  state part9: path 1 title start → Syntax vs edge 1 __start_0->Syntax
+  state part9: path 3 title Semantics → end vs edge 3 Semantics->__end_0
+  state part9: path 12 title Rejected → note vs edge 12 Rejected->__note_13
+  state part9: path 13 title Done → end vs edge 13 Done->__end_root
+  state drag10: path 0 title start → Idle vs edge 0 __start_root->Idle
+  state drag10: path 1 title start → Syntax vs edge 1 __start_0->Syntax
+  state drag10: path 3 title Semantics → end vs edge 3 Semantics->__end_0
+  state drag10: path 12 title Rejected → note vs edge 12 Rejected->__note_13
+  state drag10: path 13 title Done → end vs edge 13 Done->__end_root
+  state part12: path 0 title start → Idle vs edge 0 __start_root->Idle
+  state part12: path 1 title start → Syntax vs edge 1 __start_0->Syntax
+  state part12: path 3 title Semantics → end vs edge 3 Semantics->__end_0
+  state part12: path 12 title Rejected → note vs edge 12 Rejected->__note_13
+  state part12: path 13 title Done → end vs edge 13 Done->__end_root
+  x5_state scene: path 0 title start → Idle vs edge 0 __start_root->Idle
+  x5_state scene: path 1 title start → Fetch vs edge 1 __start_0->Fetch
+  x5_state scene: path 5 title Done → end vs edge 5 Done->__end_root
+  x5_state route: path 0 title start → Idle vs edge 0 __start_root->Idle
+  x5_state route: path 1 title start → Fetch vs edge 1 __start_0->Fetch
+  x5_state route: path 5 title Done → end vs edge 5 Done->__end_root
+  x5_state part0: path 0 title start → Idle vs edge 0 __start_root->Idle
+  x5_state part0: path 1 title start → Fetch vs edge 1 __start_0->Fetch
+  x5_state part0: path 5 title Done → end vs edge 5 Done->__end_root
+  x5_state drag0: path 0 title start → Idle vs edge 0 __start_root->Idle
+  x5_state drag0: path 1 title start → Fetch vs edge 1 __start_0->Fetch
+  x5_state drag0: path 5 title Done → end vs edge 5 Done->__end_root
+  x5_state part3: path 0 title start → Idle vs edge 0 __start_root->Idle
+  x5_state part3: path 1 title start → Fetch vs edge 1 __start_0->Fetch
+  x5_state part3: path 5 title Done → end vs edge 5 Done->__end_root
+  x5_state drag5: path 0 title start → Idle vs edge 0 __start_root->Idle
+  x5_state drag5: path 1 title start → Fetch vs edge 1 __start_0->Fetch
+  x5_state drag5: path 5 title Done → end vs edge 5 Done->__end_root
+  x5_state part6: path 0 title start → Idle vs edge 0 __start_root->Idle
+  x5_state part6: path 1 title start → Fetch vs edge 1 __start_0->Fetch
+  x5_state part6: path 5 title Done → end vs edge 5 Done->__end_root

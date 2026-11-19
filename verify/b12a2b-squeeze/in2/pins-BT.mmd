@@ -1,0 +1,25 @@
+flowchart BT
+    subgraph A[Alpha block]
+        a0[a0] --> a1[a1]
+        a2[a2]
+    end
+    subgraph B[Beta block]
+        b0[b0]
+        b1[b1]
+        b2[b2]
+    end
+    subgraph C[Gamma block]
+        g0[g0]
+        g1[g1]
+    end
+    a0 --> b2
+    a1 --> b0
+    a2 --> b1
+    a1 --> g1
+    p[p] --> B
+    q[q] --> C
+    r[r] --> A
+    p --> g0
+    b0 --> g0
+    b2 --> g1
+    q --> a2

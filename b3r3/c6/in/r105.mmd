@@ -1,0 +1,26 @@
+flowchart RL
+    N0(Check)
+    N1{Load notify}
+    N2(Emit load)
+    N3{Load}
+    N4(Parse report)
+    N5{Load}
+    N6{Queue fetch}
+    N7[Parse]
+    N8([Done retry])
+    N9(Emit)
+    N0 --> N1
+    N1 --> N2
+    N2 -->|next| N3
+    N2 --> N4
+    N2 -->|next| N5
+    N5 -->|yes| N6
+    N6 --> N7
+    N6 -->|no| N8
+    N6 -->|ok| N9
+    N0 --> N1
+    N7 --> N9
+    N4 --> N7
+    N9 --> N1
+    N6 --> N4
+    N6 -->|rollback| N5

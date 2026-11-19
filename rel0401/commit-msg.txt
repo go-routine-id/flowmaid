@@ -1,0 +1,25 @@
+release: 0.40.1 — try_route, drags past the top-left keep their positions, stray dots in class names
+
+- Version 0.40.1 (Cargo.toml and the flowmaid entry in Cargo.lock);
+  exclude = ["docs/img/"] kept.
+- CHANGELOG: [Unreleased] becomes [0.40.1] - 2026-11-17 with a short
+  Highlights list (try_route, drags past the top-left margin keep every
+  position, a declared class name with a stray dot is a parse error); a
+  new empty [Unreleased] above it. The entries under it are unchanged.
+- README: the benchmark table stands as measured on 0.39.0; the method
+  note now says 0.40.1 draws the 25 samples byte for byte as 0.40.0 does,
+  in the same time (fastest of six alternated rounds of both releases:
+  1.01x in the geometric mean). The comparison images keep their 0.40.0
+  caption, and the intro says 0.40.1 draws them byte for byte the same.
+  The install snippet stays "0.40".
+- docs/ROADMAP.md: a 0.40.1 row in Done, "Last updated 2026-11-17
+  (latest release: 0.40.1)", and the two items 0.40.1 ships (#110 and
+  #76) leave the "After that" list.
+
+Static output checked against the 0.40.0 binary: 158 files (the 25
+benchmark samples, examples/, tests/fixtures/ and the flowchart corpus)
+render byte for byte the same; the 1,000-edge labelled fan is the same
+SVG and takes about 0.37 s in both.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

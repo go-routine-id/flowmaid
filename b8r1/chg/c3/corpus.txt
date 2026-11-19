@@ -1,0 +1,6 @@
+CORPUS-CHANGED /home/user/flowmaid/tests/fixtures/quality/dense-lr.mmd
+CORPUS-CHANGED /home/user/flowmaid/tests/fixtures/quality/dense-td.mmd
+CORPUS-CHANGED /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/cmp/corpus/dense-lr.mmd
+CORPUS-CHANGED /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/cmp/corpus/dense-td.mmd
+CORPUS-CHANGED /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/flowcorpus/dense-lr.mmd
+CORPUS-CHANGED /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/flowcorpus/dense-td.mmd

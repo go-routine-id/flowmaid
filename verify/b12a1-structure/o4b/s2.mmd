@@ -1,0 +1,8 @@
+flowchart TD
+    I[idle] --> Q
+    subgraph R[Review]
+        Q[queue] --> C[check]
+        C --> A[approve]
+        C --> B[reject]
+    end
+    A --> D[done]

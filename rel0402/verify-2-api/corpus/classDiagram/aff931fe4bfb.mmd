@@ -1,0 +1,17 @@
+classDiagram
+A --> B
+B --> C : owns
+A --|> D
+D <|-- E : owns
+D ..|> F
+A *-- G : x
+C "1" *-- "*" H
+D ..|> I
+B --> B
+B *-- B : b1
+B *-- B : b2
+class C {
+ +int id
+ +run() void
+ +stop()
+}

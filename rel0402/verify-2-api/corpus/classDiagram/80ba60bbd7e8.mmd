@@ -1,0 +1,34 @@
+classDiagram
+direction LR
+class Animal {
+ +String name
+ -int age
+ #x()
+ ~y() void
+ +total() Money
+ +List~T~ items
+ +s()$
+ +a()*
+ <<interface>>
+}
+class Duck, Fish
+Animal : +inline
+A-B --> C-D
+`Foo Bar` --> Baz
+Animal <|-- Dog
+X ..|> Y
+X *-- Z
+X o-- W
+X --> V
+X ..> U
+X -- T
+X .. S
+X *.. R
+Animal "1" o-- "*" Toy : owns
+Animal <|--|> Zebra
+bar ()-- foo
+foo --() bar2
+note "hello"
+note for Animal "hi"
+Animal --> Animal : self
+class Box~T~

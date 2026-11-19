@@ -1,0 +1,2268 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@
++## [0.40.1] - 2026-11-17
++
++### Highlights
++
++A patch release. Static drawings are byte for byte those of 0.40.0 (only a
++class name with a stray dot now fails to parse), and so is every routed
++drawing that stays inside the top-left margin. No public API is removed or
++changed.
++
++- **`try_route`** for flowchart and state, class, ER and mindmap scenes:
++  `route` that returns `None` for positions it cannot route (a count that
++  does not match the diagram, or a coordinate that is not finite or lies
++  more than a million px from zero), so a host whose position list is out
++  of date for a moment needs no counting rule of its own.
++- **A drag past the top-left keeps every position** (flowchart, state,
++  class and ER). A routed drawing that
++  reaches past the top-left margin is no longer moved onto a `0 0` canvas:
++  its `viewBox` starts before zero on the axis that overflows instead, so a
++  dragged node stays under the pointer. The new `Scene::origin` is the
++  canvas's top-left corner.
++- **A declared class name with a stray dot is a parse error** naming the
++  line, as in mermaid 12.2; 0.40.0 took it as a class of that name.
++
++### Added
++
++- **`try_route`: `route` for positions that may not fit the diagram**
++  (#110). `scene::try_route`, `class::try_route`, `er::try_route` and
++  `mindmap::try_route` return `None` where `route` would panic on the
++  position count (one per node; for a class diagram one per class, or
++  per class and note), and for a coordinate that is not finite or lies
++  more than a million px from zero (routing such a position can panic or
++  exhaust memory); otherwise exactly what `route` returns. A host whose
++  position list is out of date for a moment (an edit added a node since
++  the last drag) no longer has to copy each diagram's counting rule, and
++  a mindmap's mismatch, where `mindmap::route` draws an empty scene, is
++  now told apart from an empty mindmap. The `route` functions are
++  unchanged.
++- **`Scene::origin`**: the top-left corner of a scene's canvas, `(0, 0)`
++  for every laid-out scene and negative on an axis where a routed
++  drawing reaches past the top-left margin (see Fixed). Like `width` and
++  `height` it only grows, so a `route_partial` frame keeps its base's.
++
++### Fixed
++
++- **A drag past the top-left margin no longer moves the rest of the
++  drawing** (#76). `route()`, `route_partial()`, `route_sized()` and the
++  class and ER `route` keep their positions, but where the routed drawing
++  reached past the top-left margin the SVG moved all of it right or down
++  onto a `0 0` canvas, by an amount it did not expose, so a dragged node
++  lagged the pointer. Now a routed drawing that reaches past the margin,
++  on either axis, keeps its coordinates on both, and the `viewBox` starts
++  the margin before the drawing: before zero by the overflow, and on a
++  flowchart's other axis after zero where the drawing starts further in.
++  SVG user space is then scene space, so a pointer mapped through the
++  `viewBox` lands on scene coordinates and a pick at a node's drawn centre
++  picks it. Map through the `viewBox`, not `Scene::origin`: the origin
++  keeps the furthest overflow of a chain of `route_partial` frames, so it
++  can lie before the `viewBox` of a later frame. Static output is unchanged, and
++  so is every routed SVG that does not reach past the top-left margin. A
++  routed class diagram that reaches past it can draw a cardinality
++  elsewhere, at the spot `class::card_spots` reports, and the glyph of a
++  relation squeezed between two overlapping boxes can point the other
++  way.
++- **Class diagrams: a declared name with a stray dot is an error, as in
++  mermaid.** `class A.`, `class .A`, `class A..B`, `class A...B`, `class
++  A.B.`, and a dot after a name's generic, label, `:::` style or
++  backtick part (`class A~T~.`, `class A["x"].`, `class A:::foo.`,
++  `` class `A`.B ``), also in a `class … {` block, a `class A, B.` list
++  or `<<interface>> A~T~.`, now give a parse error naming the line, as
++  mermaid 12.2 does; they were taken as a class of that name. Dotted
++  names mermaid takes still work (`class a.b.C`, `class A.B~T~`,
++  `` class A.`B` ``, `class A.-B`), and so do dots inside a backtick
++  name, generic or label (`` class `A.` ``, `class Map~a.b~`,
++  `class A["x.y"]`).
++
+diff --git a/Cargo.lock b/Cargo.lock
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@
+-version = "0.40.0"
++version = "0.40.1"
+diff --git a/Cargo.toml b/Cargo.toml
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@
+-version = "0.40.0"
++version = "0.40.1"
+diff --git a/README.md b/README.md
+--- a/README.md
++++ b/README.md
+@@
+-**Method.** Each cell is the median of 30 timed renders after warm-ups (flowmaid 3, mermaid 2). flowmaid: `flowmaid::render_svg` (parse + layout + SVG string) in a release build, `cargo run --release --example bench -- files <file.mmd>...`. mermaid: `mermaid.render()` 12.2.0 (parse + layout + SVG string, including its in-browser text measurement) in headless Chromium 153 via Playwright. Speed-up = mermaid median ÷ flowmaid median. SVG KB = length of the returned SVG string. Measured on 0.39.0; 0.40.0 draws all 25 samples byte for byte the same, in the same time (each sample's fastest of three alternated rounds: 0.99× in the geometric mean). Two full runs on 0.40.0, on a busier box where both sides ran slower, gave 127× and 134×. Machine: 4 vCPUs, Intel Xeon @ 2.10 GHz, rustc 1.97; the box was shared with a background build, so expect ±20 % on both sides, and more on a single sub-millisecond row (er, gitgraph and journey took about half their 0.38.0 time in the 0.39.0 run, with no change to their code).
++**Method.** Each cell is the median of 30 timed renders after warm-ups (flowmaid 3, mermaid 2). flowmaid: `flowmaid::render_svg` (parse + layout + SVG string) in a release build, `cargo run --release --example bench -- files <file.mmd>...`. mermaid: `mermaid.render()` 12.2.0 (parse + layout + SVG string, including its in-browser text measurement) in headless Chromium 153 via Playwright. Speed-up = mermaid median ÷ flowmaid median. SVG KB = length of the returned SVG string. Measured on 0.39.0; 0.40.0 draws all 25 samples byte for byte the same, in the same time (each sample's fastest of three alternated rounds: 0.99× in the geometric mean). Two full runs on 0.40.0, on a busier box where both sides ran slower, gave 127× and 134×. 0.40.1 draws the 25 samples byte for byte as 0.40.0 does, in the same time (fastest of six alternated rounds: 1.01× in the geometric mean). Machine: 4 vCPUs, Intel Xeon @ 2.10 GHz, rustc 1.97; the box was shared with a background build, so expect ±20 % on both sides, and more on a single sub-millisecond row (er, gitgraph and journey took about half their 0.38.0 time in the 0.39.0 run, with no change to their code).
+@@
+-The same `.mmd` source rendered by mermaid 12.2.0 (left, in headless Chromium) and by flowmaid 0.40.0 (right, `flowmaid file.mmd`). flowmaid keeps its own semantic palette by default; mermaid's look is one `--theme default` away (see [Themes](#themes)).
++The same `.mmd` source rendered by mermaid 12.2.0 (left, in headless Chromium) and by flowmaid 0.40.0 (right, `flowmaid file.mmd`); 0.40.1 draws them byte for byte the same. flowmaid keeps its own semantic palette by default; mermaid's look is one `--theme default` away (see [Themes](#themes)).
+@@
++- **`scene::try_route`** (and `class::`, `er::`, `mindmap::try_route`) is `route` returning `None` for positions it cannot route: a count that does not match the diagram, or a coordinate that is not finite or lies more than a million px from zero. For a host whose position list may be out of date.
+@@
+-- **`scene::to_svg(&scene)`** exports any state, including after drags. `render()` is just a wrapper over the same pipeline, so the SVG and the interactive flow always agree.
++- **`scene::to_svg(&scene)`** exports any state, including after drags. A routed drawing that reaches past the top-left margin keeps its coordinates on both axes: the `viewBox` starts before zero by the overflow, so a pointer maps through the `viewBox` straight to scene coordinates. `render()` is just a wrapper over the same pipeline, so the SVG and the interactive flow always agree.
+diff --git a/docs/ROADMAP.md b/docs/ROADMAP.md
+--- a/docs/ROADMAP.md
++++ b/docs/ROADMAP.md
+@@
+-Last updated 2026-11-16 (latest release: 0.40.0).
++Last updated 2026-11-17 (latest release: 0.40.1).
+@@
++| 0.40.1 | Interactive API: `try_route`, a `route` that turns down positions that do not fit the diagram. A drag past the top-left margin no longer shifts the rest of the drawing. Class diagrams: a declared name with a stray dot is an error, as in mermaid. The first step of subgraphs as blocks (below) is in, switched off. |
+@@
+-  - [#110](https://github.com/go-routine-id/flowmaid/issues/110) a `route` for class and ER diagrams that does not panic when the number of positions does not match the diagram
+@@
+-  - [#76](https://github.com/go-routine-id/flowmaid/issues/76) `route()`: a top-left overflow shifts the whole scene
+diff --git a/src/architecture.rs b/src/architecture.rs
+--- a/src/architecture.rs
++++ b/src/architecture.rs
+@@
++            origin: (0.0, 0.0),
++            routed: false,
+diff --git a/src/class.rs b/src/class.rs
+--- a/src/class.rs
++++ b/src/class.rs
+@@
+-    edge_end_chord, edge_path_d, edge_polyline, edge_stroke_width, escape, fit_top_left,
+-    route_sized, sample_cubic, scene_sized, svg_label_box, svg_open_a11y, svg_text_multiline, A11y,
+-    Scene, SceneEdge, SceneNode, SvgOptions,
++    edge_end_chord, edge_path_d, edge_polyline, edge_stroke_width, escape, fit_top_left, routable,
++    route_sized, sample_cubic, scene_sized, svg_label_box, svg_open_canvas, svg_text_multiline,
++    top_left_canvas, A11y, Fitted, Scene, SceneEdge, SceneNode, SvgOptions,
+@@
+-/// class and note.
++/// class and note; [`try_route`] returns `None` instead.
+@@
+-    assemble(d, b, sc, Mode::Routed)
++    let mut cs = assemble(d, b, sc, Mode::Routed);
++    // Positions stay as given (#76): the canvas grows up or left over
++    // whatever reaches past its top-left margin.
++    let (origin, width, height) = top_left_canvas(&cs.scene);
++    (cs.scene.origin, cs.scene.width, cs.scene.height) = (origin, width, height);
++    cs
++}
++
++/// [`route`] for positions that may not fit `d`: `None`, where [`route`]
++/// would panic, when `centers` holds neither one centre per class nor one
++/// per class and note. Also `None` when a coordinate is not finite (NaN,
++/// infinite) or lies more than a million px (`1e6`) from zero, as
++/// [`crate::scene::try_route`] has it. Otherwise exactly what [`route`]
++/// returns. For a host whose positions can be out of date for a moment,
++/// such as after an edit that added a class since the last drag.
++///
++/// ```
++/// use flowmaid::{class, model::Document, parser::parse_document};
++///
++/// let Ok(Document::Class(d)) = parse_document("classDiagram\nA <|-- B\nnote for A \"n\"") else {
++///     unreachable!()
++/// };
++/// let laid = class::scene(&d);
++/// let all: Vec<(f64, f64)> = laid.scene.nodes.iter().map(|n| (n.x, n.y)).collect();
++/// // Classes and notes, or the classes only (notes placed beside them).
++/// assert!(class::try_route(&d, &all).is_some());
++/// assert!(class::try_route(&d, &all[..2]).is_some());
++/// // One position short of the classes: no scene, and no panic.
++/// assert!(class::try_route(&d, &all[..1]).is_none());
++/// ```
++pub fn try_route(d: &ClassDiagram, centers: &[(f64, f64)]) -> Option<ClassScene> {
++    let n = d.classes.len();
++    let counted = centers.len() == n || centers.len() == n + d.notes.len();
++    (counted && routable(centers)).then(|| route(d, centers))
+@@
+-/// A node dragged left of or above the origin shifts the whole drawing
+-/// right/down onto the canvas, so SVG coordinates can then differ from
+-/// scene coordinates by that offset: map pointer events through the
+-/// rendered SVG, as with [`crate::scene::to_svg`].
++/// A [`route`] scene keeps its coordinates: a box dragged past the
++/// top-left margin grows the canvas up or left instead of moving the
++/// drawing, and the `viewBox` starts at [`Scene::origin`], so SVG user
++/// space is scene space and a pointer maps through the `viewBox` straight
++/// into scene coordinates for picking (as with [`crate::scene::to_svg`]
++/// past the top-left margin).
+@@
+-    let fitted = fit_top_left(&cs.scene);
+-    let sc = &*fitted;
++    let canvas = fit_top_left(&cs.scene);
++    let sc = &*canvas.scene;
+@@
+-    svg_open_a11y(&mut s, sc.width, sc.height, 13, &title, desc, opts);
++    svg_open_canvas(
++        &mut s,
++        canvas.origin,
++        canvas.width,
++        canvas.height,
++        13,
++        &title,
++        desc,
++        opts,
++    );
+@@
+-                card_text(&mut s, at, text, sc.width, sc.height, &pal.text);
++                card_text(&mut s, at, text, &canvas, &pal.text);
+@@
+-fn card_text(s: &mut String, at: (f64, f64), text: &str, cw: f64, ch: f64, ink: &str) {
++fn card_text(s: &mut String, at: (f64, f64), text: &str, canvas: &Fitted, ink: &str) {
+@@
+-    let px = at.0.clamp(hw, (cw - hw).max(hw));
+-    let py = at.1.clamp(7.0, (ch - 7.0).max(7.0));
++    let ((x0, y0), cw, ch) = (canvas.origin, canvas.width, canvas.height);
++    let px = at.0.clamp(x0 + hw, x0 + (cw - hw).max(hw));
++    let py = at.1.clamp(y0 + 7.0, y0 + (ch - 7.0).max(7.0));
+@@
+-/// [`to_svg`] draws them (before its canvas clamp and any shift for
+-/// nodes dragged past the origin), for 11 px text.
++/// [`to_svg`] draws them (before its clamp to the canvas), for 11 px
++/// text.
+@@
++    /// A `class` (or `<<stereotype>>`) statement whose name starts or ends
++    /// with a dot or has two in a row is a parse error, as in mermaid 12.2
++    /// (each form below checked against it); the dotted names mermaid
++    /// takes, and backtick names, still parse.
++    #[test]
++    fn declared_names_with_a_stray_dot_are_errors() {
++        for (bad, line) in [
++            ("class A.", 2),
++            ("class .A", 2),
++            ("class A..B", 2),
++            ("class A...B", 2),
++            ("class A....B", 2),
++            ("class A..", 2),
++            ("class ..A", 2),
++            ("class A.B.", 2),
++            ("class .A.B", 2),
++            ("class A..B.C", 2),
++            ("class .", 2),
++            ("class A .", 2),
++            ("class  .A", 2),
++            ("class A . . B", 2),
++            ("class A-.", 2),
++            ("class A.~T~", 2),
++            ("class A.B.~T~", 2),
++            ("class A..B~T~", 2),
++            ("class A.:::foo", 2),
++            ("class A.B.:::foo", 2),
++            ("class A..B:::foo", 2),
++            ("class A.[\"lbl\"]", 2),
++            ("class A., B", 2),
++            ("class A, B.", 2),
++            ("class A, .B", 2),
++            ("class A. {\n}", 2),
++            ("class .A {\n}", 2),
++            ("class A...B {\n}", 2),
++            ("<<interface>> A.", 2),
++            ("<<interface>> .A", 2),
++            ("class A\nclass B.", 3),
++            ("class A.\nA --> B", 2),
++        ] {
++            let e = parse_document(&format!("classDiagram\n{bad}"))
++                .err()
++                .unwrap_or_else(|| panic!("{bad:?} parsed"));
++            assert_eq!(e.line, line, "{bad:?}: {e}");
++            assert!(e.message.contains("is no class name"), "{bad:?}: {e}");
++        }
++        // A dot after the name's generic, label, `:::` style or backtick
++        // part, which end it in mermaid's grammar (each form checked
++        // against mermaid 12.2 too), or before anything but a name part.
++        for (bad, line) in [
++            ("class A~T~.", 2),
++            ("class A~T~. {\n}", 2),
++            ("class A~T~.{\n}", 2),
++            ("class A~T~. {\n+x int\n}", 2),
++            ("class A~T~..B", 2),
++            ("class A~T~..", 2),
++            ("class A~T~.B", 2),
++            ("class A~T~ .", 2),
++            ("class A~T~\t.", 2),
++            ("class A~T~ . B", 2),
++            ("class A ~T~.", 2),
++            ("class A~T~.~U~", 2),
++            ("class A~T~B.C", 2),
++            ("class A.B~T~.", 2),
++            ("class A.B~T~.C", 2),
++            ("class A.B~T~..C", 2),
++            ("class A.B~T~.D~U~", 2),
++            ("class List~List~a.b~~", 2),
++            ("<<interface>> A~T~.", 2),
++            ("class A[\"lbl\"].", 2),
++            ("class A.B[\"lbl\"].", 2),
++            ("class A[\"x\"] .", 2),
++            ("class A[\"x\"]\t.", 2),
++            ("class A [\"x\"].", 2),
++            ("class A[\"x\"].B", 2),
++            ("class A[\"lbl\"] . B", 2),
++            ("class A[\"x]y\"].", 2),
++            ("class A[x].", 2),
++            ("class A[\"x\"]. {\n}", 2),
++            ("class A~T~[\"x\"].", 2),
++            ("class A:::foo.", 2),
++            ("class A.B:::foo.", 2),
++            ("class A:::foo .", 2),
++            ("class A:::foo.bar", 2),
++            ("class A:::a.b", 2),
++            ("class A:::foo.B", 2),
++            ("class A:::foo. {\n}", 2),
++            ("class A~T~.:::foo", 2),
++            ("class A~T~:::foo.", 2),
++            ("class A[\"x\"]:::foo.", 2),
++            ("class `A`.", 2),
++            ("class `A` .", 2),
++            ("class `A`.B", 2),
++            ("class `A` . B", 2),
++            ("class `A`.B {\n}", 2),
++            ("class `A`.`B`", 2),
++            ("class `A`B.C", 2),
++            ("class A.`B`.C", 2),
++            ("class `A`~T~.", 2),
++            ("class `A`[\"x\"].", 2),
++            ("class `A`:::foo.", 2),
++            ("class .`A`", 2),
++            ("<<interface>> `A`.", 2),
++            ("class A.;", 2),
++            ("class A.B.;", 2),
++            ("class A.$", 2),
++            ("class A~T.", 2),
++            ("class A[x.", 2),
++            ("class A, B~T~.", 2),
++            ("class A\nclass B~T~.", 3),
++        ] {
++            let e = parse_document(&format!("classDiagram\n{bad}"))
++                .err()
++                .unwrap_or_else(|| panic!("{bad:?} parsed"));
++            assert_eq!(e.line, line, "{bad:?}: {e}");
++            assert!(e.message.contains("is no class name"), "{bad:?}: {e}");
++        }
++        // The error names what it read as the name.
++        let e = parse_document("classDiagram\nclass A..B~T~").unwrap_err();
++        assert!(e.message.starts_with("'A..B' is no class name"), "{e}");
++        let e = parse_document("classDiagram\nclass A~T~.B").unwrap_err();
++        assert!(e.message.starts_with("'A~T~.B' is no class name"), "{e}");
++        // Without a one-line body, and whole where the dot follows an
++        // unclosed generic or label.
++        for (bad, named) in [
++            ("class A. {}", "'A.'"),
++            ("class A.. {}", "'A..'"),
++            ("class A.B. {}", "'A.B.'"),
++            ("class A~T.", "'A~T.'"),
++            ("class A[x.", "'A[x.'"),
++        ] {
++            let e = parse_document(&format!("classDiagram\n{bad}")).unwrap_err();
++            assert!(
++                e.message.starts_with(&format!("{named} is no class name")),
++                "{bad:?}: {e}"
++            );
++        }
++        assert!(e
++            .message
++            .contains("generic, label, ':::' style or backtick"));
++        for (good, names) in [
++            ("class A.B", vec!["A.B"]),
++            ("class a.b.C", vec!["a.b.C"]),
++            ("class A.-B", vec!["A.-B"]),
++            ("class A-.B", vec!["A-.B"]),
++            ("class A._B", vec!["A._B"]),
++            ("class A.1", vec!["A.1"]),
++            ("class 1.A", vec!["1.A"]),
++            ("class A.-", vec!["A.-"]),
++            ("class A.B-", vec!["A.B-"]),
++            ("class A.B~T~", vec!["A.B"]),
++            ("class Map~a.b~", vec!["Map"]),
++            ("class A.B {\n+x int\n}", vec!["A.B"]),
++            ("class A.B.C {\n}", vec!["A.B.C"]),
++            ("class `A.`", vec!["A."]),
++            ("class `.A`", vec![".A"]),
++            ("class `A..B`", vec!["A..B"]),
++            ("class A.B {\n}\n<<interface>> A.B", vec!["A.B"]),
++            ("A.B --> C", vec!["A.B", "C"]),
++            ("A..B", vec!["A", "B"]),
++        ] {
++            let d = cd(&format!("classDiagram\n{good}"));
++            let got: Vec<&str> = d.classes.iter().map(|c| c.name.as_str()).collect();
++            assert_eq!(got, names, "{good:?}");
++        }
++        // Mermaid takes these too (spaces round a dot, a dot before a
++        // backtick name, a label, a style, dots inside a generic, label
++        // or backtick name, an open backtick name); flowmaid keeps parsing
++        // them as it did.
++        for good in [
++            "class A. B",
++            "class A .B",
++            "class A . B",
++            "class A.\tB",
++            "class A.\u{a0}B",
++            "class A.B[\"lbl\"]",
++            "class A.B [\"lbl\"]",
++            "class A.B[\"x.y\"]",
++            "class A[\"x.\"]",
++            "class A.B:::foo",
++            "class A.B~T~:::foo",
++            "class A.B~T~[\"x\"]",
++            "class A.B~T~ {\n}",
++            "class A.B.C~T~",
++            "class A.B ~T~",
++            "class A . B ~T~ [\"x\"] :::foo",
++            "class A.`B`",
++            "class A . `B`",
++            "class A.`B`~T~",
++            "class A.B`C`",
++            "class A`.B`",
++            "class `A.B`",
++            "class `A`~T~",
++            "class `A` ~T~",
++            "class `A`[\"x\"]",
++            "class `A`:::foo",
++            "class `A.",
++            "class A.`B",
++            "class A.日本",
++            "class A.µ",
++            "class A.1.2",
++            "class A1.2B",
++            "class -.A",
++            "class A.-.B",
++            "class A.B-.C",
++        ] {
++            assert!(
++                parse_document(&format!("classDiagram\n{good}")).is_ok(),
++                "{good:?}"
++            );
++        }
++    }
++
+@@
+-        // playground's drag path) must not be clipped by the `0 0 W H`
+-        // viewBox — nor may any text, edge or marker it pulls along.
++        // playground's drag path) must not be clipped by the viewBox — nor
++        // may any text, edge or marker it pulls along.
+@@
++    /// A class dragged past the top-left margin stays exactly where the
++    /// host put it (#76): no other box moves, the canvas grows up and left
++    /// by what reaches past the margin (`Scene::origin`, the `viewBox`
++    /// origin), and a pick at its drawn box's centre picks it.
++    #[test]
++    fn drag_past_top_left_keeps_every_position() {
++        let d = cd(include_str!("../examples/class.mmd"));
++        let laid = scene(&d);
++        let c: Vec<(f64, f64)> = laid.scene.nodes.iter().map(|n| (n.x, n.y)).collect();
++        for to in [(-120.0, -80.0), (-120.0, c[0].1), (c[0].0, -80.0)] {
++            let mut moved = c.clone();
++            moved[0] = to;
++            let cs = route(&d, &moved);
++            for (i, n) in cs.scene.nodes.iter().enumerate() {
++                assert_eq!((n.x, n.y), moved[i], "{to:?}: node {i} moved");
++            }
++            let mut bb = crate::scene::Bbox::new();
++            crate::scene::grow_scene(
++                &mut bb,
++                &cs.scene.nodes,
++                &cs.scene.edges,
++                &cs.scene.clusters,
++            );
++            let m = crate::scene::MARGIN;
++            let over = ((bb.0 - m).min(0.0), (bb.2 - m).min(0.0));
++            assert_eq!(cs.scene.origin, over, "{to:?}");
++            let n0 = &cs.scene.nodes[0];
++            assert!(cs.scene.origin.0 <= to.0 - n0.w / 2.0 - m + 1e-9 || to.0 > 0.0);
++            assert!(cs.scene.origin.1 <= to.1 - n0.h / 2.0 - m + 1e-9 || to.1 > 0.0);
++            let svg = to_svg(&cs);
++            let (vx, vy, vw, vh) = crate::scene::view_box(&svg);
++            assert!(
++                (vx - over.0).abs() <= 0.05 && (vy - over.1).abs() <= 0.05,
++                "{to:?}"
++            );
++            assert!((vw - cs.scene.width).abs() <= 0.5 && (vh - cs.scene.height).abs() <= 0.5);
++            crate::scene::assert_drawn_inside_canvas(&svg);
++            // Boxes are drawn in node order: the first box is class 0's.
++            let rect = svg
++                .lines()
++                .find(|l| l.starts_with("<rect x=") && l.contains("rx=\"4\" fill=\"#ffffff\""))
++                .unwrap();
++            let (x, y) = crate::scene::rect_centre(rect);
++            assert!((x - to.0).abs() <= 0.1 && (y - to.1).abs() <= 0.1, "{rect}");
++            assert_eq!(cs.scene.node_at(x, y), Some(0), "{to:?}");
++            // The cardinalities sit where `card_spots` puts them.
++            let mut cards = 0;
++            for (rel, spots) in cs.rels.iter().zip(card_spots(&cs)) {
++                for (text, at) in [(&rel.from_card, spots[0]), (&rel.to_card, spots[1])] {
++                    if let (Some(_), Some(at)) = (text, at) {
++                        let drawn =
++                            format!("<text x=\"{:.1}\" y=\"{:.1}\" dy=\"0.33em\"", at.0, at.1);
++                        assert!(svg.contains(&drawn), "{to:?}: {drawn}");
++                        cards += 1;
++                    }
++                }
++            }
++            assert!(cards > 0);
++        }
++        // In bounds, the canvas stays at the origin.
++        assert_eq!(route(&d, &c).scene.origin, (0.0, 0.0));
++    }
++
+@@
+-        assert!(matches!(
+-            fit_top_left(&sc.scene),
+-            std::borrow::Cow::Borrowed(_)
+-        ));
++        let fitted = fit_top_left(&sc.scene);
++        assert!(matches!(fitted.scene, std::borrow::Cow::Borrowed(_)));
++        assert_eq!(
++            (fitted.origin, fitted.width, fitted.height),
++            ((0.0, 0.0), sc.scene.width, sc.scene.height)
++        );
+diff --git a/src/compound.rs b/src/compound.rs
+--- a/src/compound.rs
++++ b/src/compound.rs
+@@
+-/// the frames outermost-first at their depths in `g`, the canvas the
+-/// largest part's (the caller refits it). `None` when a part's scene
+-/// does not line up with the part.
++/// the frames outermost-first at their depths in `g`, the canvas one
++/// that holds every part's (the caller refits it): from the smallest
++/// part origin ([`Scene::origin`], negative where a routed part reaches
++/// past the top-left margin) to the farthest part edge. `None` when a
++/// part's scene does not line up with the part.
+@@
+-    let (mut width, mut height) = (0.0f64, 0.0f64);
++    // The canvas: its top-left corner and its far edges.
++    let (mut origin, mut far) = ((0.0f64, 0.0f64), (0.0f64, 0.0f64));
+@@
+-        width = width.max(sc.width);
+-        height = height.max(sc.height);
++        origin = (origin.0.min(sc.origin.0), origin.1.min(sc.origin.1));
++        far = (
++            far.0.max(sc.origin.0 + sc.width),
++            far.1.max(sc.origin.1 + sc.height),
++        );
+@@
+-        width,
+-        height,
++        width: far.0 - origin.0,
++        height: far.1 - origin.1,
++        origin,
++        routed: false,
+@@
++        origin: base.origin,
++        routed: false,
+@@
++    /// A block layout's routed canvas (#76): a node dragged past the
++    /// top-left margin grows it up and left to the margin before the
++    /// drawing, its far sides MARGIN past the drawing, as for a flat
++    /// graph; a `route_partial` frame on that frame keeps its canvas
++    /// (it only grows). The parts' canvases are joined from their own
++    /// origins, not as if each started at zero.
++    #[test]
++    fn a_routed_block_layout_canvas_holds_its_drawing() {
++        use crate::scene::{grow_canvas, Bbox, MARGIN};
++        let g = state(STATE);
++        assert_eq!(blocks(&g), vec![true]);
++        let laid = scene(&g);
++        let c: Vec<(f64, f64)> = laid.nodes.iter().map(|n| (n.x, n.y)).collect();
++        let k = (0..c.len())
++            .find(|&i| !laid.nodes[i].label.is_empty())
++            .unwrap();
++        let drawn = |sc: &Scene| {
++            let mut bb = Bbox::new();
++            grow_canvas(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
++            bb.finish()
++        };
++        let mut d1 = c.clone();
++        d1[k] = (-300.0, -200.0);
++        let mut d2 = c.clone();
++        d2[k] = (-40.0, -30.0);
++        let r = route(&g, &d1);
++        let (minx, maxx, miny, maxy) = drawn(&r);
++        assert_eq!(r.origin, (minx - MARGIN, miny - MARGIN));
++        assert!(
++            (r.origin.0 + r.width - (maxx + MARGIN)).abs() < 1e-6,
++            "{}",
++            r.width
++        );
++        assert!(
++            (r.origin.1 + r.height - (maxy + MARGIN)).abs() < 1e-6,
++            "{}",
++            r.height
++        );
++        let f1 = route_partial(&g, &d1, &laid, &c);
++        let (minx, maxx, miny, maxy) = drawn(&f1);
++        assert_eq!(f1.origin, (minx - MARGIN, miny - MARGIN));
++        let far = |sc: &Scene| (sc.origin.0 + sc.width, sc.origin.1 + sc.height);
++        let want = (
++            laid.width.max(maxx + MARGIN),
++            laid.height.max(maxy + MARGIN),
++        );
++        assert!(
++            (far(&f1).0 - want.0).abs() < 1e-6,
++            "{:?} {want:?}",
++            far(&f1)
++        );
++        assert!(
++            (far(&f1).1 - want.1).abs() < 1e-6,
++            "{:?} {want:?}",
++            far(&f1)
++        );
++        let f2 = route_partial(&g, &d2, &f1, &d1);
++        assert_eq!(f2.origin, f1.origin);
++        let (minx, maxx, miny, maxy) = drawn(&f2);
++        assert!(f2.origin.0 <= minx - MARGIN && f2.origin.1 <= miny - MARGIN);
++        assert!(far(&f2).0 >= maxx + MARGIN - 1e-6 && far(&f2).1 >= maxy + MARGIN - 1e-6);
++        assert!(far(&f2).0 <= far(&f1).0.max(maxx + MARGIN) + 1e-6);
++        assert!(far(&f2).1 <= far(&f1).1.max(maxy + MARGIN) + 1e-6);
++        // Laid out, the canvas is the drawing's, at the origin.
++        assert_eq!(laid.origin, (0.0, 0.0));
++    }
++
+diff --git a/src/edgepass.rs b/src/edgepass.rs
+--- a/src/edgepass.rs
++++ b/src/edgepass.rs
+@@
+-/// is never shifted: its node positions are the host's, exactly as given
+-/// (the export handles a negative origin, see `fit_top_left`); its canvas
+-/// only grows. `static_fit` is false for an ER or class scene, whose
+-/// painter draws `width` × `height` as-is, padded its own way: it is
+-/// shifted only out of negative space and its canvas only grows.
++/// is never shifted: its node positions are the host's, exactly as given;
++/// its canvas only grows, up or left too (a negative [`Scene::origin`],
++/// #76) where the drawing reaches into the margin there. `static_fit` is
++/// false for an ER or class scene, whose painter draws `width` × `height`
++/// as-is, padded its own way (its `route` sets the origin, see
++/// [`crate::scene::top_left_canvas`]): it is shifted only out of negative
++/// space and its canvas only grows.
+@@
++    if mode == Mode::Routed {
++        sc.routed = true;
++    }
+@@
++    if mode == Mode::Routed && static_fit {
++        // The host's positions stay as given (#76): a drawing reaching
++        // into the top-left margin grows the canvas up or left (its
++        // origin goes negative) and moves nothing; the far sides only
++        // grow, as before. An overflow that does not show in the SVG is
++        // none: `to_svg` moves such a drawing onto the margin as before.
++        let far = (sc.origin.0 + sc.width, sc.origin.1 + sc.height);
++        let past = |min: f64, o: f64| {
++            let reach = MARGIN - min;
++            if reach > 0.0 && crate::scene::offset_shows(reach) {
++                o.min(min - MARGIN)
++            } else {
++                o
++            }
++        };
++        sc.origin = (past(minx, sc.origin.0), past(miny, sc.origin.1));
++        sc.width = far.0.max(maxx + MARGIN) - sc.origin.0;
++        sc.height = far.1.max(maxy + MARGIN) - sc.origin.1;
++        return;
++    }
+diff --git a/src/er.rs b/src/er.rs
+--- a/src/er.rs
++++ b/src/er.rs
+@@
+-    edge_path_d, edge_polyline, edge_stroke_width, escape, fit_top_left, route_sized, scene_sized,
+-    seg_aabb, svg_label_box, svg_open_a11y, A11y, Scene, SceneEdge, SvgOptions,
++    edge_path_d, edge_polyline, edge_stroke_width, escape, fit_top_left, routable, route_sized,
++    scene_sized, seg_aabb, svg_label_box, svg_open_canvas, top_left_canvas, A11y, Scene, SceneEdge,
++    SvgOptions,
+@@
++///
++/// # Panics
++///
++/// When `centers` does not hold one centre per entity; [`try_route`]
++/// returns `None` instead.
+@@
+-    assemble(d, tables, route_sized(&g, centers, &sizes), &g)
++    let mut es = assemble(d, tables, route_sized(&g, centers, &sizes), &g);
++    // Positions stay as given (#76): the canvas grows up or left over
++    // whatever reaches past its top-left margin.
++    let (origin, width, height) = top_left_canvas(&es.scene);
++    (es.scene.origin, es.scene.width, es.scene.height) = (origin, width, height);
++    es
++}
++
++/// [`route`] for positions that may not fit `d`: `None`, where [`route`]
++/// would panic, when `centers` does not hold exactly one centre per
++/// entity. Also `None` when a coordinate is not finite (NaN, infinite) or
++/// lies more than a million px (`1e6`) from zero, as
++/// [`crate::scene::try_route`] has it (far beyond it, routing can run out
++/// of memory). Otherwise exactly what [`route`] returns. For a host whose
++/// positions can be out of date for a moment, such as after an edit that
++/// added an entity since the last drag.
++///
++/// ```
++/// use flowmaid::{er, model::Document, parser::parse_document};
++///
++/// let Ok(Document::Er(d)) = parse_document("erDiagram\nA ||--o{ B : has") else {
++///     unreachable!()
++/// };
++/// let laid = er::scene(&d);
++/// let centers: Vec<(f64, f64)> = laid.scene.nodes.iter().map(|n| (n.x, n.y)).collect();
++/// assert!(er::try_route(&d, &centers).is_some());
++/// // One position short: no scene, and no panic.
++/// assert!(er::try_route(&d, &centers[..1]).is_none());
++/// ```
++pub fn try_route(d: &ErDiagram, centers: &[(f64, f64)]) -> Option<ErScene> {
++    (centers.len() == d.entities.len() && routable(centers)).then(|| route(d, centers))
+@@
+-/// A node dragged left of or above the origin shifts the whole drawing
+-/// right/down onto the canvas, so SVG coordinates can then differ from
+-/// scene coordinates by that offset: map pointer events through the
+-/// rendered SVG, as with [`crate::scene::to_svg`].
++/// A [`route`] scene keeps its coordinates: a box dragged past the
++/// top-left margin grows the canvas up or left instead of moving the
++/// drawing, and the `viewBox` starts at [`Scene::origin`], so SVG user
++/// space is scene space and a pointer maps through the `viewBox` straight
++/// into scene coordinates for picking (as with [`crate::scene::to_svg`]
++/// past the top-left margin).
+@@
+-    let fitted = fit_top_left(&es.scene);
+-    let sc = &*fitted;
++    let canvas = fit_top_left(&es.scene);
++    let sc = &*canvas.scene;
+@@
+-    svg_open_a11y(&mut s, sc.width, sc.height, 13, &title, desc, opts);
++    svg_open_canvas(
++        &mut s,
++        canvas.origin,
++        canvas.width,
++        canvas.height,
++        13,
++        &title,
++        desc,
++        opts,
++    );
+@@
+-        // playground's drag path) must not be clipped by the `0 0 W H`
+-        // viewBox — nor may any text, edge or marker it pulls along.
++        // playground's drag path) must not be clipped by the viewBox — nor
++        // may any text, edge or marker it pulls along.
+@@
++    /// A table dragged past the top-left margin stays exactly where the
++    /// host put it (#76): no other table moves, the canvas grows up and
++    /// left by what reaches past the margin (`Scene::origin`, the
++    /// `viewBox` origin), and a pick at its drawn box's centre picks it.
++    #[test]
++    fn drag_past_top_left_keeps_every_position() {
++        let d = fixture();
++        let laid = scene(&d);
++        let c: Vec<(f64, f64)> = laid.scene.nodes.iter().map(|n| (n.x, n.y)).collect();
++        for to in [(-120.0, -80.0), (-120.0, c[0].1), (c[0].0, -80.0)] {
++            let mut moved = c.clone();
++            moved[0] = to;
++            let es = route(&d, &moved);
++            for (i, n) in es.scene.nodes.iter().enumerate() {
++                assert_eq!((n.x, n.y), moved[i], "{to:?}: node {i} moved");
++            }
++            let mut bb = crate::scene::Bbox::new();
++            crate::scene::grow_scene(
++                &mut bb,
++                &es.scene.nodes,
++                &es.scene.edges,
++                &es.scene.clusters,
++            );
++            let m = crate::scene::MARGIN;
++            let over = ((bb.0 - m).min(0.0), (bb.2 - m).min(0.0));
++            assert_eq!(es.scene.origin, over, "{to:?}");
++            let svg = to_svg(&es);
++            let (vx, vy, vw, vh) = crate::scene::view_box(&svg);
++            assert!(
++                (vx - over.0).abs() <= 0.05 && (vy - over.1).abs() <= 0.05,
++                "{to:?}"
++            );
++            assert!((vw - es.scene.width).abs() <= 0.5 && (vh - es.scene.height).abs() <= 0.5);
++            crate::scene::assert_drawn_inside_canvas(&svg);
++            // Tables are drawn in node order: the first box is table 0's.
++            let rect = svg
++                .lines()
++                .find(|l| l.starts_with("<rect x=") && l.contains("rx=\"4\" fill=\"#ffffff\""))
++                .unwrap();
++            let (x, y) = crate::scene::rect_centre(rect);
++            assert!((x - to.0).abs() <= 0.1 && (y - to.1).abs() <= 0.1, "{rect}");
++            assert_eq!(es.scene.node_at(x, y), Some(0), "{to:?}");
++        }
++        assert_eq!(route(&d, &c).scene.origin, (0.0, 0.0));
++    }
++
+@@
+-        assert!(matches!(
+-            fit_top_left(&sc.scene),
+-            std::borrow::Cow::Borrowed(_)
+-        ));
++        let fitted = fit_top_left(&sc.scene);
++        assert!(matches!(fitted.scene, std::borrow::Cow::Borrowed(_)));
++        assert_eq!(
++            (fitted.origin, fitted.width, fitted.height),
++            ((0.0, 0.0), sc.scene.width, sc.scene.height)
++        );
+diff --git a/src/gitgraph.rs b/src/gitgraph.rs
+--- a/src/gitgraph.rs
++++ b/src/gitgraph.rs
+@@
++            origin: (0.0, 0.0),
++            routed: false,
+diff --git a/src/mindmap.rs b/src/mindmap.rs
+--- a/src/mindmap.rs
++++ b/src/mindmap.rs
+@@
+-/// dragging never makes the diagram slide. `pos` must match node count.
++/// dragging never makes the diagram slide. `pos` must match node count:
++/// any other count gives an empty scene, as an empty mindmap does
++/// ([`try_route`] tells the two apart).
+@@
++/// [`route`] that tells a wrong position count from an empty mindmap:
++/// `None` when `pos` does not hold exactly one centre per node (where
++/// [`route`] draws an empty scene), and, as the other diagram types'
++/// `try_route` (see [`crate::scene::try_route`]), when a coordinate is
++/// not finite (NaN, infinite) or lies more than a million px (`1e6`)
++/// from zero. Otherwise exactly what [`route`] returns (for an empty
++/// mindmap and no positions, its empty scene). For a host whose
++/// positions can be out of date for a moment, such as after an edit that
++/// added a node since the last drag.
++///
++/// ```
++/// use flowmaid::{mindmap, model::Document, parser::parse_document};
++///
++/// let Ok(Document::Mindmap(d)) = parse_document("mindmap\n  root\n    child") else {
++///     unreachable!()
++/// };
++/// let laid = mindmap::scene(&d);
++/// let pos: Vec<(f64, f64)> = laid.nodes.iter().map(|n| (n.cx(), n.cy())).collect();
++/// assert!(mindmap::try_route(&d, &pos).is_some());
++/// // One position short: no scene, where `route` draws an empty one.
++/// assert!(mindmap::try_route(&d, &pos[..1]).is_none());
++/// ```
++pub fn try_route(d: &Mindmap, pos: &[(f64, f64)]) -> Option<MindScene> {
++    (pos.len() == d.nodes.len() && crate::scene::routable(pos)).then(|| route(d, pos))
++}
++
+diff --git a/src/ortho.rs b/src/ortho.rs
+--- a/src/ortho.rs
++++ b/src/ortho.rs
+@@
+-        let right = sc.width;
++        let right = sc.origin.0 + sc.width;
+@@
+-        let right = sc.width;
++        let right = sc.origin.0 + sc.width;
+diff --git a/src/parser.rs b/src/parser.rs
+--- a/src/parser.rs
++++ b/src/parser.rs
+@@
++                check_declared_name(name, lineno)?;
+@@
++                    check_declared_name(name, lineno)?;
+@@
++                check_declared_name(name, lineno)?;
+@@
+-/// text is taken as a name there, as it always was; a [`class_name`]
+-/// spelling is read as one (backticks stripped, generic split off).
++/// text is taken as a name there, as it always was, but for a stray dot
++/// ([`check_declared_name`]); a [`class_name`] spelling is read as one
++/// (backticks stripped, generic split off).
+@@
++/// Mermaid's parse error for a `class …` / `<<stereotype>> …` statement
++/// with a stray dot ([`stray_dot`]): its name starts or ends with a dot or
++/// has two in a row (`A.`, `.A`, `A..B`, `A...B`, `A.B.`), or a dot
++/// follows its generic, label, `:::` style or backtick name (`A~T~.`,
++/// `A["x"].`, `A:::foo.`, `` `A`.B ``). A dot only joins two parts of a
++/// dotted name ([`is_bare_class_name`], `a.b.C`) and `..` is the dotted
++/// line, so mermaid rejects such a declaration where flowmaid used to
++/// take the name as written. Dots inside a backtick name (`` `A.` ``), a
++/// generic (`Map~a.b~`) or a quoted label stay text, as in mermaid.
++fn check_declared_name(name: &str, lineno: usize) -> Result<(), ParseError> {
++    let name = name.trim();
++    let message = match stray_dot(name) {
++        None => return Ok(()),
++        Some(StrayDot::InName) => {
++            // The name as far as its generic, label, style or one-line
++            // body (`class A. {}`), where the stray dot lies before it.
++            let end = ["~", "[", ":::", "{"]
++                .iter()
++                .filter_map(|m| name.find(m))
++                .filter(|&j| name[..j].contains('.'))
++                .min()
++                .unwrap_or(name.len());
++            format!(
++                "'{}' is no class name: a dot joins two parts of a name, \
++                 as in 'com.example.Order', and '..' is the dotted line",
++                name[..end].trim_end()
++            )
++        }
++        Some(StrayDot::AfterName) => format!(
++            "'{name}' is no class name: a dot joins two parts of a name, \
++             as in 'com.example.Order', and none follows its generic, \
++             label, ':::' style or backtick name"
++        ),
++    };
++    Err(err(lineno, message))
++}
++
++/// Where a declared class name holds a dot that joins no two parts of it
++/// (see [`stray_dot`]).
++#[derive(Debug, PartialEq)]
++enum StrayDot {
++    /// In the name itself: first or last, after another dot or before
++    /// anything but a name part (`.A`, `A.`, `A..B`, `A.~T~`, `A.$`).
++    InName,
++    /// After the name's generic (`~T~`), label (`[…]`), `:::` style or
++    /// backtick part, which end it in mermaid's grammar (`A~T~.`,
++    /// `A["x"] .`, `A:::foo.bar`, `` `A`.B ``).
++    AfterName,
++}
++
++/// The stray dot of a `class …` / `<<stereotype>> …` name as written,
++/// read as mermaid's class grammar reads it: a dot may only stand between
++/// a run of name characters ([`is_class_name_char`]) and a name part or
++/// backtick name, spaces allowed round it (`A . B` is `A.B`). Text in
++/// backticks (to the end of the text when no backtick closes them), a
++/// closed generic `~…~` and a closed `[…]` label (quotes kept whole) is
++/// skipped, but ends the name: no dot may follow it, nor stand in a
++/// `:::` style. Only dots are judged: text without a stray dot is taken
++/// as before.
++fn stray_dot(name: &str) -> Option<StrayDot> {
++    #[derive(PartialEq, Clone, Copy)]
++    enum Last {
++        Start,
++        Part,
++        Dot,
++        Closed,
++        Other,
++    }
++    let mut last = Last::Start;
++    let mut i = 0;
++    while let Some(c) = name[i..].chars().next() {
++        let rest = &name[i..];
++        // How far the generic, backtick name or label at `rest` reaches
++        // (past its closing mark), if it is closed.
++        let closed = match c {
++            // An open backtick name runs to the end of the text, as in
++            // mermaid (`` class `A. ``): no dot after it is stray.
++            '`' => Some(rest[1..].find('`').map_or(rest.len(), |j| j + 2)),
++            '~' => rest[1..].find('~').map(|j| j + 2),
++            '[' => {
++                let mut quoted = false;
++                rest.char_indices().skip(1).find_map(|(j, ch)| match ch {
++                    '"' => {
++                        quoted = !quoted;
++                        None
++                    }
++                    ']' if !quoted => Some(j + 1),
++                    _ => None,
++                })
++            }
++            _ => None,
++        };
++        if let Some(len) = closed {
++            // A dot may lead into a backtick name (`A.`B``), into nothing
++            // else of these.
++            if last == Last::Dot && c != '`' {
++                return Some(StrayDot::InName);
++            }
++            last = Last::Closed;
++            i += len;
++            continue;
++        }
++        if rest.starts_with(":::") {
++            if last == Last::Dot {
++                return Some(StrayDot::InName);
++            }
++            // A style is one name, never dotted.
++            return rest.contains('.').then_some(StrayDot::AfterName);
++        }
++        match c {
++            c if c.is_whitespace() => {}
++            '.' => match last {
++                Last::Part => last = Last::Dot,
++                Last::Closed => return Some(StrayDot::AfterName),
++                Last::Start | Last::Dot | Last::Other => return Some(StrayDot::InName),
++            },
++            c if is_class_name_char(c) => {
++                if last != Last::Closed {
++                    last = Last::Part;
++                }
++            }
++            _ => {
++                if last == Last::Dot {
++                    return Some(StrayDot::InName);
++                }
++                if last != Last::Closed {
++                    last = Last::Other;
++                }
++            }
++        }
++        i += c.len_utf8();
++    }
++    (last == Last::Dot).then_some(StrayDot::InName)
++}
++
+diff --git a/src/scene.rs b/src/scene.rs
+--- a/src/scene.rs
++++ b/src/scene.rs
+@@
++    /// The top-left corner of the scene's canvas, in scene coordinates:
++    /// the canvas spans `origin.0 ..= origin.0 + width` and `origin.1 ..=
++    /// origin.1 + height`. `(0, 0)` for a laid-out scene. [`route`] and
++    /// [`route_partial`] (and the class and ER `route`) keep every
++    /// position as given; where the drawing then reaches past the canvas
++    /// margin at the left or top (a node dragged past it), the canvas
++    /// grows that way instead and `origin` goes negative on that axis, to
++    /// the margin before the drawing. Like `width` and `height` it only
++    /// grows: a [`route_partial`] keeps its base's canvas. An overflow
++    /// that rounds to 0 at the 0.1 px the SVG is written to is none.
++    ///
++    /// A class or ER SVG is drawn on this canvas (its `viewBox`), a
++    /// routed scene at its coordinates (a laid-out one that reaches into
++    /// the top-left margin is moved out of it, as it always was). A
++    /// flowchart or state SVG ([`to_svg`]) fits its `viewBox` to the
++    /// drawing instead: where a routed drawing reaches
++    /// past the top-left margin, on either axis, it keeps the drawing's
++    /// coordinates on both axes and starts the `viewBox` the margin before
++    /// the drawing (before zero on an axis that overflows, possibly after
++    /// zero on the other); any other drawing it moves onto the margin of a
++    /// `0 0` `viewBox`, as it always did (so after a chain of
++    /// [`route_partial`] frames whose base overflowed, `origin` can be
++    /// negative while the `viewBox` starts at `0 0`). So wherever the
++    /// `viewBox` does not start at `0 0`, SVG user space is scene space: a
++    /// host maps a pointer through the `viewBox` (the SVG's screen
++    /// transform) straight into scene coordinates for picking. Map through
++    /// the `viewBox`, not through `origin`: `origin` keeps the furthest
++    /// overflow of a chain of [`route_partial`] frames, so it can lie
++    /// before the `viewBox` origin of a later frame.
++    pub origin: (f64, f64),
++    /// Set by the edge stages of [`route`] / [`route_partial`] (and of the
++    /// class and ER `route`): its positions are the host's, so where the
++    /// drawing reaches past the top-left margin the SVG writers keep them
++    /// and start the `viewBox` before zero ([`Scene::origin`]) rather than
++    /// moving the drawing onto the canvas.
++    pub(crate) routed: bool,
+@@
++            origin: (0.0, 0.0),
++            routed: false,
+@@
++        origin: (0.0, 0.0),
++        routed: false,
+@@
+-/// `sc` moved right/down just enough that nothing sits inside the
+-/// top-left `MARGIN` gutter, canvas grown to match. [`route`] keeps
+-/// caller positions verbatim, so a node dragged past the origin would
+-/// otherwise fall outside the `0 0 W H` viewBox of renderers that
+-/// draw `width`/`height` as-is (class, ER). Scenes already clear of
+-/// the gutter — every laid-out one — come back untouched.
+-pub(crate) fn fit_top_left(sc: &Scene) -> std::borrow::Cow<'_, Scene> {
++/// A class or ER scene as its painter draws it on its canvas (the
++/// painter draws `width` × `height` as-is, see [`fit_top_left`]).
++pub(crate) struct Fitted<'a> {
++    /// The scene to paint.
++    pub(crate) scene: std::borrow::Cow<'a, Scene>,
++    /// The canvas: its top-left corner (the `viewBox` origin) and size.
++    pub(crate) origin: (f64, f64),
++    pub(crate) width: f64,
++    pub(crate) height: f64,
++}
++
++/// The canvas a class or ER painter draws `sc` on, so that nothing sits
++/// inside the top-left `MARGIN` gutter ([`top_left_axis`] on each axis):
++/// a routed scene ([`route`] keeps caller positions verbatim) keeps its
++/// coordinates, its canvas grown up and left over what reaches into the
++/// gutter ([`top_left_canvas`]), the `viewBox` origin going negative
++/// (#76); any other scene that reaches into it, or a routed one by less
++/// than shows, is moved right/down just enough, its canvas grown to
++/// match, as always. Scenes already clear of the gutter, as most
++/// laid-out ones are (a laid-out class scene whose drawing reaches into
++/// it is moved as it always was), come back untouched.
++pub(crate) fn fit_top_left(sc: &Scene) -> Fitted<'_> {
+@@
+-        return std::borrow::Cow::Borrowed(sc);
++        return Fitted {
++            scene: std::borrow::Cow::Borrowed(sc),
++            origin: sc.origin,
++            width: sc.width,
++            height: sc.height,
++        };
++    }
++    let (dx, ox) = top_left_axis(sc.routed, sc.origin.0, bb.0);
++    let (dy, oy) = top_left_axis(sc.routed, sc.origin.1, bb.2);
++    let width = sc.width + dx + (sc.origin.0 - ox);
++    let height = sc.height + dy + (sc.origin.1 - oy);
++    let scene = if dx == 0.0 && dy == 0.0 {
++        std::borrow::Cow::Borrowed(sc)
++    } else {
++        let mut out = sc.clone();
++        shift_scene(&mut out, dx, dy);
++        (out.origin, out.width, out.height) = ((ox, oy), width, height);
++        std::borrow::Cow::Owned(out)
++    };
++    Fitted {
++        scene,
++        origin: (ox, oy),
++        width,
++        height,
+@@
+-    let dx = (MARGIN - bb.0).max(0.0);
+-    let dy = (MARGIN - bb.2).max(0.0);
+-    if dx == 0.0 && dy == 0.0 {
+-        return std::borrow::Cow::Borrowed(sc);
++}
++
++/// How a class or ER painter puts a drawing that starts at `min` on one
++/// axis onto a canvas whose corner is at `o` there: (shift of the
++/// drawing, canvas corner). A drawing reaching `MARGIN - min` into the
++/// top-left gutter is moved right/down out of it, as always, unless it
++/// is routed and the overflow shows ([`offset_shows`]): then it keeps
++/// its coordinates and the corner goes to `MARGIN` before it (#76). So a
++/// routed drawing a float-noise or sub-0.1 px overflow off its place is
++/// written byte for byte as before, at a `0 0` corner.
++fn top_left_axis(routed: bool, o: f64, min: f64) -> (f64, f64) {
++    let reach = MARGIN - min;
++    if reach <= 0.0 {
++        (0.0, o)
++    } else if routed && offset_shows(reach) {
++        (0.0, o.min(min - MARGIN))
++    } else {
++        (reach, o)
+@@
+-    let mut out = sc.clone();
+-    shift_scene(&mut out, dx, dy);
+-    out.width += dx;
+-    out.height += dy;
+-    std::borrow::Cow::Owned(out)
++}
++
++/// `sc`'s canvas (origin, width, height) grown up and left over whatever
++/// of the drawing (as [`grow_scene`] bounds it) reaches into the top-left
++/// `MARGIN` gutter, nothing moved ([`top_left_axis`]): the class and ER
++/// `route` set it on their scene, and their painters draw on it. The far
++/// sides stay where they are; a canvas already holding the drawing, or
++/// overflown by less than shows, comes back as it is.
++pub(crate) fn top_left_canvas(sc: &Scene) -> ((f64, f64), f64, f64) {
++    let mut bb = Bbox::new();
++    grow_scene(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
++    if !bb.0.is_finite() {
++        return (sc.origin, sc.width, sc.height);
++    }
++    let (_, ox) = top_left_axis(sc.routed, sc.origin.0, bb.0);
++    let (_, oy) = top_left_axis(sc.routed, sc.origin.1, bb.2);
++    (
++        (ox, oy),
++        sc.width + (sc.origin.0 - ox),
++        sc.height + (sc.origin.1 - oy),
++    )
+@@
+-/// diagram doesn't "swim" while dragging; `to_svg` handles
+-/// translation at export time.
++/// diagram doesn't "swim" while dragging. Where the drawing reaches past
++/// the top-left margin, the canvas grows up or left ([`Scene::origin`])
++/// and [`to_svg`] draws it at those coordinates, moving nothing (#76);
++/// any other routed drawing it moves onto its margin, as it always did.
++///
++/// # Panics
++///
++/// When `centers.len()` differs from the graph's node count;
++/// [`try_route`] returns `None` instead.
+@@
++/// [`route`] for positions that may not fit `g`: `None`, where [`route`]
++/// would panic, when `centers` does not hold exactly one centre per node
++/// of `g`. Also `None` when a coordinate is not finite (NaN, infinite) or
++/// lies more than a million px (`1e6`) from zero, far past any drawing a
++/// host shows: routing such a position can panic, or run out of memory,
++/// as the size of the drawing grows with it. Otherwise exactly what
++/// [`route`] returns. For a host whose positions can be out of date for
++/// a moment, such as after an edit that added a node since the last drag.
++///
++/// ```
++/// use flowmaid::{parser::parse, scene};
++///
++/// let g = parse("flowchart TD\nA --> B").unwrap();
++/// let laid = scene::scene(&g);
++/// let centers: Vec<(f64, f64)> = laid.nodes.iter().map(|n| (n.x, n.y)).collect();
++/// assert!(scene::try_route(&g, &centers).is_some());
++/// // One position short: no scene, and no panic.
++/// assert!(scene::try_route(&g, &centers[..1]).is_none());
++/// ```
++pub fn try_route(g: &Graph, centers: &[(f64, f64)]) -> Option<Scene> {
++    (centers.len() == g.nodes.len() && routable(centers)).then(|| route(g, centers))
++}
++
++/// How far from zero (px) a coordinate may lie for the fallible
++/// `try_route` of each diagram type to route it: a million px, far past
++/// any drawing a host shows (a laid-out chain of 2000 nodes spans some
++/// 260 000 px). Every type routes positions anywhere within it without a
++/// panic (`tests/fallible_route.rs`); far beyond it, routing can panic
++/// on float overflow or exhaust memory (an ER line's label spots grow
++/// with its length).
++const ROUTE_REACH: f64 = 1.0e6;
++
++/// Whether the fallible `try_route` of each diagram type hands `points`
++/// to its `route`: every coordinate finite and at most [`ROUTE_REACH`]
++/// from zero (NaN fails the test too).
++pub(crate) fn routable(points: &[(f64, f64)]) -> bool {
++    points
++        .iter()
++        .all(|p| p.0.abs() <= ROUTE_REACH && p.1.abs() <= ROUTE_REACH)
++}
++
+@@
++        origin: (0.0, 0.0),
++        routed: false,
+@@
++    sc.origin = base.origin;
+@@
+-/// Serialise any Scene (automatic or dragged) to SVG. Content is
+-/// translated to start inside the SVG's 16 px padding, so negative
+-/// coordinates are safe.
++/// Whether an offset of `v` px shows in an SVG: whether it is still
++/// non-zero at the 0.1 px every coordinate, and the `viewBox` origin
++/// ([`view_origin`]), is written to. A routed drawing off its margin by
++/// less is moved onto it as it always was, so that its `viewBox` reads
++/// `0 0` exactly when its output is byte for byte as before (#76).
++pub(crate) fn offset_shows(v: f64) -> bool {
++    (v * 10.0).round() != 0.0
++}
++
++/// How [`to_svg`] puts a drawing onto its canvas, `fit` being how far
++/// the drawing starts short of [`MARGIN`] on each axis (positive: it
++/// reaches past the margin by that much, negative: it starts further in):
++/// (shift of the drawing, `viewBox` origin). A routed drawing that
++/// reaches past the margin by as much as shows ([`offset_shows`]), on
++/// either axis, keeps its coordinates on both axes, the `viewBox`
++/// starting `MARGIN` before the drawing: before zero on an axis that
++/// overflows, and on the other wherever the drawing starts there (#76).
++/// Any other drawing is moved by `fit`, its `viewBox` at `0 0`, byte for
++/// byte as before.
++fn view_shift(routed: bool, fit: (f64, f64)) -> ((f64, f64), (f64, f64)) {
++    let over = |f: f64| f > 0.0 && offset_shows(f);
++    if routed && (over(fit.0) || over(fit.1)) {
++        ((0.0, 0.0), (-fit.0, -fit.1))
++    } else {
++        (fit, (0.0, 0.0))
++    }
++}
++
++/// Serialise any Scene (automatic or dragged) to SVG. The canvas is the
++/// drawing with a margin all round, so negative coordinates are safe.
++/// The drawing is moved to start that margin in on a `0 0` canvas, as it
++/// always was, except where a [`route`] / [`route_partial`] drawing
++/// reaches past the top-left margin, on either axis: then it keeps its
++/// coordinates on both axes and the `viewBox` starts the margin before
++/// the drawing, before zero by the overflow (see [`Scene::origin`]) and,
++/// on an axis that does not overflow, possibly after zero. So a dragged
++/// node stays where the host put it, nothing else moves, and a host maps
++/// pointer coordinates through the `viewBox` into scene coordinates for
++/// picking. An overflow that rounds to 0 at the 0.1 px the SVG is written
++/// to is none.
+@@
+-    let tx = MARGIN - minx;
+-    let ty = MARGIN - miny;
++    // The canvas holds the drawing and its MARGIN all round. The drawing
++    // is moved to start MARGIN in, as it always was (a laid-out one is
++    // there already), except where a routed drawing reaches past that
++    // margin on either axis: the host's positions stay as they are, on
++    // both axes, and the `viewBox` starts MARGIN before the drawing (#76).
++    let ((tx, ty), (ox, oy)) = view_shift(sc.routed, (MARGIN - minx, MARGIN - miny));
+@@
+-    svg_open_root(&mut s, width, height, 14, title, desc, dom_id, opts);
++    svg_open_root(
++        &mut s,
++        (ox, oy),
++        width,
++        height,
++        14,
++        title,
++        desc,
++        dom_id,
++        opts,
++    );
+@@
+-    svg_open_root(s, width, height, font_size, title, desc, None, opts);
++    svg_open_root(
++        s,
++        (0.0, 0.0),
++        width,
++        height,
++        font_size,
++        title,
++        desc,
++        None,
++        opts,
++    );
++}
++
++/// [`svg_open_a11y`] for a canvas whose top-left corner is `origin`
++/// (the `viewBox` origin): a routed class or ER scene's ([`Scene::origin`]).
++#[allow(clippy::too_many_arguments)]
++pub(crate) fn svg_open_canvas(
++    s: &mut String,
++    origin: (f64, f64),
++    width: f64,
++    height: f64,
++    font_size: u32,
++    title: &str,
++    desc: Option<&str>,
++    opts: &SvgOptions,
++) {
++    svg_open_root(s, origin, width, height, font_size, title, desc, None, opts);
++}
++
++/// A `viewBox` origin coordinate as written: `0` at zero (so a canvas at
++/// the origin writes `0 0`, byte for byte as before), else to 0.1 px
++/// like every coordinate, without a trailing `.0`.
++fn view_origin(v: f64) -> String {
++    let r = (v * 10.0).round() / 10.0;
++    if r == 0.0 {
++        "0".to_string()
++    } else if r.fract() == 0.0 {
++        format!("{r:.0}")
++    } else {
++        format!("{r:.1}")
++    }
+@@
++    origin: (f64, f64),
+@@
+-         viewBox=\"0 0 {vw:.0} {vh:.0}\"{par} font-family=\"Helvetica, Arial, sans-serif\" \
++         viewBox=\"{ox} {oy} {vw:.0} {vh:.0}\"{par} font-family=\"Helvetica, Arial, sans-serif\" \
+@@
++        ox = view_origin(origin.0),
++        oy = view_origin(origin.1),
+@@
++        // From the canvas's corner: `0 0`, written as before, needs no
++        // `x` / `y`.
++        let at = if view_origin(origin.0) == "0" && view_origin(origin.1) == "0" {
++            String::new()
++        } else {
++            format!(
++                "x=\"{}\" y=\"{}\" ",
++                view_origin(origin.0),
++                view_origin(origin.1)
++            )
++        };
+@@
+-            "<rect width=\"{:.0}\" height=\"{:.0}\" fill=\"{}\"/>\n",
++            "<rect {at}width=\"{:.0}\" height=\"{:.0}\" fill=\"{}\"/>\n",
+@@
+-/// Test helper for renderers that draw `width` × `height` as a
+-/// `0 0 W H` viewBox (class, ER): panics unless every drawn coordinate
+-/// — `x`/`y`/`x1`…`cy` attributes, rect far corners, path `d` points
+-/// and polygon `points` — lies on that canvas.
++/// Test helper for renderers that draw their canvas as the `viewBox`
++/// (class, ER: `width` × `height` from [`Scene::origin`], `0 0` for a
++/// laid-out scene): panics unless every drawn coordinate — `x`/`y`/
++/// `x1`…`cy` attributes, rect far corners, path `d` points and polygon
++/// `points` — lies on that canvas. An arrowhead `<marker>` is drawn in
++/// its own coordinates, not the canvas's, and is not checked: with a
++/// `viewBox` before zero its `0 0 10 10` happens to lie on the canvas,
++/// after zero (a flowchart's, #76) it need not. A hop's `<mask>` is in
++/// canvas coordinates and is checked.
+@@
+-    let (w, h) = (
+-        num(attr(root, "width").unwrap()),
+-        num(attr(root, "height").unwrap()),
+-    );
++    let vb: Vec<f64> = attr(root, "viewBox").unwrap().split(' ').map(num).collect();
++    let (x0, y0, w, h) = (vb[0], vb[1], vb[2], vb[3]);
+@@
+-            (0.0..=w).contains(&x) && (0.0..=h).contains(&y),
+-            "({x}, {y}) is off the {w}×{h} canvas: {line}"
++            (x0..=x0 + w).contains(&x) && (y0..=y0 + h).contains(&y),
++            "({x}, {y}) is off the {w}×{h} canvas at ({x0}, {y0}): {line}"
+@@
++    // A line without its `<marker>…</marker>` defs.
++    fn unmarked(line: &str) -> std::borrow::Cow<'_, str> {
++        if !line.contains("<marker ") {
++            return std::borrow::Cow::Borrowed(line);
++        }
++        let mut rest = line;
++        let mut out = String::new();
++        while let Some(i) = rest.find("<marker ") {
++            out.push_str(&rest[..i]);
++            let end = rest[i..]
++                .find("</marker>")
++                .expect("a marker ends on its line");
++            rest = &rest[i + end + "</marker>".len()..];
++        }
++        out.push_str(rest);
++        std::borrow::Cow::Owned(out)
++    }
+@@
++        let line = &*unmarked(line);
+@@
+-            let ns: Vec<f64> = p
+-                .split(|c: char| !(c.is_ascii_digit() || c == '.' || c == '-'))
+-                .filter(|t| !t.is_empty())
+-                .map(num)
+-                .collect();
+-            for xy in ns.chunks(2) {
+-                check(line, xy[0], xy[1]);
++            // Numbers by the path command they follow: an arc (`A`, a
++            // hop) takes seven, radii and flags first, its end point last;
++            // every other command, and `points`, takes x y pairs.
++            let mut runs: Vec<(char, Vec<f64>)> = vec![(' ', Vec::new())];
++            let mut tok = String::new();
++            for ch in p.chars().chain([' ']) {
++                if ch.is_ascii_digit() || ch == '.' || ch == '-' {
++                    tok.push(ch);
++                    continue;
++                }
++                if !tok.is_empty() {
++                    runs.last_mut().unwrap().1.push(num(&tok));
++                    tok.clear();
++                }
++                if ch.is_ascii_alphabetic() {
++                    runs.push((ch.to_ascii_uppercase(), Vec::new()));
++                }
++            }
++            for (cmd, ns) in runs {
++                if cmd == 'A' {
++                    for arc in ns.chunks(7) {
++                        check(line, arc[5], arc[6]);
++                    }
++                } else {
++                    for xy in ns.chunks(2) {
++                        check(line, xy[0], xy[1]);
++                    }
++                }
+@@
++/// Test helper: what [`to_svg`] adds to `sc`'s coordinates to draw them
++/// ([`view_shift`]): the move onto the canvas, none where a routed
++/// drawing reaches past the top-left margin (its `viewBox` carries the
++/// overflow instead).
++#[cfg(test)]
++pub(crate) fn svg_shift(sc: &Scene) -> (f64, f64) {
++    let mut bb = Bbox::new();
++    grow_canvas(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
++    let (minx, _, miny, _) = bb.finish();
++    view_shift(sc.routed, (MARGIN - minx, MARGIN - miny)).0
++}
++
++/// Test helper: an SVG's `viewBox`, as (x, y, width, height).
++#[cfg(test)]
++pub(crate) fn view_box(svg: &str) -> (f64, f64, f64, f64) {
++    let root = svg.lines().find(|l| l.starts_with("<svg ")).unwrap();
++    let i = root.find(" viewBox=\"").unwrap() + " viewBox=\"".len();
++    let v: Vec<f64> = root[i..i + root[i..].find('"').unwrap()]
++        .split(' ')
++        .map(|t| t.parse().unwrap())
++        .collect();
++    (v[0], v[1], v[2], v[3])
++}
++
++/// Test helper: the centre of the `<rect x y width height>` on `line`.
++#[cfg(test)]
++pub(crate) fn rect_centre(line: &str) -> (f64, f64) {
++    let num = |k: &str| -> f64 {
++        let pat = format!(" {k}=\"");
++        let i = line.find(&pat).unwrap_or_else(|| panic!("no {k}: {line}")) + pat.len();
++        line[i..i + line[i..].find('"').unwrap()].parse().unwrap()
++    };
++    (
++        num("x") + num("width") / 2.0,
++        num("y") + num("height") / 2.0,
++    )
++}
++
+@@
+-        let (w, h) = (vb[2], vb[3]);
++        let (x0, y0, w, h) = (vb[0], vb[1], vb[2], vb[3]);
+@@
+-                    .max(pad - q.0)
+-                    .max(pad - q.1)
+-                    .max(q.0 + pad - w)
+-                    .max(q.1 + pad - h);
++                    .max(pad - (q.0 - x0))
++                    .max(pad - (q.1 - y0))
++                    .max(q.0 + pad - (x0 + w))
++                    .max(q.1 + pad - (y0 + h));
+@@
+-        let mut bb = Bbox::new();
+-        grow_canvas(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
+-        let (minx, _, miny, _) = bb.finish();
+-        let (tx, ty) = (MARGIN - minx, MARGIN - miny);
++        let (tx, ty) = svg_shift(&sc);
+@@
+-        let shift_of = |s: &Scene| {
+-            let mut bb = Bbox::new();
+-            grow_canvas(&mut bb, &s.nodes, &s.edges, &s.clusters);
+-            let (minx, _, miny, _) = bb.finish();
+-            (MARGIN - minx, MARGIN - miny)
+-        };
++        let shift_of = svg_shift;
+@@
+-            let mut bb = Bbox::new();
+-            grow_canvas(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
+-            let (minx, _, miny, _) = bb.finish();
+-            let (tx, ty) = (MARGIN - minx, MARGIN - miny);
++            let (tx, ty) = svg_shift(&sc);
+@@
+-        let mut bb = Bbox::new();
+-        grow_canvas(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
+-        let (minx, _, miny, _) = bb.finish();
+-        let (tx, ty) = (MARGIN - minx, MARGIN - miny);
++        let (tx, ty) = svg_shift(&sc);
+@@
+-        let shift_of = |s: &Scene| {
+-            let mut bb = Bbox::new();
+-            grow_canvas(&mut bb, &s.nodes, &s.edges, &s.clusters);
+-            let (minx, _, miny, _) = bb.finish();
+-            (MARGIN - minx, MARGIN - miny)
+-        };
++        let shift_of = svg_shift;
+@@
+-            let mut bb = Bbox::new();
+-            grow_canvas(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
+-            let (minx, _, miny, _) = bb.finish();
+-            let t = |p: (f64, f64)| (p.0 + MARGIN - minx, p.1 + MARGIN - miny);
++            let (tx, ty) = svg_shift(&sc);
++            let t = |p: (f64, f64)| (p.0 + tx, p.1 + ty);
+@@
+-        let mut bb = Bbox::new();
+-        grow_canvas(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
+-        let (minx, _, _, _) = bb.finish();
+@@
+-        let left = d.x - d.w / 2.0 + MARGIN - minx;
++        let left = d.x - d.w / 2.0 + svg_shift(&sc).0;
+@@
+-                if maxx + MARGIN > sc.width + 1e-6 || maxy + MARGIN > sc.height + 1e-6 {
++                let (ox, oy) = sc.origin;
++                if maxx + MARGIN > ox + sc.width + 1e-6
++                    || maxy + MARGIN > oy + sc.height + 1e-6
++                    || minx - MARGIN < ox - 1e-6
++                    || miny - MARGIN < oy - 1e-6
++                {
+@@
+-                        "{name} {mode}: canvas {}x{} short",
+-                        sc.width, sc.height
++                        "{name} {mode}: canvas {}x{} at {:?} short",
++                        sc.width, sc.height, sc.origin
+@@
+-            let (_, maxx, _, maxy) = bb.finish();
++            let (minx, maxx, miny, maxy) = bb.finish();
++            // Its far sides reach MARGIN past the drawing; its origin
++            // stays at zero unless the drawing reaches into the margin
++            // there by as much as the SVG shows, and then lies exactly
++            // MARGIN before it (#76).
+@@
+-                (r.width - maxx - MARGIN).abs() < 1e-6,
+-                "{name}: routed width {}",
+-                r.width
++                (r.origin.0 + r.width - maxx - MARGIN).abs() < 1e-6,
++                "{name}: routed width {} from {}",
++                r.width,
++                r.origin.0
+@@
+-                (r.height - maxy - MARGIN).abs() < 1e-6,
+-                "{name}: routed height {}",
+-                r.height
++                (r.origin.1 + r.height - maxy - MARGIN).abs() < 1e-6,
++                "{name}: routed height {} from {}",
++                r.height,
++                r.origin.1
+@@
++            let want = |min: f64| {
++                if MARGIN - min > 0.0 && offset_shows(MARGIN - min) {
++                    min - MARGIN
++                } else {
++                    0.0
++                }
++            };
++            assert_eq!(r.origin, (want(minx), want(miny)), "{name}: routed origin");
+@@
+-        let mut bb = Bbox::new();
+-        grow_canvas(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
+-        let (minx, _, miny, _) = bb.finish();
+-        let t = |p: (f64, f64)| (p.0 + MARGIN - minx, p.1 + MARGIN - miny);
++        let (tx, ty) = svg_shift(sc);
++        let t = |p: (f64, f64)| (p.0 + tx, p.1 + ty);
+@@
+-                    let mut bb = Bbox::new();
+-                    grow_canvas(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
+-                    let (minx, _, miny, _) = bb.finish();
+-                    let back = |p: (f64, f64)| (p.0 - MARGIN + minx, p.1 - MARGIN + miny);
++                    let (tx, ty) = svg_shift(sc);
++                    let back = |p: (f64, f64)| (p.0 - tx, p.1 - ty);
+@@
+-                    let mut bb = Bbox::new();
+-                    grow_canvas(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
+-                    let (minx, _, miny, _) = bb.finish();
+-                    let back = |p: (f64, f64)| (p.0 - MARGIN + minx, p.1 - MARGIN + miny);
++                    let (tx, ty) = svg_shift(sc);
++                    let back = |p: (f64, f64)| (p.0 - tx, p.1 - ty);
+@@
+-        for (j, e) in fitted.edges.iter().enumerate() {
++        for (j, e) in fitted.scene.edges.iter().enumerate() {
+@@
+-        for e in &fit_top_left(&es.scene).edges {
++        for e in &fit_top_left(&es.scene).scene.edges {
+@@
++    /// A node dragged past the top-left margin stays exactly where the
++    /// host put it (#76), in the scene and in the SVG: no other node
++    /// moves, the canvas grows up and left by what the drawing and its
++    /// margin reach past zero (`Scene::origin`), and the `viewBox` starts
++    /// the margin before the drawing on both axes, so SVG user space is
++    /// scene space: a pick at a node's drawn centre, read straight off
++    /// the SVG as a host maps its pointer through the `viewBox`, picks it.
++    /// Also when the drag overflows one axis only, on a drawing that on
++    /// the other starts further in than the margin (the verifier's
++    /// blocks-overview-lr, demo and stress drags, and every drawing moved
++    /// 40 px right with one node dragged above the top, whose `viewBox`
++    /// then starts after zero on x). For `route()` and `route_partial()`,
++    /// flowchart and state.
++    #[test]
++    fn drag_past_top_left_keeps_every_position() {
++        // (source, node to drag by its label (or the first one with a
++        // label of its own), drags of that node beyond the generic ones:
++        // to a point, or by a step when `by` is set).
++        type Drag = (Option<(f64, f64)>, Option<(f64, f64)>);
++        let srcs: [(&str, Option<&str>, Vec<Drag>); 6] = [
++            (
++                "flowchart TD\nA[Alpha] --> B[Beta]\nB --> C[Gamma]\nA --> C",
++                None,
++                vec![],
++            ),
++            (
++                "flowchart LR\nA[Alpha] --> B[Beta]\nsubgraph S [Box]\nB --> C[Gamma]\nend",
++                None,
++                vec![],
++            ),
++            (
++                "stateDiagram-v2\n[*] --> Idle\nIdle --> Busy\nBusy --> Idle\nBusy --> Done\nDone --> [*]",
++                None,
++                vec![],
++            ),
++            (
++                include_str!("../tests/fixtures/blocks/blocks-overview-lr.mmd"),
++                Some("cart service"),
++                vec![(Some((-60.0, f64::NAN)), None)],
++            ),
++            (
++                include_str!("../examples/demo.mmd"),
++                Some("Start"),
++                vec![(Some((-80.0, f64::NAN)), Some((0.0, 60.0)))],
++            ),
++            (include_str!("../examples/stress.mmd"), Some("Check"), vec![(Some((f64::NAN, -45.0)), None)]),
++        ];
++        // The centre of a node's shape as drawn: the line right after its
++        // `<title>` (a box, a circle or a diamond).
++        let drawn_centre = |line: &str| -> Option<(f64, f64)> {
++            let num = |k: &str| -> Option<f64> {
++                let pat = format!(" {k}=\"");
++                let i = line.find(&pat)? + pat.len();
++                line[i..i + line[i..].find('"')?].parse().ok()
++            };
++            if line.starts_with("<rect ") {
++                Some(rect_centre(line))
++            } else if line.starts_with("<circle ") {
++                Some((num("cx")?, num("cy")?))
++            } else if line.starts_with("<polygon ") {
++                let i = line.find(" points=\"")? + " points=\"".len();
++                let pts: Vec<(f64, f64)> = line[i..i + line[i..].find('"')?]
++                    .split(' ')
++                    .filter_map(|p| {
++                        let (x, y) = p.split_once(',')?;
++                        Some((x.parse().ok()?, y.parse().ok()?))
++                    })
++                    .collect();
++                // A diamond (top, right, bottom, left), not a slanted box.
++                (pts.len() == 4 && pts[0].0 == pts[2].0 && pts[1].1 == pts[3].1)
++                    .then(|| (pts[0].0, pts[1].1))
++            } else {
++                None
++            }
++        };
++        for (src, name, extra) in srcs {
++            let g = match crate::parser::parse_document(src).unwrap() {
++                crate::model::Document::Flowchart(g) | crate::model::Document::State(g) => g,
++                _ => unreachable!(),
++            };
++            let laid = scene(&g);
++            let c: Vec<(f64, f64)> = laid.nodes.iter().map(|n| (n.x, n.y)).collect();
++            // The node to drag: the named one, else the first with a label
++            // of its own (a state's `[*]` has none).
++            let k = (0..g.nodes.len())
++                .find(|&i| match name {
++                    Some(l) => laid.nodes[i].label == l,
++                    None => {
++                        !laid.nodes[i].label.is_empty() && laid.nodes[i].shape != Shape::StateStart
++                    }
++                })
++                .unwrap();
++            let last = c.len() - 1;
++            let mut drags: Vec<(usize, Vec<(f64, f64)>)> = Vec::new();
++            for (who, to) in [
++                (k, (-60.0, -40.0)),
++                (k, (-60.0, c[k].1)),
++                (k, (c[k].0, -45.0)),
++                (last, (c[last].0, -30.0)),
++            ] {
++                let mut d = c.clone();
++                d[who] = to;
++                drags.push((who, d));
++            }
++            // Everything 40 px further in on x, and the node above the top:
++            // the drawing overflows on y only and starts in on x.
++            let mut d: Vec<(f64, f64)> = c.iter().map(|p| (p.0 + 40.0, p.1)).collect();
++            d[k].1 = -45.0;
++            drags.push((k, d));
++            for (to, by) in extra {
++                let mut d = c.clone();
++                if let Some(to) = to {
++                    d[k] = (
++                        if to.0.is_nan() { c[k].0 } else { to.0 },
++                        if to.1.is_nan() { c[k].1 } else { to.1 },
++                    );
++                }
++                if let Some(by) = by {
++                    d[k] = (d[k].0 + by.0, d[k].1 + by.1);
++                }
++                drags.push((k, d));
++            }
++            // Labels that name one node only.
++            let unique = |l: &str| laid.nodes.iter().filter(|n| n.label == l).count() == 1;
++            for (who, d) in drags {
++                let partial = route_partial(&g, &d, &laid, &c);
++                for (how, sc) in [("route", route(&g, &d)), ("route_partial", partial)] {
++                    let what = format!("{name:?} {how}: node {who} to {:?}", d[who]);
++                    for (i, n) in sc.nodes.iter().enumerate() {
++                        assert_eq!((n.x, n.y), d[i], "{what}: node {i} moved");
++                    }
++                    let mut bb = Bbox::new();
++                    grow_canvas(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
++                    let (minx, maxx, miny, maxy) = bb.finish();
++                    // The overflow: what the drawing and its margin reach
++                    // past zero, on each axis (float noise under the 0.1
++                    // px the SVG is written to is none).
++                    let past = |min: f64| {
++                        if MARGIN - min > 0.0 && offset_shows(MARGIN - min) {
++                            min - MARGIN
++                        } else {
++                            0.0
++                        }
++                    };
++                    let over = (past(minx), past(miny));
++                    assert_eq!(sc.origin, over, "{what}");
++                    assert!(sc.origin.0 < 0.0 || sc.origin.1 < 0.0, "{what}");
++                    assert!(
++                        sc.origin.0 + sc.width >= maxx + MARGIN - 1e-9,
++                        "{what}: {} {} {maxx}",
++                        sc.origin.0,
++                        sc.width
++                    );
++                    assert!(
++                        sc.origin.1 + sc.height >= maxy + MARGIN - 1e-9,
++                        "{what}: {} {} {maxy}",
++                        sc.origin.1,
++                        sc.height
++                    );
++                    let svg = to_svg(&sc);
++                    let (vx, vy, vw, vh) = view_box(&svg);
++                    // Fitted to the drawing, at its coordinates on both
++                    // axes: the `viewBox` starts the margin before it, at
++                    // the overflow where it reaches past zero.
++                    assert_eq!(svg_shift(&sc), (0.0, 0.0), "{what}");
++                    assert!((vx - (minx - MARGIN)).abs() <= 0.05, "{what}: {vx} {minx}");
++                    assert!((vy - (miny - MARGIN)).abs() <= 0.05, "{what}: {vy} {miny}");
++                    for (o, v) in [(over.0, vx), (over.1, vy)] {
++                        if o < 0.0 {
++                            assert!((v - o).abs() <= 0.05, "{what}: {v} {o}");
++                        }
++                    }
++                    assert!((vw - (maxx - minx + 2.0 * MARGIN)).abs() <= 0.5, "{what}");
++                    assert!((vh - (maxy - miny + 2.0 * MARGIN)).abs() <= 0.5, "{what}");
++                    crate::scene::assert_drawn_inside_canvas(&svg);
++                    // Every labelled box is drawn at its scene centre, the
++                    // host's position (SVG user space is scene space), and
++                    // a pick there picks it.
++                    let lines: Vec<&str> = svg.lines().collect();
++                    let mut picked = Vec::new();
++                    for (i, n) in sc.nodes.iter().enumerate() {
++                        if n.label.is_empty() || n.label.contains('\n') || !unique(&n.label) {
++                            continue;
++                        }
++                        let title = format!("<g><title>{}</title>", escape(&n.label));
++                        let Some(at) = lines.iter().position(|l| *l == title) else {
++                            continue;
++                        };
++                        let Some((x, y)) = lines.get(at + 1).and_then(|l| drawn_centre(l)) else {
++                            continue;
++                        };
++                        assert!(
++                            (x - d[i].0).abs() <= 0.1 && (y - d[i].1).abs() <= 0.1,
++                            "{what}: node {i} drawn at ({x}, {y}), placed at {:?}",
++                            d[i]
++                        );
++                        assert_eq!(sc.node_at(x, y), Some(i), "{what}: pick node {i}");
++                        assert_eq!(sc.hit_test(x, y, 2.0), Some(Hit::Node(i)), "{what}");
++                        picked.push(i);
++                    }
++                    assert!(picked.contains(&who) || who == last, "{what}: {picked:?}");
++                    assert!(picked.len() >= 2, "{what}: {picked:?}");
++                }
++            }
++        }
++    }
++
++    /// A routed drawing off its margin by less than the 0.1 px the SVG
++    /// is written to — float noise, or a few hundredths of a px — is
++    /// written byte for byte as before (moved onto the margin, `viewBox`
++    /// at `0 0`), and its scene origin stays `(0, 0)`; one that reaches
++    /// past the margin by a visible amount on either axis keeps its
++    /// coordinates on both (#76), its `viewBox` after zero on an axis
++    /// where it starts further in than the margin. Flowchart (`to_svg`,
++    /// with the edge stage's canvas) and class / ER (`fit_top_left`,
++    /// `top_left_canvas`).
++    #[test]
++    fn routed_offset_under_print_precision_is_written_as_before() {
++        let g = parse("flowchart TD\nA[Alpha] --> B[Beta]\nB --> C[Gamma]\nA --> C").unwrap();
++        let laid = scene(&g);
++        let c: Vec<(f64, f64)> = laid.nodes.iter().map(|n| (n.x, n.y)).collect();
++        let r = route(&g, &c);
++        assert!(r.routed);
++        let start = |sc: &Scene| {
++            let mut bb = Bbox::new();
++            grow_canvas(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
++            let (minx, _, miny, _) = bb.finish();
++            (minx, miny)
++        };
++        // As a scene not made by `route` is written: always moved.
++        let as_before = |sc: &Scene| {
++            let mut plain = sc.clone();
++            plain.routed = false;
++            to_svg(&plain)
++        };
++        for (off, shows) in [
++            (1e-13, false),
++            (-1e-13, false),
++            (0.03, false),
++            (-0.04, false),
++            (0.06, true),
++            (-0.06, true),
++            (25.0, true),
++            (-25.0, true),
++        ] {
++            // The drawing reaching `off` px past the margin on x
++            // (negative: starting inside it), and the other way on y.
++            let (minx, miny) = start(&r);
++            let mut sc = r.clone();
++            shift_scene(&mut sc, MARGIN - off - minx, MARGIN + off - miny);
++            (sc.origin, sc.width, sc.height) = ((0.0, 0.0), laid.width, laid.height);
++            crate::edgepass::refit(&mut sc, crate::edgepass::Mode::Routed, true);
++            let svg = to_svg(&sc);
++            let (vx, vy, ..) = view_box(&svg);
++            let (fx, fy) = start(&sc);
++            let shift = svg_shift(&sc);
++            // An axis that reaches past the margin by as much as shows
++            // grows the canvas up or left; then both axes keep their
++            // coordinates, the `viewBox` starting the margin before the
++            // drawing (after zero on the other axis). Else the drawing is
++            // written as before, moved onto the margin of a `0 0` one.
++            let over = |m: f64| m < MARGIN && offset_shows(MARGIN - m);
++            assert_eq!(over(fx) || over(fy), shows, "{off}");
++            for (m, v, t, o) in [
++                (fx, vx, shift.0, sc.origin.0),
++                (fy, vy, shift.1, sc.origin.1),
++            ] {
++                assert_eq!(o, if over(m) { m - MARGIN } else { 0.0 }, "{off}");
++                if shows {
++                    assert!((v - (m - MARGIN)).abs() <= 0.05, "{off}: {v}");
++                    assert_eq!(t, 0.0, "{off}");
++                } else {
++                    assert_eq!(v, 0.0, "{off}");
++                    assert_eq!(t, MARGIN - m, "{off}");
++                }
++            }
++            if off.abs() >= 1.0 {
++                // The other axis starts `off` further in: a `viewBox`
++                // after zero there.
++                assert!(vx > 0.0 || vy > 0.0, "{off}: {vx} {vy}");
++            }
++            if shows {
++                assert_ne!(svg, as_before(&sc), "{off}");
++            } else {
++                assert_eq!(svg, as_before(&sc), "{off}");
++                assert!(svg.contains(" viewBox=\"0 0 "), "{off}");
++            }
++        }
++        // Class and ER: the painter's canvas, and the one `route` sets.
++        let d = match crate::parser::parse_document(include_str!("../examples/class.mmd")) {
++            Ok(crate::model::Document::Class(d)) => d,
++            other => panic!("{:?}", other.err()),
++        };
++        let laid = crate::class::scene(&d);
++        let c: Vec<(f64, f64)> = laid.scene.nodes.iter().map(|n| (n.x, n.y)).collect();
++        let cs = crate::class::route(&d, &c);
++        assert!(cs.scene.routed);
++        let class_start = |sc: &Scene| {
++            let mut bb = Bbox::new();
++            grow_scene(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
++            (bb.0, bb.2)
++        };
++        for (over, shows) in [(4.3e-14, false), (0.04, false), (0.06, true), (30.0, true)] {
++            let (minx, miny) = class_start(&cs.scene);
++            let mut moved = cs.clone();
++            shift_scene(&mut moved.scene, MARGIN - over - minx, MARGIN - over - miny);
++            moved.scene.origin = (0.0, 0.0);
++            let (origin, width, height) = top_left_canvas(&moved.scene);
++            (moved.scene.origin, moved.scene.width, moved.scene.height) = (origin, width, height);
++            let mut plain = moved.clone();
++            plain.scene.routed = false;
++            let (svg, before) = (crate::class::to_svg(&moved), crate::class::to_svg(&plain));
++            let fitted = fit_top_left(&moved.scene);
++            if shows {
++                assert!(origin.0 < 0.0 && origin.1 < 0.0, "{over}");
++                assert!(matches!(fitted.scene, std::borrow::Cow::Borrowed(_)));
++                assert_eq!(fitted.origin, origin);
++                assert_ne!(svg, before, "{over}");
++            } else {
++                assert_eq!(origin, (0.0, 0.0), "{over}");
++                assert_eq!(svg, before, "{over}");
++                assert!(svg.contains(" viewBox=\"0 0 "), "{over}");
++            }
++        }
++    }
++
++    /// Drags that leave the top-left margin alone keep a canvas at the
++    /// origin: the scene's `origin` stays `(0, 0)` and the SVG is written
++    /// byte for byte as before (#76 changes nothing there), also when the
++    /// drawing then starts further in than the margin (every node moved
++    /// right and down): it is moved onto the margin as it always was.
++    #[test]
++    fn drag_inside_keeps_the_origin() {
++        let g = parse("flowchart TD\nA[Alpha] --> B[Beta]\nB --> C[Gamma]").unwrap();
++        let laid = scene(&g);
++        let c: Vec<(f64, f64)> = laid.nodes.iter().map(|n| (n.x, n.y)).collect();
++        let mut d = c.clone();
++        d[1].0 += 80.0;
++        d[1].1 += 15.0;
++        let inward: Vec<(f64, f64)> = c.iter().map(|p| (p.0 + 40.0, p.1 + 25.0)).collect();
++        for sc in [
++            route(&g, &c),
++            route(&g, &d),
++            route_partial(&g, &d, &laid, &c),
++            route(&g, &inward),
++            route_partial(&g, &inward, &laid, &c),
++        ] {
++            assert_eq!(sc.origin, (0.0, 0.0));
++            let svg = to_svg(&sc);
++            assert!(svg.contains(" viewBox=\"0 0 "), "{svg}");
++            assert!(svg.contains("<rect width=\""), "background at the origin");
++            // Written byte for byte as a scene not made by `route` is.
++            let mut plain = sc.clone();
++            plain.routed = false;
++            assert_eq!(svg, to_svg(&plain));
++        }
++        assert_eq!(laid.origin, (0.0, 0.0));
++        assert!(to_svg(&laid).contains(" viewBox=\"0 0 "));
++    }
++
+diff --git a/tests/fallible_route.rs b/tests/fallible_route.rs
+new file mode 100644
+--- /dev/null
++++ b/tests/fallible_route.rs
+@@
++//! The fallible `try_route` of every diagram type with a `route` (issue
++//! #110), through the public API: `None` for a position count `route`
++//! does not accept, or a coordinate that is not finite or lies more than
++//! a million px from zero, and exactly `route`'s result otherwise.
++
++use flowmaid::model::{ClassDiagram, Document, ErDiagram, Graph, Mindmap};
++use flowmaid::parser::parse_document;
++use flowmaid::{class, er, mindmap, scene};
++use std::path::{Path, PathBuf};
++
++/// Two results are the same when every field prints the same.
++fn same<T: std::fmt::Debug>(a: &T, b: &T) -> bool {
++    format!("{a:?}") == format!("{b:?}")
++}
++
++/// `k` positions: the laid-out centres first, then made-up ones.
++fn positions(laid: &[(f64, f64)], k: usize) -> Vec<(f64, f64)> {
++    (0..k)
++        .map(|i| {
++            laid.get(i)
++                .copied()
++                .unwrap_or((40.0 + 30.0 * i as f64, 40.0 + 20.0 * i as f64))
++        })
++        .collect()
++}
++
++/// Every `.mmd` file under `dir`, recursively, in name order.
++fn mmd_files(dir: &Path, out: &mut Vec<PathBuf>) {
++    let mut entries: Vec<PathBuf> = std::fs::read_dir(dir)
++        .unwrap_or_else(|e| panic!("{}: {e}", dir.display()))
++        .map(|e| e.unwrap().path())
++        .collect();
++    entries.sort();
++    for p in entries {
++        if p.is_dir() {
++            mmd_files(&p, out);
++        } else if p.extension().is_some_and(|x| x == "mmd") {
++            out.push(p);
++        }
++    }
++}
++
++/// The repository's fixtures and examples, parsed (the ones that parse).
++fn repo_documents() -> Vec<(String, Document)> {
++    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
++    let mut files = Vec::new();
++    mmd_files(&root.join("examples"), &mut files);
++    mmd_files(&root.join("tests/fixtures"), &mut files);
++    files
++        .into_iter()
++        .filter_map(|p| {
++            let src = std::fs::read_to_string(&p).unwrap();
++            let name = p.strip_prefix(root).unwrap().display().to_string();
++            parse_document(&src).ok().map(|d| (name, d))
++        })
++        .collect()
++}
++
++fn parse(src: &str) -> Document {
++    parse_document(src).unwrap_or_else(|e| panic!("{src}\n{e:?}"))
++}
++
++/// The node centres a document is laid out with, and the position counts
++/// its `route` accepts.
++type Laid = (Vec<(f64, f64)>, Vec<usize>);
++
++/// The [`Laid`] of `d`, for a diagram type with a `route`.
++fn laid_out(d: &Document) -> Option<Laid> {
++    let centres = |nodes: &[scene::SceneNode]| nodes.iter().map(|n| (n.x, n.y)).collect();
++    Some(match d {
++        Document::Flowchart(g) | Document::State(g) => {
++            (centres(&scene::scene(g).nodes), vec![g.nodes.len()])
++        }
++        Document::Class(c) => {
++            let n = c.classes.len();
++            let counts = if c.notes.is_empty() {
++                vec![n]
++            } else {
++                vec![n, n + c.notes.len()]
++            };
++            (centres(&class::scene(c).scene.nodes), counts)
++        }
++        Document::Er(e) => (centres(&er::scene(e).scene.nodes), vec![e.entities.len()]),
++        Document::Mindmap(m) => {
++            let laid = mindmap::scene(m);
++            let pos = laid.nodes.iter().map(|n| (n.cx(), n.cy())).collect();
++            (pos, vec![m.nodes.len()])
++        }
++        _ => return None,
++    })
++}
++
++/// `try_route` of `d` at `pos`, and whether it equals `route` (checked
++/// only where it returned a scene).
++fn try_and_compare(d: &Document, pos: &[(f64, f64)]) -> Option<bool> {
++    match d {
++        Document::Flowchart(g) | Document::State(g) => {
++            scene::try_route(g, pos).map(|s| same(&s, &scene::route(g, pos)))
++        }
++        Document::Class(c) => class::try_route(c, pos).map(|s| same(&s, &class::route(c, pos))),
++        Document::Er(e) => er::try_route(e, pos).map(|s| same(&s, &er::route(e, pos))),
++        Document::Mindmap(m) => {
++            mindmap::try_route(m, pos).map(|s| same(&s, &mindmap::route(m, pos)))
++        }
++        _ => None,
++    }
++}
++
++/// At every count `route` accepts, on every fixture and example of every
++/// diagram type with a `route`, `try_route` returns exactly `route`'s
++/// scene.
++#[test]
++fn equals_route_at_accepted_counts() {
++    let mut kinds = [0usize; 4];
++    for (name, d) in repo_documents() {
++        let Some((laid, counts)) = laid_out(&d) else {
++            continue;
++        };
++        kinds[match d {
++            Document::Flowchart(_) | Document::State(_) => 0,
++            Document::Class(_) => 1,
++            Document::Er(_) => 2,
++            _ => 3,
++        }] += 1;
++        for k in counts {
++            let pos = positions(&laid, k);
++            assert_eq!(
++                try_and_compare(&d, &pos),
++                Some(true),
++                "{name}: {k} positions"
++            );
++        }
++    }
++    // Every type is covered.
++    assert!(kinds.iter().all(|&k| k > 0), "{kinds:?}");
++}
++
++/// Counts 0 to n + 3 (n = the drawing's node count) on several diagrams
++/// of each type, empty ones included: a scene exactly at the counts
++/// `route` accepts, `None` at every other, and never a panic.
++#[test]
++fn sweeps_counts_without_panicking() {
++    let mut docs: Vec<(String, Document)> = [
++        include_str!("../examples/demo.mmd"),
++        include_str!("../examples/subgraph.mmd"),
++        include_str!("../examples/lr.mmd"),
++        include_str!("../examples/state.mmd"),
++        include_str!("fixtures/notes/spread-face.mmd"),
++        include_str!("../examples/class.mmd"),
++        "classDiagram\nA <|-- B\nnote for A \"on A\"\nnote \"free\"",
++        "classDiagram\nnote \"only a note\"",
++        include_str!("../examples/er.mmd"),
++        "erDiagram\nA ||--o{ B : has\nB }|--|| C : in",
++        include_str!("../examples/mindmap.mmd"),
++        "mindmap\n  root\n    a\n    b\n      c",
++        "flowchart TD",
++        "stateDiagram-v2",
++        "classDiagram",
++        "erDiagram",
++    ]
++    .iter()
++    .map(|src| (src.lines().next().unwrap_or("").to_string(), parse(src)))
++    .collect();
++    docs.push((
++        "Graph::default".into(),
++        Document::Flowchart(Graph::default()),
++    ));
++    docs.push((
++        "ClassDiagram::default".into(),
++        Document::Class(ClassDiagram::default()),
++    ));
++    docs.push((
++        "ErDiagram::default".into(),
++        Document::Er(ErDiagram::default()),
++    ));
++    docs.push((
++        "Mindmap::default".into(),
++        Document::Mindmap(Mindmap::default()),
++    ));
++    for (name, d) in &docs {
++        let (laid, counts) = laid_out(d).unwrap();
++        for k in 0..laid.len() + 4 {
++            let pos = positions(&laid, k);
++            let got = try_and_compare(d, &pos);
++            if counts.contains(&k) {
++                assert_eq!(got, Some(true), "{name}: {k} positions");
++            } else {
++                assert_eq!(got, None, "{name}: {k} positions");
++            }
++        }
++    }
++}
++
++/// A coordinate that is not finite gives no scene, at a count `route`
++/// accepts too (the flowchart router panics on one).
++#[test]
++fn non_finite_positions_give_no_scene() {
++    for src in [
++        include_str!("../examples/demo.mmd"),
++        include_str!("../examples/state.mmd"),
++        include_str!("../examples/class.mmd"),
++        include_str!("../examples/er.mmd"),
++        include_str!("../examples/mindmap.mmd"),
++    ] {
++        let d = parse(src);
++        let (laid, counts) = laid_out(&d).unwrap();
++        for bad in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
++            for k in &counts {
++                let mut pos = positions(&laid, *k);
++                pos[k / 2].0 = bad;
++                assert_eq!(try_and_compare(&d, &pos), None, "{src}: x = {bad}");
++                pos[k / 2].0 = laid[k / 2].0;
++                pos[0].1 = bad;
++                assert_eq!(try_and_compare(&d, &pos), None, "{src}: y = {bad}");
++            }
++        }
++    }
++}
++
++/// Positions anywhere within a million px of zero are routed, exactly as
++/// `route` routes them and without a panic, by every type: every node in
++/// one far corner, nodes spread across the whole range, one node far off
++/// the rest. A coordinate past that reach, up to `f64::MAX`, gives no
++/// scene (routing one can panic or exhaust memory).
++#[test]
++fn far_positions_route_within_reach_and_give_no_scene_past_it() {
++    const REACH: f64 = 1.0e6;
++    for src in [
++        include_str!("../examples/demo.mmd"),
++        include_str!("../examples/subgraph.mmd"),
++        include_str!("../examples/state.mmd"),
++        include_str!("../examples/class.mmd"),
++        "classDiagram\nA <|-- B\nnote for A \"on A\"\nnote \"free\"",
++        include_str!("../examples/er.mmd"),
++        include_str!("../examples/mindmap.mmd"),
++    ] {
++        let d = parse(src);
++        let (laid, counts) = laid_out(&d).unwrap();
++        for k in counts {
++            let at = positions(&laid, k);
++            let mut one_off = at.clone();
++            one_off[0] = (-REACH, REACH);
++            let within: [Vec<(f64, f64)>; 4] = [
++                vec![(REACH, REACH); k],
++                vec![(-REACH, -REACH); k],
++                (0..k)
++                    .map(|i| match i % 4 {
++                        0 => (-REACH, -REACH),
++                        1 => (REACH, REACH),
++                        2 => (-REACH, REACH),
++                        _ => (REACH, -REACH),
++                    })
++                    .collect(),
++                one_off,
++            ];
++            for pos in &within {
++                assert_eq!(try_and_compare(&d, pos), Some(true), "{src}: {pos:?}");
++            }
++            for past in [REACH + 1.0, -REACH - 1.0, 1.0e12, f64::MAX, f64::MIN] {
++                let mut pos = at.clone();
++                pos[k - 1].0 = past;
++                assert_eq!(try_and_compare(&d, &pos), None, "{src}: x = {past}");
++                let mut pos = at.clone();
++                pos[0].1 = past;
++                assert_eq!(try_and_compare(&d, &pos), None, "{src}: y = {past}");
++            }
++            let all_far: Vec<(f64, f64)> = vec![(f64::MAX, f64::MIN); k];
++            assert_eq!(try_and_compare(&d, &all_far), None, "{src}");
++        }
++    }
++}
++
++/// An empty mindmap with no positions is a scene; a mindmap whose
++/// positions do not match is none, where `route` draws the empty scene
++/// for both.
++#[test]
++fn mindmap_mismatch_differs_from_an_empty_mindmap() {
++    let empty = Mindmap::default();
++    let blank = mindmap::try_route(&empty, &[]).expect("an empty mindmap is a scene");
++    assert!(blank.nodes.is_empty());
++    assert!(same(&blank, &mindmap::route(&empty, &[])));
++    let Document::Mindmap(m) = parse("mindmap\n  root\n    a") else {
++        unreachable!()
++    };
++    assert!(mindmap::try_route(&m, &[]).is_none());
++    assert!(mindmap::try_route(&m, &[(10.0, 10.0)]).is_none());
++    assert!(same(&mindmap::route(&m, &[]), &blank));
++}
+diff --git a/tests/fixtures/identity.tsv b/tests/fixtures/identity.tsv
+--- a/tests/fixtures/identity.tsv
++++ b/tests/fixtures/identity.tsv
+@@
+-tests/fixtures/blocks/p12-state.mmd	e60b716a7d1330a1	ebc88239929c6f72	f89c2da7150241e2	blocks
++tests/fixtures/blocks/p12-state.mmd	e60b716a7d1330a1	4bfc9092092e832	f89c2da7150241e2	blocks
+@@
+-tests/fixtures/blocks/p14-empty-and-self.mmd	b18b6a2127c9408c	1eef313c2f85a3a1	82679d812f4cd132	blocks
++tests/fixtures/blocks/p14-empty-and-self.mmd	b18b6a2127c9408c	8f34f6f2a122c5db	82679d812f4cd132	blocks
+@@
+-tests/fixtures/blocks/ratio2x4.mmd	e88ad696f0fae7ef	2e506568823db24	95ec05d05afd80f7	blocks
+-tests/fixtures/blocks/ratio3.mmd	36b408d2ca18672e	e091fbe767019eb8	dde10452966c48e9	blocks
+-tests/fixtures/blocks/ratio4.mmd	cc6b85c8c9a0a1f0	53d29984c407adb9	25e81225c102e4c2	blocks
+-tests/fixtures/blocks/ratio4mask.mmd	df9bcbc9af0bb5d2	d607dca1bb0dd6f2	75fe8f2eeb929f49	blocks
++tests/fixtures/blocks/ratio2x4.mmd	e88ad696f0fae7ef	2cd7c4d043b2dac8	95ec05d05afd80f7	blocks
++tests/fixtures/blocks/ratio3.mmd	36b408d2ca18672e	9f83979277d63d2b	dde10452966c48e9	blocks
++tests/fixtures/blocks/ratio4.mmd	cc6b85c8c9a0a1f0	fbd0a326c98d2494	25e81225c102e4c2	blocks
++tests/fixtures/blocks/ratio4mask.mmd	df9bcbc9af0bb5d2	d11097759a292ebe	75fe8f2eeb929f49	blocks
+@@
+-tests/fixtures/blocks/turned-blocks.mmd	d77f14477ba8afc7	72633b6838ba71ae	7c4fa37bb36654b9	blocks
++tests/fixtures/blocks/turned-blocks.mmd	d77f14477ba8afc7	72633b6838ba71ae	ebd69b9ef12c17ca	blocks
+@@
+-tests/fixtures/notes/near-drag.mmd	30611ebad78c1b1a	14b2914979e560f5	8fa14b16f024da10	blocks
++tests/fixtures/notes/near-drag.mmd	30611ebad78c1b1a	cd09efd741212e0b	8fa14b16f024da10	blocks

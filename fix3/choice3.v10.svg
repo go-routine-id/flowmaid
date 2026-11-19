@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="514" height="497" viewBox="0 0 514 497" font-family="Helvetica, Arial, sans-serif" font-size="14" role="img" aria-label="State diagram">
+<title>State diagram</title>
+<rect width="514" height="497" fill="#ffffff"/>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 1 L 9 5 L 0 9 z" fill="#44507a"/></marker></defs>
+<path d="M 268.1 42.0 C 268.1 72.0, 268.1 72.0, 268.1 102.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>start → Order</title></path>
+<path d="M 268.1 140.0 C 268.1 170.0, 268.1 170.0, 268.1 200.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>Order → c</title></path>
+<path d="M 260.4 220.3 C 252.4 325.0, 99.0 326.3, 99.0 431.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>c → Express: priority customer</title></path>
+<path d="M 261.8 221.7 C 261.8 324.7, 227.5 328.0, 227.5 431.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>c → Standard: regular customer</title></path>
+<path d="M 268.1 228.0 C 268.1 331.0, 312.3 328.0, 312.3 431.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>c → Hold: payment pending</title></path>
+<path d="M 274.2 221.9 C 274.2 326.5, 423.0 326.5, 423.0 431.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>c → Cancel: fraud suspected</title></path>
+<g><title>c</title>
+<polygon points="268.1,200.0 282.1,214.0 268.1,228.0 254.1,214.0" fill="#fcf2da" stroke="#d99114" stroke-width="1.6"/>
+<text x="268.1" y="214.0" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<g><title>start</title>
+<circle cx="268.1" cy="35.0" r="7.0" fill="#44507a" stroke="#44507a" stroke-width="1.6"/>
+<text x="268.1" y="35.0" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<g><title>Order</title>
+<rect x="234.8" y="102.0" width="66.7" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="268.1" y="121.0" dy="0.33em" text-anchor="middle" fill="#232840">Order</text>
+</g>
+<g><title>Express</title>
+<rect x="28.0" y="431.0" width="83.0" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="69.5" y="450.0" dy="0.33em" text-anchor="middle" fill="#232840">Express</text>
+</g>
+<g><title>Standard</title>
+<rect x="161.0" y="431.0" width="89.3" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="205.7" y="450.0" dy="0.33em" text-anchor="middle" fill="#232840">Standard</text>
+</g>
+<g><title>Hold</title>
+<rect x="300.3" y="431.0" width="60.7" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="330.6" y="450.0" dy="0.33em" text-anchor="middle" fill="#232840">Hold</text>
+</g>
+<g><title>Cancel</title>
+<rect x="411.0" y="431.0" width="75.5" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="448.8" y="450.0" dy="0.33em" text-anchor="middle" fill="#232840">Cancel</text>
+</g>
+<rect x="42.4" y="396.2" width="118.3" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="101.6" y="406.2" dy="0.33em" text-anchor="middle" fill="#232840">priority customer</text>
+<rect x="170.1" y="367.7" width="119.6" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="229.9" y="377.7" dy="0.33em" text-anchor="middle" fill="#232840">regular customer</text>
+<rect x="238.6" y="342.1" width="121.9" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="299.6" y="352.1" dy="0.33em" text-anchor="middle" fill="#232840">payment pending</text>
+<rect x="350.5" y="369.1" width="113.8" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="407.4" y="379.1" dy="0.33em" text-anchor="middle" fill="#232840">fraud suspected</text>
+</svg>

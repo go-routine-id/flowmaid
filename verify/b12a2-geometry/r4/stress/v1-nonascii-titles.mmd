@@ -1,0 +1,18 @@
+flowchart TD
+    src[Start] --> a1
+    src --> b1
+    subgraph A["Überprüfung der Zahlungsströme – Ärger"]
+        a1[prüfen] --> a2[buchen]
+    end
+    subgraph B["Сервисы обработки данных ЖЩЮ"]
+        b1[приём] --> b2[запись]
+    end
+    subgraph C["数据处理服务和用户界面"]
+        c1[入口]
+    end
+    subgraph D["Dịch vụ người dùng đặc biệt"]
+        d1[x]
+    end
+    a2 -->|ok| c1
+    b2 -->|fail| d1
+    c1 --> d1

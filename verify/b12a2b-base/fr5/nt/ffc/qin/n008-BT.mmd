@@ -1,0 +1,16 @@
+flowchart BT
+    subgraph A[Billing]
+        a0[a0]
+        a1[a1]
+    end
+    subgraph B[Billing backend]
+        b0[b0]
+        b1[b1 wide node]
+        b2[b2]
+    end
+    a0 --> b2
+    a1 --> b2
+    p[p] --> B
+    p --> b2
+    q[q] --> B
+    q --> b2

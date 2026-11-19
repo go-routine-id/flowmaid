@@ -1,0 +1,6 @@
+architecture-beta
+    service api(server)[API]
+    service worker(cpu)[Worker]
+    service db(database)[Database]
+    api:R -[reads]-> L:db
+    worker:R -[writes]-> L:db

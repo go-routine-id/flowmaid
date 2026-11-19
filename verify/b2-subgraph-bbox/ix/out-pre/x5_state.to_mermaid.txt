@@ -1,0 +1,24 @@
+flowchart TD
+    __start_root((" "))
+    Idle("Idle")
+    __start_0((" "))
+    Fetch("Fetch")
+    Parse("Parse")
+    Emit("Emit")
+    Done("Done")
+    __end_root((" "))
+    subgraph Working
+        __start_0
+        Fetch
+        Parse
+        Emit
+    end
+    __start_root --> Idle
+    __start_0 --> Fetch
+    Fetch --> Parse
+    Parse -->|"more"| Fetch
+    Parse --> Emit
+    Done --> __end_root
+    Idle -->|"start"| Working
+    Emit -->|"restart"| Working
+    Working -->|"finish"| Done

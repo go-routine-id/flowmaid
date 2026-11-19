@@ -1,0 +1,54 @@
+flowchart LR
+  n0["dolor<br/>incididunt sit aliqua"]
+  subgraph g0["labore lorem nostrud adipiscing"]
+    direction TB
+    n1("magna<br/>dolor do magna amet")
+    n2("ut incididunt adipiscing adipiscing<br/>incididunt")
+    n1 --> n2
+  end
+  subgraph g1["tempor incididunt ullamco ut nostrud sed consectetur aliqua labore ut ipsum"]
+    n3["incididunt"]
+    n4("veniam")
+    n5["labore elit labore"]
+    n6["consectetur eiusmod incididunt<br/>elit aliqua ullamco aliqua<br/>aliqua consectetur eiusmod ipsum"]
+    n7[("eiusmod<br/>lorem sed sed<br/>elit labore do")]
+    n8[("labore eiusmod ut ipsum<br/>adipiscing<br/>dolor ut")]
+    n3 --> n4
+  end
+  subgraph g2["ut ut sed nostrud elit"]
+    n9(["aliqua<br/>incididunt amet adipiscing"])
+    n10(["consectetur tempor ipsum<br/>veniam ipsum lorem sit<br/>labore"])
+    n11[("consectetur sed amet<br/>eiusmod elit<br/>eiusmod")]
+  end
+  subgraph g3["sed"]
+    direction TB
+    n12[("veniam amet aliqua<br/>elit magna amet<br/>elit")]
+    n13(["amet magna incididunt ut<br/>eiusmod elit"])
+  end
+  subgraph g4["amet veniam tempor"]
+    direction TB
+    n14["magna sed amet elit<br/>elit"]
+    n15[("consectetur amet veniam<br/>incididunt nostrud do incididunt<br/>lorem amet labore")]
+    n16["laboris veniam eiusmod nostrud"]
+    n17(["amet consectetur amet<br/>incididunt<br/>elit consectetur ut adipiscing"])
+  end
+  subgraph g5["amet dolor magna sit labore lorem tempor"]
+    direction LR
+    n18(["ullamco<br/>ipsum adipiscing sit tempor<br/>amet dolor dolor"])
+    n19["incididunt tempor nostrud<br/>incididunt tempor"]
+    n20(["magna lorem veniam ullamco"])
+    n18 --> n19
+  end
+  n21(["ipsum magna do magna<br/>eiusmod incididunt<br/>eiusmod incididunt incididunt elit"])
+  n22(["ut veniam ipsum<br/>elit consectetur veniam"])
+  n23(["magna incididunt labore dolor<br/>do tempor<br/>laboris ipsum ut"])
+  n0 --> g0
+  n0 ==> g1
+  n0 ==> g2
+  n0 --> g3
+  n0 ==> g4
+  n0 ==> g5
+  n0 --> n21
+  n0 --> n22
+  n0 --> n23
+  n18 --> n2

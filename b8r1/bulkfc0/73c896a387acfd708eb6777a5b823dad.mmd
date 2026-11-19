@@ -1,0 +1,23 @@
+flowchart LR
+  subgraph F0 [Frame 0]
+    n3{Node 3 with a long label}
+  end
+  n5 --x|yes| n2
+  n5 ==> n7
+  n6 --x n5
+  n2 --->|yes| n1
+  n4 --> n5
+  n4 ~~~ n6
+  n2 -->|a longer label| n0
+  n5 <-.-> n6
+  n7 --o n0
+  n1 === n4
+  n0 ---> n5
+  linkStyle 1 stroke-width:1px
+  linkStyle 2 stroke-width:1px,stroke:#36c,stroke-dasharray:6 3
+  linkStyle 3 stroke-width:3.5px
+  linkStyle 5 stroke-width:24px,stroke:#c33
+  linkStyle 6 stroke-width:5px,stroke:#36c,stroke-dasharray:6 3
+  linkStyle 8 stroke-width:8px
+  linkStyle 9 stroke-width:1px,stroke:#36c,stroke-dasharray:6 3
+  linkStyle default stroke-width:15px

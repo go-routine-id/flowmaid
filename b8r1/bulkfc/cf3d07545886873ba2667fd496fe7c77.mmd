@@ -1,0 +1,15 @@
+flowchart TD
+    N0(Done store)
+    N1([Check])
+    N2[Report]
+    N3((Fetch))
+    N4[Store]
+    N5([Notify])
+    N6{Queue emit}
+    N0 --> N1
+    N0 --> N2
+    N0 -->|fail| N3
+    N2 --> N4
+    N4 --> N5
+    N4 --> N6
+    N2 ==> N1

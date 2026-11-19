@@ -1,0 +1,26 @@
+stateDiagram-v2
+  [*] --> Idle
+  Idle --> Review : submit
+  state Review {
+    [*] --> Queue
+    Queue --> Check
+    Check --> Approve : ok
+    Check --> Reject : bad
+    Check --> Escalate
+    note right of Check : four eyes
+  }
+  Review --> Running : approved
+  state Running {
+    [*] --> Boot
+    Boot --> Serve
+    Serve --> Drain : stop
+    state Serve {
+      [*] --> Warm
+      Warm --> Hot
+    }
+  }
+  Running --> Failed : crash
+  Failed --> Review : retry
+  Running --> Idle : done
+  note left of Failed : pager
+  Failed --> [*]

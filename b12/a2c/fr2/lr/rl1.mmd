@@ -1,0 +1,9 @@
+flowchart RL
+  s[Start] --> a1
+  t[Other start] --> b1
+  subgraph A[Short block]
+    a1[a] --> a2[a wide last member node]
+  end
+  subgraph B[Wide first row]
+    b1[a very wide first member node] --> b2[b]
+  end

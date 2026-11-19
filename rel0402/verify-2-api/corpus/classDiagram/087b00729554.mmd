@@ -1,0 +1,12 @@
+classDiagram
+A -- B : owns
+A <|-- C
+B o-- D
+A *-- E : has many of
+D *-- F
+F --> F : f0
+class C {
+ +int id
+ +run() void
+ +stop()
+}

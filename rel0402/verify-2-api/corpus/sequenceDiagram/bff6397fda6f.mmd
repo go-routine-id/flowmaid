@@ -1,0 +1,18 @@
+sequenceDiagram
+    participant API as Public API
+    actor Admin
+    actor B as Bot
+    Admin->>API: login
+    activate API
+    API-->>Admin: token
+    B->>API: poll
+    API->>API: queue
+    activate API
+    API-->>B: 202 Accepted
+    deactivate API
+    Note left of API: rate limit applies to bots
+    deactivate API
+    Note over Admin,B: both are actors
+    B--)Admin: async ping
+    B-xAdmin: cancelled
+    Admin-->B: open dashed

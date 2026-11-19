@@ -1,0 +1,24 @@
+fix(state): a note link's elbow never crosses its state's own transitions
+
+The elbow link (a card wholly to one side of its state, linked from the
+state's side facing it) only checked for boxes near its legs. In LR,
+`note right of S` on a state with transitions to T1, T2 and T3 lands
+the card above T2: the elbow left S's bottom and crossed S -> T2 on
+its way into the card. Mermaid's own link runs through S's bundle
+here, but the ordinary link (as before the elbow) crossed nothing.
+
+note_elbow now also takes every other edge's chord, the segment
+between its ends' centres (edge_chords, flow coordinates, built only
+when the graph has a note card), and keeps the ordinary link when one
+properly crosses either leg of the elbow. The static scene and route()
+judge it on the same centres, so they still agree. The LR Draft/Review
+card the elbow was made for keeps it.
+
+Test: a_note_card_beside_its_state_links_from_the_facing_side gains the
+busy-state case (scene and route: the link crosses no other edge); it
+fails without the fix. No snapshot or gate changed. The flowchart
+corpus is byte-identical to the baseline; of the state corpus and the
+verifier's 90 probes only the busy-state input changes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

@@ -1,0 +1,45 @@
+flowchart TD
+  n1["mail"]
+  n2["queue"]
+  n3["api"]
+  subgraph B0["Data tier"]
+    n4["db"]
+    n5["ship"]
+    subgraph B0s0["Fulfilment desk 0"]
+      n6["auth split api<br/>report"]
+      n7["split"]
+      n8["worker"]
+    end
+    subgraph B0s1["Data tier 1"]
+      n9["mail"]
+      n10["auth<br/>index"]
+      n11["split search search<br/>pack"]
+    end
+  end
+  subgraph B1["Back office and finance"]
+    n12["worker"]
+  end
+  subgraph B2["Fulfilment desk"]
+    n13["db"]
+    n14["report"]
+  end
+  n15["ship"]
+  n16["mail report cache"]
+  n1 --> n12
+  n9 --> n16
+  n12 --> n2
+  n9 -.->|search| n2
+  n11 --> n5
+  n16 --> n14
+  n4 ==>|merge| n12
+  n9 -->|api| n8
+  n3 ==>|merge| n8
+  n14 -.-> n9
+  n8 --> n11
+  n16 -.-> n12
+  n7 --> n2
+  n5 ==>|cache| n15
+  n16 -->|ship| n15
+  n13 --> n2
+  n6 -->|audit| n4
+  n15 ==> n4

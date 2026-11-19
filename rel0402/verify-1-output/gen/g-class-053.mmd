@@ -1,0 +1,83 @@
+classDiagram
+C22 "1" ..> "*" C1 : Customer Order
+C22 --> C8
+C28 --> C6 : beta
+C10 --> C9
+C6 --> C26 : x
+C19 ..|> C28 : Customer Order
+C22 <--> C23
+C5 ..> C17
+C20 ..> C25
+C23 "1" --> "*" C21 : x
+C10 <--> C16
+C28 -- C10
+C11 "1" <--> "*" C11 : alpha
+C27 *-- C14
+C3 "1" --> "*" C7
+C21 "1" -- "*" C6
+C15 o-- C22
+C29 "1" ..|> "*" C15
+C5 <|-- C5
+C22 o-- C5 : delta
+C22 "1" o-- "*" C2
+C18 ..|> C24 : Customer Order
+C4 o-- C11
+C25 *-- C18 : gamma
+C1 o-- C28
+C8 *-- C11
+C3 ..|> C17 : Long label here
+C24 "1" ..|> "*" C7
+C7 o-- C16
+C13 "1" <--> "*" C28
+C10 "1" *-- "*" C19 : a&b
+C0 <|-- C20 : beta
+C1 ..> C10 : alpha
+C19 <|-- C9
+C24 <|-- C15
+C28 "1" o-- "*" C27
+C21 "1" *-- "*" C23
+C12 ..|> C26
+C26 "1" ..> "*" C24
+C24 <|-- C22
+C22 "1" -- "*" C15
+C14 "1" --> "*" C24 : delta
+C21 "1" <--> "*" C1 : alpha
+C29 --> C2 : x
+note for C13 "Long label here"
+note "x"
+class C5 {
+  +int id
+  +name() String
+}
+class C9 {
+  +int id
+  +name() String
+}
+class C10 {
+  +int id
+  +name() String
+}
+class C13 {
+  +int id
+  +name() String
+}
+class C19 {
+  +int id
+  +name() String
+}
+class C22 {
+  +int id
+  +name() String
+}
+class C25 {
+  +int id
+  +name() String
+}
+class C27 {
+  +int id
+  +name() String
+}
+class C29 {
+  +int id
+  +name() String
+}

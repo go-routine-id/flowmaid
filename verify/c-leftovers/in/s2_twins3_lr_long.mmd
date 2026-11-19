@@ -1,0 +1,10 @@
+stateDiagram-v2
+direction LR
+state c <<choice>>
+[*] --> P
+P --> c
+c --> B : first reason
+c --> B : second longer reason
+c --> B : third
+c --> E : else
+B --> c : retry

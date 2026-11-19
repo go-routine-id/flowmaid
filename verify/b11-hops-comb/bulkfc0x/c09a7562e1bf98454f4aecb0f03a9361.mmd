@@ -1,0 +1,13 @@
+flowchart LR
+  n1 <==>|x| n1
+  n1 x--x n1
+  n3 ==>|no| n3
+  n0 <-.-> n1
+  n1 e4@==> n2
+  e4@{ curve: natural }
+  n2 --- n0
+  linkStyle 0 stroke-width:5px,stroke:#c33
+  linkStyle 1 stroke-width:8px
+  linkStyle 2 stroke-width:3.5px,stroke:#3a3
+  linkStyle 3 stroke-width:16px,stroke:#c33
+  linkStyle 4 interpolate natural stroke-width:2px

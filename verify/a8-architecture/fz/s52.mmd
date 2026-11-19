@@ -1,0 +1,17 @@
+architecture-beta
+    service s0(server)[Service 0]
+    service s1(disk)[Service 1]
+    service s2(internet)[Service 2]
+    service s3(database)[Service 3]
+    service s4(internet)[Service 4]
+    service s5(cloud)[Service 5]
+    service s6(internet)[Service 6]
+    service s7(cloud)[Service 7]
+    service s8(internet)[Service 8]
+    service s9(database)[Service 9]
+    service s10(database)[Service 10]
+    s10:R -- T:s0
+    s9:R -- L:s7
+    s2:R --> B:s3
+    s3:L -- T:s6
+    s6:L -- R:s7

@@ -1,0 +1,17 @@
+flowchart TB
+  hub[Router]
+  subgraph G[Workers]
+    w1[worker 1]
+    w2[worker 2]
+    rep[reporter]
+  end
+  subgraph H[Store]
+    s1[(db)]
+    s2[(cache)]
+  end
+  hub --> w1
+  hub --> w2
+  rep --> hub
+  rep --> s1
+  hub --> s2
+  w1 --> s1

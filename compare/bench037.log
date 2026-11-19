@@ -1,0 +1,36 @@
+| diagram | type | flowmaid ms | mermaid ms | speed-up × | flowmaid SVG KB | mermaid SVG KB |
+|---|---|--:|--:|--:|--:|--:|
+| advanced | flowchart | 1.58 | 147.2 | 93× | 10.9 | 58.0 |
+| architecture | architecture | 0.10 | 49.1 | 506× | 4.0 | 18.5 |
+| back-edge | flowchart | 0.38 | 76.6 | 200× | 3.5 | 78.5 |
+| bench-75 | flowchart | 48.75 | 449.1 | 9× | 69.6 | 194.7 |
+| class | class | 0.50 | 194.7 | 389× | 11.8 | 53.5 |
+| demo | flowchart | 0.34 | 66.1 | 193× | 3.5 | 78.5 |
+| dense-lr | flowchart | 24.35 | 491.5 | 20× | 51.0 | 489.0 |
+| dense-td | flowchart | 31.27 | 522.8 | 17× | 53.9 | 487.0 |
+| er | er | 0.28 | 141.9 | 516× | 14.8 | 127.3 |
+| fanout-frames | flowchart | 3.08 | 157.9 | 51× | 13.0 | 298.3 |
+| fanout | flowchart | 1.01 | 79.6 | 79× | 5.8 | 84.4 |
+| gitgraph | gitgraph | 0.08 | 23.3 | 291× | 5.8 | 13.0 |
+| journey | journey | 0.04 | 9.8 | 258× | 3.8 | 13.2 |
+| long-labels | flowchart | 0.26 | 48.0 | 188× | 3.2 | 35.0 |
+| lr | flowchart | 0.64 | 55.6 | 87× | 3.9 | 80.4 |
+| mindmap | mindmap | 0.82 | 104.1 | 127× | 8.7 | 49.0 |
+| pie | pie | 0.04 | 11.0 | 297× | 2.8 | 5.5 |
+| sankey | sankey | 0.23 | 21.3 | 91× | 6.8 | 10.3 |
+| sequence | sequence | 0.17 | 54.6 | 314× | 10.3 | 39.0 |
+| shapes | flowchart | 0.58 | 90.8 | 156× | 5.0 | 81.9 |
+| state | state | 1.18 | 135.4 | 115× | 8.5 | 70.6 |
+| stress | flowchart | 0.57 | 52.6 | 92× | 3.7 | 37.7 |
+| subgraph | flowchart | 0.47 | 77.1 | 163× | 4.5 | 38.5 |
+| timeline | timeline | 0.04 | 10.6 | 252× | 3.7 | 15.9 |
+| wide-labels | flowchart | 0.73 | 61.1 | 83× | 5.7 | 42.1 |
+
+**Method.** Each cell is the median of 30 timed renders after warm-ups (flowmaid 3, mermaid 2) of the same
+`.mmd` source. flowmaid: `flowmaid::render_svg` (parse + layout + SVG string) in a release build
+(`cargo run --release --example bench -- files`). mermaid: `mermaid.render()` 12.2.0 (parse + layout + SVG string,
+including its in-browser text measurement) in headless Chromium 153.0.8010.12 via Playwright. Speed-up = mermaid median
+÷ flowmaid median; geometric mean over 25 diagrams: **126×**. SVG KB = length of the returned SVG string (all-ASCII here, so chars = bytes).
+Machine: 4 CPUs, Intel(R) Xeon(R) Processor @ 2.10GHz; rustc 1.97.0 (2d8144b78 2026-07-07). One render at a time on both sides; timings on a shared box are noisy (±10–20 %).
+
+exit 0

@@ -1,0 +1,39 @@
+flowchart LR
+  s0["notify cache"]
+  s1["notify user"]
+  subgraph g0["user order cache zone"]
+    m0["cache cart"]
+    m1["cart"]
+    m0 --> m1
+  end
+  subgraph g1["trace web api zone"]
+    m2["user"]
+  end
+  subgraph g2["billing auth user zone"]
+    m3["db"]
+    m4["report db"]
+  end
+  subgraph g3["index zone"]
+    m5["log auth"]
+  end
+  subgraph g4["cart auth auth zone"]
+    m6["billing"]
+    m7["pay trace"]
+    m6 --> m7
+  end
+  subgraph g5["web zone"]
+    m8["trace"]
+    m9["db store"]
+    m10["api db trace"]
+    m11["billing report cart"]
+    m8 --> m9
+    m9 --> m11
+  end
+  s0 --> m0
+  s0 --> g1
+  s1 --> m3
+  s1 --> g3
+  s1 --> g4
+  s1 --> m8
+  m2 --> m1
+  m11 --> m6

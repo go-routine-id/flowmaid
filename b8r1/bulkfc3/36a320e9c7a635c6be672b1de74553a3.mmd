@@ -1,0 +1,24 @@
+flowchart LR
+    N0([Emit emit])
+    N1(Archive emit)
+    N2([Parse])
+    N3([Parse])
+    N4[/Fetch/]
+    N5{Fetch}
+    N6[Done validate]
+    N7(Check)
+    N8{Emit}
+    N9(Parse emit)
+    N0 -->|fail| N1
+    N0 --> N2
+    N0 --> N3
+    N2 -->|ok| N4
+    N3 -->|fail| N5
+    N5 -->|no| N6
+    N4 -->|next| N7
+    N5 --> N8
+    N7 -->|no| N9
+    N4 --> N7
+    N8 -.-> N3
+    N9 --> N0
+    N9 -.->|retry| N2

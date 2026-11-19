@@ -1,0 +1,18 @@
+flowchart TD
+    in[request]
+    subgraph OUTER[Pipeline]
+        p1[parse]
+        subgraph STAGES[Stages]
+            direction LR
+            s1[lex] --> s2[ast] --> s3[emit]
+        end
+        p1 --> STAGES
+        STAGES --> p2[link]
+    end
+    subgraph LOG[Logging]
+        l1[collect] --> l2[ship]
+    end
+    in --> p1
+    p2 --> l1
+    l2 -.-> in
+    p1 --> l1

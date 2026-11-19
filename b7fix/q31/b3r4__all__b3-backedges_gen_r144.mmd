@@ -1,0 +1,16 @@
+flowchart BT
+    N0{Parse}
+    N1([Queue])
+    N2[Emit]
+    N3(Report done)
+    N4{Store fetch}
+    N5[Retry]
+    N0 --> N1
+    N0 --> N2
+    N1 --> N3
+    N2 -->|yes| N4
+    N2 --> N5
+    N2 --> N4
+    N2 --> N4
+    N3 ==> N1
+    N2 -.->|rollback| N1

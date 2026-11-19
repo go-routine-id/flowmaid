@@ -1,0 +1,12 @@
+architecture-beta
+    group g0(internet)[Data Storage Layer]
+    service s0(cloud)[Svc 0] in g0
+    service s1(disk)[PostgreSQL Primary 1] in g0
+    service s2(database)[PostgreSQL Primary 2]
+    junction s3 in g0
+    junction s4 in g0
+    s2:R --> L:s4
+    s1:L -[reads config]- R:s4
+    s0:T -- B:s1
+    s3:L --> T:s0
+    s4:T -[replicates to standby]-> B:s0

@@ -1,0 +1,18 @@
+flowchart BT
+  subgraph Build[Build pipeline]
+    git[repo] -->|push| ci[CI runner] -->|image| reg[(registry)]
+  end
+  subgraph Run[Runtime]
+    web[web] -->|read| db[(db)]
+    api[api] -->|write| db
+    job[job] -->|write| db
+  end
+  subgraph Obs[Observability]
+    scr[scraper] -->|scrape| tsdb[(tsdb)]
+  end
+  reg -->|deploy| web
+  reg -->|deploy| api
+  reg -->|deploy| job
+  scr -.->|scrape| web
+  scr -.->|scrape| api
+  scr -.->|scrape| job

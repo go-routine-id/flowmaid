@@ -1,0 +1,161 @@
+diff --git a/src/blockcheck.rs b/src/blockcheck.rs
+index 3b80f00..0edb63b 100644
+--- a/src/blockcheck.rs
++++ b/src/blockcheck.rs
+@@ -2530,6 +2530,43 @@ fn an_edge_between_stacked_blocks_crosses_their_title_sides_past_the_chips() {
+     }
+ }
+ 
++#[test]
++fn a_two_way_pair_between_blocks_keeps_its_steps_in_one_channel() {
++    // blocks/twoway-noted drawn LR or RL: the pair's two steps share the
++    // gap between the blocks, the labelled return's room above its label
++    // apart from the forward step's room but both plain rooms meeting.
++    // Split into two channels by the rooms above their labels, the
++    // return kept that room beside an unlabelled step and the two were
++    // stacked in the order of their rooms, not of their turns: they
++    // crossed, `uncross` swapped their ends, and the return ran up
++    // `K1`'s wall (a border run of 62 px) to a stepped end in `K0`.
++    // Split by their plain rooms they are one channel again, and the
++    // pair is drawn as two straight runs.
++    let src = std::fs::read_to_string(format!(
++        "{}/tests/fixtures/blocks/twoway-noted.mmd",
++        env!("CARGO_MANIFEST_DIR")
++    ))
++    .unwrap();
++    for dir in ["LR", "RL"] {
++        let g = graph(&src.replace("direction LR", &format!("direction {dir}")));
++        let sc = block_scene(&g);
++        let q = crate::quality::measure(&g, &sc);
++        assert_eq!((q.border_runs, q.x_drawn), (0, 0), "{dir}");
++        for e in sc.edges.iter().filter(|e| {
++            (e.from.as_str(), e.to.as_str()) == ("K0", "K1")
++                || (e.from.as_str(), e.to.as_str()) == ("K1", "K0")
++        }) {
++            let p = path_of(e);
++            assert!(
++                p.windows(2).all(|w| (w[0].1 - w[1].1).abs() < 0.5),
++                "{dir}: {} -> {} is not one straight run: {p:?}",
++                e.from,
++                e.to
++            );
++        }
++    }
++}
++
+ #[test]
+ fn a_displaced_end_never_steps_back_over_another_edges_crossing_of_its_title_side() {
+     // blocks/lr drawn BT: `pager`'s top lies partly under the chip of a
+diff --git a/src/ortho.rs b/src/ortho.rs
+index 6fc1dad..c6b3bd1 100644
+--- a/src/ortho.rs
++++ b/src/ortho.rs
+@@ -2360,22 +2360,38 @@ pub(crate) fn channel_sizes(steps: &[(f64, f64)]) -> Vec<usize> {
+ 
+ /// `group` (a channel's jogs, [`place_tracks`]) split into the sets
+ /// whose rooms chain, in a block layout (`blocks`); else as it is.
++///
++/// A jog's room here is its plain room ([`Jog::plain`]), the widest
++/// [`place_channel`] may give it, not the room above its label it has
++/// now: a channel drops its steps back to their plain rooms when one of
++/// them is not drawn above its label or their order does not hold, and
++/// orders them by where they turn so their legs do not cross. Split by
++/// the rooms above their labels, a labelled step left alone in its set
++/// kept that room beside an unlabelled one, and two sets were stacked
++/// in the order of their rooms instead of their turns: a two-way pair
++/// between two blocks crossed, `uncross` swapped its ends and it was
++/// drawn as two stepped Zs, one up the target block's wall
++/// (blocks/twoway-noted drawn LR; a labelled return between a hub's
++/// labelled fan's steps went under the fan's last one, across its
++/// leg). Sets whose plain rooms do not chain lie apart whatever their
++/// channels do (a frame's border or title strip between them: the jog
++/// room's steps and the steps between two stacked frames).
+ fn split_by_room(jogs: &[Jog], mut group: Vec<usize>, blocks: bool) -> Vec<Vec<usize>> {
+     if !blocks || group.len() < 2 {
+         return vec![group];
+     }
++    let room = |k: usize| jogs[k].plain.0;
+     group.sort_by(|&a, &b| {
+-        jogs[a]
+-            .room
++        room(a)
+             .0
+-            .total_cmp(&jogs[b].room.0)
++            .total_cmp(&room(b).0)
+             .then(jogs[a].span().0.total_cmp(&jogs[b].span().0))
+             .then(a.cmp(&b))
+     });
+     let mut out: Vec<Vec<usize>> = Vec::new();
+     let mut reach = f64::NEG_INFINITY;
+     for k in group {
+-        let (lo, hi) = jogs[k].room;
++        let (lo, hi) = room(k);
+         match out.last_mut() {
+             Some(last) if lo < reach + TRACK_PITCH_MIN => {
+                 last.push(k);
+@@ -2584,13 +2600,14 @@ fn place_tracks(jogs: &mut [Jog], kept: &[(f64, (f64, f64))], blocks: bool) {
+         s = t;
+         // In a block layout one gap holds a frame's title strip and jog
+         // room as well as the space between the frames: a channel's
+-        // steps whose rooms do not meet (a two-way pair's steps between
+-        // two stacked frames and its displaced steps in the lower
+-        // frame's jog room) never share a track, and ordered as one
+-        // stack they interleaved, the jog room's two steps 5 px apart
+-        // (blocks/t9c-frames-8px-two-way drawn TD), which the router
+-        // then took round the frames' lateral walls. Each set of steps
+-        // whose rooms chain is a channel of its own there.
++        // steps whose plain rooms do not meet (a two-way pair's steps
++        // between two stacked frames and its displaced steps in the
++        // lower frame's jog room) never share a track, and ordered as
++        // one stack they interleaved, the jog room's two steps 5 px
++        // apart (blocks/t9c-frames-8px-two-way drawn TD), which the
++        // router then took round the frames' lateral walls. Each set of
++        // steps whose plain rooms chain is a channel of its own there
++        // ([`split_by_room`]).
+         for group in split_by_room(jogs, group, blocks) {
+             if group.len() > 1 {
+                 place_channel(jogs, group, blocks);
+diff --git a/tests/fixtures/blocks/twoway-noted.mmd b/tests/fixtures/blocks/twoway-noted.mmd
+new file mode 100644
+index 0000000..c394734
+--- /dev/null
++++ b/tests/fixtures/blocks/twoway-noted.mmd
+@@ -0,0 +1,14 @@
++stateDiagram-v2
++direction LR
++state K0 {
++  [*] --> a
++}
++state K1 {
++  direction TB
++  [*] --> b
++  b --> c : t1
++}
++K0 --> K1
++K1 --> K0 : back
++note left of K1 : one
++note left of K1 : two
+diff --git a/tests/fixtures/identity.tsv b/tests/fixtures/identity.tsv
+index 7bb271f..c26e9a1 100644
+--- a/tests/fixtures/identity.tsv
++++ b/tests/fixtures/identity.tsv
+@@ -89,6 +89,7 @@ tests/fixtures/blocks/t9c-frames-8px-two-way.mmd	a1e15d267510e536	12c91ee9c9d103
+ tests/fixtures/blocks/title-entry.mmd	4874310285f9504b	c58b81fd8b78739c	a16ed42d710fc0a9	blocks
+ tests/fixtures/blocks/title-hidden.mmd	20aefe8c0bde2ce4	9ea4bf5676932ea5	f3eec23a1ce597ec	blocks
+ tests/fixtures/blocks/turned-blocks.mmd	d77f14477ba8afc7	72633b6838ba71ae	7c4fa37bb36654b9	blocks
++tests/fixtures/blocks/twoway-noted.mmd	97f3b3acf179bb13	2ebf8a501a52edbd	9af2a3a1de5c6a97	blocks
+ tests/fixtures/blocks/wide-stroke.mmd	a8d6f148856157f2	79f6ebc7540e57b6	b9e1b7ce9facc3e5	blocks
+ tests/fixtures/fans/fan011.mmd	5ae7819cbc5bcc15	bd7a95193261abbf	6a5b6b0462bd1379	flat
+ tests/fixtures/fans/fan020.mmd	cce47bc38add99be	aa621f510c5db469	18a6460ac1d22373	flat
+diff --git a/tests/quality.rs b/tests/quality.rs
+index 91c788b..aa88d45 100644
+--- a/tests/quality.rs
++++ b/tests/quality.rs
+@@ -254,6 +254,7 @@ const BLOCK_CEILINGS: &[(&str, BlockCeil, BlockCeil)] = &[
+     ("blocks/title-entry", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+     ("blocks/title-hidden", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+     ("blocks/turned-blocks", (0, 0, 0, 4, 0), (0, 0, 0, 5, 0)),
++    ("blocks/twoway-noted", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+     ("blocks/wide-stroke", (0, 0, 0, 0, 0), (0, 0, 0, 0, 0)),
+ ];
+ 

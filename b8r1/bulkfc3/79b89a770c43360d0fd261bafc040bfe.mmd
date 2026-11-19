@@ -1,0 +1,15 @@
+flowchart TD
+  subgraph S [Frame]
+    a[Alpha] --> b[Beta]
+    b --> c[Gamma]
+  end
+  c --> a
+  c -->|back| top[Top node]
+  top --> a
+  top e2@--> c
+  e2@{ curve: step }
+  b --> b
+  linkStyle 2 stroke-width:24px,stroke:#d55
+  linkStyle 3 stroke-width:18px
+  linkStyle 5 stroke-width:12px,stroke:#55d
+  linkStyle 6 stroke-width:10px

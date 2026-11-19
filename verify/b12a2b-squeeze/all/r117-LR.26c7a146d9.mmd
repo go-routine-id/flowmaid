@@ -1,0 +1,15 @@
+flowchart LR
+    subgraph G[Core]
+        m0[auth service]
+        m1[w]
+        m2[db]
+        m0 --> m1
+    end
+    s0[src0] --> m2
+    s1[src1] --> m1
+    s1 -- "lbl2" --> G
+    s2[src2] -- "lbl5" --> G
+    s2 --> G
+    s3[src3] -- "lbl1" --> G
+    s3 -- "lbl8" --> m2
+    G --> z2[after]

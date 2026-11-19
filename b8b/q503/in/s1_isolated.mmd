@@ -1,0 +1,12 @@
+flowchart TB
+  A[Start] --> B[Validate] --> C[Persist]
+  X1[orphan one]
+  X2[orphan two]
+  X3[orphan three]
+  X4[orphan four]
+  subgraph S[service]
+    s1[handler] --> s2[store]
+    lonely1[metrics]
+    lonely2[tracing]
+  end
+  C --> s1

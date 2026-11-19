@@ -1,0 +1,21 @@
+flowchart LR
+  H0 ==>|a much longer label here| N11
+  H0 ==>|retry| N6
+  H0 -->|retry| N7
+  H0 --- N15
+  H0 -.->|express| N7
+  H0 ---|x| N8
+  H0 ==> N14
+  H0 --- N2
+  H1 ==>|retry| N15
+  H1 -.-> N15
+  H1 ---|ok| N15
+  H1 --> N15
+  H1 ==>|yes| N2
+  H1 -.->|yes| N14
+  N2 --> N14
+  N3 --> N8
+  N1 -->|retry| N0
+  N14 -->|yes| N5
+  N3 --> N6
+  N1 -->|no| N2

@@ -1,0 +1,20 @@
+flowchart RL
+    N0{Report done}
+    N1[Load parse]
+    N2[Notify notify]
+    N3[Retry report]
+    N4[/Report emit/]
+    N5(Done)
+    N6(Check)
+    N7[(Check archive)]
+    N8(Store retry)
+    N0 --> N1
+    N1 --> N2
+    N2 -->|fail| N3
+    N2 --> N4
+    N3 --> N5
+    N5 -->|next| N6
+    N6 --> N7
+    N5 --> N8
+    N7 --> N8
+    N5 --> N0

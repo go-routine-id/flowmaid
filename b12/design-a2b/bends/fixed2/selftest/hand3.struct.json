@@ -1,0 +1,78 @@
+{
+ "tool": "hand-written",
+ "kind": "flowchart",
+ "direction": "TD",
+ "nodes": [
+  {
+   "id": "a",
+   "label": "a",
+   "shape": "Rect",
+   "sub": 0
+  },
+  {
+   "id": "b",
+   "label": "b",
+   "shape": "Rect",
+   "sub": 1
+  },
+  {
+   "id": "c",
+   "label": "c",
+   "shape": "Rect",
+   "sub": 2
+  }
+ ],
+ "subgraphs": [
+  {
+   "id": "A1",
+   "title": "A1",
+   "parent": null,
+   "direction": null,
+   "nodes": [
+    0
+   ]
+  },
+  {
+   "id": "B1",
+   "title": "B1",
+   "parent": null,
+   "direction": null,
+   "nodes": [
+    1
+   ]
+  },
+  {
+   "id": "C1",
+   "title": "C1",
+   "parent": null,
+   "direction": null,
+   "nodes": [
+    2
+   ]
+  }
+ ],
+ "edges": [
+  {
+   "from": {
+    "n": 0
+   },
+   "to": {
+    "n": 1
+   },
+   "label": null,
+   "kind": "Arrow",
+   "drawn": true
+  },
+  {
+   "from": {
+    "n": 1
+   },
+   "to": {
+    "n": 2
+   },
+   "label": null,
+   "kind": "Arrow",
+   "drawn": true
+  }
+ ]
+}

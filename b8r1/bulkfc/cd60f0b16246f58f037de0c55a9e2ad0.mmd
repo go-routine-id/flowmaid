@@ -1,0 +1,22 @@
+flowchart LR
+    N0{Fetch}
+    N1[(Emit)]
+    N2{Check}
+    N3([Emit])
+    N4((Notify))
+    N5[Retry]
+    N6(Done)
+    N7([Notify check])
+    N8{Load done}
+    N9{Archive done}
+    N0 --> N1
+    N0 --> N2
+    N0 --> N3
+    N3 --> N4
+    N3 --> N5
+    N5 -->|yes| N6
+    N5 --> N7
+    N7 --> N8
+    N8 --> N9
+    N9 -.-> N8
+    N5 ==> N4

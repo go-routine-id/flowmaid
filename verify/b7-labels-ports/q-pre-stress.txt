@@ -1,0 +1,4 @@
+   Q routed A->D lat_wiggle 22.1
+   Q static A->B end_kink end on B 11.3deg
+   Q static A->D lat_wiggle 42.4
+   Q static C->D end_kink end on D 10.3deg

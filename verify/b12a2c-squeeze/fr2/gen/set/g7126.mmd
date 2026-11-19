@@ -1,0 +1,41 @@
+flowchart BT
+  n1["parse<br/>audit"]
+  n2["pack<br/>parse"]
+  subgraph B0["Analytics"]
+    n3["report<br/>cache"]
+    n4["ingest<br/>ingest"]
+    n5["pack"]
+    subgraph B0s0["Storefront 0"]
+      n6["pack"]
+      n7["ship"]
+    end
+  end
+  subgraph B1["Platform"]
+    n8["db<br/>billing"]
+    n9["auth<br/>ship"]
+    n10["audit"]
+    n11["cache"]
+    subgraph B1s0["Platform 0"]
+      n12["worker"]
+      n13["report queue parse"]
+    end
+  end
+  n14["notify db index"]
+  n15["parse"]
+  n10 -.-> n13
+  n15 --> n13
+  n2 --> n4
+  n13 --> n5
+  n9 --> n8
+  n3 --> n10
+  n15 -.->|worker| n5
+  n14 -->|api| n10
+  n2 -->|ship| n1
+  n10 --> n1
+  n8 --> n1
+  n2 --> n7
+  n9 --> n13
+  n11 --> n2
+  n13 --> n1
+  n12 --> n7
+  n14 --> n12

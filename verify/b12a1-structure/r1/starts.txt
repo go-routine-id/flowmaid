@@ -1,0 +1,17 @@
+infra-overview                           20   20   20   20   16   16   16   16   16   16   16   16 | granted   16 | off   23
+infra-overview-v2                        20   17   17   22   22   22   22   22   15   15   15   15 | granted   15 | off   19
+perm-a-edges-reversed                    20   20   20   20   16   16   16   16   16   16   16   16 | granted   16 | off   12
+perm-b-subgraphs-reversed                27   27   27   26   26   22   22   22   22   22   22   22 | granted   22 | off   18
+perm-c-actors-reversed                   20   20   20   20   16   16   16   16   16   16   16   16 | granted   16 | off   23
+perm-d-edges-rotated                     20   20   20   20   16   16   16   16   16   16   16   16 | granted   16 | off   23
+perm-e-one-more-inner-edge               32   25   25   25   25   25   18   18   18   18   18   18 | granted   18 | off   33
+blocks-overview                           6    6    6    6    6    6    6    6    6    6    6    6 | granted    6 | off   14
+blocks-overview-actors-reversed           6    6    6    6    6    6    6    6    6    6    6    6 | granted    6 | off   15
+blocks-overview-edges-reversed            6    6    6    6    6    6    6    6    6    6    6    6 | granted    6 | off    6
+blocks-overview-edges-rotated             6    6    6    6    6    6    6    6    6    6    6    6 | granted    6 | off   23
+blocks-overview-subgraphs-reversed        6    6    6    6    6    6    6    6    6    6    5    5 | granted    6 | off   12
+dense-td                                 98   37   64   64   64   64   64   64   64   64   64   64 | granted   64 | off   66
+dense-lr                                 19   17   16   16   16   16   16   16   16   16   16   16 | granted   16 | off   45
+bench-75                                230  248  248  248  248  248  248  248  248  248  248  248 | granted  248 | off  294
+fanout-frames                             0    0    0    0    0    0    0    0    0    0    0    0 | granted    0 | off    0
+advanced                                  0    0    0    0    0    0    0    0    0    0    0    0 | granted    0 | off    0

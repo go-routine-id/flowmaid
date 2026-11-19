@@ -1,0 +1,12 @@
+architecture-beta
+    group g0(internet)[Backend Services]
+    group g1(server)[Private API]
+    group g2(server)[Data Storage Layer] in g0
+    group g3(server)[Data]
+    service s0(monitoring)[Service 0] in g1
+    service s1(monitoring)[Service 1] in g2
+    service s2(cloud)[Service 2] in g0
+    service s3(disk)[Service 3] in g1
+    service s4(disk)[Service 4] in g0
+    s0:L -- R:s1
+    s1:L -- R:s2

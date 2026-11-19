@@ -1,0 +1,19 @@
+flowchart BT
+  s[Start] --> a1
+  s --> b1
+  s --> c1
+  subgraph A [A]
+    a1[a] --> a2[a two]
+  end
+  subgraph B [B title]
+    subgraph B1 [inner]
+      b1["tall<br/>b<br/>node"] --> b2[b two]
+    end
+  end
+  subgraph C [C]
+    c1["c<br/>one"] --> c2[c two]
+  end
+  a2 -->|joins| e[End]
+  b2 --> e
+  c2 -->|c done| e
+  a1 -->|cross over| c2

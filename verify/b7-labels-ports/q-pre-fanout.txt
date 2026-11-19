@@ -1,0 +1,16 @@
+   Q routed A->B1 end_kink end on B1 73.5deg
+   Q routed A->B2 end_kink end on B2 69.2deg
+   Q routed A->B4 end_kink end on B4 69.2deg
+   Q routed A->B5 end_kink end on B5 73.5deg
+   Q routed B1->C end_kink end on C 73.3deg
+   Q routed B2->C end_kink end on C 68.6deg
+   Q routed B4->C end_kink end on C 68.6deg
+   Q routed B5->C end_kink end on C 73.3deg
+   Q static A->B1 end_kink end on B1 70.9deg
+   Q static A->B2 end_kink end on B2 63.8deg
+   Q static A->B4 end_kink end on B4 63.8deg
+   Q static A->B5 end_kink end on B5 70.9deg
+   Q static B1->C end_kink end on C 70.7deg
+   Q static B2->C end_kink end on C 63.2deg
+   Q static B4->C end_kink end on C 63.2deg
+   Q static B5->C end_kink end on C 70.7deg

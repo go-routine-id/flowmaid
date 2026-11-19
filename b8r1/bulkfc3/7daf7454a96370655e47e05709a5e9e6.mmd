@@ -1,0 +1,14 @@
+flowchart BT
+  subgraph F0 [Frame 0]
+    n4[(Node 4)]
+  end
+  n4 <-.-> n2
+  n0 --x n3
+  n0 -->|lbl| F0
+  n0 --x n0
+  n0 --> n0
+  n3 <--> n3
+  n3 --- n0
+  n4 o--o n1
+  linkStyle 6 stroke:#3a3,stroke-width:12px
+  linkStyle 1 stroke-width:3px

@@ -1,0 +1,13 @@
+flowchart TD
+    A(["Start"])
+    B["Read input"]
+    C{"Valid?"}
+    D["Process data"]
+    E["Show error"]
+    F(("Done"))
+    A --> B
+    B --> C
+    C -->|"yes"| D
+    C -->|"no"| E
+    E --> B
+    D ==> F

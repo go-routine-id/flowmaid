@@ -1,0 +1,10 @@
+flowchart BT
+    a[Leaf A] --> p[Parent]
+    b[Leaf B] --> p
+    c[Leaf C] -->|long label on c| p
+    d[Leaf D] --> q[Other parent]
+    a --> q
+    p --> r((Root))
+    q --> r
+    c --> r
+    r -.->|back| a

@@ -1,0 +1,21 @@
+flowchart BT
+    ext1[External caller one] --> ORD
+    ext2[External caller two] --> ORD
+    hub[Hub service] --> q1
+    hub --> q2
+    hub --> ORD
+    subgraph ORD[Order processing and fulfilment pipeline]
+        q1[queue]
+        q2[charge]
+        q3[ship]
+        q1 --> q3
+        q2 --> q3
+    end
+    subgraph OBS[Observability stack with a long title]
+        m1[metrics]
+        m2[logs]
+    end
+    hub --> m1
+    ext1 --> m1
+    ext2 --> OBS
+    q3 --> m2

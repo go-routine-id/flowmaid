@@ -1,0 +1,12 @@
+v1-pins-and-entries-BT.svg	Order processing and fulfilment pipeline	A 5.70 q3 → m2	B 5.70 q3 → m2
+v1-pins-and-entries-BT.svg	Observability stack with a long title	A 1000000000.00 	B 1000000000.00 
+v1-pins-and-entries.svg	Order processing and fulfilment pipeline	A 3.76 hub → q1	B 3.76 hub → q1
+v1-pins-and-entries.svg	Observability stack with a long title	A 7.50 hub → m1	B 7.50 hub → m1
+v2-jogroom-bt.svg	Upper block with a fairly long title	A 1000000000.00 	B 1000000000.00 
+v2-jogroom-bt.svg	Middle block title that is long	A 10.00 m1 → t1	B 10.00 m1 → t1
+v2-jogroom-bt.svg	Lower	A 39.00 l1 → t1	B 9.23 l1 → t1
+v3-twoway-labelled.svg	Client side	A 1000000000.00 	B 1000000000.00 
+v3-twoway-labelled.svg	Server side	A 1000000000.00 	B 1000000000.00 
+v4-narrow-under-chip.svg	A very long subgraph title that is much wider than its member	A 9.99 s3 → n1	B 9.99 s3 → n1
+v5-state-composites.svg	Working	A 1000000000.00 	B 1000000000.00 
+v5-state-composites.svg	Reporting	A 8.36 Reporting → Working: again	B 9.09 Reporting → Working: again

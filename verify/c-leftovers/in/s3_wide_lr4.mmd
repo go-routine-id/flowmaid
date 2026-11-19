@@ -1,0 +1,13 @@
+stateDiagram-v2
+direction LR
+state c <<choice>>
+[*] --> Start
+Start --> c : classify
+c --> A : the request came from a verified partner
+c --> B : the request is anonymous but rate limited
+c --> C : failed
+c --> D : the caller is an internal service with a token
+A --> Done
+B --> Done
+C --> Done
+D --> Done

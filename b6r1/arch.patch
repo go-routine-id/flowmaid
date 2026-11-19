@@ -1,0 +1,69 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 8ea5c3b..c1c603f 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -678,6 +697,8 @@ Minor, not patch: several class structs gain public fields (see
+   `hit_test` now pick hexagons, parallelograms, cylinders, stadiums and
+   rounded boxes by the outline those ends sit on (their empty box
+   corners are no longer the node); plain boxes still pick by their box.
++  Architecture service cards, picked as rounded boxes, are painted with
++  the same 9 px corner (it was 8 px).
+   `quality::Metrics::end_gaps` counts self-loop ends too. The advance
+   writer is unchanged.
+ - **A `%%{ … }%%` directive written over several lines parses.** Its inner
+diff --git a/src/architecture.rs b/src/architecture.rs
+index dd6114f..251fd11 100644
+--- a/src/architecture.rs
++++ b/src/architecture.rs
+@@ -2946,13 +2946,15 @@ pub(crate) fn to_svg_a11y_with(as_: &ArchScene, a11y: &A11y, opts: &SvgOptions)
+                 crate::scene::style_attr(n.style.stroke.as_deref(), EDGE_COLOR),
+             )
+         };
++        // The corner `Scene::hit_test` picks a `Rounded` node by.
+         s.push_str(&format!(
+             "<rect x='{:.1}' y='{:.1}' width='{:.1}' height='{:.1}' \
+-             rx='8' fill='{}' stroke='{}' stroke-width='{:.1}'/>\n",
++             rx='{}' fill='{}' stroke='{}' stroke-width='{:.1}'/>\n",
+             n.x - n.w / 2.0,
+             n.y - n.h / 2.0,
+             n.w,
+             n.h,
++            crate::scene::ROUNDED_RX,
+             fill,
+             stroke,
+             n.style.stroke_width.unwrap_or(2.0)
+@@ -4150,6 +4152,18 @@ mod tests {
+             sc.hit_test(svc.x, svc.y, 4.0),
+             Some(crate::scene::Hit::Node(3))
+         ));
++        // A card picks by the corner it is painted with: just inside its
++        // corner arc is the card, just outside is not (it was painted
++        // with an 8 px corner, picked by a 9 px one).
++        let svg = to_svg(&scene(&arch(CORPUS)));
++        let rx = crate::scene::ROUNDED_RX;
++        assert!(svg.contains(&format!("rx='{rx}' fill='#ffffff'")), "{svg}");
++        let (cx, cy) = (svc.x - svc.w / 2.0 + rx, svc.y - svc.h / 2.0 + rx);
++        let d = std::f64::consts::FRAC_1_SQRT_2;
++        for (r, picked) in [(rx - 0.2, true), (rx + 0.2, false)] {
++            let (x, y) = (cx - r * d, cy - r * d);
++            assert_eq!(sc.node_at(x, y).is_some(), picked, "{r}");
++        }
+     }
+ 
+     #[test]
+diff --git a/src/scene.rs b/src/scene.rs
+index 8986963..1176585 100644
+--- a/src/scene.rs
++++ b/src/scene.rs
+@@ -5240,8 +5300,9 @@ pub(crate) const GLYPH_STUB: f64 = ARROW_MARKER_PX;
+ /// Corner radius (px) `to_svg` paints a plain box with: `Rect`,
+ /// `Subroutine` and a fork/join bar.
+ const BOX_RX: f64 = 3.0;
+-/// Corner radius (px) of a `Rounded` node.
+-const ROUNDED_RX: f64 = 9.0;
++/// Corner radius (px) of a `Rounded` node, as every painter draws it
++/// (an architecture service card too) and [`Scene::hit_test`] picks it.
++pub(crate) const ROUNDED_RX: f64 = 9.0;
+ /// Most inset (px) of a hexagon's side points and of a parallelogram's
+ /// slant; a quarter of the width on a narrower node.
+ pub(crate) const SLANT_MAX: f64 = 14.0;

@@ -1,0 +1,102 @@
+%% Advanced showcase: nested subgraphs, edges-to-subgraph, every
+%% Nested subgraphs with a per-block direction and cross-cluster edges
+%% Not in block mode: the only edge to a subgraph ends on an empty
+%% returns, edges to and from whole subgraphs, labels on most edges.
+%% subgraph to anything outside it.
+%% the test suite): two actors, seven subgraphs (one nested), a shared
+%% with its top-level subgraph blocks declared in reverse order; the graph is the same.
+A
+A long block title that covers the first member and more<br/>second line of the title
+A long block title that covers the whole first row
+A nested block whose title runs far past its one member
+Alpha
+Alpha one
+Async Workers
+Auth
+B
+Back
+Beta
+Beta one
+Billing
+Build pipeline
+C
+CI/CD Pipeline
+Catalog
+Checkout
+Customer
+Data tier
+Delivery
+Edge and shared services
+Edge and shared services with a long title
+Email
+Empty-ish
+Event bus
+Front
+Inner
+Inner source
+Inner target
+Intake
+LR with edge across border
+Left
+Logging
+Middle
+Monitoring
+Nothing here
+Observability
+Order processing
+Orders
+Other
+Outer
+Payments
+Pipeline
+Platform
+Production Platform
+Quality
+Right
+Service
+Shipping
+Shop
+Source
+Source block
+Stages
+Storefront
+Storefront cluster
+TB inside LR, edge to block only
+Tall block
+Target
+Work area
+Workers
+adipiscing
+adipiscing eiusmod
+aliqua magna tempor
+amet<br/>labore ullamco
+app zone
+block S
+block T
+consectetur ipsum<br/>magna do tempor
+data zone
+dolor
+edge zone
+elit sit sed labore<br/>do laboris elit
+incididunt veniam<br/>sit
+incididunt<br/>magna
+inner
+ipsum eiusmod labore magna<br/>aliqua sit
+ipsum nostrud eiusmod
+isolated
+isolated LR
+isolated with a lane
+jobs zone
+labore laboris<br/>laboris
+laboris nostrud labore
+laboris ullamco eiusmod aliqua<br/>incididunt do veniam
+laboris<br/>amet
+lorem labore<br/>consectetur nostrud lorem
+members without edges
+ops zone
+outer
+sed<br/>labore
+sit veniam
+ullamco tempor magna
+veniam magna<br/>do lorem
+veniam sed

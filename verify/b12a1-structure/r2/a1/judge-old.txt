@@ -1,0 +1,16 @@
+target missed infra-overview-v2                  crossings               15  must <= 17        target <= 13        [0.38 19, start 19, mermaid 13]  4.3 (b): mermaid's + 4
+MUST FAIL     perm-c-actors-reversed             bands            U2 T1 U1 / EXT GH / PROD / DR STG  must == = infra-overview: U1 T1 U2 / EXT GH / PROD / DR STG target == -         [0.38 NA, start NA, mermaid NA]  4.3 (b): the same band order as the analog
+target missed blocks-overview                    crossings                6  must <= 7         target <= 5         [0.38 14, start 14, mermaid 5]  4.3 (c): mermaid's 5 + 2
+target missed blocks-overview-edges-reversed     crossings                6  must <= 7         target <= 5         [0.38 7, start 6, mermaid 6]  4.3 (c): mermaid's 5 + 2
+target missed blocks-overview-edges-rotated      crossings                6  must <= 7         target <= 5         [0.38 23, start 23, mermaid 5]  4.3 (c): mermaid's 5 + 2
+target missed blocks-overview-actors-reversed    crossings                6  must <= 7         target <= 5         [0.38 15, start 15, mermaid 5]  4.3 (c): mermaid's 5 + 2
+target missed blocks-overview-subgraphs-reversed crossings                6  must <= 7         target <= 5         [0.38 12, start 12, mermaid 5]  4.3 (c): mermaid's 5 + 2
+MUST FAIL     bench-75                           xframe_runs              2  must <= 0         target <= -         [0.38 4, start 4, mermaid 0]  4.3 (f)
+MUST FAIL     dense-td                           xframe_runs              1  must <= 0         target <= -         [0.38 12, start 12, mermaid 0]  4.3 (f)
+target missed bench-75                           crossings              247  must <= 325.4     target <= 228       [0.38 302, start 294, mermaid 228]  4.3 (f): the smaller of 1.1 x 0.38's + 2 and 1.1 x the starting release's + 2
+target missed dense-lr                           crossings               17  must <= 51.5      target <= 10        [0.38 46, start 45, mermaid 10]  4.3 (f): the smaller of 1.1 x 0.38's + 2 and 1.1 x the starting release's + 2
+MUST FAIL     bench-75                           xframe_runs              2  must <= 0         target <= -         [0.38 4, start 4, mermaid 0]  4.3 (f): no run through a block that holds neither end
+MUST FAIL     dense-td                           xframe_runs              1  must <= 0         target <= -         [0.38 12, start 12, mermaid 0]  4.3 (f): no run through a block that holds neither end
+MUST FAIL     fork-twins                         xframe_runs              1  must <= 0         target <= -         [0.38 0, start 0, mermaid 0]  4.3 (f): no run through a block that holds neither end
+judge: --due A1: 109 rule(s) due at a later checkpoint left out
+judge: 155 checks on 92 diagram(s): 6 must-fail, 8 target missed

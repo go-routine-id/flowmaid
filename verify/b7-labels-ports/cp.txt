@@ -1,0 +1,36 @@
+advanced: end_gaps=0 end_gap_max=0.046 frames=98  corner_bad=0
+advanced: edges=16  route_worst=0.83 partial_worst=0.44 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+back-edge: end_gaps=0 end_gap_max=0.048 frames=34  corner_bad=0
+back-edge: edges=6  route_worst=0.24 partial_worst=0.14 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=2 cyl_end_off=0 roundtrip=true
+bench-75: end_gaps=0 end_gap_max=0.047 frames=222  corner_bad=0
+bench-75: edges=75  route_worst=20.54 partial_worst=5.15 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=538 cyl_end_off=0 roundtrip=true
+demo: end_gaps=0 end_gap_max=0.048 frames=34  corner_bad=0
+demo: edges=6  route_worst=0.16 partial_worst=0.15 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=1 cyl_end_off=0 roundtrip=true
+dense-lr: end_gaps=0 end_gap_max=0.047 frames=501  corner_bad=0
+dense-lr: edges=40  route_worst=10.47 partial_worst=2.33 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=194 cyl_end_off=0 roundtrip=true
+dense-td: end_gaps=0 end_gap_max=0.042 frames=475  corner_bad=0
+dense-td: edges=44  route_worst=12.30 partial_worst=3.21 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=99 cyl_end_off=0 roundtrip=true
+fanout-frames: end_gaps=0 end_gap_max=0.042 frames=137  corner_bad=0
+fanout-frames: edges=1  route_worst=0.76 partial_worst=0.74 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=11 cyl_end_off=0 roundtrip=true
+fanout: end_gaps=0 end_gap_max=0.042 frames=74  corner_bad=0
+fanout: edges=13  route_worst=0.34 partial_worst=0.26 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+long-labels: end_gaps=0 end_gap_max=0.049 frames=24  corner_bad=0
+long-labels: edges=4  route_worst=0.10 partial_worst=0.06 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+lr: end_gaps=0 end_gap_max=0.047 frames=34  corner_bad=0
+lr: edges=7  route_worst=0.46 partial_worst=0.56 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+shapes: end_gaps=0 end_gap_max=0.050 frames=42  corner_bad=0
+shapes: edges=10  route_worst=0.07 partial_worst=0.05 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+stress: end_gaps=0 end_gap_max=0.000 frames=30  corner_bad=0
+stress: edges=7  route_worst=0.53 partial_worst=0.48 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=2 cyl_end_off=0 roundtrip=true
+subgraph: end_gaps=0 end_gap_max=0.000 frames=54  corner_bad=0
+subgraph: edges=8  route_worst=0.18 partial_worst=0.12 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=30 cyl_end_off=0 roundtrip=true
+wide-labels: end_gaps=0 end_gap_max=0.045 frames=49  corner_bad=0
+wide-labels: edges=8  route_worst=1.51 partial_worst=0.59 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+state: end_gaps=0 end_gap_max=0.049 frames=138  corner_bad=0
+state: edges=14  route_worst=0.61 partial_worst=0.39 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+nested-composite: end_gaps=403 end_gap_max=348.000 frames=251  corner_bad=0
+nested-composite: edges=29  route_worst=3.37 partial_worst=3.26 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=24 cyl_end_off=0 roundtrip=true
+spread-bottom: end_gaps=0 end_gap_max=0.993 frames=284  corner_bad=0
+spread-bottom: edges=27  route_worst=1.57 partial_worst=0.80 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+spread-face: end_gaps=2 end_gap_max=187.100 frames=378  corner_bad=0
+spread-face: edges=35  route_worst=3.53 partial_worst=1.09 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=69 cyl_end_off=0 roundtrip=true

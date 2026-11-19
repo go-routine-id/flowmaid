@@ -1,0 +1,12 @@
+flowchart LR
+    N0([Parse archive])
+    N1([Archive])
+    N2[Fetch]
+    N3(Notify)
+    N4([Report])
+    N0 --> N1
+    N0 --> N2
+    N2 --> N3
+    N3 --> N4
+    N2 --> N3
+    N3 --> N1

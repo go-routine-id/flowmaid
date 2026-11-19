@@ -1,0 +1,7 @@
+== BEFORE (dev, unpatched):
+advance error — advance source must have a 'nodes' array
+exit=0
+ M src/json.rs
+== AFTER (dev + PR 78):
+advance error — JSON nested too deeply (more than 128 levels)
+exit=1

@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# wraps a binary with an env var: envbin.sh <var> <realbin> args...
+v=$1; shift; env $v=1 "$@"

@@ -1,0 +1,9 @@
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> Busy
+    state "A composite state with an exceptionally long descriptive name" as Busy {
+        [*] --> Work
+        Work --> [*]
+    }
+    Busy --> Done
+    Done --> [*]

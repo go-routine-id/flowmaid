@@ -1,0 +1,18 @@
+== run 1
+dense-lr: route_partial worst 5.66 ms (node 14); route() worst 8.69 ms (node 14), 1 frames over 8 ms (route() reported, not asserted)
+dense-td: route_partial worst 5.68 ms (node 17); route() worst 9.95 ms (node 15), 5 frames over 8 ms (route() reported, not asserted)
+bench-75: route_partial worst 7.96 ms (node 2); route() worst 16.88 ms (node 2), 182 frames over 8 ms (route() reported, not asserted)
+blocks/blocks-overview: route_partial worst 4.04 ms (node 12); route() worst 5.56 ms (node 12), 0 frames over 8 ms (route() reported, not asserted)
+fan-40-labelled: route_partial worst 16.22 ms (node 0); route() worst 15.04 ms (node 0), 18 frames over 8 ms (route() reported, not asserted)
+parallel-labelled: route_partial worst 11.82 ms (node 0); route() worst 11.61 ms (node 0), 4 frames over 8 ms (route() reported, not asserted)
+infra-overview: route_partial worst 5.06 ms (node 4); route() worst 5.19 ms (node 4), 0 frames over 8 ms
+infra-overview-v2: route_partial worst 3.77 ms (node 16); route() worst 6.20 ms (node 16), 0 frames over 8 ms
+== run 2
+dense-lr: route_partial worst 5.87 ms (node 14); route() worst 8.79 ms (node 14), 1 frames over 8 ms (route() reported, not asserted)
+dense-td: route_partial worst 5.55 ms (node 17); route() worst 9.71 ms (node 17), 2 frames over 8 ms (route() reported, not asserted)
+bench-75: route_partial worst 5.40 ms (node 12); route() worst 11.78 ms (node 16), 173 frames over 8 ms (route() reported, not asserted)
+blocks/blocks-overview: route_partial worst 3.98 ms (node 14); route() worst 5.18 ms (node 12), 0 frames over 8 ms (route() reported, not asserted)
+fan-40-labelled: route_partial worst 14.86 ms (node 0); route() worst 14.82 ms (node 0), 17 frames over 8 ms (route() reported, not asserted)
+parallel-labelled: route_partial worst 11.55 ms (node 1); route() worst 11.47 ms (node 0), 4 frames over 8 ms (route() reported, not asserted)
+infra-overview: route_partial worst 4.91 ms (node 11); route() worst 6.12 ms (node 11), 0 frames over 8 ms
+infra-overview-v2: route_partial worst 4.13 ms (node 19); route() worst 6.28 ms (node 16), 0 frames over 8 ms

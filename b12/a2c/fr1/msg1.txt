@@ -1,0 +1,43 @@
+fix(blocks): a sibling frame is levelled only when it is staggered and its own links leave the shift room (b12a2c-squeeze fix round 1, B12 X4)
+
+22dac44 moved every top-level block whose frame started later than its
+first-row siblings upstream, whole, on the argument that the earliest
+leading edge is room the layer lines already reserve. That covers the
+first row only: the shift also comes out of every gap the block's own
+links cross further down, and out of the band above the frames where a
+shared fan turns. On TD inputs the verifier wrote: an outside node's
+labelled edge into the short block's second row put its chip on the
+other line out of that node and turned twice more round the block's
+title; a node beside the blocks feeding a later row took an S-jog round
+the moved title; one entry point fanning into three staggered blocks
+took a crossing and a 60 px tight pair once they were levelled; a fan
+into nested titles took a detour round the outer frame.
+
+`level_sibling_frames` now keeps a block on its layer lines when
+- a link from outside it comes into it past its first row from upstream
+  (into a later row, or down through a first-row dummy);
+- one node outside the blocks feeds the first rows of two or more of
+  them (their entries' turns share the band above the frames);
+- its frame ends within the earliest frame's span along the flow (it
+  reads as one band with it already; moving it only lengthened the
+  links out of its last row).
+The public fixture's build pipeline beside the shared services is still
+levelled (sib_stagger 0 on it and its four reorderings, TD and BT).
+
+Test: blockcheck::a_block_its_links_take_room_from_stays_on_its_layer_lines
+(the four cases above plus a frame within the earliest's span, TD and
+BT: first-row members stay level with their siblings' centres).
+
+Checks against the package start (d99c073), suite-on:
+- local judge: must-fail 86 -> 74, no cell worse but one inherited from
+  7208f50 (an end-distance mean, +19 on one input), which the next
+  commit pays back; the levelled frame's crowded chip of 22dac44 (+1
+  crowd on one input) is gone.
+- gate messages: no worse (failing 8 -> 8, same names).
+- direction copies (332 + 32): no worse.
+- the verifier's eight TD / BT inputs draw as at the package start.
+Block mode only (`blocks`); the default build is byte-identical.
+No snapshot or gate changed. Guard green.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

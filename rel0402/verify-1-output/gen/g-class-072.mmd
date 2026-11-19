@@ -1,0 +1,11 @@
+classDiagram
+C6 "1" ..> "*" C1 : alpha
+C2 --> C9 : <b>bold</b>
+C2 "1" o-- "*" C6 : delta
+note "beta"
+note for C0 "Customer Order"
+note for C2 "delta"
+class C3 {
+  +int id
+  +name() String
+}

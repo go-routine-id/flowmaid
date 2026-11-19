@@ -1,0 +1,14 @@
+### Large graphs
+
+flowmaid spends its time on drawing quality — crossing-aware routing, back-edge lanes, port spacing and label placement — and that work grows faster than linearly. The synthetic benchmark (`cargo run --release --example bench`: random edges between layers, about two edges per node) on the same box:
+
+| nodes | edges | parse | layout | render* | SVG |
+|------:|------:|------:|-------:|--------:|----:|
+| 49 | 100 | 0.15 ms | 1.3 ms | 30 ms | 70 KB |
+| 200 | 400 | 0.53 ms | 25 ms | 0.22 s | 589 KB |
+| 1,000 | 2,010 | 2.8 ms | 0.92 s | 2.3 s | 3.2 MB |
+
+\* render includes layout and routing.
+
+Diagrams people write by hand — up to a few dozen nodes — render in milliseconds, fast enough to re-render on every keystroke. Dense graphs of hundreds of nodes take tenths of a second to seconds; making them faster is on the roadmap. Always measure with `--release` (debug builds are about 10× slower).
+

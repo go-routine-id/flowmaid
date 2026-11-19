@@ -1,0 +1,10 @@
+architecture-beta
+    group stack(cloud)[Stack]
+    service fe(web)[Frontend] in stack
+    service be(server)[Backend] in stack
+    service db(database)[Database] in stack
+    service cache(cache)[Cache]
+    fe:B -[calls REST endpoints over https]-> T:be
+    be:B -[sql]-> T:db
+    be:R -[get/set keys]-> L:cache
+    cache:B -[invalidate on write]-> R:db

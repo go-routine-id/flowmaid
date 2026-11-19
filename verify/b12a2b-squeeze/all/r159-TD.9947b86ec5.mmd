@@ -1,0 +1,9 @@
+flowchart TD
+    subgraph G[Payments]
+        m0[queue]
+        m1[queue]
+        m2[x wide member node]
+        m0 --> m1
+    end
+    s0[src0] --> G
+    s1[src1] --> m2

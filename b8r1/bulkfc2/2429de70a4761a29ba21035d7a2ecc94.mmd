@@ -1,0 +1,16 @@
+flowchart RL
+  n0[Node 0]
+  n1[Node 1]
+  n2[Node 2]
+  n3[Node 3]
+  n1 e0@--> n2
+  e0@{ curve: natural }
+  n0 e1@--> n3
+  e1@{ curve: natural }
+  n0 e2@--> n1
+  e2@{ curve: stepAfter }
+  n2 e3@<--> n0
+  e3@{ curve: stepAfter }
+  n3 e4@--> n1
+  e4@{ curve: step }
+  linkStyle default stroke-width:15px

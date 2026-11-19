@@ -1,0 +1,48 @@
+flowchart TD
+  n1["cache pack pack"]
+  n2["billing notify report"]
+  n3["auth"]
+  subgraph B0["Back office and finance"]
+    n4["parse mail billing"]
+  end
+  subgraph B1["Fulfilment desk"]
+    n5["mail"]
+  end
+  subgraph B2["Edge services"]
+    n6["search"]
+    n7["notify"]
+    n8["index"]
+    subgraph B2s0["Edge services 0"]
+      n9["pack pack mail"]
+    end
+  end
+  subgraph B3["Analytics"]
+    n10["ship<br/>report"]
+    n11["billing"]
+    n12["pack"]
+    n13["search"]
+    subgraph B3s0["Platform 0"]
+      n14["merge"]
+      n15["queue"]
+      n16["billing"]
+    end
+  end
+  n17["queue parse ingest"]
+  n18["parse"]
+  n15 ==> n3
+  n17 --> n12
+  n16 --> n6
+  n12 ==> n15
+  n10 -->|store| n3
+  n17 ==> n3
+  n16 --> n13
+  n15 --> n8
+  n8 --> n10
+  n5 --> n1
+  n6 --> n17
+  n3 -.-> n18
+  n10 --> n4
+  n1 ==> n16
+  n2 ==>|search| n17
+  n13 --> n9
+  n16 ==>|merge| n4

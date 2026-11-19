@@ -1,0 +1,25 @@
+flowchart TD
+  subgraph F0 [Frame 0]
+    n3[/Node 3/]
+    n4>Node 4]
+  end
+  subgraph F1 [Frame 1]
+    n0[/Node 0/]
+  end
+  n3 --> n5
+  n6 --> n0
+  n4 --o n2
+  n0 -.-> n3
+  n1 --o n3
+  n6 --o n1
+  n2 -.-> F1
+  n3 --o n1
+  n2 -.->|dot| F0
+  n1 -->|lbl| n0
+  n3 -->|lbl| F0
+  n1 o--o n3
+  n4 o--o F1
+  n2 o--o n6
+  n4 -.->|dot| n5
+  n2 <--> F0
+  n3 o--o n0

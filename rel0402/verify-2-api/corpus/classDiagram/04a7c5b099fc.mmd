@@ -1,0 +1,20 @@
+classDiagram
+direction LR
+A <|-- B : x
+B "1" ..> "*" C
+C ..|> D
+A -- E
+D -- F : x
+F ..> G : owns
+A <|-- D
+C --|> E
+C ..> C : c0
+C o-- C : c1
+C o-- C : c2
+C o-- C : c3
+C o-- C
+A o-- A : a0
+A ..> A : a1
+A ..> A : a2
+F --> F : f0
+F "1" --> "*" F

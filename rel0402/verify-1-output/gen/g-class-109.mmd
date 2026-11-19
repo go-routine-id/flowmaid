@@ -1,0 +1,93 @@
+classDiagram
+direction LR
+C7 -- C12
+C6 <--> C2
+C7 *-- C13
+C4 ..> C0 : <b>bold</b>
+C17 *-- C8
+C2 "1" ..> "*" C12 : alpha
+C11 -- C12
+C13 ..|> C3 : delta
+C3 "1" <--> "*" C6
+C7 *-- C12
+C7 "1" -- "*" C15
+C17 "1" -- "*" C11
+C15 "1" ..|> "*" C8
+C10 --> C21
+C15 o-- C6 : 日本語
+C6 <--> C17 : x
+C11 ..|> C3
+C9 "1" ..> "*" C13
+C20 --> C7
+C0 --> C15 : a&b
+C15 *-- C8
+C20 <|-- C3 : beta
+C12 "1" <--> "*" C12 : delta
+C21 ..> C0 : alpha
+C5 "1" ..|> "*" C0
+C11 ..|> C13
+C19 "1" <|-- "*" C17
+C10 "1" -- "*" C5 : beta
+C11 ..|> C0
+C1 <|-- C18 : a&b
+C18 "1" ..|> "*" C1
+C3 o-- C5 : Long label here
+C14 --> C10
+C9 "1" <--> "*" C5
+C12 -- C9 : beta
+C4 "1" -- "*" C1
+C7 *-- C4 : 日本語
+C20 o-- C9
+C7 *-- C12
+C21 --> C3 : delta
+C4 *-- C19
+C7 -- C13 : a&b
+C1 <--> C6
+C19 <|-- C5 : Long label here
+C13 *-- C2 : Long label here
+C8 "1" <|-- "*" C12
+C13 "1" ..> "*" C16
+C3 *-- C5
+note for C3 "delta"
+note "beta"
+note "Customer Order"
+class C4 {
+  +int id
+  +name() String
+}
+class C7 {
+  +int id
+  +name() String
+}
+class C8 {
+  +int id
+  +name() String
+}
+class C10 {
+  +int id
+  +name() String
+}
+class C11 {
+  +int id
+  +name() String
+}
+class C14 {
+  +int id
+  +name() String
+}
+class C15 {
+  +int id
+  +name() String
+}
+class C16 {
+  +int id
+  +name() String
+}
+class C18 {
+  +int id
+  +name() String
+}
+class C21 {
+  +int id
+  +name() String
+}

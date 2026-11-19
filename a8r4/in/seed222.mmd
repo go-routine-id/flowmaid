@@ -1,0 +1,25 @@
+architecture-beta
+    service s0(monitoring)[Svc 0]
+    service s1(nonsense)[Svc 1]
+    service s2(disk)[Web App 2]
+    service s3(disk)[Web App 3]
+    service s4(database)[Web App 4]
+    service s5(database)[PostgreSQL Primary 5]
+    service s6(database)[PostgreSQL Primary 6]
+    service s7(database)[PostgreSQL Primary 7]
+    service s8(disk)[Web App 8]
+    service s9(disk)[Q 9]
+    junction s10
+    s10:B <--> T:s5
+    s10:L --> B:s1
+    s7:T --> B:s9
+    s5:R -[x]-> L:s4
+    s7:L <-[x]-> T:s3
+    s1:L --> R:s4
+    s0:L --> R:s2
+    s5:B --> T:s4
+    s3:L -[reads config]- R:s5
+    s5:B -[sync]- T:s3
+    s1:R --> L:s0
+    s3:B <--> T:s0
+    s1:R <-[publishes order events]-> L:s6

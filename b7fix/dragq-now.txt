@@ -1,0 +1,15 @@
+advanced.mmd	frames 97	node_x 27 frame_x 142 overlap 24 lbl_edge 0 lbl_node 4 lbl_arrow 0 lbl_lbl 0 end_gaps 0 edge_x 93
+back-edge.mmd	frames 34	node_x 1 frame_x 0 overlap 0 lbl_edge 0 lbl_node 1 lbl_arrow 0 lbl_lbl 0 end_gaps 0 edge_x 2
+bench-75.mmd	frames 222	node_x 33 frame_x 1994 overlap 6239 lbl_edge 0 lbl_node 0 lbl_arrow 0 lbl_lbl 0 end_gaps 0 edge_x 85188
+demo.mmd	frames 34	node_x 0 frame_x 0 overlap 0 lbl_edge 0 lbl_node 0 lbl_arrow 0 lbl_lbl 0 end_gaps 0 edge_x 5
+dense-lr.mmd	frames 513	node_x 138 frame_x 7487 overlap 2731 lbl_edge 1039 lbl_node 0 lbl_arrow 0 lbl_lbl 0 end_gaps 0 edge_x 29740
+dense-td.mmd	frames 508	node_x 65 frame_x 8955 overlap 8564 lbl_edge 946 lbl_node 4 lbl_arrow 2 lbl_lbl 0 end_gaps 0 edge_x 34530
+fanout-frames.mmd	frames 137	node_x 39 frame_x 240 overlap 16 lbl_edge 0 lbl_node 0 lbl_arrow 0 lbl_lbl 0 end_gaps 0 edge_x 206
+fanout.mmd	frames 66	node_x 0 frame_x 0 overlap 5 lbl_edge 0 lbl_node 4 lbl_arrow 0 lbl_lbl 0 end_gaps 0 edge_x 109
+long-labels.mmd	frames 26	node_x 0 frame_x 0 overlap 0 lbl_edge 0 lbl_node 2 lbl_arrow 0 lbl_lbl 0 end_gaps 0 edge_x 3
+lr.mmd	frames 36	node_x 0 frame_x 0 overlap 0 lbl_edge 0 lbl_node 0 lbl_arrow 0 lbl_lbl 0 end_gaps 0 edge_x 13
+shapes.mmd	frames 42	node_x 0 frame_x 0 overlap 0 lbl_edge 0 lbl_node 0 lbl_arrow 0 lbl_lbl 0 end_gaps 0 edge_x 0
+stress.mmd	frames 28	node_x 0 frame_x 0 overlap 0 lbl_edge 2 lbl_node 3 lbl_arrow 3 lbl_lbl 0 end_gaps 0 edge_x 2
+subgraph.mmd	frames 47	node_x 2 frame_x 6 overlap 0 lbl_edge 0 lbl_node 0 lbl_arrow 0 lbl_lbl 0 end_gaps 0 edge_x 3
+wide-labels.mmd	frames 50	node_x 0 frame_x 0 overlap 1 lbl_edge 13 lbl_node 20 lbl_arrow 8 lbl_lbl 2 end_gaps 0 edge_x 21
+TOTAL	node_x 305 frame_x 18824 overlap 17580 lbl_edge 2000 lbl_node 38 lbl_arrow 13 lbl_lbl 2 end_gaps 0 edge_x 149915

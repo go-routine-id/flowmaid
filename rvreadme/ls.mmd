@@ -1,0 +1,14 @@
+flowchart LR
+  A --> B
+  B --> C
+  C --> D
+  linkStyle 0,1 stroke:#f00,stroke-width:4px
+  linkStyle default interpolate linear stroke:#0a0
+  A e1@--> D
+  e1@{ animate: true }
+  e1@{ curve: stepBefore }
+  accTitle: My title
+  accDescr {
+    line one
+    line two
+  }

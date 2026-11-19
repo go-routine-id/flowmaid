@@ -1,0 +1,21 @@
+flowchart BT
+    N0{Load fetch}
+    N1{Check}
+    N2[Validate]
+    N3([Done parse])
+    N4([Load retry])
+    N5[Emit]
+    N6(Fetch emit)
+    N7[Retry]
+    N8{Emit}
+    N0 -->|next| N1
+    N1 --> N2
+    N1 -->|ok| N3
+    N3 --> N4
+    N3 --> N5
+    N5 -->|ok| N6
+    N4 --> N7
+    N7 --> N8
+    N4 -.-> N1
+    N8 -.-> N5
+    N5 --> N3

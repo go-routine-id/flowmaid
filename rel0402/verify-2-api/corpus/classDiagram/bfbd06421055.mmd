@@ -1,0 +1,23 @@
+classDiagram
+direction TB
+A --|> B
+B *-- C : has many of
+C "1" -- "*" D : x
+C "1" o-- "*" E : x
+E --> F
+D --> G : uses
+F ..|> H : owns
+H ..> E
+G --> E
+F ..|> B
+H "1" --> "*" H : h0
+H ..> H
+G ..> G
+G *-- G : g1
+G "1" --> "*" G
+G "1" --> "*" G
+G *-- G : g4
+G *-- G : g5
+G *-- G
+G ..> G : g7
+G *-- G : g8

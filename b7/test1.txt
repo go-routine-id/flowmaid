@@ -1,0 +1,81 @@
+   Compiling flowmaid v0.33.0 (/home/user/flowmaid)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 24.58s
+     Running unittests src/lib.rs (target/debug/deps/flowmaid-360d6cfbe0aa9a9c)
+test casing::tests::a_short_line_keeps_at_most_one_gap ... FAILED
+test casing::tests::back_edges_mostly_go_under_and_ids_are_stable ... FAILED
+thread 'casing::tests::a_short_line_keeps_at_most_one_gap' (31389) panicked at src/casing.rs:1364:9:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: flowmaid::casing::tests::a_short_line_keeps_at_most_one_gap
+             at ./src/casing.rs:1364:9
+   3: flowmaid::casing::tests::a_short_line_keeps_at_most_one_gap::{closure#0}
+             at ./src/casing.rs:1321:44
+   4: <flowmaid::casing::tests::a_short_line_keeps_at_most_one_gap::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+   5: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+thread 'casing::tests::back_edges_mostly_go_under_and_ids_are_stable' (31391) panicked at src/casing.rs:1513:9:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: flowmaid::casing::tests::back_edges_mostly_go_under_and_ids_are_stable
+             at ./src/casing.rs:1513:9
+   3: flowmaid::casing::tests::back_edges_mostly_go_under_and_ids_are_stable::{closure#0}
+             at ./src/casing.rs:1487:55
+   4: <flowmaid::casing::tests::back_edges_mostly_go_under_and_ids_are_stable::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+   5: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+    casing::tests::a_short_line_keeps_at_most_one_gap
+    casing::tests::back_edges_mostly_go_under_and_ids_are_stable
+test result: FAILED. 958 passed; 2 failed; 5 ignored; 0 measured; 0 filtered out; finished in 120.13s
+     Running unittests src/main.rs (target/debug/deps/flowmaid-9250a17fa3e6d64b)
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/cli.rs (target/debug/deps/cli-ee1fda191e189f3b)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+     Running tests/model_build.rs (target/debug/deps/model_build-93894f44073905b3)
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.36s
+     Running tests/quality.rs (target/debug/deps/quality-232fca7e47a642da)
+test every_fixture_has_a_ceiling ... ok
+test edges_keep_off_frame_borders ... FAILED
+test channels_keep_edges_apart_and_off_chips ... FAILED
+test defect_baseline_gate ... FAILED
+test labels_cover_nothing_they_must_not ... FAILED
+test quality_gate ... FAILED
+thread 'edges_keep_off_frame_borders' (32364) panicked at tests/quality.rs:193:5:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: quality::edges_keep_off_frame_borders
+             at ./tests/quality.rs:193:5
+   3: quality::edges_keep_off_frame_borders::{closure#0}
+             at ./tests/quality.rs:184:34
+   4: <quality::edges_keep_off_frame_borders::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+   5: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+thread 'channels_keep_edges_apart_and_off_chips' (32361) panicked at tests/quality.rs:406:9:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: quality::channels_keep_edges_apart_and_off_chips
+             at ./tests/quality.rs:406:9
+   3: quality::channels_keep_edges_apart_and_off_chips::{closure#0}
+             at ./tests/quality.rs:388:45
+   4: <quality::channels_keep_edges_apart_and_off_chips::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+   5: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+thread 'defect_baseline_gate' (32363) panicked at tests/quality.rs:591:5:
+defect baseline regressions:
+static band_pairs 95.00 > ceiling 91
+static band_len 46046.00 > ceiling 41064
+static idiom_scubic 62.00 > ceiling 61
+routed band_pairs 106.00 > ceiling 101
+routed band_len 51784.00 > ceiling 47104
+finished

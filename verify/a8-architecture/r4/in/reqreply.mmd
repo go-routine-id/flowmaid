@@ -1,0 +1,10 @@
+architecture-beta
+    group api(cloud)[API]
+    service client(internet)[Client]
+    service gw(server)[Gateway] in api
+    service db(database)[Database] in api
+    client:R -[request with token]-> L:gw
+    gw:L -[response json]-> R:client
+    gw:R -[query]-> L:db
+    db:L -[rows]-> R:gw
+    gw:B -[audit log entry]-> T:db

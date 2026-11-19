@@ -1,0 +1,15 @@
+flowchart BT
+    N0{Parse}
+    N1(Retry)
+    N2[Queue done]
+    N3[Queue load]
+    N4(Done)
+    N5{Notify parse}
+    N0 --> N1
+    N0 --> N2
+    N2 --> N3
+    N1 --> N4
+    N4 --> N5
+    N2 --> N3
+    N0 --> N1
+    N2 -->|rollback| N0

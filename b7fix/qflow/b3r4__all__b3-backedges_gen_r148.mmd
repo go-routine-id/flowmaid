@@ -1,0 +1,20 @@
+flowchart RL
+    N0(Validate)
+    N1([Done done])
+    N2([Done])
+    N3([Archive emit])
+    N4{Check parse}
+    N5{Check}
+    N6(Load)
+    N0 -->|no| N1
+    N0 --> N2
+    N1 --> N3
+    N3 -->|fail| N4
+    N2 --> N5
+    N3 --> N6
+    N2 --> N4
+    N4 --> N5
+    N1 --> N4
+    N3 -->|again| N1
+    N4 -->|rollback| N3
+    N6 -.->|rollback| N4

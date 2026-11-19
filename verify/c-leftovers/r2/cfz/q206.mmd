@@ -1,0 +1,18 @@
+classDiagram
+A ..> B
+B --> C
+A ..> D : uses
+B o-- E : owns
+E ..> F
+C --> B
+D --> A
+E o-- F
+E *-- E
+E --> E : e1
+E ..> E : e2
+E --> E : e3
+E o-- E : e4
+E ..> E : e5
+E --> E
+E *-- E : e7
+E --> E : e8

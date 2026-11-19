@@ -1,0 +1,14 @@
+gitGraph BT:
+    commit id: "a1"
+    branch dev
+    checkout dev
+    commit id: "d1"
+    commit id: "d2" type: REVERSE
+    checkout main
+    commit id: "a2" tag: "v1"
+    merge dev id: "m1" type: HIGHLIGHT tag: "v2"
+    checkout dev
+    commit id: "d3"
+    merge main id: "sync"
+    checkout main
+    merge dev id: "m2"

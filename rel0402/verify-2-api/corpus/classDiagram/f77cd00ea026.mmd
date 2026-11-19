@@ -1,0 +1,11 @@
+classDiagram
+Order --> Line : has
+Order --> Order : parent
+Order --> Order : next
+Order --> Order : prev
+Line --> Product
+note for Order "root"
+class Line {
+  +int qty
+  +total() Money
+}

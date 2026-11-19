@@ -1,0 +1,16 @@
+flowchart RL
+    N0[Store]
+    N1{Store done}
+    N2{{Queue}}
+    N3{Queue}
+    N4[Report]
+    N5(Archive report)
+    N6[Parse]
+    N0 --> N1
+    N1 --> N2
+    N0 --> N3
+    N3 -->|next| N4
+    N4 --> N5
+    N4 --> N6
+    N3 --> N5
+    N5 -->|again| N4

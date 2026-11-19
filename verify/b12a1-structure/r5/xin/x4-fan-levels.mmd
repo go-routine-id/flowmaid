@@ -1,0 +1,21 @@
+flowchart TD
+    hub[Router] --> a1
+    hub --> b1
+    hub --> b3
+    hub --> c2
+    hub --> d1
+    subgraph A[Alpha]
+        a1 --> a2
+    end
+    subgraph B[Beta]
+        b1 --> b2 --> b3
+    end
+    subgraph C[Gamma]
+        c1 --> c2
+    end
+    subgraph D[Delta]
+        d1
+    end
+    a2 --> c1
+    b3 --> d1
+    c2 --> hub

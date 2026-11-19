@@ -1,0 +1,7 @@
+architecture-beta
+  group g(cloud)[G]
+  service a(server)[A] in g
+  service b(database)[Free]
+  service c(disk)[Also free]
+  a:R -- L:b
+  b:B -- T:c

@@ -1,0 +1,30 @@
++ cd /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a1-structure/r3/now
++ RUSTFLAGS='--cfg flowmaid_blocks'
++ CARGO_TARGET_DIR=/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a1-structure/r3/t-on
++ CARGO_INCREMENTAL=0
++ cargo build --release --bin flowmaid --example quality
++ tail -2
+   Compiling flowmaid v0.38.0 (/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a1-structure/r3/now)
+    Finished `release` profile [optimized] target(s) in 53.17s
++ cd /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a1-structure/r3/prev
++ RUSTFLAGS='--cfg flowmaid_blocks'
++ CARGO_TARGET_DIR=/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a1-structure/r3/t-prev
++ CARGO_INCREMENTAL=0
++ cargo build --release --bin flowmaid --example quality
++ tail -2
+   Compiling flowmaid v0.38.0 (/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a1-structure/r3/prev)
+    Finished `release` profile [optimized] target(s) in 54.67s
++ cd /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a1-structure/r3/probe-now
++ CARGO_TARGET_DIR=/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a1-structure/r3/t-probe-now
++ cargo build --release
++ tail -2
+   Compiling probe-now v0.0.0 (/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a1-structure/r3/probe-now)
+    Finished `release` profile [optimized] target(s) in 1m 00s
++ cd /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a1-structure/r3/probe-pre
++ CARGO_TARGET_DIR=/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a1-structure/r3/t-probe-pre
++ cargo build --release
++ tail -2
+   Compiling probe-pre v0.0.0 (/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a1-structure/r3/probe-pre)
+    Finished `release` profile [optimized] target(s) in 51.80s
++ echo BUILD-DONE
+BUILD-DONE

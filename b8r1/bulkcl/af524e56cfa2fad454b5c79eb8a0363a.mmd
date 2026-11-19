@@ -1,0 +1,16 @@
+classDiagram
+    direction TB
+    class Vehicle {
+        <<abstract>>
+        +String vin
+        +drive()* void
+    }
+    Vehicle <|-- Car
+    Vehicle <|-- Truck
+    Vehicle <|-- Bike
+    Vehicle <|-- Bus
+    Vehicle <|-- Van
+    Garage "1" o-- "*" Vehicle : stores
+    Garage "1" *-- "1..*" Bay : has
+    Owner "1" --> "*" Vehicle : owns
+    note for Garage "multi-storey"

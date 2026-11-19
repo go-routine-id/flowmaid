@@ -1,0 +1,30 @@
+flowchart RL
+  n3 --->|a longer label| n3
+  n2 --o n2
+  n8 <--> n2
+  n6 <-.->|x| n1
+  n0 o--o|a longer label| n4
+  n1 ---> n7
+  n8 --> n8
+  n7 --x|x| n5
+  n7 <==>|yes| n8
+  n9 e9@--o|yes| n4
+  e9@{ curve: cardinal }
+  n2 x--x|a longer label| n2
+  n5 <==>|no| n5
+  n5 --o|yes| n4
+  n6 ==> n3
+  n4 <--> n1
+  n7 -.-> n6
+  n7 -->|x| n5
+  n1 e17@~~~ n8
+  e17@{ curve: step }
+  n2 === n2
+  n9 o--o n9
+  linkStyle 4 stroke-width:15px
+  linkStyle 6 stroke-width:30px,stroke:#3a3
+  linkStyle 8 stroke-width:24px,stroke:#36c,stroke-dasharray:6 3
+  linkStyle 12 stroke-width:12px
+  linkStyle 14 stroke-width:40px,stroke:#36c,stroke-dasharray:6 3
+  linkStyle 16 stroke-width:24px,stroke:#3a3
+  linkStyle 19 interpolate step stroke-width:24px

@@ -1,0 +1,33 @@
+flowchart BT
+  n1["pack"]
+  n2["parse"]
+  subgraph B0["Ops"]
+    n3["mail cache db"]
+    n4["parse"]
+    n5["audit"]
+  end
+  subgraph B1["Fulfilment desk"]
+    n6["store<br/>worker"]
+    n7["parse ship ingest"]
+    n8["worker audit index<br/>store"]
+  end
+  subgraph B2["Storefront"]
+    n9["index"]
+  end
+  n10["merge index pack"]
+  n11["cache cache queue<br/>audit"]
+  n1 -.-> n7
+  n4 --> n11
+  n6 ==>|merge| n11
+  n5 --> n2
+  n11 --> n7
+  n1 --> n5
+  n2 -->|index| n7
+  n5 --> n4
+  n1 -.-> n9
+  n11 ==> n10
+  n11 -->|parse| n1
+  n3 --> n4
+  n7 --> n6
+  n2 --> n1
+  n2 -.->|notify| n11

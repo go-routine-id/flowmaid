@@ -1,0 +1,23 @@
+classDiagram
+direction TB
+A ..> B : x
+A "1" --> "*" C
+B -- C
+C ..> A
+B ..> B : b0
+B --> B : b1
+B --> B : b2
+B o-- B : b3
+B *-- B
+B ..> B
+B ..> B : b6
+C "1" --> "*" C
+C --> C
+C --> C : c2
+A o-- A : a0
+A "1" --> "*" A : a1
+class B {
+ +int id
+ +run() void
+ +stop()
+}

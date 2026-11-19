@@ -1,0 +1,8 @@
+flowchart BT
+  A[Load] --> B[Parse]
+  B --> B
+  B --> C[Check]
+  B --> D[Warn]
+  C --> E[Emit]
+  D --> E
+  E -->|again| B

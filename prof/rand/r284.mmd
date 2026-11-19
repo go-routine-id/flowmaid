@@ -1,0 +1,31 @@
+flowchart LR
+  H0 ---|express| N4
+  H0 --> N2
+  H0 --- N11
+  H0 ---|no| N1
+  H0 -->|yes| N10
+  H0 -->|retry| N7
+  H0 -->|ok| N11
+  H0 --- N11
+  H1 ==>|gift wrap| N15
+  H1 ==> N15
+  H1 -->|x| N0
+  H1 ==>|retry| N5
+  H1 -->|yes| N7
+  H1 ==>|yes| N7
+  H2 ==>|x| N4
+  H2 ==> N14
+  H2 --- N15
+  H2 ---|a much longer label here| N14
+  H2 -.-> N13
+  H2 -.-> N13
+  H2 --- N3
+  H2 ==>|ok| N0
+  H2 ==>|x| N1
+  H2 ---|express| N0
+  H2 ---|x| N0
+  N5 -->|x| N13
+  N14 --> N3
+  N2 -->|x| N4
+  N12 --> N3
+  N8 --> N11

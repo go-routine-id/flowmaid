@@ -1,0 +1,172 @@
+diff --git a/src/ports.rs b/src/ports.rs
+index babf59e..0fe7a4c 100644
+--- a/src/ports.rs
++++ b/src/ports.rs
+@@ -776,6 +776,167 @@ pub(crate) fn assign(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
+     if cx.blocks {
+         free_pins(sc, cx, moved);
+         order_pins(sc, cx, moved);
++        even_pins(sc, cx, moved);
++    }
++}
++
++/// Spec 2.8, free pins as one even band: two or more free pins of a
++/// frame side that lie in one free interval of it — between the
++/// member-entry columns that cross the side, its corners and its title
++/// chip, a port's spacing ([`PORT_SPACING`]) from each — stand evenly at
++/// a pitch between [`PORT_SPACING`] and [`PORT_EVEN_MAX`], centred where
++/// they stand, inside that interval. [`free_pins`] only moved each pin
++/// clear of what it stood on, to the nearest such place, so the pins
++/// of a block fed as a whole bunched at one end of a long free stretch
++/// at uneven gaps. A lone pin keeps the place [`free_pins`] gave it: at
++/// its interval's middle it took a bend its straight approach did not
++/// need (unlike spec 2.8's "a lone pin at the middle", which drew
++/// `x --> S` in a subgraph's side as a Z). The pins keep their order
++/// and their interval, so no pin passes anything else crossing the
++/// side; a band whose interval cannot hold it at [`PORT_SPACING`] keeps
++/// its places, and so does one whose moved edges, as drawn so far,
++/// would cross anything more than before.
++fn even_pins(sc: &mut Scene, cx: &Ctx, moved: &mut [bool]) {
++    type Pins = std::collections::BTreeMap<(usize, Side), Vec<(f64, usize, bool)>>;
++    let mut groups: Pins = Pins::new();
++    for i in 0..sc.edges.len() {
++        for src in [true, false] {
++            if note_link(sc, cx, i) {
++                continue;
++            }
++            if let Some((ci, side, p)) = pin_of(sc, cx, i, src) {
++                groups
++                    .entry((ci, side))
++                    .or_default()
++                    .push((split(side, p).0, i, src));
++            }
++        }
++    }
++    if groups.is_empty() {
++        return;
++    }
++    let heads = title_heads(sc);
++    for ((ci, side), mut pins) in groups {
++        let r = end_rect(sc, EndRef::Frame(ci));
++        let line = split(side, end_point(sc, pins[0].1, pins[0].2)).1;
++        let (t0, t1) = split_range(side, r);
++        let mine = |j: usize| pins.iter().any(|p| p.1 == j);
++        // The member-entry columns: an edge with one end on a member of
++        // this block, on the member's side facing this one, and the
++        // other outside, crosses the side at that end's column (the
++        // ortho stage draws its leg straight out of the member). Read
++        // off the ends alone, which the edge stages keep, so a second
++        // pass finds the same intervals.
++        let inside = |e: EndRef| match e {
++            EndRef::Node(v) => cx.node_frames.get(v).is_some_and(|f| f.contains(&ci)),
++            EndRef::Frame(_) => false,
++        };
++        let mut blocked: Vec<(f64, f64)> = Vec::new();
++        for j in (0..sc.edges.len()).filter(|&j| !mine(j)) {
++            if !cx.drawn.get(j).copied().unwrap_or(false) {
++                continue;
++            }
++            let Some((a, b)) = cx.ends.get(j).copied().flatten() else {
++                continue;
++            };
++            for (src, x, y) in [(true, a, b), (false, b, a)] {
++                if inside(x) && !inside(y) && y != EndRef::Frame(ci) {
++                    let q = end_point(sc, j, src);
++                    if side_of(end_rect(sc, x), q) == side {
++                        let t = split(side, q).0;
++                        blocked.push((t - PORT_SPACING, t + PORT_SPACING));
++                    }
++                }
++            }
++        }
++        if let Some(h) = heads.get(ci).filter(|_| side == Side::Top) {
++            blocked.push((
++                h.0 - crate::ortho::CHIP_CLEAR,
++                h.2 + crate::ortho::CHIP_CLEAR,
++            ));
++        }
++        blocked.sort_by(|a, b| a.0.total_cmp(&b.0));
++        // The free intervals of the side.
++        let mut free: Vec<(f64, f64)> = Vec::new();
++        let mut from = t0 + PORT_SPACING;
++        for &(b0, b1) in &blocked {
++            if b0 > from {
++                free.push((from, b0.min(t1 - PORT_SPACING)));
++            }
++            from = from.max(b1);
++        }
++        if t1 - PORT_SPACING > from {
++            free.push((from, t1 - PORT_SPACING));
++        }
++        free.retain(|f| f.1 >= f.0);
++        pins.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
++        for (f0, f1) in free {
++            let band: Vec<(f64, usize, bool)> = pins
++                .iter()
++                .copied()
++                .filter(|p| p.0 >= f0 - PORT_EPS && p.0 <= f1 + PORT_EPS)
++                .collect();
++            let m = band.len();
++            if m < 2 {
++                continue;
++            }
++            let len = f1 - f0;
++            let pitch = (len / (m - 1) as f64).min(PORT_EVEN_MAX);
++            if pitch < PORT_SPACING - PORT_EPS {
++                continue;
++            }
++            // Centred where the band stands, inside its interval.
++            let width = pitch * (m - 1) as f64;
++            let mean = band.iter().map(|p| p.0).sum::<f64>() / m as f64;
++            let start = (mean - width / 2.0).max(f0).min(f1 - width);
++            let edges: Vec<usize> = band.iter().map(|p| p.1).collect();
++            let crossings = |sc: &Scene| {
++                let mut n = 0;
++                for &i in &edges {
++                    let a = edge_polyline(&sc.edges[i]);
++                    for j in (0..sc.edges.len()).filter(|&j| j != i) {
++                        if !cx.drawn.get(j).copied().unwrap_or(false) {
++                            continue;
++                        }
++                        let b = edge_polyline(&sc.edges[j]);
++                        for u in a.windows(2) {
++                            for v in b.windows(2) {
++                                n += usize::from(segs_cross(u[0], u[1], v[0], v[1]));
++                            }
++                        }
++                    }
++                }
++                n
++            };
++            let before = crossings(sc);
++            let was: Vec<SceneEdge> = edges.iter().map(|&i| sc.edges[i].clone()).collect();
++            let mut changed = false;
++            for (k, &(at, i, src)) in band.iter().enumerate() {
++                let t = start + pitch * k as f64;
++                if (t - at).abs() <= PORT_EPS {
++                    continue;
++                }
++                let p = end_point(sc, i, src);
++                let new = join(side, t, line);
++                let delta = (new.0 - p.0, new.1 - p.1);
++                move_end(&mut sc.edges[i], src, p, delta, side, false, true);
++                changed = true;
++            }
++            if !changed {
++                continue;
++            }
++            if crossings(sc) <= before {
++                for &i in &edges {
++                    if let Some(m) = moved.get_mut(i) {
++                        *m = true;
++                    }
++                }
++            } else {
++                for (&i, e) in edges.iter().zip(was) {
++                    sc.edges[i] = e;
++                }
++            }
++        }
+     }
+ }
+ 

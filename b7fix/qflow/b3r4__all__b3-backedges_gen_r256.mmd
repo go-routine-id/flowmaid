@@ -1,0 +1,21 @@
+flowchart RL
+    N0([Archive])
+    N1(Emit parse)
+    N2[(Queue)]
+    N3(Check)
+    N4[Queue]
+    N5(Emit)
+    N6[Parse]
+    N7(Retry parse)
+    N0 -->|fail| N1
+    N0 --> N2
+    N1 -->|yes| N3
+    N1 --> N4
+    N2 --> N5
+    N4 -->|no| N6
+    N5 --> N7
+    N2 --> N4
+    N0 --> N4
+    N5 -->|rollback| N4
+    N7 -->|rollback| N5
+    N7 ==> N0

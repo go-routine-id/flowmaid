@@ -1,0 +1,35 @@
+flowchart LR
+  n1["index"]
+  n2["split"]
+  subgraph B0["Core"]
+    n3["parse notify ingest"]
+    n4["pack"]
+    n5["index"]
+    subgraph B0s0["Back office and finance 0"]
+      n6["merge"]
+    end
+  end
+  subgraph B1["Storefront"]
+    n7["auth pack ship<br/>merge"]
+    n8["audit"]
+    n9["notify"]
+    n10["report"]
+    subgraph B1s0["Analytics 0"]
+      n11["merge db api<br/>queue"]
+      n12["report"]
+    end
+  end
+  n13["parse"]
+  n10 -->|index| n1
+  n1 ==> n2
+  n10 -.-> B0s0
+  n5 -->|audit| n4
+  n13 ==>|store| B1
+  n12 -->|search| n13
+  n10 --> n7
+  n5 -->|store| n8
+  n5 --> n10
+  n2 --> n11
+  n2 --> n13
+  n6 --> n12
+  n7 -.-> n2

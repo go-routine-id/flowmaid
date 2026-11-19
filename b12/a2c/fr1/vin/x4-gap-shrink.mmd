@@ -1,0 +1,14 @@
+flowchart TD
+  hub[Hub] --> m1
+  hub --> n1
+  hub --> lone[Lone node beside]
+  lone -->|lone into block row two| m2
+  lone -->|lone into other block| n2
+  subgraph M [Moved block]
+    m1[short] --> m2[m two] --> m3[m three]
+  end
+  subgraph N [Tall first row]
+    n1["tall<br/>first<br/>row<br/>node"] --> n2[n two]
+  end
+  m3 -->|done| out[Out]
+  n2 -->|also done| out

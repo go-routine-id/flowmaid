@@ -1,0 +1,17 @@
+flowchart TD
+  top[Top] --> a
+  subgraph X[Outer]
+    subgraph Y[Inner source]
+      a[a] --> b[b]
+    end
+    subgraph Z[Inner target with title]
+      subgraph Z2[Deeper target]
+        c[c] --> c2[c2]
+      end
+      d[d] --> c
+    end
+    b --> d
+    a --> c2
+    b --> c2
+  end
+  c2 --> top

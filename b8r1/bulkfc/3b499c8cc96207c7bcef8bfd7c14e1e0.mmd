@@ -1,0 +1,9 @@
+flowchart TD
+  S[Start] --> A[Worker]
+  A -->|retry once| A
+  A -->|retry twice| A
+  A -->|give up later| A
+  A --> B[Next step]
+  S --> C[Side]
+  C --> B
+  B --> B

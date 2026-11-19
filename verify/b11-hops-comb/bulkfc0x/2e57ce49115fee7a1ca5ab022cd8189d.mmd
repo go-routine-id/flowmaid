@@ -1,0 +1,19 @@
+flowchart RL
+    N0{Queue notify}
+    N1([Emit])
+    N2[Archive load]
+    N3{Validate}
+    N4([Notify])
+    N5{Check}
+    N6[Check]
+    N7[Report validate]
+    N0 -->|ok| N1
+    N0 --> N2
+    N2 --> N3
+    N3 --> N4
+    N2 --> N5
+    N4 --> N6
+    N5 --> N7
+    N5 --> N7
+    N6 --> N7
+    N7 -->|retry| N6

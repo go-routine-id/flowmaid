@@ -1,0 +1,64 @@
+flowchart RL
+  n1["merge cache split"]
+  n2["billing"]
+  n3["mail"]
+  subgraph B0["Core"]
+    n4["report<br/>api"]
+    n5["split<br/>notify"]
+    n6["cache<br/>worker"]
+  end
+  subgraph B1["Back office and finance"]
+    n7["cache"]
+    n8["worker"]
+    n9["audit<br/>db"]
+    subgraph B1s0["Ingest 0"]
+      n10["billing search store"]
+    end
+  end
+  subgraph B2["Data tier"]
+    n11["ingest"]
+    n12["split"]
+    n13["report"]
+    n14["search search cache<br/>db"]
+  end
+  subgraph B3["Ingest"]
+    n15["cache"]
+    n16["cache<br/>pack"]
+    n17["pack"]
+    n18["db"]
+    subgraph B3s0["Analytics 0"]
+      n19["auth"]
+      n20["queue"]
+    end
+    subgraph B3s1["Ops 1"]
+      n21["parse"]
+    end
+  end
+  n22["ship"]
+  n23["parse"]
+  n18 ==>|auth| n15
+  n22 ==> n7
+  n12 --> n14
+  n7 --> n23
+  n14 --> B1
+  n18 -.-> n23
+  n16 --> n8
+  n6 -.-> n15
+  n22 ==>|ingest| n18
+  n9 -.->|ship| n2
+  n8 --> n7
+  n4 --> n14
+  n18 --> n2
+  n8 -->|pack| n1
+  n21 ==> B1
+  n21 --> n14
+  n21 --> n19
+  n10 ==>|audit| n7
+  n5 --> n11
+  n17 -.-> n4
+  n23 ==> n1
+  n10 --> n16
+  n16 --> n3
+  n2 --> n13
+  n11 ==> n2
+  n8 -->|split| n3

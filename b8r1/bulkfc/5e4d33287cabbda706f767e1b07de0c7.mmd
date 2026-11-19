@@ -1,0 +1,11 @@
+%%{init: {"flowchart": {"wrappingWidth": 120}}}%%
+flowchart LR
+    A[Collect the customer requirements document] --> B{Are the requirements approved by legal?}
+    B -->|approved| C[Design the system architecture and interfaces]
+    B -->|rejected| A
+    C --> D[(Persist design artefacts in repository)]
+    subgraph impl [Implementation phase with a long title]
+      E[Write the code for every module] --> F[Run the full automated test suite]
+    end
+    D --> E
+    F --> G([Release to production environment])

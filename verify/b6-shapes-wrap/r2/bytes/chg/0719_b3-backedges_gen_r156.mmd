@@ -1,0 +1,19 @@
+flowchart RL
+    N0(Parse)
+    N1([Validate notify])
+    N2[Emit]
+    N3(Done)
+    N4(Archive)
+    N5(Archive)
+    N6(Retry)
+    N7{Validate}
+    N0 --> N1
+    N0 -->|ok| N2
+    N0 --> N3
+    N2 --> N4
+    N2 -->|ok| N5
+    N3 --> N6
+    N6 --> N7
+    N5 -->|again| N4
+    N6 -->|back| N3
+    N6 --> N3

@@ -1,0 +1,20 @@
+flowchart BT
+  n1["store"]
+  subgraph B0["Fulfilment desk"]
+    n2["pack billing merge"]
+    n3["billing index audit"]
+    n4["pack ingest api"]
+    n5["auth"]
+  end
+  subgraph B1["Back office and finance"]
+    n6["billing"]
+  end
+  n7["pack"]
+  n8["audit"]
+  n7 -->|notify| n1
+  n7 --> n3
+  n1 -.-> n4
+  n1 --> n3
+  n6 -->|merge| n4
+  n2 ==>|merge| n5
+  n3 -.-> n5

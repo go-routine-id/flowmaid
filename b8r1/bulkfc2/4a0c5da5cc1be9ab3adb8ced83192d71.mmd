@@ -1,0 +1,21 @@
+flowchart LR
+    N0[Emit fetch]
+    N1((Check))
+    N2{Retry}
+    N3((Check fetch))
+    N4[/Notify/]
+    N5([Report parse])
+    N6[Emit]
+    N7([Fetch report])
+    N8([Emit])
+    N0 -->|ok| N1
+    N1 --> N2
+    N1 -->|next| N3
+    N2 --> N4
+    N4 -->|ok| N5
+    N5 --> N6
+    N5 --> N7
+    N5 --> N8
+    N3 --> N7
+    N6 --> N8
+    N5 -.->|back| N1

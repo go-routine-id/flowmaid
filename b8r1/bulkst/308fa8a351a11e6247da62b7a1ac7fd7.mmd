@@ -1,0 +1,63 @@
+stateDiagram-v2
+direction LR
+[*] --> A
+state K0 {
+  direction BT
+  [*] --> K0_0
+  K0_0 --> K0_1
+  state K0N {
+    direction LR
+    [*] --> K0N_0
+    K0N_0 --> K0N_1
+    K0N_0 --> K0N_2 : t2
+    note right of K0N_0 : in452
+    K0N_0 --> [*]
+  }
+  K0_1 --> K0N
+  K0_0 --> K0N_2
+  state K0_f <<fork>>
+  K0_0 --> K0_f
+  K0_f --> K0_0
+  K0_f --> K0_1
+  state K0_c <<choice>>
+  K0N_0 --> K0_c
+  K0_c --> K0_1 : a
+  K0_c --> K0N_1 : b
+  note left of K0N_0 : in599
+  note right of K0_1 : in1
+}
+state K1 {
+  direction RL
+  [*] --> K1_0
+  state K1N {
+    [*] --> K1N_0
+    K1N_0 --> K1N_1
+    K1N_0 --> K1N_2 : t2
+  }
+  K1_0 --> K1N
+  state K1_f <<fork>>
+  K1_0 --> K1_f
+  K1_f --> K1_0
+  K1_f --> K1N_1
+  note right of K1_0 : in271
+  note right of K1N_2 : in190
+  note right of K1N_1 : in81
+}
+state K2 {
+  [*] --> K2_0
+  note left of K2_0 : in129
+  note right of K2_0 : in421
+  note right of K2_0 : in842
+}
+A --> K0
+A --> K1
+K0 --> K2 : g3
+K1N_1 --> K2 : out
+K2 --> K1_0
+K2 --> K0 : cc
+K0 --> K0 : back
+note left of K0N : on116
+note left of K0 : on488
+note right of K0 : on476
+note right of A : on565
+K2 --> [*]

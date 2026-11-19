@@ -1,0 +1,10 @@
+flowchart TD
+  n2 -.-> n2
+  n5 --x n1
+  n3 ---> n2
+  n1 <--> n4
+  n5 --x|no| n4
+  linkStyle 2 stroke-width:1px,stroke:#c33
+  linkStyle 3 interpolate natural stroke-width:2px
+  linkStyle 4 stroke-width:8px,stroke:#c33
+  linkStyle default stroke-width:40px

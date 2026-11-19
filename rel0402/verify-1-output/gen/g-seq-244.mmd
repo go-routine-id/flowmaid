@@ -1,0 +1,58 @@
+sequenceDiagram
+participant P0 as Long label here
+participant P1 as beta
+participant P2 as Long label here
+participant P3 as <b>bold</b>
+participant P4 as alpha
+participant P5 as <b>bold</b>
+P0-xP3: Customer Order
+P2-->P0: Long label here
+Note left of P4: x
+activate P0
+P0->>P4: act
+deactivate P0
+P0-)P0: x
+activate P1
+P1->>P2: act
+deactivate P1
+P0-xP2: x
+P1->>P0: alpha
+P5->>P5: self x
+P5->P5: gamma
+P1-)P3: <b>bold</b>
+P1->>P5: beta
+P1-->>P1: a&b
+activate P5
+P5->>P4: act
+deactivate P5
+P1->>P1: self <b>bold</b>
+P4--xP5: delta
+Note left of P4: a&b
+P3-)P5: gamma
+activate P2
+P2->>P4: act
+deactivate P2
+P2->>P2: self 日本語
+P5-)P1: Long label here
+P0-->>P4: 日本語
+P4->>P4: Long label here
+Note over P0,P5: a&b
+P2->>P2: self 日本語
+P2->P1: gamma
+Note over P0,P5: gamma
+P4->>P4: self delta
+P3-->>P3: delta
+P3->>P1: gamma
+P5-->>P3: Long label here
+P2--)P5: Long label here
+P2->>P2: self gamma
+activate P4
+P4->>P3: act
+deactivate P4
+activate P1
+P1->>P5: act
+deactivate P1
+P5->>P5: self <b>bold</b>
+activate P0
+P0->>P3: act
+deactivate P0

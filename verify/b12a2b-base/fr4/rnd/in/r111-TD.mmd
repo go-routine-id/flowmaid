@@ -1,0 +1,19 @@
+flowchart TD
+    subgraph O[WWW Mammoth Wombat Overview]
+        subgraph G[Payments]
+            m0[charge]
+            m1[x wide member node]
+            m2[charge]
+        end
+        k[k]
+    end
+    m1 --> k
+    m2 --> k
+    s0[src0] --> m2
+    s1[src1] --> G
+    s1 --> m2
+    s2[src2] --> m2
+    s2 --> m0
+    s3[src3] --> m0
+    m2 --> z[end]
+    G --> z2[after]

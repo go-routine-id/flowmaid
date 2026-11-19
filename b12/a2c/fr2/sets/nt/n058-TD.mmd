@@ -1,0 +1,13 @@
+flowchart TD
+    subgraph A[Billing]
+        a0[a0 wide node]
+        a1[a1 wide node]
+    end
+    subgraph B[Billing two]
+        b0[b0]
+        b1[b1]
+    end
+    a0 --> b1
+    a1 --> b0
+    a1 --> b1
+    p[p] --> B

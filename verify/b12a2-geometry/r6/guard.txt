@@ -1,0 +1,17 @@
+== fmt
+== clippy
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 8.81s
+== test
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+== doctest
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.86s
+== msrv
+    Finished dev [unoptimized + debuginfo] target(s) in 3.73s
+== wasm
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.69s
+== rustdoc
+GUARD: ALL GREEN
+
+real	3m47.109s
+user	9m44.391s
+sys	0m8.110s

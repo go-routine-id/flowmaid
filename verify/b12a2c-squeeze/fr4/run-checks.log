@@ -1,0 +1,20 @@
+run-checks.sh 2026-11-19T16:53:17Z: outdir /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a2c-squeeze/fr4/cand-b82d584, mode commit b82d584fb72e5fcc0e26c2466db8c0489a74a5ee, only local,gates,dirs; 6 GB free on /
+worktree /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a2c-squeeze/fr4/scratch/wt-b82d584 at b82d584fb72e5fcc0e26c2466db8c0489a74a5ee
+build.sh: Finished `release` profile [optimized] target(s) in 1.45s; binaries in /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a2c-squeeze/fr4/cand-b82d584/bin
+  build.sh 197 s (exit 0)
+  build: src=/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a2c-squeeze/fr4/scratch/wt-b82d584
+  build: commit=b82d584fb72e5fcc0e26c2466db8c0489a74a5ee
+  build: dirty_files=0
+  build: rustflags=--cfg flowmaid_blocks
+  build: rustc=rustc 1.97.0 (2d8144b78 2026-07-07)
+  build: built=2026-11-19T16:56:34Z
+rejudge.sh cand-b82d584: 95 static SVGs (0 missing), 95 routed | live judge --due A2 65 must-fail, --due A1 0, routed 18
+  fmrun.sh 19 s (exit 0)
+trun.sh: 8 failing; FAILED. 1239 passed; 5 failed; 5 ignored; 0 measured; 0 filtered out; finished in 39.79s; quality: FAILED. 12 passed; 3 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.12s
+  trun.sh 44 s (exit 0)
+qrun.sh: dirs 332 copies x static/routed
+qrun.sh: dirsx 32 copies x static/routed
+  qrun.sh 13 s (exit 0)
+run-checks.sh: done in 273 s (exit 0). Compare with: /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/tools-a2b/compare.sh <baseline-outdir> /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a2c-squeeze/fr4/cand-b82d584
+removed: /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a2c-squeeze/fr4/scratch/wt-b82d584 /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a2c-squeeze/fr4/scratch/target-b82d584
+EXIT 0

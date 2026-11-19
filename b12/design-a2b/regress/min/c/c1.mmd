@@ -1,0 +1,12 @@
+flowchart TD
+  start --> A
+  subgraph K1[Left]
+    k1a[left one] --> k1b[left two]
+  end
+  subgraph K2[Right]
+    k2a[right one]
+  end
+  A -->|go left| K1
+  A -->|go down| B0[middle]
+  A --> K2
+  K1 -->|back| A

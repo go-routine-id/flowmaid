@@ -1,0 +1,8 @@
+gitGraph
+    commit id: "init"
+    branch feat
+    checkout feat
+    commit id: "a"
+    checkout main
+    merge feat id: "merge-feat" tag: "v1.0"
+    commit id: "release" type: REVERSE

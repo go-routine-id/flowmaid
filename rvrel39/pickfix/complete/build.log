@@ -1,0 +1,4 @@
+   Compiling flowmaid v0.39.0 (/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rvrel39/pickfix/complete/crate)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 40.04s
+  Executable unittests src/lib.rs (/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rvrel39/pickfix/complete/target/debug/deps/flowmaid-12a15a58a21db8e3)
+exit 0

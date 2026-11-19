@@ -1,0 +1,17 @@
+flowchart BT
+    subgraph G0[Data ingestion workers 0]
+        g0m0[g0m0]
+        g0m1[g0m1]
+    end
+    subgraph G1[Core 1]
+        subgraph H1[inner 1]
+            g1m0[g1m0]
+            g1m1[g1m1]
+        end
+    end
+    g1m1 ==> o3
+    g1m1 ==> o2
+    g0m1 -.-> o3
+    o1 ==> o2
+    o1 --> o0
+    o3 --> o0

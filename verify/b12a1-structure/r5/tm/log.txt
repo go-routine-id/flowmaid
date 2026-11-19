@@ -1,0 +1,10 @@
+round 1 pre load 1.33 1.92 1.88 1/115 1542 rustc 0
+round 1 off load 1.20 1.80 1.84 1/110 1548 rustc 0
+round 1 on load 1.09 1.69 1.80 1/109 1559 rustc 0
+round 2 pre load 1.04 1.57 1.75 1/112 1571 rustc 0
+round 2 off load 1.02 1.49 1.71 1/108 1577 rustc 0
+round 2 on load 1.01 1.42 1.68 1/112 1589 rustc 0
+round 3 pre load 1.00 1.35 1.64 1/108 1596 rustc 0
+round 3 off load 1.00 1.29 1.60 1/108 1605 rustc 0
+round 3 on load 1.00 1.25 1.57 1/108 1612 rustc 0
+TM-DONE

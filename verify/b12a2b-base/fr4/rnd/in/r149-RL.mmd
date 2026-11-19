@@ -1,0 +1,13 @@
+flowchart RL
+    subgraph O[Data ingestion workers]
+        subgraph G[WWW Mammoth Wombat Overview]
+            m0[w]
+            m1[ledger]
+            m2[db]
+        end
+        k[k]
+    end
+    m0 --> k
+    s0[src0] --> O
+    s1[src1] -- "lbl3" --> m2
+    s1 --> m1

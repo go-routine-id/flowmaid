@@ -1,0 +1,9 @@
+stateDiagram-v2
+    direction RL
+    state c <<choice>>
+    [*] --> A
+    A --> c
+    c --> B : yes please
+    c --> C : no thanks
+    c --> D : maybe later
+    note right of B : rl note

@@ -1,0 +1,56 @@
+flowchart LR
+  n1["search parse worker"]
+  n2["queue"]
+  n3["worker<br/>index"]
+  subgraph B0["Fulfilment desk"]
+    n4["audit cache queue"]
+    n5["worker<br/>cache"]
+    n6["index ship index"]
+    n7["split"]
+    subgraph B0s0["Fulfilment desk 0"]
+      n8["ingest<br/>cache"]
+      n9["pack"]
+      n10["report"]
+    end
+  end
+  subgraph B1["Core"]
+    n11["ship<br/>api"]
+    n12["ingest"]
+    n13["split"]
+    subgraph B1s0["Platform 0"]
+      n14["worker"]
+    end
+    subgraph B1s1["Back office and finance 1"]
+      n15["db queue index"]
+      n16["billing"]
+    end
+  end
+  subgraph B2["Fulfilment desk"]
+    n17["worker"]
+  end
+  n18["search"]
+  n19["report"]
+  n14 -.->|mail| n15
+  n4 --> n19
+  n13 --> n1
+  n15 ==> n3
+  n3 ==> n9
+  n19 --> n11
+  n3 --> n15
+  n10 -.-> n15
+  n3 --> n19
+  n2 --> n15
+  n16 ==> n18
+  n16 --> n7
+  n6 --> n2
+  n18 ==> n3
+  n13 --> n14
+  n10 --> n11
+  n14 ==> n9
+  n12 --> n18
+  n6 -.-> n10
+  n14 -.->|merge| n2
+  n16 --> n10
+  n5 -.-> B1s0
+  n19 --> n18
+  n12 ==> n15

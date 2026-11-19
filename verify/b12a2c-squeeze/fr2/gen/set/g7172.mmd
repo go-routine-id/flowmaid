@@ -1,0 +1,62 @@
+flowchart RL
+  n1["ship<br/>merge"]
+  n2["merge<br/>api"]
+  subgraph B0["Core"]
+    n3["report"]
+    n4["mail split parse"]
+    n5["ingest<br/>parse"]
+    subgraph B0s0["Edge services 0"]
+      n6["mail<br/>store"]
+      n7["billing"]
+    end
+  end
+  subgraph B1["Fulfilment desk"]
+    n8["api parse split"]
+    n9["billing"]
+    n10["auth"]
+    n11["ingest"]
+    subgraph B1s0["Fulfilment desk 0"]
+      n12["audit"]
+      n13["mail<br/>queue"]
+    end
+  end
+  subgraph B2["Back office and finance"]
+    n14["mail"]
+    n15["index"]
+    subgraph B2s0["Core 0"]
+      n16["parse"]
+    end
+    subgraph B2s1["Platform 1"]
+      n17["queue"]
+      n18["cache ship db"]
+    end
+  end
+  subgraph B3["Core"]
+    n19["mail audit auth"]
+    n20["db"]
+    n21["split"]
+  end
+  n22["ingest"]
+  n9 --> n7
+  n20 -.-> n15
+  n4 -.-> n14
+  n1 --> n14
+  n19 ==> n3
+  n11 --> n9
+  n3 -.-> n2
+  n6 -.-> n8
+  n9 -->|store| n17
+  n19 ==> n4
+  n8 --> n17
+  n22 -.-> n15
+  n12 --> n5
+  n22 -->|store| n21
+  n15 ==> n12
+  n12 --> n21
+  n19 --> n15
+  n4 --> n21
+  n8 --> n6
+  n4 --> n9
+  n12 --> n9
+  n20 -.->|merge| n14
+  n14 -.-> n8

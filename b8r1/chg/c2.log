@@ -1,0 +1,9 @@
+changed: 392
+CORPUS-CHANGED /home/user/flowmaid/tests/fixtures/quality/dense-lr.mmd
+CORPUS-CHANGED /home/user/flowmaid/tests/fixtures/quality/dense-td.mmd
+CORPUS-CHANGED /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/cmp/corpus/dense-lr.mmd
+CORPUS-CHANGED /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/cmp/corpus/dense-td.mmd
+CORPUS-CHANGED /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/flowcorpus/dense-lr.mmd
+CORPUS-CHANGED /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/flowcorpus/dense-td.mmd
+static: n=393 changed=385  defects 2734->1072 (+32/-225)  x_drawn 5448->5386 (+116/-155)  edge_frame_x 1314->464 (+15/-224)  edge_node_x 24->2 (+1/-10)  area_per_node 2.25893e+07->2.19866e+07 (+167/-218)
+routed: n=393 changed=385  defects 3090->1736 (+31/-217)  x_drawn 5120->5622 (+135/-139)  edge_frame_x 1320->530 (+14/-215)  edge_node_x 40->44 (+15/-13)  area_per_node 2.25806e+07->2.19638e+07 (+167/-218)

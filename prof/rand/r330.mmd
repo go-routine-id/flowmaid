@@ -1,0 +1,34 @@
+flowchart TD
+  H0 ---|gift wrap| N16
+  H0 --> N17
+  H0 --> N0
+  H0 -->|ok| N3
+  H0 -.->|retry| N1
+  H0 ---|retry| N9
+  H0 -->|retry| N9
+  H0 --> N18
+  H0 -.->|retry| N18
+  H0 --- N10
+  H0 ---|gift wrap| N11
+  H1 ---|no| N3
+  H1 -.-> N5
+  H1 ==>|retry| N18
+  H1 ==>|gift wrap| N13
+  H1 -.->|x| N16
+  H2 --- N17
+  H2 --> N9
+  H2 -->|no| N17
+  H2 ==> N11
+  N16 --> N7
+  N6 --> N6
+  N12 --> N8
+  N4 -->|ok| N6
+  N9 --> N18
+  N18 --> N8
+  N12 --> N5
+  N8 -->|no| N12
+  N11 --> N8
+  N6 --> N13
+  N0 --> N17
+  N6 --> N15
+  N5 -->|gift wrap| N6

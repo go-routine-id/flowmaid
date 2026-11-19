@@ -1,0 +1,16 @@
+flowchart TD
+  A[Start] --> B[Left]
+  A --> C[Mid]
+  A --> D[Right]
+  B e1@--> F[Far right]
+  D e2@--> E[Far left]
+  C --> E
+  C --> F
+  B --> G[Bottom]
+  D --> G
+  E --> G
+  F --> G
+  B -.-> D
+  e1@{ curve: linear }
+  e2@{ curve: stepAfter }
+  linkStyle 6 interpolate basis

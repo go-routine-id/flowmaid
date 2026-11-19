@@ -1,0 +1,20 @@
+architecture-beta
+    group g0(disk)[Private API]
+    group g1(database)[Observability] in g0
+    service s0(internet)[Service 0]
+    service s1(database)[Service 1] in g1
+    service s2(disk)[Service 2] in g1
+    service s3(monitoring)[Service 3] in g0
+    service s4(database)[Service 4] in g1
+    service s5(internet)[Service 5] in g1
+    service s6(server)[Service 6] in g1
+    service s7(internet)[Service 7] in g1
+    service s8(monitoring)[Service 8] in g0
+    service s9(cloud)[Service 9] in g0
+    service s10(internet)[Service 10]
+    service s11(monitoring)[Service 11] in g0
+    service s12(internet)[Service 12]
+    service s13(internet)[Service 13] in g1
+    service s14(cloud)[Service 14] in g1
+    service s15(monitoring)[Service 15]
+    s8:T --> B:s3

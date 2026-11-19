@@ -1,0 +1,13 @@
+stateDiagram-v2
+state P {
+  direction LR
+  state Q {
+    direction TB
+    q1 --> q2
+  }
+  Q --> p1
+  p1 --> Q
+}
+P --> x
+[*] --> P
+note left of Q : nq

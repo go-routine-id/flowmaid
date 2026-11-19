@@ -1,0 +1,52 @@
+flowchart RL
+  n1["mail auth index"]
+  subgraph B0["Fulfilment desk"]
+    n2["cache worker pack"]
+    n3["store cache billing<br/>parse"]
+    n4["ingest search api"]
+    n5["index<br/>split"]
+  end
+  subgraph B1["Back office and finance"]
+    n6["parse mail search"]
+    n7["parse"]
+    n8["ingest parse worker"]
+  end
+  subgraph B2["Ops"]
+    n9["ingest pack pack"]
+    n10["worker"]
+  end
+  subgraph B3["Data tier"]
+    n11["db"]
+    n12["billing mail api<br/>cache"]
+    n13["billing merge merge"]
+    subgraph B3s0["Platform 0"]
+      n14["db"]
+      n15["auth"]
+      n16["ship ingest merge"]
+    end
+    subgraph B3s1["Storefront 1"]
+      n17["report"]
+      n18["queue queue notify"]
+      n19["pack<br/>store"]
+    end
+  end
+  n20["search"]
+  n6 -.-> n18
+  n1 --> n5
+  n7 -->|db| n12
+  n11 --> n4
+  n17 -->|ship| n9
+  n3 -->|billing| n17
+  n14 -->|queue| n10
+  n8 --> n7
+  n14 --> n12
+  n17 -.-> n1
+  n8 -.-> n5
+  n18 ==>|auth| n2
+  n13 --> n6
+  n19 ==> n14
+  n10 --> n11
+  n2 -->|split| n6
+  n2 -.->|ingest| n1
+  n11 --> n17
+  n10 -.-> n8

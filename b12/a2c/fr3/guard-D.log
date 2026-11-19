@@ -1,0 +1,73 @@
+== fmt
+== clippy
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 12.44s
+== test
+FAILED: cargo test --all-targets
+test timeline::tests::indented_header_keeps_direction ... ok
+test timeline::tests::long_events_and_periods_wrap ... ok
+test timeline::tests::long_titles_fit_and_center_the_content ... ok
+test timeline::tests::parses_period_and_events_inline ... ok
+test timeline::tests::periods_are_bold_and_events_regular ... ok
+test timeline::tests::periods_before_the_first_section_are_kept_with_neutral_ticks ... ok
+test timeline::tests::scene_fits_everything_inside_the_canvas ... ok
+test timeline::tests::section_labels_read_on_every_accent ... ok
+test timeline::tests::sectionless_timeline_has_no_header_band ... ok
+test timeline::tests::task_lines_never_cross_event_text ... ok
+test timeline::tests::tick_is_painted_over_its_task_line ... ok
+test timeline::tests::title_keeps_a_gap_above_the_first_band ... ok
+test timeline::tests::title_section_and_direction_are_parsed ... ok
+test timeline::tests::to_svg_draws_sections_periods_and_events ... ok
+test timeline::tests::wide_section_names_fit_their_band ... ok
+test timeline::tests::wrapped_text_is_balanced_and_keeps_its_style ... ok
+test wrap::tests::balanced_keeps_the_line_count_and_evens_the_lines ... ok
+test wrap::tests::greedy_fills_lines_and_keeps_long_words_whole ... ok
+test wrap::tests::into_lines_agrees_with_the_full_search ... ok
+test wrap::tests::wrap_block_carries_styles_across_its_breaks ... ok
+test wrap::tests::wrap_block_keeps_literal_tags_as_text ... ok
+test wrap::tests::wrap_block_leaves_no_stranded_last_word ... ok
+test scene::tests::squared_ends_face_the_curve_and_keep_near_it_on_every_fixture ... ok
+test scene::tests::glyph_fan_in_never_panics_when_ports_fill_the_side ... ok
+test scene::tests::edge_picking_matches_the_painted_strokes_on_every_fixture ... ok
+
+failures:
+
+---- casing::tests::a_block_layouts_under_line_keeps_no_fragment_between_two_gaps stdout ----
+
+thread 'casing::tests::a_block_layouts_under_line_keeps_no_fragment_between_two_gaps' (26612) panicked at src/casing.rs:1640:14:
+the pin is cut
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: core::panicking::panic_display::<&str>
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:259:5
+   3: core::option::expect_failed
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/option.rs:2257:5
+   4: <core::option::Option<&str>>::expect
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/option.rs:968:21
+   5: flowmaid::casing::tests::a_block_layouts_under_line_keeps_no_fragment_between_two_gaps
+             at ./src/casing.rs:1640:14
+   6: flowmaid::casing::tests::a_block_layouts_under_line_keeps_no_fragment_between_two_gaps::{closure#0}
+             at ./src/casing.rs:1620:71
+   7: <flowmaid::casing::tests::a_block_layouts_under_line_keeps_no_fragment_between_two_gaps::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+   8: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+
+failures:
+    casing::tests::a_block_layouts_under_line_keeps_no_fragment_between_two_gaps
+
+test result: FAILED. 1241 passed; 1 failed; 5 ignored; 0 measured; 0 filtered out; finished in 285.10s
+
+error: test failed, to rerun pass `--lib`
+== doctest
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.57s
+== msrv
+    Finished dev [unoptimized + debuginfo] target(s) in 5.83s
+== wasm
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.23s
+== rustdoc
+GUARD: FAILURES

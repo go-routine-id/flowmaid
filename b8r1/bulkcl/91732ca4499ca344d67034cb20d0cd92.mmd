@@ -1,0 +1,19 @@
+erDiagram
+    USER ||--o{ POST : writes
+    USER ||--o{ COMMENT : writes
+    USER |o--o| PROFILE : has
+    USER }o--o{ ROLE : "is granted"
+    POST ||--o{ COMMENT : receives
+    POST }o--|| CATEGORY : "filed under"
+    POST }|--|{ TAG : tagged
+    COMMENT |o--o{ COMMENT : "replies to"
+    ROLE ||--|{ PERMISSION : bundles
+    USER {
+        bigint id PK
+        varchar email "unique"
+    }
+    POST {
+        bigint id PK
+        bigint user_id FK
+        bigint category_id FK
+    }

@@ -1,0 +1,12 @@
+flowchart RL
+  s[Start] --> a1
+  s --> b1
+  k[Side input] --> b2
+  subgraph A[Alpha]
+    a1[a] --> a2[a second, rather wide member]
+  end
+  subgraph B[Beta with a long block title]
+    b1[a very wide first member node] --> b2[b] --> b3[b3]
+  end
+  a2 --> e[End]
+  b3 --> e

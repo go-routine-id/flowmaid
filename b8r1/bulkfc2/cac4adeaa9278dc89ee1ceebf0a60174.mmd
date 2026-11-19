@@ -1,0 +1,13 @@
+flowchart TD
+  subgraph S1[Stage one]
+    a1[Entry] --> a2[Side]
+    subgraph S1N[Nested]
+      n1[Deep one] --> n2[Deep two]
+    end
+    a1 --> n1
+  end
+  subgraph S2[Stage two]
+    b1[Work] --> b2[Finish]
+  end
+  S1 -->|handoff label| S2
+  S2 -->|back label| S1

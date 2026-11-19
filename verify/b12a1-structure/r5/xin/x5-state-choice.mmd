@@ -1,0 +1,17 @@
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> Busy : start
+    state Busy {
+        [*] --> Check
+        Check --> decide
+        state decide <<choice>>
+        decide --> Fast : small
+        decide --> Slow : large
+        decide --> Fail : bad
+        Fast --> [*]
+        Slow --> [*]
+    }
+    Fail --> Idle
+    Busy --> Done : finish
+    Idle --> Done : skip
+    Done --> [*]

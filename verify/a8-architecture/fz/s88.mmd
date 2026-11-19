@@ -1,0 +1,10 @@
+architecture-beta
+    group g0(monitoring)[Private API]
+    service s0(disk)[Service 0]
+    service s1(cloud)[Service 1] in g0
+    service s2(disk)[Service 2]
+    service s3(internet)[Service 3]
+    service s4(cloud)[Service 4]
+    service s5(disk)[Service 5] in g0
+    s3:B -- T:s4
+    s0:B --> T:s2

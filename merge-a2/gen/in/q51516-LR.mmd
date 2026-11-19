@@ -1,0 +1,24 @@
+flowchart LR
+    subgraph G0[Payments 0]
+        g0m0[g0m0]
+        g0m1[g0m1]
+        g0m2[g0m2]
+    end
+    subgraph G1[Billing and invoices 1]
+        g1m0[g1m0]
+        g1m1[g1m1]
+    end
+    subgraph G2[Data ingestion workers 2]
+        g2m0[g2m0]
+        g2m1[g2m1]
+        g2m2[g2m2]
+    end
+    G0 -- l6 --> o1
+    o2 -- l8 --> g0m2
+    g1m0 -.-> g0m2
+    g2m2 ==> o1
+    g0m2 ==> g2m2
+    g1m1 --> o1
+    g2m0 --> o1
+    g0m2 -- l2 --> G0
+    g2m2 --> o0

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="209" viewBox="0 0 512 209" font-family="Helvetica, Arial, sans-serif" font-size="14" role="img" aria-label="State diagram">
+<title>State diagram</title>
+<rect width="512" height="209" fill="#ffffff"/>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 1 L 9 5 L 0 9 z" fill="#44507a"/></marker></defs>
+<path d="M 157.3 66.0 C 157.3 96.0, 157.3 96.0, 157.3 126.0" fill="none" stroke="#44507a" stroke-width="1.7" stroke-dasharray="5 4"><title>State1 → note</title></path>
+<path d="M 227.1 66.0 C 227.1 100.2, 362.0 100.2, 362.0 134.5" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>State1 → State2</title></path>
+<path d="M 386.4 66.0 C 386.4 100.2, 386.4 100.2, 386.4 134.5" fill="none" stroke="#44507a" stroke-width="1.7" stroke-dasharray="5 4"><title>note → State2</title></path>
+<g><title>The state with a note</title>
+<rect x="75.5" y="28.0" width="163.6" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="157.3" y="47.0" dy="0.33em" text-anchor="middle" fill="#232840">The state with a note</text>
+</g>
+<g><title>Important information! You can write notes.</title>
+<rect x="28.0" y="126.0" width="258.6" height="55.0" rx="3.0" fill="#fff8c5" stroke="#9c8a2c" stroke-width="1.6"/>
+<text x="157.3" y="145.0" text-anchor="middle" fill="#232840"><tspan x="157.3" dy="0.33em">Important information! You can write</tspan><tspan x="157.3" dy="17.0">notes.</tspan></text>
+</g>
+<g><title>State2</title>
+<rect x="350.0" y="134.5" width="72.9" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="386.4" y="153.5" dy="0.33em" text-anchor="middle" fill="#232840">State2</text>
+</g>
+<g><title>This is the note to the left.</title>
+<rect x="289.1" y="28.0" width="194.6" height="38.0" rx="3.0" fill="#fff8c5" stroke="#9c8a2c" stroke-width="1.6"/>
+<text x="386.4" y="47.0" dy="0.33em" text-anchor="middle" fill="#232840">This is the note to the left.</text>
+</g>
+</svg>

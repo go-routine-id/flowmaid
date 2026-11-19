@@ -1,0 +1,52 @@
+== 0.38
+  infra-overview                       bends 109->53  bends_max 8->4  bends_max_edge ARGO>TG->R1>ARGO  straight_max 1175->1405
+  infra-overview-v2                    bends 124->66  bends_max 12->6  bends_max_edge DNS>TR2->R1>ARGO  straight_max 1045->1249
+  perm-a-edges-reversed                bends 102->50  bends_max 9->4  bends_max_edge ARGO>GITLAB->ARGO>GITLAB  straight_max 1291->1543
+  perm-b-subgraphs-reversed            bends 95->45  bends_max 8->4  bends_max_edge ARGO>GITLAB->ARGO>GITLAB  straight_max 1680->2011
+  perm-c-actors-reversed               bends 109->53  bends_max 8->4  bends_max_edge ARGO>TG->R1>ARGO  straight_max 1175->1405
+  perm-d-edges-rotated                 bends 109->53  bends_max 8->4  bends_max_edge ARGO>TG->ARGO>TG  straight_max 1175->1405
+  perm-e-one-more-inner-edge           bends 107->52  bends_max 11->4  bends_max_edge R2>[DR]->DNS>DRAPP  straight_max 1842->2206
+  blocks-overview                      bends 89->45  bends_max 12->6  bends_max_edge [WEB]>METRICS->[WEB]>METRICS  straight_max 1106->1322
+  blocks-overview-edges-reversed       bends 84->46  bends_max 8->4  bends_max_edge OPS>[OBS]->[WEB]>METRICS  straight_max 1110->1326
+  blocks-overview-edges-rotated        bends 72->39  bends_max 11->6  bends_max_edge OPS>[OBS]->OPS>[OBS]  straight_max 825->825
+  blocks-overview-actors-reversed      bends 90->49  bends_max 13->6  bends_max_edge [WEB]>METRICS->[WEB]>METRICS  straight_max 1404->1404
+  blocks-overview-subgraphs-reversed   bends 91->49  bends_max 12->6  bends_max_edge [WEB]>METRICS->[WEB]>METRICS  straight_max 1101->1315
+== start
+  infra-overview                       bends 110->53  bends_max 8->4  bends_max_edge ARGO>TG->R1>ARGO  straight_max 1175->1405
+  infra-overview-v2                    bends 125->69  bends_max 12->6  bends_max_edge DNS>TR2->R1>ARGO  straight_max 1045->1249
+  perm-a-edges-reversed                bends 102->50  bends_max 9->4  bends_max_edge ARGO>GITLAB->ARGO>GITLAB  straight_max 1291->1543
+  perm-b-subgraphs-reversed            bends 97->45  bends_max 8->4  bends_max_edge ARGO>GITLAB->ARGO>GITLAB  straight_max 1680->2011
+  perm-c-actors-reversed               bends 110->53  bends_max 8->4  bends_max_edge ARGO>TG->R1>ARGO  straight_max 1175->1405
+  perm-d-edges-rotated                 bends 110->53  bends_max 8->4  bends_max_edge ARGO>TG->ARGO>TG  straight_max 1175->1405
+  perm-e-one-more-inner-edge           bends 108->55  bends_max 11->5  bends_max_edge R2>[DR]->ARGO>TG  straight_max 1894->2206
+  blocks-overview                      bends 89->47  bends_max 12->6  bends_max_edge [WEB]>METRICS->[WEB]>METRICS  straight_max 1132->1322
+  blocks-overview-edges-reversed       bends 85->46  bends_max 8->4  bends_max_edge OPS>[OBS]->[WEB]>METRICS  straight_max 1110->1326
+  blocks-overview-edges-rotated        bends 73->42  bends_max 11->7  bends_max_edge OPS>[OBS]->OPS>[OBS]  straight_max 825->825
+  blocks-overview-actors-reversed      bends 93->52  bends_max 13->6  bends_max_edge [WEB]>METRICS->[WEB]>METRICS  straight_max 1404->1404
+  blocks-overview-subgraphs-reversed   bends 90->50  bends_max 12->6  bends_max_edge [WEB]>METRICS->[WEB]>METRICS  straight_max 1101->1315
+== mermaid
+  infra-overview                       bends 100->100  bends_max 7->7  bends_max_edge LANE>OAI->LANE>OAI  straight_max 1236->1236
+  infra-overview-v2                    bends 95->95  bends_max 6->6  bends_max_edge R2>[STG]->R2>[STG]  straight_max 1541->1541
+  perm-a-edges-reversed                bends 96->96  bends_max 8->8  bends_max_edge LANE>GITLAB->LANE>GITLAB  straight_max 1895->1895
+  perm-b-subgraphs-reversed            bends 94->94  bends_max 6->6  bends_max_edge R2>[STG]->R2>[STG]  straight_max 1182->1182
+  perm-c-actors-reversed               bends 100->100  bends_max 7->7  bends_max_edge LANE>OAI->LANE>OAI  straight_max 1256->1256
+  perm-d-edges-rotated                 bends 93->93  bends_max 6->6  bends_max_edge DNS>DRAPP->DNS>DRAPP  straight_max 1228->1228
+  perm-e-one-more-inner-edge           bends 93->93  bends_max 8->8  bends_max_edge PSPROD>TG->PSPROD>TG  straight_max 1375->1375
+  blocks-overview                      bends 92->90  bends_max 6->6  bends_max_edge SEARCH>INDEX->SEARCH>INDEX  straight_max 1928->1928
+  blocks-overview-edges-reversed       bends 78->78  bends_max 6->6  bends_max_edge [DATA]>METRICS->[DATA]>METRICS  straight_max 1450->1450
+  blocks-overview-edges-rotated        bends 92->90  bends_max 6->6  bends_max_edge SEARCH>INDEX->SEARCH>INDEX  straight_max 1928->1928
+  blocks-overview-actors-reversed      bends 92->90  bends_max 6->6  bends_max_edge SEARCH>INDEX->SEARCH>INDEX  straight_max 1928->1928
+  blocks-overview-subgraphs-reversed   bends 92->90  bends_max 6->6  bends_max_edge SEARCH>INDEX->SEARCH>INDEX  straight_max 1928->1928
+== 7122a53
+  infra-overview                       bends 141->70  bends_max 13->6  bends_max_edge DNS>PSDEV->DNS>PSDEV  straight_max 1590->1919
+  infra-overview-v2                    bends 147->72  bends_max 13->6  bends_max_edge DNS>PSPROD->DNS>PSPROD  straight_max 1146->1369
+  perm-a-edges-reversed                bends 141->70  bends_max 13->6  bends_max_edge DNS>PSDEV->DNS>PSDEV  straight_max 1590->1919
+  perm-b-subgraphs-reversed            bends 135->70  bends_max 12->6  bends_max_edge DNS>PSDEV->DNS>PSDEV  straight_max 1721->1887
+  perm-c-actors-reversed               bends 141->70  bends_max 13->6  bends_max_edge DNS>PSDEV->DNS>PSDEV  straight_max 1590->1919
+  perm-d-edges-rotated                 bends 141->70  bends_max 13->6  bends_max_edge DNS>PSDEV->DNS>PSDEV  straight_max 1590->1919
+  perm-e-one-more-inner-edge           bends 143->75  bends_max 13->6  bends_max_edge DNS>PSDEV->DNS>PSDEV  straight_max 1756->1975
+  blocks-overview                      bends 83->53  bends_max 8->4  bends_max_edge OPS>[OBS]->SHOP>CDN  straight_max 1410->1421
+  blocks-overview-edges-reversed       bends 83->53  bends_max 8->4  bends_max_edge OPS>[OBS]->SHIP>MAIL  straight_max 1410->1421
+  blocks-overview-edges-rotated        bends 83->53  bends_max 8->4  bends_max_edge OPS>[OBS]->SHIP>MAIL  straight_max 1410->1421
+  blocks-overview-actors-reversed      bends 83->53  bends_max 8->4  bends_max_edge OPS>[OBS]->SHOP>CDN  straight_max 1410->1421
+  blocks-overview-subgraphs-reversed   bends 83->53  bends_max 8->4  bends_max_edge OPS>[OBS]->SHOP>CDN  straight_max 1410->1421

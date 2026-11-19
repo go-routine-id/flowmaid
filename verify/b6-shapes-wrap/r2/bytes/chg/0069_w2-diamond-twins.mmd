@@ -1,0 +1,10 @@
+flowchart LR
+  S((Start)) --> D1{Check}
+  D1 -->|ok| P[Process]
+  P -->|redo| D1
+  P --> D2{Again?}
+  D2 -->|yes| P
+  D2 -->|no| E((End))
+  E -.-> D2
+  P --> Q[(Queue)]
+  Q --> D1

@@ -1,0 +1,33 @@
+n070-TD-BT-off scene: edge 5 q>B diagonal waypoint segment
+n070-TD-BT-off partial k0: edge 5 q>B diagonal waypoint segment
+n109-BT-BT-off route0: pick 2 a1>b0 at (217.0, 129.25) gives 4
+n109-BT-BT-off route k5: pick 2 a1>b0 at (217.0, 129.25) gives 4
+r170-TD-TD-on route k4: edge 7 s1>O diagonal waypoint segment
+r183-TD-TD-on partial k4: pick 2 s3>m0 at (265.25, 72.6875) gives 8
+r183-TD-BT-off scene: edge 6 s1>G diagonal waypoint segment
+r183-TD-BT-off partial k4: edge 6 s1>G diagonal waypoint segment
+r183-TD-BT-off partial k7: edge 6 s1>G diagonal waypoint segment
+r183-TD-BT-on scene: edge 9 s4>G diagonal waypoint segment
+r183-TD-BT-on partial k4: edge 9 s4>G diagonal waypoint segment
+r183-TD-BT-on partial k7: edge 9 s4>G diagonal waypoint segment
+r183-TD-LR-on scene: edge 9 s4>G diagonal waypoint segment
+r183-TD-LR-on partial k4: edge 9 s4>G diagonal waypoint segment
+r183-TD-LR-on partial k7: edge 9 s4>G diagonal waypoint segment
+r183-TD-RL-off route k4: edge 9 s4>G diagonal waypoint segment
+r183-TD-RL-on scene: edge 9 s4>G diagonal waypoint segment
+r183-TD-RL-on route k4: edge 9 s4>G diagonal waypoint segment
+r183-TD-RL-on partial k4: edge 9 s4>G diagonal waypoint segment
+r183-TD-RL-on partial k7: edge 9 s4>G diagonal waypoint segment
+twin-t12-TD-TD-off partial k0: edge 5 p>A diagonal waypoint segment
+v7-twin-wide-titles-TD-TD-on route0: pick 3 a2>b1 at (131.58214285714286, 331.375) gives 7
+v7-twin-wide-titles-TD-BT-off route k0: pick 5 q2>b2 at (105.0, 129.25) gives 8
+v7-twin-wide-titles-TD-BT-off route k3: pick 0 a1>b1 at (296.0, 146.5) gives 7
+v7-twin-wide-titles-TD-BT-off route k3: pick 4 q>b1 at (330.0, 146.75) gives 7
+v7-twin-wide-titles-TD-BT-off partial k3: pick 0 a1>b1 at (296.0, 146.5) gives 7
+v7-twin-wide-titles-TD-BT-off partial k3: pick 4 q>b1 at (330.0, 146.75) gives 7
+v7-twin-wide-titles-TD-LR-off scene: pick 3 a2>b1 at (169.0, 257.5) gives 8
+v7-twin-wide-titles-TD-LR-off route0: edge 2 a1>b2 diagonal waypoint segment
+v7-twin-wide-titles-TD-LR-off partial k0: pick 3 a2>b1 at (169.0, 257.5) gives 8
+v7-twin-wide-titles-TD-LR-off route k6: edge 2 a1>b2 diagonal waypoint segment
+v7-twin-wide-titles-TD-RL-off route k6: pick 3 a2>b1 at (137.0, 220.875) gives 5
+checked 168; with findings 14; worst route_partial off 2.22 ms, on 2.24 ms

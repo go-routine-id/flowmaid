@@ -1,0 +1,52 @@
+stateDiagram-v2
+direction TB
+[*] --> A
+state K0 {
+  [*] --> K0_0
+  K0_0 --> K0_1
+  state K0_c <<choice>>
+  K0_1 --> K0_c
+  K0_c --> K0_0 : a
+  K0_c --> K0_1 : b
+}
+state K1 {
+  [*] --> K1_0
+  K1_0 --> K1_1
+  K1_1 --> K1_2 : t2
+  K1_0 --> K1_3 : t3
+  state K1N {
+    [*] --> K1N_0
+    state K1NN {
+      [*] --> K1NN_0
+      K1NN_0 --> K1NN_1 : t1
+      K1NN_0 --> K1NN_2
+      K1NN_1 --> K1NN_3
+    }
+    K1N_0 --> K1NN
+    note right of K1N_0
+      in436 line one
+      second line
+    end note
+    note right of K1NN_0
+      in227 line one
+      second line
+    end note
+  }
+  K1_0 --> K1N
+  K1_0 --> K1NN_3
+  note left of K1NN_3
+    in238 line one
+    second line
+  end note
+  note left of K1_2 : in611
+  K1_0 --> [*]
+}
+A --> K0
+A --> K1
+K0 --> B0
+K0 --> B1
+K1_2 --> B1 : out
+K0 --> K1NN_0
+note right of K0 : on438
+note left of K0 : on75
+note left of K0 : on75b

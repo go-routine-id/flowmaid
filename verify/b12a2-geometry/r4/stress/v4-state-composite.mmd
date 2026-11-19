@@ -1,0 +1,11 @@
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> Working : start
+    state "Работа с очень длинным заголовком состояния" as Working {
+        [*] --> Load
+        Load --> Run : go
+        Run --> [*]
+    }
+    Working --> Done : finished
+    note right of Done : Überprüft
+    Done --> [*]

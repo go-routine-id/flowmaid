@@ -1,0 +1,56 @@
+classDiagram
+class A:::foo.
+%%%%
+classDiagram
+class A~T~ .
+%%%%
+classDiagram
+class A.B~T~.
+%%%%
+classDiagram
+class A~T~..B
+%%%%
+classDiagram
+class A~T~. {
+}
+%%%%
+classDiagram
+class A["x"] .
+%%%%
+classDiagram
+class A~T~
+%%%%
+classDiagram
+class A~T~ {
+}
+%%%%
+classDiagram
+class A~T~.:::foo
+%%%%
+classDiagram
+class A.B:::foo.
+%%%%
+classDiagram
+class A~T~["x"].
+%%%%
+classDiagram
+<<interface>> A~T~.
+%%%%
+classDiagram
+class A.B~T~ {
+}
+%%%%
+classDiagram
+class A.B~T~.C
+%%%%
+classDiagram
+class A:::a.b
+%%%%
+classDiagram
+class `A`.
+%%%%
+classDiagram
+class `A`.B
+%%%%
+classDiagram
+class .`A`

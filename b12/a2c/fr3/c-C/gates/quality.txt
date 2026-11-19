@@ -1,0 +1,190 @@
+
+running 15 tests
+test a_one_px_drag_leaves_unrelated_edges_put ... ok
+test block_fixtures_are_not_drawn_worse ... FAILED
+test crossing_gaps_do_not_read_as_dashes ... ok
+test channels_keep_edges_apart_and_off_chips ... FAILED
+test every_block_fixture_has_a_ceiling ... ok
+test every_fixture_has_a_ceiling ... ok
+test edge_line_order_barely_moves_the_dense_layouts ... ok
+test defect_baseline_gate ... FAILED
+test every_shape_end_sits_on_its_outline ... ok
+test long_labels_wrap_and_dense_labels_do_not_tower ... ok
+test edges_keep_off_frame_borders ... ok
+test moving_a_node_declaration_barely_moves_dense_td ... ok
+test layout_shape_gate ... ok
+test labels_cover_nothing_they_must_not ... ok
+test quality_gate ... ok
+
+successes:
+
+---- a_one_px_drag_leaves_unrelated_edges_put stdout ----
+quality/dense-lr: 0 drag jumps
+quality/dense-td: 0 drag jumps
+quality/bench-75: 7 drag jumps
+notes/spread-face: 0 drag jumps
+notes/fork-twins: 0 drag jumps
+notes/near-drag: 0 drag jumps
+
+---- quality_gate stdout ----
+file	mode	nodes	edges	frames	edge_node_x	edge_node_pairs	edge_frame_x	edge_frame_pairs	edge_edge_x	overlap_pairs	overlap_len	node_near	min_node_gap	min_edge_gap	node_overlap	node_frame	frame_overlap	lbl_node	lbl_lbl	lbl_chip	lbl_edge	lbl_arrow	shared_ports	arrow_on_start	wiggles	backtrack	frame_side	center_off	width	height	aspect	area_per_node	defects	corner_touch	border_runs	border_len	overlap_max	tight_pairs	tight_len	hug_runs	hug_len	hug_max	edge_chip	end_cross	xgap_max	dash_edges	lbl_crowd	ortho_edges	xnotches	end_tilt	end_tilt_max	end_gaps	end_gap_max	lat_wiggles	lat_backtrack	own_frame_x	own_frame_len	band_pairs	band_len	ink	idiom_ortho	idiom_scubic	idiom_spline	idiom_bow	x_drawn	end_kink	ink_out	xhops	fan_x	fan_uneven	compact_max	compact_mean	span_max	sib_stagger	title_cut	edge_len	bends_max	detour_max	lbl_end_mean	chip_crowd	chip_gap_min	sib_side_linked	lateral_x	up_lanes	side_ends	spine_off	pin_corner
+back-edge	static	6.00	6.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	12.89	40.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.04	290.00	543.70	1.87	26278.83	0	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	3.00	0.00	0.00	0.00	0.00	0.05	0.00	0.00	0.00	0.00	0.00	0.00	0.14	6.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	644.73	2.00	0.97	59.26	0.00	15.36	0.00	0.00	0.00	0.00	0.00	0.00
+back-edge	routed	6.00	6.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	12.89	40.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.04	290.00	543.70	1.87	26278.83	0	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	3.00	0.00	0.00	0.00	0.00	0.05	0.00	0.00	0.00	0.00	0.00	0.00	0.14	6.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	644.73	2.00	0.97	59.26	0.00	15.36	0.00	0.00	0.00	0.00	0.00	0.00
+bench-75	static	21.00	75.00	5.00	0.00	0.00	0.00	0.00	204.00	0.00	0.00	0.00	12.48	15.25	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.04	2418.20	1254.50	1.93	144458.66	0	0.00	3.00	514.35	0.00	46.00	7416.00	4.00	578.17	378.94	0.00	0.00	2.00	0.00	0.00	74.00	0.00	0.00	0.07	0.00	0.05	18.00	2260.70	0.00	0.00	106.00	29346.00	0.06	75.00	0.00	0.00	0.00	204.00	1.00	0.00	150.00	4.00	0.00	71.64	21.15	0.15	0.00	0.00	68501.09	10.00	1.42	0.00	0.00	40.00	0.00	2.00	0.00	37.00	0.00	0.00
+bench-75	routed	21.00	75.00	5.00	0.00	0.00	0.00	0.00	204.00	0.00	0.00	0.00	12.48	15.25	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.04	2418.20	1254.50	1.93	144458.66	0	0.00	3.00	514.35	0.00	46.00	7416.00	4.00	578.17	378.94	0.00	0.00	2.00	0.00	0.00	74.00	0.00	0.00	0.07	0.00	0.05	18.00	2260.70	0.00	0.00	106.00	29346.00	0.06	75.00	0.00	0.00	0.00	204.00	1.00	0.00	150.00	4.00	0.00	71.64	21.15	0.15	0.00	0.00	68501.09	10.00	1.42	0.00	0.00	40.00	0.00	2.00	0.00	37.00	0.00	0.00
+dense-lr	static	52.00	42.00	11.00	0.00	0.00	0.00	0.00	17.00	2.00	108.00	0.00	12.50	12.51	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.13	3232.85	3362.89	1.04	209071.70	2	0.00	0.00	0.00	84.00	6.00	692.00	0.00	0.00	0.00	0.00	0.00	1.00	0.00	0.00	41.00	0.00	0.00	0.00	0.00	0.04	3.00	1249.23	0.00	0.00	33.00	15284.00	0.06	42.00	0.00	0.00	0.00	17.00	0.00	0.00	14.00	0.00	1.00	43.03	10.49	0.24	2.00	0.00	50203.33	13.00	1.74	369.75	4.00	4.22	0.00	5.00	0.00	6.00	0.00	0.00
+dense-lr	routed	52.00	42.00	11.00	0.00	0.00	0.00	0.00	17.00	2.00	108.00	0.00	12.50	12.51	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.13	3232.85	3362.89	1.04	209071.70	2	0.00	0.00	0.00	84.00	6.00	692.00	0.00	0.00	0.00	0.00	0.00	1.00	0.00	0.00	41.00	0.00	0.00	0.00	0.00	0.04	3.00	1249.23	0.00	0.00	33.00	15284.00	0.06	42.00	0.00	0.00	0.00	17.00	0.00	0.00	14.00	0.00	1.00	43.03	10.49	0.24	2.00	0.00	50203.33	13.00	1.74	369.75	4.00	4.22	0.00	5.00	0.00	6.00	0.00	0.00
+dense-td	static	46.00	47.00	10.00	0.00	0.00	0.00	0.00	42.00	0.00	0.00	0.00	18.75	12.50	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.02	3769.80	2206.93	1.71	180862.59	0	0.00	0.00	0.00	0.00	15.00	2064.00	0.00	0.00	0.00	3.00	0.00	1.00	0.00	0.00	41.00	0.00	0.00	0.00	0.00	0.01	11.00	7061.71	0.00	0.00	55.00	42878.00	0.07	47.00	0.00	0.00	0.00	42.00	0.00	0.00	36.00	0.00	0.00	12.03	9.05	0.34	0.00	0.00	82765.71	16.00	2.30	727.85	4.00	6.39	0.00	6.00	0.00	1.00	0.00	1.00
+dense-td	routed	46.00	47.00	10.00	0.00	0.00	0.00	0.00	42.00	0.00	0.00	0.00	18.75	12.50	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.02	3769.80	2206.93	1.71	180862.59	0	0.00	0.00	0.00	0.00	15.00	2064.00	0.00	0.00	0.00	3.00	0.00	1.00	0.00	0.00	41.00	0.00	0.00	0.00	0.00	0.01	11.00	7061.71	0.00	0.00	55.00	42878.00	0.07	47.00	0.00	0.00	0.00	42.00	0.00	0.00	36.00	0.00	0.00	12.03	9.05	0.34	0.00	0.00	82765.71	16.00	2.30	727.85	4.00	6.39	0.00	6.00	0.00	1.00	0.00	1.00
+fanout-frames	static	22.00	7.00	6.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	14.00	40.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.09	604.50	2311.00	3.82	63499.98	0	0.00	0.00	0.00	0.00	4.00	170.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	6.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	6.00	3386.00	0.14	7.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	3.37	2.88	0.43	0.00	0.00	4703.86	4.00	0.99	0.00	0.00	40.00	0.00	0.00	0.00	0.00	0.00	0.00
+fanout-frames	routed	22.00	7.00	6.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	14.00	40.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.09	604.50	2311.00	3.82	63499.98	0	0.00	0.00	0.00	0.00	4.00	170.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	6.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	6.00	3386.00	0.14	7.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	3.37	2.88	0.43	0.00	0.00	4703.86	4.00	0.99	0.00	0.00	40.00	0.00	0.00	0.00	0.00	0.00	0.00
+wide-labels	static	6.00	8.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	20.25	40.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.46	1971.00	156.30	12.61	51343.93	0	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	6.00	0.00	0.00	0.00	0.00	0.00	1.00	28.00	0.00	0.00	4.00	708.00	0.21	8.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	3592.77	2.00	1.12	163.23	3.00	5.02	0.00	0.00	0.00	0.00	0.00	0.00
+wide-labels	routed	6.00	8.00	0.00	0.00	0.00	0.00	0.00	1.00	0.00	0.00	0.00	16.25	40.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.17	1971.00	181.30	10.87	59556.43	0	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	6.00	0.00	0.00	0.00	0.00	0.00	1.00	28.00	0.00	0.00	3.00	562.00	0.18	8.00	0.00	0.00	0.00	1.00	0.00	0.00	1.00	1.00	0.00	0.00	0.00	0.00	0.00	0.00	3646.00	2.00	1.12	206.80	2.00	4.00	0.00	0.00	0.00	0.00	0.00	0.00
+
+
+successes:
+    a_one_px_drag_leaves_unrelated_edges_put
+    crossing_gaps_do_not_read_as_dashes
+    edge_line_order_barely_moves_the_dense_layouts
+    edges_keep_off_frame_borders
+    every_block_fixture_has_a_ceiling
+    every_fixture_has_a_ceiling
+    every_shape_end_sits_on_its_outline
+    labels_cover_nothing_they_must_not
+    layout_shape_gate
+    long_labels_wrap_and_dense_labels_do_not_tower
+    moving_a_node_declaration_barely_moves_dense_td
+    quality_gate
+
+failures:
+
+---- block_fixtures_are_not_drawn_worse stdout ----
+
+thread 'block_fixtures_are_not_drawn_worse' (23529) panicked at tests/quality.rs:536:5:
+block fixtures drawn worse:
+notes/wide-frames static: defects = 1 > ceiling 0
+notes/wide-frames static: hard zeros = 2 > ceiling 0
+notes/wide-frames routed: defects = 1 > ceiling 0
+notes/wide-frames routed: hard zeros = 2 > ceiling 0
+blocks/self-member routed: x_drawn = 1 > ceiling 0
+blocks/self-member routed: hard zeros = 2 > ceiling 1
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: <quality::block_fixtures_are_not_drawn_worse::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- channels_keep_edges_apart_and_off_chips stdout ----
+
+thread 'channels_keep_edges_apart_and_off_chips' (23530) panicked at tests/quality.rs:797:5:
+static edge_chip 3
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: <quality::channels_keep_edges_apart_and_off_chips::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- defect_baseline_gate stdout ----
+static	end_tilt	0.0000
+static	end_tilt_max	0.0707
+static	end_gaps	0.0000
+static	end_gap_max	0.0483
+static	lat_wiggles	33.0000
+static	lat_backtrack	10599.6366
+static	own_frame_x	0.0000
+static	own_frame_len	0.0000
+static	band_pairs	204.0000
+static	band_len	91602.0000
+static	ink	0.1139
+static	idiom_ortho	185.0000
+static	idiom_scubic	0.0000
+static	idiom_spline	0.0000
+static	idiom_bow	0.0000
+static	x_drawn	263.0000
+static	end_kink	1.0000
+static	ink_out	0.0000
+static	xhops	200.0000
+static	fan_x	4.0000
+static	fan_uneven	1.0000
+static	compact_max	71.6394
+static	compact_mean	7.2604
+static	span_max	0.4326
+static	sib_stagger	2.0000
+static	title_cut	0.0000
+static	edge_len	210411.4918
+static	bends_max	16.0000
+static	detour_max	2.2989
+static	lbl_end_mean	220.0168
+static	chip_crowd	11.0000
+static	chip_gap_min	4.2233
+static	sib_side_linked	0.0000
+static	lateral_x	13.0000
+static	up_lanes	0.0000
+static	side_ends	44.0000
+static	spine_off	0.0000
+static	pin_corner	1.0000
+routed	end_tilt	0.0000
+routed	end_tilt_max	0.0707
+routed	end_gaps	0.0000
+routed	end_gap_max	0.0483
+routed	lat_wiggles	33.0000
+routed	lat_backtrack	10599.6366
+routed	own_frame_x	0.0000
+routed	own_frame_len	0.0000
+routed	band_pairs	203.0000
+routed	band_len	91456.0000
+routed	ink	0.1092
+routed	idiom_ortho	185.0000
+routed	idiom_scubic	0.0000
+routed	idiom_spline	0.0000
+routed	idiom_bow	0.0000
+routed	x_drawn	264.0000
+routed	end_kink	1.0000
+routed	ink_out	0.0000
+routed	xhops	201.0000
+routed	fan_x	5.0000
+routed	fan_uneven	1.0000
+routed	compact_max	71.6394
+routed	compact_mean	7.2604
+routed	span_max	0.4326
+routed	sib_stagger	2.0000
+routed	title_cut	0.0000
+routed	edge_len	210464.7227
+routed	bends_max	16.0000
+routed	detour_max	2.2989
+routed	lbl_end_mean	227.2786
+routed	chip_crowd	10.0000
+routed	chip_gap_min	4.0000
+routed	sib_side_linked	0.0000
+routed	lateral_x	13.0000
+routed	up_lanes	0.0000
+routed	side_ends	44.0000
+routed	spine_off	0.0000
+routed	pin_corner	1.0000
+
+thread 'defect_baseline_gate' (23532) panicked at tests/quality.rs:1138:5:
+defect baseline regressions:
+static lat_wiggles 33.00 > ceiling 15
+static lat_backtrack 10599.64 > ceiling 1870
+static band_pairs 204.00 > ceiling 132
+static band_len 91602.00 > ceiling 74730
+static end_kink 1.00 > ceiling 0
+routed lat_wiggles 33.00 > ceiling 5
+routed lat_backtrack 10599.64 > ceiling 425
+routed band_pairs 203.00 > ceiling 141
+routed band_len 91456.00 > ceiling 71020
+routed end_kink 1.00 > ceiling 0
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: <quality::defect_baseline_gate::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+
+failures:
+    block_fixtures_are_not_drawn_worse
+    channels_keep_edges_apart_and_off_chips
+    defect_baseline_gate
+
+test result: FAILED. 12 passed; 3 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.41s
+

@@ -1,0 +1,8 @@
+[{"svg":"/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b1r3/svg3/flowcorpus__fanout-frames.s.svg","x":240,"y":550,"w":50,"h":50,"label":"ff n0-g1"},
+{"svg":"/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b1r3/svg3/flowcorpus__fanout-frames.s.svg","x":262,"y":870,"w":50,"h":50,"label":"ff n0-g2"},
+{"svg":"/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b1r3/svg3/flowcorpus__bench-75.s.svg","x":605,"y":622,"w":50,"h":50,"label":"b75 db-svc2"},
+{"svg":"/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b1r3/svg3/flowcorpus__bench-75.s.svg","x":855,"y":868,"w":50,"h":50,"label":"b75 cache-svc4"},
+{"svg":"/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b1r3/svg3/flowcorpus__bench-75.s.svg","x":1129,"y":678,"w":50,"h":50,"label":"b75 queue-metric"},
+{"svg":"/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b1r3/svg3/flowcorpus__bench-75.s.svg","x":370,"y":550,"w":50,"h":50,"label":"b75 lb-svc3"},
+{"svg":"/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b1r3/svg3/flowcorpus__bench-75.s.svg","x":733,"y":1255,"w":50,"h":50,"label":"b75 svc2-cache"},
+{"svg":"/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b1r3/svg3/flowcorpus__lr.s.svg","x":440,"y":95,"w":50,"h":50,"label":"lr API-SVC"}]

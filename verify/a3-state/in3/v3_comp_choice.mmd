@@ -1,0 +1,21 @@
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> Processing : start
+    state Processing {
+        state pick <<choice>>
+        [*] --> Load
+        Load --> pick
+        pick --> Fast : small
+        pick --> Slow : large
+        pick --> Skip : empty
+        Fast --> [*]
+        Slow --> [*]
+        Skip --> [*]
+    }
+    Processing --> Done
+    note right of Load : reads the input file
+    note left of Done
+        all work
+        finished
+    end note
+    Done --> [*]

@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="348" height="690" viewBox="0 0 348 690" font-family="Helvetica, Arial, sans-serif" font-size="14" role="img" aria-label="State diagram">
+<title>State diagram</title>
+<rect width="348" height="690" fill="#ffffff"/>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 1 L 9 5 L 0 9 z" fill="#44507a"/></marker></defs>
+<path d="M 176.7 42.0 C 176.7 72.0, 176.7 72.0, 176.7 102.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>start → IsPositive</title></path>
+<path d="M 176.7 140.0 C 176.7 170.0, 176.7 170.0, 176.7 200.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>IsPositive → if_state</title></path>
+<path d="M 170.4 221.7 C 170.4 292.0, 83.7 292.7, 83.7 363.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>if_state → False: if n &lt; 0</title></path>
+<path d="M 176.7 228.0 C 176.7 295.5, 176.7 295.5, 176.7 363.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>if_state → True: if n &gt;= 0</title></path>
+<path d="M 183.0 221.7 C 183.0 292.0, 269.7 292.7, 269.7 363.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>if_state → Zero: if n == 0</title></path>
+<path d="M 176.7 401.0 C 176.7 431.0, 176.7 431.0, 176.7 461.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>True → c2</title></path>
+<path d="M 170.4 482.7 C 170.4 551.9, 136.2 554.8, 136.2 624.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>c2 → Big: &gt; 100</title></path>
+<path d="M 183.0 482.7 C 183.0 551.9, 212.8 554.8, 212.8 624.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>c2 → Small: &lt;= 100</title></path>
+<g><title>if_state</title>
+<polygon points="176.7,200.0 190.7,214.0 176.7,228.0 162.7,214.0" fill="#fcf2da" stroke="#d99114" stroke-width="1.6"/>
+<text x="176.7" y="214.0" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<g><title>start</title>
+<circle cx="176.7" cy="35.0" r="7.0" fill="#44507a" stroke="#44507a" stroke-width="1.6"/>
+<text x="176.7" y="35.0" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<g><title>IsPositive</title>
+<rect x="130.2" y="102.0" width="92.9" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="176.7" y="121.0" dy="0.33em" text-anchor="middle" fill="#232840">IsPositive</text>
+</g>
+<g><title>False</title>
+<rect x="28.0" y="363.0" width="67.7" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="61.8" y="382.0" dy="0.33em" text-anchor="middle" fill="#232840">False</text>
+</g>
+<g><title>True</title>
+<rect x="145.7" y="363.0" width="62.0" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="176.7" y="382.0" dy="0.33em" text-anchor="middle" fill="#232840">True</text>
+</g>
+<g><title>Zero</title>
+<rect x="257.7" y="363.0" width="62.0" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="288.7" y="382.0" dy="0.33em" text-anchor="middle" fill="#232840">Zero</text>
+</g>
+<g><title>c2</title>
+<polygon points="176.7,461.0 190.7,475.0 176.7,489.0 162.7,475.0" fill="#fcf2da" stroke="#d99114" stroke-width="1.6"/>
+<text x="176.7" y="475.0" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<g><title>Big</title>
+<rect x="94.2" y="624.0" width="54.0" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="121.2" y="643.0" dy="0.33em" text-anchor="middle" fill="#232840">Big</text>
+</g>
+<g><title>Small</title>
+<rect x="198.2" y="624.0" width="68.0" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="232.2" y="643.0" dy="0.33em" text-anchor="middle" fill="#232840">Small</text>
+</g>
+<rect x="61.7" y="322.7" width="56.4" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="89.9" y="332.7" dy="0.33em" text-anchor="middle" fill="#232840">if n &lt; 0</text>
+<rect x="144.6" y="323.0" width="64.2" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="176.7" y="333.0" dy="0.33em" text-anchor="middle" fill="#232840">if n &gt;= 0</text>
+<rect x="231.5" y="322.7" width="64.2" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="263.6" y="332.7" dy="0.33em" text-anchor="middle" fill="#232840">if n == 0</text>
+<rect x="114.2" y="584.3" width="49.1" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="138.7" y="594.3" dy="0.33em" text-anchor="middle" fill="#232840">&gt; 100</text>
+<rect x="175.3" y="558.3" width="56.9" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="203.8" y="568.3" dy="0.33em" text-anchor="middle" fill="#232840">&lt;= 100</text>
+</svg>

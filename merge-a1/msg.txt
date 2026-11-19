@@ -1,0 +1,58 @@
+Merge origin/dev into the subgraphs-as-blocks work branch
+
+Brings 0.39.0 (crossing hops, comb), 0.40.0 (class diagrams, state
+composite bars), the roadmap page and the README and docs-site changes
+into step 1 of the block layout. Dev's code is kept exactly; the block
+layout stays behind its switch, which is off.
+
+Conflicts and how each was resolved:
+- src/scene.rs, route_labelled: dev split it into route_labelled and
+  route_fitted (bars fitted once; the rest of a split graph and
+  route_partial's fallbacks call route_fitted directly). Dev's split is
+  kept as written. The block layout's test-only record of the mode an
+  entry point decides (levels::note_used for Entry::Route) moves from
+  route_labelled into route_fitted, so every part route() draws is still
+  recorded once, the rest of a split graph included.
+- src/levels.rs: dev derives PartialEq for Graph; BlockLinks, the type
+  of the Graph field the block layout adds, derives it too.
+- Cargo.toml, src/compound.rs, src/layout.rs, src/model.rs and the rest
+  of src/scene.rs merged without conflict: dev's version and lint table
+  next to the block switch's check-cfg entry, dev's bar fitting next to
+  compound::any_part, dev's PartialEq derives next to block_links. The
+  block code adds no Scene literal, so the plain_crossings sync needs no
+  change; both cfgs build without warnings.
+
+Re-recorded: tests/fixtures/identity.tsv, which pins the default build,
+was recorded again from a build of origin/dev itself (f9aa9c0, in a
+scratch worktree with the identity test ported and the package's
+fixtures copied in; dev has no switch, and the class column was carried
+over and is checked by this tree's own test). All 116 rows came out byte
+for byte as recorded at the start, so only the header comment changes.
+BLOCK_CEILINGS and dev's DEFECT_BASELINE, GAP_FLOORS and ceilings are
+unchanged.
+
+Byte identity, default build, origin/dev against this merge: 12,095
+inputs (the repository's fixtures and examples, the 25-file render
+corpus, the 17-file perf corpus, stress inputs and generated bulk sets)
+through render_svg, 2,320 of them flowcharts or state diagrams also
+through scene(), route() and route_partial() (SVG and geometry), and 169
+through the CLI: 0 differences. tests/fixtures/quality/dense-td.mmd has
+the same drawing as on dev.
+
+Block mode: harness tables on the repository fixtures and examples equal
+10e336d's row for row (timing aside); the public fixture and its
+permutations 6 crossings (bt 7), dense-td 49, nested-chain lateral_x 0;
+local acceptance inputs: unchanged, all musts met. With the switch on,
+scene(), route() and route_partial() draw every flowchart and state input
+above exactly as 10e336d does; the class diagrams that differ from
+10e336d are dev's 0.40.0 changes, equal to dev's output. The block sweep
+is unchanged (200 diagrams, blocks add hard zeros on the same 8), and
+the suite-on failing tests are the same 8 library tests and 7 quality
+gates as at 10e336d, with the same messages.
+
+Docs: roadmap row 1 and the dense test diagram's numbers (49 crossings
+in block mode against 66 today, static drawing), last-updated date;
+CHANGELOG [Unreleased] Internal line.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

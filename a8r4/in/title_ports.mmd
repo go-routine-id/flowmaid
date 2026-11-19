@@ -1,0 +1,14 @@
+architecture-beta
+    group obs(monitoring)[Observability and Telemetry Platform]
+    group core(server)[Core]
+    service user(user)[User] 
+    service prom(monitoring)[Prometheus] in obs
+    service graf(chart)[Grafana Dashboards] in obs
+    service api(api)[API] in core
+    service worker(cpu)[Worker] in core
+    user:B --> T:prom
+    user:R --> T:api
+    api:B --> T:worker
+    prom:R --> L:graf
+    worker:L --> R:prom
+    api:L -- T:graf

@@ -1,0 +1,9 @@
+stateDiagram-v2
+    direction LR
+    [*] --> Outer
+    state Outer {
+        P --> Inner
+        state Inner {
+            A --> B
+        }
+    }

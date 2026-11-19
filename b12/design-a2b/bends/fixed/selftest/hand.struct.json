@@ -1,0 +1,131 @@
+{
+ "tool": "hand-written",
+ "kind": "flowchart",
+ "direction": "TD",
+ "nodes": [
+  {
+   "id": "A",
+   "label": "A",
+   "shape": "Rect",
+   "sub": 0
+  },
+  {
+   "id": "B",
+   "label": "B",
+   "shape": "Rect",
+   "sub": 0
+  },
+  {
+   "id": "C",
+   "label": "C",
+   "shape": "Rect",
+   "sub": 1
+  },
+  {
+   "id": "D",
+   "label": "D",
+   "shape": "Rect",
+   "sub": 2
+  },
+  {
+   "id": "E",
+   "label": "E",
+   "shape": "Rect",
+   "sub": 2
+  },
+  {
+   "id": "T",
+   "label": "T",
+   "shape": "Rect",
+   "sub": null
+  }
+ ],
+ "subgraphs": [
+  {
+   "id": "F1",
+   "title": "F1",
+   "parent": null,
+   "direction": null,
+   "nodes": [
+    0,
+    1
+   ]
+  },
+  {
+   "id": "F2",
+   "title": "F2",
+   "parent": null,
+   "direction": null,
+   "nodes": [
+    2
+   ]
+  },
+  {
+   "id": "F3",
+   "title": "F3",
+   "parent": null,
+   "direction": null,
+   "nodes": [
+    3,
+    4
+   ]
+  }
+ ],
+ "edges": [
+  {
+   "from": {
+    "n": 0
+   },
+   "to": {
+    "n": 3
+   },
+   "label": "one",
+   "kind": "Arrow",
+   "drawn": true
+  },
+  {
+   "from": {
+    "n": 2
+   },
+   "to": {
+    "n": 3
+   },
+   "label": "two",
+   "kind": "Arrow",
+   "drawn": true
+  },
+  {
+   "from": {
+    "n": 1
+   },
+   "to": {
+    "n": 4
+   },
+   "label": "three",
+   "kind": "Arrow",
+   "drawn": true
+  },
+  {
+   "from": {
+    "n": 3
+   },
+   "to": {
+    "n": 4
+   },
+   "label": null,
+   "kind": "Arrow",
+   "drawn": true
+  },
+  {
+   "from": {
+    "n": 0
+   },
+   "to": {
+    "n": 1
+   },
+   "label": "five",
+   "kind": "Arrow",
+   "drawn": true
+  }
+ ]
+}

@@ -1,0 +1,14 @@
+flowchart RL
+    subgraph G[Shipping and returns desk]
+        m0[charge]
+        m1[ledger]
+    end
+    s0[src0] --> G
+    s1[src1] --> m0
+    s1 --> m0
+    s2[src2] --> m0
+    s2 --> G
+    s3[src3] --> m0
+    s4[src4] --> m0
+    m1 --> z[end]
+    G --> z2[after]

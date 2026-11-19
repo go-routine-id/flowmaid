@@ -1,0 +1,16 @@
+flowchart TD
+  hub[Hub] --> a1
+  other[Cron] -->|every hour| b1
+  free[Free node beside] -->|watch| c1
+  subgraph A [Alpha]
+    a1[One] --> a2[Two]
+  end
+  subgraph B [Beta]
+    b1["Tall<br/>first<br/>row"] --> b2[B two] --> b3[B three]
+  end
+  subgraph C [Gamma group]
+    c1[C one] --> c2[C two] --> c3[C three] --> c4[C four]
+  end
+  a2 --> sink[Sink]
+  b3 -->|beta out| sink
+  c4 -->|gamma out| sink

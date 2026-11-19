@@ -1,0 +1,12 @@
+flowchart TD
+  A[Client] --> D[(Primary database<br/>replicated<br/>three zones)]
+  B[Worker] --> D
+  C[Cron] --> D
+  X[(db)] --> D
+  D --> E[(Archive store with a long name)]
+  D --> F[[Exporter]]
+  D -.-> G[(S3)]
+  E ==> H[Report]
+  style E stroke-width:6px,stroke:#c00
+  style F stroke-width:5px
+  style X stroke-width:3px

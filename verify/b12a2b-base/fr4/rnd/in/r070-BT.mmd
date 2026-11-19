@@ -1,0 +1,13 @@
+flowchart BT
+    subgraph G[Payments]
+        m0[x wide member node]
+        m1[y]
+        m2[auth service]
+        m0 --> m1
+    end
+    s0[src0] --> m2
+    s0 --> m1
+    s1[src1] --> G
+    s1 --> m1
+    m2 --> z[end]
+    G --> z2[after]

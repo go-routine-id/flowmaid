@@ -1,0 +1,16 @@
+flowchart TD
+    Dev
+    Build
+    Scan
+    Reg
+    subgraph CI
+        Dev
+        Build
+        Scan
+        Reg
+    end
+    Dev --> Build
+    Build --> Scan
+    Scan --> Reg
+    Reg --> CI
+    Scan -->|"fail"| CI

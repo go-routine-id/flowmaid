@@ -1,0 +1,10 @@
+flowchart TD
+    subgraph G[Core]
+        m0[db]
+        m1[auth service]
+    end
+    s0[src0] --> G
+    s1[src1] -- "lbl9" --> G
+    s2[src2] --> G
+    s2 --> G
+    m1 --> z[end]

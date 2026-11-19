@@ -1,0 +1,13 @@
+flowchart LR
+    subgraph G[Payments]
+        m0[queue]
+        m1[x wide member node]
+        m0 --> m1
+    end
+    s0[src0] --> G
+    s0 --> G
+    s1[src1] --> m0
+    s2[src2] --> G
+    s2 --> m0
+    m1 --> z[end]
+    G --> z2[after]

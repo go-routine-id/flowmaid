@@ -1,0 +1,24 @@
+stateDiagram-v2
+[*] --> A
+state K0 {
+  direction RL
+  [*] --> a
+}
+state K1 {
+  direction RL
+  [*] --> b
+  b --> c : t3
+}
+state K2 {
+  [*] --> d
+}
+A --> K1 : g2
+K0 --> K2 : g3
+A --> B0 : g4
+A --> d
+A --> K0
+K1 --> A : back
+note left of K1
+  three
+  lines
+end note

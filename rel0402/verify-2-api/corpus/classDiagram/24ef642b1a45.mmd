@@ -1,0 +1,14 @@
+classDiagram
+direction BT
+A o-- B
+B o-- C
+C o-- D
+D --> E : uses
+C o-- F
+C -- G
+G -- H
+F o-- C
+D ..> A
+F "1" --> "*" F
+F ..> F : f1
+F --> F

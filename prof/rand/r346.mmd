@@ -1,0 +1,14 @@
+flowchart TB
+  H0 --> N13
+  H0 ---|no| N15
+  H0 ==>|ok| N16
+  H0 -->|ok| N20
+  H0 ---|no| N1
+  H0 ==>|gift wrap| N12
+  H0 ---|x| N16
+  H0 -->|x| N19
+  H0 -->|no| N9
+  H0 -.->|x| N5
+  H0 ==>|no| N16
+  N4 --> N15
+  N17 --> N14

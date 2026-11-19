@@ -1,0 +1,23 @@
+flowchart LR
+  ops([operators]) --> HUB
+  dev([developers]) --> HUB
+  HUB{{event hub}}
+  subgraph S1[Storefront]
+    w1[web] --> w2[cart]
+  end
+  subgraph S2[Orders with a rather long block title]
+    o1[queue] --> o2[worker]
+    o2 --> o3[(orders)]
+  end
+  subgraph S3[Observability]
+    m1[metrics] --> m2[alerts]
+  end
+  HUB -->|browse| w1
+  HUB -->|jobs| o1
+  HUB --> m1
+  w2 -->|place| o1
+  o2 -.->|emit| HUB
+  m2 -.->|page| ops
+  o3 -.-> m1
+  w1 -.-> m1
+  S3 -->|digest| S1

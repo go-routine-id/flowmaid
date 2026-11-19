@@ -1,0 +1,17 @@
+erDiagram
+direction LR
+users ||--o{ posts : "writes"
+users }|..|{ tags : has
+a only one to zero or more b : x
+c one or more optionally to many(0) d : y
+"Customer Account" ||--|| p[Person] : is
+users {
+  uuid id PK "default gen_random_uuid()"
+  varchar(255) email UK "not null"
+  int org pk, fk
+}
+A { int id PK "key" string name }
+B {}
+c2["Alias Two"] {
+  int id
+}

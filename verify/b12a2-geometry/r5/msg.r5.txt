@@ -1,0 +1,6 @@
+PANIC:
+routed xgap_max 4
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: <quality::crossing_gaps_do_not_read_as_dashes::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.

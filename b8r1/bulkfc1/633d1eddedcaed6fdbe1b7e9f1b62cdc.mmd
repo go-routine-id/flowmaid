@@ -1,0 +1,16 @@
+flowchart RL
+    N0(Parse fetch)
+    N1{Report}
+    N2(Validate notify)
+    N3(Done emit)
+    N4{Fetch load}
+    N5(Report fetch)
+    N0 --> N1
+    N1 --> N2
+    N1 -->|fail| N3
+    N1 --> N4
+    N3 --> N5
+    N0 --> N5
+    N1 --> N0
+    N2 --> N0
+    N4 ==>|again| N3

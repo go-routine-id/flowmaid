@@ -1,0 +1,38 @@
+classDiagram
+  direction BT
+  class Hub {
+    +id int
+    +name String
+    +save() bool
+  }
+  class OrderService {
+    +run()
+    -state int
+  }
+  class Cart
+  class User {
+    +run()
+    -state int
+  }
+  class InventoryRepository
+  class AuditLog {
+    +run()
+    -state int
+  }
+  class ShippingCostCalculator
+  class SessionStore {
+    +run()
+    -state int
+  }
+  class Cache
+  OrderService "1" <|-- "*" Hub : uses0
+  Cart "1" <|-- "*" Hub : uses1
+  PaymentGatewayAdapter "1" <|-- "*" Hub : uses2
+  User "1" <|-- "*" Hub : uses3
+  InventoryRepository "1" <|-- "*" Hub : uses4
+  Mailer "1" <|-- "*" Hub : uses5
+  AuditLog "1" <|-- "*" Hub : uses6
+  ShippingCostCalculator "1" <|-- "*" Hub : uses7
+  Api "1" <|-- "*" Hub : uses8
+  SessionStore "1" <|-- "*" Hub : uses9
+  Cache "1" <|-- "*" Hub : uses10

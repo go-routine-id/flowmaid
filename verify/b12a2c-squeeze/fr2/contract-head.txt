@@ -1,0 +1,286 @@
+=== blocks-overview blocks=false block_layout? svg 24351 bytes
+  sharp single-point corners in waypoints: 43
+  edge picks: 30 tried, 0 missed
+  painted picks missed (scene): 0
+  route ms 3.37; route==scene svg: false; frame max diff 0.00
+  worst route_partial ms 1.63
+  reparsed scene svg equal: true
+=== blocks-overview blocks=true block_layout? svg 24297 bytes
+  sharp single-point corners in waypoints: 50
+  edge picks: 30 tried, 0 missed
+  painted picks missed (scene): 0
+  route ms 16.38; route==scene svg: true; frame max diff 0.00
+  worst route_partial ms 1.82
+  reparsed scene svg equal: true
+=== blocks-overview-bt blocks=false block_layout? svg 25064 bytes
+  sharp single-point corners in waypoints: 40
+  edge picks: 30 tried, 0 missed
+  painted picks missed (scene): 0
+  route ms 5.03; route==scene svg: false; frame max diff 0.00
+  worst route_partial ms 2.17
+  reparsed scene svg equal: true
+=== blocks-overview-bt blocks=true block_layout? svg 24651 bytes
+  sharp single-point corners in waypoints: 47
+  edge picks: 30 tried, 0 missed
+  painted picks missed (scene): 0
+  route ms 17.69; route==scene svg: true; frame max diff 0.00
+  worst route_partial ms 2.30
+  reparsed scene svg equal: true
+=== blocks-overview-lr blocks=false block_layout? svg 25731 bytes
+  sharp single-point corners in waypoints: 49
+  edge picks: 30 tried, 0 missed
+  painted picks missed (scene): 0
+  route ms 4.20; route==scene svg: false; frame max diff 0.00
+  worst route_partial ms 3.70
+  reparsed scene svg equal: true
+=== blocks-overview-lr blocks=true block_layout? svg 25146 bytes
+  sharp single-point corners in waypoints: 52
+  marquee at edge 21 midpoint found no edge
+  edge picks: 30 tried, 0 missed
+  painted picks missed (scene): 0
+  route ms 14.98; route==scene svg: true; frame max diff 0.00
+  worst route_partial ms 1.52
+  reparsed scene svg equal: true
+=== cycle2 blocks=false block_layout? svg 4996 bytes
+  sharp single-point corners in waypoints: 10
+  edge picks: 6 tried, 0 missed
+  painted picks missed (scene): 0
+  route ms 0.61; route==scene svg: false; frame max diff 0.00
+  worst route_partial ms 0.54
+  reparsed scene svg equal: true
+=== cycle2 blocks=true block_layout? svg 4669 bytes
+  sharp single-point corners in waypoints: 10
+  edge picks: 6 tried, 0 missed
+  painted picks missed (scene): 0
+  route ms 0.91; route==scene svg: true; frame max diff 0.00
+  worst route_partial ms 0.36
+  reparsed scene svg equal: true
+=== hub5 blocks=false block_layout? svg 10302 bytes
+  sharp single-point corners in waypoints: 23
+  marquee at edge 11 midpoint found no edge
+  edge picks: 14 tried, 0 missed
+  painted picks missed (scene): 0
+  route ms 1.67; route==scene svg: false; frame max diff 0.00
+  worst route_partial ms 2.09
+  reparsed scene svg equal: true
+=== hub5 blocks=true block_layout? svg 9658 bytes
+  sharp single-point corners in waypoints: 16
+  edge picks: 14 tried, 0 missed
+  painted picks missed (scene): 0
+  route ms 2.17; route==scene svg: true; frame max diff 0.00
+  worst route_partial ms 1.37
+  reparsed scene svg equal: true
+=== nested blocks=false block_layout? svg 6721 bytes
+  sharp single-point corners in waypoints: 7
+  edge picks: 10 tried, 0 missed
+  painted picks missed (scene): 0
+  route ms 0.54; route==scene svg: false; frame max diff 13.65
+  worst route_partial ms 0.43
+  reparsed scene svg equal: true
+=== nested blocks=true block_layout? svg 7015 bytes
+  sharp single-point corners in waypoints: 14
+  marquee at edge 2 midpoint found no edge
+  edge picks: 10 tried, 0 missed
+  painted picks missed (scene): 0
+  route ms 1.30; route==scene svg: true; frame max diff 0.00
+  worst route_partial ms 0.64
+  reparsed scene svg equal: true
+=== advanced blocks=false block_layout? svg 11757 bytes
+  sharp single-point corners in waypoints: 15
+  pick of edge 15 (Users -> Mon) at 238.3,1001.5 gave none
+  marquee at edge 15 midpoint found no edge
+  edge picks: 20 tried, 1 missed
+  painted picks missed (scene): 0
+  route ms 0.74; route==scene svg: false; frame max diff 0.00
+  worst route_partial ms 0.84
+  reparsed scene svg equal: true
+=== advanced blocks=true block_layout? svg 11934 bytes
+  sharp single-point corners in waypoints: 17
+  pick of edge 15 (Users -> Mon) at 350.1,1037.5 gave none
+  marquee at edge 15 midpoint found no edge
+  edge picks: 20 tried, 1 missed
+  painted picks missed (scene): 0
+  route ms 1.17; route==scene svg: true; frame max diff 0.00
+  worst route_partial ms 0.60
+  reparsed scene svg equal: true
+=== state blocks=false block_layout? svg 8722 bytes
+  sharp single-point corners in waypoints: 5
+  edge picks: 16 tried, 0 missed
+  painted picks missed (scene): 0
+  route ms 0.41; route==scene svg: false; frame max diff 0.00
+  node_at after drag of 7 by (-150.0, 80.0): Some(10)
+  worst route_partial ms 0.44
+  reparsed scene svg equal: false
+=== state blocks=true block_layout? svg 8722 bytes
+  sharp single-point corners in waypoints: 5
+  edge picks: 16 tried, 0 missed
+  painted picks missed (scene): 0
+  route ms 0.51; route==scene svg: false; frame max diff 0.00
+  node_at after drag of 7 by (-150.0, 80.0): Some(10)
+  worst route_partial ms 0.42
+  reparsed scene svg equal: false
+=== subgraph blocks=false block_layout? svg 4697 bytes
+  sharp single-point corners in waypoints: 4
+  edge picks: 8 tried, 0 missed
+  painted picks missed (scene): 0
+  route ms 0.12; route==scene svg: false; frame max diff 0.00
+  worst route_partial ms 0.18
+  reparsed scene svg equal: true
+=== subgraph blocks=true block_layout? svg 4697 bytes
+  sharp single-point corners in waypoints: 4
+  edge picks: 8 tried, 0 missed
+  painted picks missed (scene): 0
+  route ms 0.30; route==scene svg: true; frame max diff 0.00
+  worst route_partial ms 0.29
+  reparsed scene svg equal: true
+=== dense-td blocks=false block_layout? svg 49811 bytes
+  sharp single-point corners in waypoints: 90
+  edge picks: 47 tried, 0 missed
+  painted picks missed (scene): 0
+  route ms 7.22; route==scene svg: false; frame max diff 128.95
+  worst route_partial ms 3.20
+  reparsed scene svg equal: true
+=== dense-td blocks=true block_layout? svg 58492 bytes
+  sharp single-point corners in waypoints: 198
+  edge picks: 47 tried, 0 missed
+  painted picks missed (scene): 0
+  route ms 54.64; route==scene svg: true; frame max diff 0.00
+  worst route_partial ms 7.68
+  reparsed scene svg equal: true
+=== bench-75 blocks=false block_layout? svg 60414 bytes
+  sharp single-point corners in waypoints: 154
+  marquee at edge 12 midpoint found no edge
+  edge picks: 75 tried, 0 missed
+  painted picks missed (scene): 0
+  route ms 14.58; route==scene svg: false; frame max diff 617.00
+  worst route_partial ms 5.40
+  reparsed scene svg equal: true
+=== bench-75 blocks=true block_layout? svg 59564 bytes
+  sharp single-point corners in waypoints: 192
+  marquee at edge 37 midpoint found no edge
+  edge picks: 75 tried, 0 missed
+  painted picks missed (scene): 0
+  route ms 31.33; route==scene svg: true; frame max diff 0.00
+  worst route_partial ms 6.77
+  reparsed scene svg equal: true
+=== chips-crowd blocks=false block_layout? svg 9918 bytes
+  sharp single-point corners in waypoints: 14
+  edge picks: 12 tried, 0 missed
+  painted picks missed (scene): 0
+  route ms 1.53; route==scene svg: false; frame max diff 59.90
+  worst route_partial ms 0.80
+  reparsed scene svg equal: true
+=== chips-crowd blocks=true block_layout? svg 10433 bytes
+  sharp single-point corners in waypoints: 12
+  edge picks: 12 tried, 0 missed
+  painted picks missed (scene): 0
+  route ms 3.80; route==scene svg: true; frame max diff 0.00
+  worst route_partial ms 1.26
+  reparsed scene svg equal: true
+=== pins-td blocks=false block_layout? svg 6099 bytes
+  sharp single-point corners in waypoints: 12
+  edge picks: 11 tried, 0 missed
+  painted picks missed (scene): 0
+  route ms 0.55; route==scene svg: false; frame max diff 0.00
+  worst route_partial ms 0.45
+  reparsed scene svg equal: true
+=== pins-td blocks=true block_layout? svg 5878 bytes
+  sharp single-point corners in waypoints: 13
+  edge picks: 11 tried, 0 missed
+  painted picks missed (scene): 0
+  route ms 1.04; route==scene svg: true; frame max diff 0.00
+  worst route_partial ms 0.41
+  reparsed scene svg equal: true
+=== x4-lr3 blocks=false block_layout? svg 8091 bytes
+  sharp single-point corners in waypoints: 14
+  marquee at edge 5 midpoint found no edge
+  edge picks: 12 tried, 0 missed
+  painted picks missed (scene): 0
+  route ms 0.55; route==scene svg: false; frame max diff 15.50
+  worst route_partial ms 0.53
+  reparsed scene svg equal: true
+=== x4-lr3 blocks=true block_layout? svg 8091 bytes
+  sharp single-point corners in waypoints: 14
+  marquee at edge 5 midpoint found no edge
+  edge picks: 12 tried, 0 missed
+  painted picks missed (scene): 0
+  route ms 1.15; route==scene svg: true; frame max diff 0.00
+  worst route_partial ms 0.53
+  reparsed scene svg equal: true
+=== x4-nest3 blocks=false block_layout? svg 6799 bytes
+  sharp single-point corners in waypoints: 6
+  edge picks: 9 tried, 0 missed
+  painted picks missed (scene): 0
+  route ms 0.57; route==scene svg: false; frame max diff 34.88
+  worst route_partial ms 0.57
+  reparsed scene svg equal: true
+=== x4-nest3 blocks=true block_layout? svg 7426 bytes
+  sharp single-point corners in waypoints: 13
+  edge picks: 9 tried, 0 missed
+  painted picks missed (scene): 0
+  route ms 1.29; route==scene svg: true; frame max diff 0.00
+  worst route_partial ms 0.55
+  reparsed scene svg equal: true
+=== x4-down3 blocks=false block_layout? svg 7966 bytes
+  sharp single-point corners in waypoints: 6
+  marquee at edge 5 midpoint found no edge
+  edge picks: 13 tried, 0 missed
+  painted picks missed (scene): 0
+  route ms 0.33; route==scene svg: false; frame max diff 0.00
+  worst route_partial ms 0.39
+  reparsed scene svg equal: true
+=== x4-down3 blocks=true block_layout? svg 7623 bytes
+  sharp single-point corners in waypoints: 6
+  edge picks: 13 tried, 0 missed
+  painted picks missed (scene): 0
+  route ms 0.96; route==scene svg: true; frame max diff 0.00
+  worst route_partial ms 0.58
+  reparsed scene svg equal: true
+=== g7248 blocks=false block_layout? svg 27035 bytes
+  sharp single-point corners in waypoints: 62
+  marquee at edge 28 midpoint found no edge
+  edge picks: 34 tried, 0 missed
+  painted picks missed (scene): 0
+  route ms 3.61; route==scene svg: false; frame max diff 0.00
+  drag painted pick miss edge 14 (n9 -> n12) at 1119.6,188.3: Some(25)
+  node_at after drag of 13 by (-150.0, 80.0): Some(21)
+  worst route_partial ms 1.57
+  reparsed scene svg equal: true
+=== g7248 blocks=true block_layout? svg 28063 bytes
+  sharp single-point corners in waypoints: 75
+  edge picks: 34 tried, 0 missed
+  painted picks missed (scene): 0
+  route ms 16.52; route==scene svg: true; frame max diff 0.00
+  worst route_partial ms 1.82
+  reparsed scene svg equal: true
+PROBLEMS 30
+  blocks-overview-lr blocks=true: marquee missed edge 21
+  hub5 blocks=false: marquee missed edge 11
+  nested blocks=true: marquee missed edge 2
+  advanced blocks=false: marquee missed edge 15
+  advanced blocks=false: 1 picks missed
+  advanced: drag 0 (60.0, 25.0): 1 edge picks missed
+  advanced: drag 0 (-150.0, 80.0): 1 edge picks missed
+  advanced: drag 0 (1.0, 0.0): 1 edge picks missed
+  advanced: drag 7 (60.0, 25.0): 1 edge picks missed
+  advanced: drag 7 (-150.0, 80.0): 1 edge picks missed
+  advanced: drag 7 (1.0, 0.0): 1 edge picks missed
+  advanced: drag 13 (60.0, 25.0): 1 edge picks missed
+  advanced: drag 13 (1.0, 0.0): 1 edge picks missed
+  advanced blocks=true: marquee missed edge 15
+  advanced blocks=true: 1 picks missed
+  advanced: drag 0 (60.0, 25.0): 1 edge picks missed
+  advanced: drag 0 (-150.0, 80.0): 1 edge picks missed
+  advanced: drag 0 (1.0, 0.0): 1 edge picks missed
+  advanced: drag 7 (60.0, 25.0): 1 edge picks missed
+  advanced: drag 7 (-150.0, 80.0): 1 edge picks missed
+  advanced: drag 13 (60.0, 25.0): 1 edge picks missed
+  advanced: drag 13 (-150.0, 80.0): 1 edge picks missed
+  advanced: drag 13 (1.0, 0.0): 1 edge picks missed
+  bench-75 blocks=false: marquee missed edge 12
+  bench-75 blocks=true: marquee missed edge 37
+  x4-lr3 blocks=false: marquee missed edge 5
+  x4-lr3 blocks=true: marquee missed edge 5
+  x4-down3 blocks=false: marquee missed edge 5
+  g7248 blocks=false: marquee missed edge 28
+  g7248 blocks=false: drag 13 (60.0, 25.0): 1 painted picks missed

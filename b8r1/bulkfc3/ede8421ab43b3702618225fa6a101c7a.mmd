@@ -1,0 +1,24 @@
+flowchart TD
+    N0{Store}
+    N1([Validate queue])
+    N2[Store load]
+    N3{Validate}
+    N4[Emit]
+    N5{Store}
+    N6{Archive done}
+    N7([Queue])
+    N8(Fetch)
+    N9(Notify)
+    N0 --> N1
+    N0 --> N2
+    N0 --> N3
+    N3 -->|no| N4
+    N2 --> N5
+    N5 -->|no| N6
+    N6 -->|next| N7
+    N6 -->|fail| N8
+    N7 --> N9
+    N0 --> N3
+    N0 --> N7
+    N9 -.-> N0
+    N8 ==>|again| N3

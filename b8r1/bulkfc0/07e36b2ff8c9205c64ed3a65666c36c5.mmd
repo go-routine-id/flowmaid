@@ -1,0 +1,19 @@
+flowchart TD
+    N0([Load])
+    N1(Queue)
+    N2[Validate]
+    N3[Parse retry]
+    N4([Report queue])
+    N5([Emit])
+    N6([Queue fetch])
+    N7{{Archive}}
+    N8(Check)
+    N0 -->|ok| N1
+    N0 --> N2
+    N0 -->|yes| N3
+    N3 --> N4
+    N4 --> N5
+    N5 --> N6
+    N6 -->|next| N7
+    N5 --> N8
+    N8 --> N6

@@ -1,0 +1,22 @@
+classDiagram
+direction TB
+P <|-- S0
+P <|-- M
+P <|-- S1
+M --> K0
+M --> K1
+M --> K2
+M --> M : loop0
+M --> M : loop1
+M --> M : loop2
+M --> M : loop3
+M --> M : loop4
+M --> M : loop5
+class M {
+  +int id
+  +String name
+  +run() void
+  +stop() void
+  -helper(int x) bool
+}
+S0 --> S0 : s

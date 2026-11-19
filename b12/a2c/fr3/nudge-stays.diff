@@ -1,0 +1,44 @@
+diff --git a/src/router.rs b/src/router.rs
+index d952ca3..2019018 100644
+--- a/src/router.rs
++++ b/src/router.rs
+@@ -3792,9 +3792,20 @@ fn place_group(f: &Fences, routes: &mut [Option<Vec<Pt>>], segs: &[Seg], grp: &[
+     let clear = (NODE_SEP + SEP_AIR, FRAME_SEP + SEP_AIR, CHIP_SEP + SEP_AIR);
+     let hard = scene_slab(clear);
+     let gap = EDGE_SEP + SEP_AIR;
++    // In a block layout, what of `soft` stays where it is (a leg that is
++    // not free, a free curve): the tiers that look past the other legs,
++    // which move in their own groups, still keep off these. Laid over
++    // them, a lone entry rerouted past a frame's title chip ran 1 px
++    // beside the frame's pin from the same node, the two arrowheads into
++    // the frame one on the other (blocks drawn TD, an edge into the frame
++    // and one into its member under the chip, both from one node).
++    let mut stays = open;
+     for (k, sg) in segs.iter().enumerate() {
+         if sg.axis == axis && !grp.contains(&k) {
+             fence(&mut soft, sg.at - gap, sg.at + gap, sg.lo, sg.hi);
++            if f.blocks && !f.routed && !sg.free {
++                fence(&mut stays, sg.at - gap, sg.at + gap, sg.lo, sg.hi);
++            }
+         }
+     }
+     let members: Vec<usize> = grp.iter().map(|&s| segs[s].edge).collect();
+@@ -3802,6 +3813,9 @@ fn place_group(f: &Fences, routes: &mut [Option<Vec<Pt>>], segs: &[Seg], grp: &[
+         let (j, c0, c1, l0, l1) = f.par[axis][k];
+         if !members.contains(&j) {
+             fence(&mut soft, c0 - gap, c1 + gap, l0, l1);
++            if f.blocks && !f.routed {
++                fence(&mut stays, c0 - gap, c1 + gap, l0, l1);
++            }
+         }
+     }
+     // What the members' own port legs allow: a leg next to a port leg
+@@ -3882,7 +3896,7 @@ fn place_group(f: &Fences, routes: &mut [Option<Vec<Pt>>], segs: &[Seg], grp: &[
+     // than a ride along it ([`BORDER_HUG_GAP`], G4). A group that fits
+     // none stays.
+     let channel = both(both(hard, soft), stub);
+-    let scene = both(hard, stub);
++    let scene = both(both(hard, stays), stub);
+     let least = EDGE_SPACING + SEP_AIR;
+     let fits = |x: (f64, f64), step: f64| x.1 - x.0 >= (m - 1) as f64 * step - EPS;
+     let tiers = [

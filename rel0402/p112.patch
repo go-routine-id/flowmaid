@@ -1,0 +1,286 @@
+diff --git a/src/mindmap.rs b/src/mindmap.rs
+index 4d5626e..b6801f9 100644
+--- a/src/mindmap.rs
++++ b/src/mindmap.rs
+@@ -2599,13 +2599,9 @@ impl MindScene {
+         }
+         let mut near = crate::pick::Nearest::new(tol);
+         for (j, e) in self.edges.iter().enumerate() {
+-            // A curve lies inside its control points' box: one farther
+-            // from it than the stroke reaches is not measured.
++            // A curve farther than its stroke reaches is not measured.
+             let reach = e.width / 2.0 + tol.max(0.0);
+-            if crate::pick::box_gap(p, &e.bezier) > reach {
+-                continue;
+-            }
+-            near.offer_stroke(j, crate::pick::cubic_dist(p, &e.bezier), e.width);
++            near.offer_stroke(j, crate::pick::cubic_dist(p, &e.bezier, reach), e.width);
+         }
+         near.get().map(MindHit::Link)
+     }
+diff --git a/src/pick.rs b/src/pick.rs
+index e3451a0..baa93bc 100644
+--- a/src/pick.rs
++++ b/src/pick.rs
+@@ -45,33 +45,42 @@ pub(crate) fn polyline_dist(p: Pt, pts: &[Pt]) -> f64 {
+     }
+ }
+ 
+-/// The point at `t` on the cubic `b`.
+-fn cubic_at(b: &[Pt; 4], t: f64) -> Pt {
+-    let u = 1.0 - t;
+-    let (k0, k1, k2, k3) = (u * u * u, 3.0 * u * u * t, 3.0 * u * t * t, t * t * t);
+-    (
+-        k0 * b[0].0 + k1 * b[1].0 + k2 * b[2].0 + k3 * b[3].0,
+-        k0 * b[0].1 + k1 * b[1].1 + k2 * b[2].1 + k3 * b[3].1,
+-    )
+-}
++/// How far a flattened piece of a cubic may bow off the chord it is
++/// measured by: far below any stroke width or the 0.1 px the painters
++/// round to.
++const FLATNESS: f64 = 0.01;
+ 
+-/// Distance from `p` to the cubic Bézier `b`, measured on a flattening
+-/// fine enough (a chord every px or so of its control polygon, at least
+-/// 16) that the error stays far below any stroke width.
+-pub(crate) fn cubic_dist(p: Pt, b: &[Pt; 4]) -> f64 {
+-    let poly: f64 = b
+-        .windows(2)
+-        .map(|w| (w[1].0 - w[0].0).hypot(w[1].1 - w[0].1))
+-        .sum();
+-    let n = (poly.ceil() as usize).clamp(16, 4096);
+-    let mut best = f64::INFINITY;
+-    let mut prev = b[0];
+-    for k in 1..=n {
+-        let q = cubic_at(b, k as f64 / n as f64);
+-        best = best.min(seg_dist(p, prev, q));
+-        prev = q;
++/// Distance from `p` to the cubic Bézier `b`, or infinity when the curve
++/// lies farther than `lim`: halved until each piece is flat to within
++/// [`FLATNESS`] of its chord, then measured to the chord, pieces whose
++/// control box lies farther than the nearest so far left unmeasured. A
++/// straight cubic (its controls on its chord, as a mindmap connector's)
++/// is its chord at once.
++pub(crate) fn cubic_dist(p: Pt, b: &[Pt; 4], lim: f64) -> f64 {
++    fn mid(a: Pt, b: Pt) -> Pt {
++        ((a.0 + b.0) / 2.0, (a.1 + b.1) / 2.0)
++    }
++    fn go(p: Pt, b: &[Pt; 4], lim: f64, depth: u32) -> f64 {
++        if box_gap(p, b) > lim {
++            return f64::INFINITY;
++        }
++        // The curve lies in its control points' hull, so within `bow`
++        // of its chord (a curve off the numbers is not split).
++        let bow = seg_dist(b[1], b[0], b[3]).max(seg_dist(b[2], b[0], b[3]));
++        if !bow.is_finite() || bow <= FLATNESS || depth >= 24 {
++            return seg_dist(p, b[0], b[3]);
++        }
++        // de Casteljau split at t = 1/2.
++        let (ab, bc, cd) = (mid(b[0], b[1]), mid(b[1], b[2]), mid(b[2], b[3]));
++        let (abc, bcd) = (mid(ab, bc), mid(bc, cd));
++        let m = mid(abc, bcd);
++        let left = go(p, &[b[0], ab, abc, m], lim, depth + 1);
++        if left <= 0.0 {
++            return left;
++        }
++        left.min(go(p, &[m, bcd, cd, b[3]], lim.min(left), depth + 1))
+     }
+-    best
++    go(p, b, lim, 0)
+ }
+ 
+ /// Distance from `p` to the bounding box of `pts` (0 inside it).
+@@ -254,12 +263,31 @@ mod tests {
+         assert_eq!(seg_dist((13.0, 4.0), (0.0, 0.0), (10.0, 0.0)), 5.0);
+         assert_eq!(polyline_dist((5.0, 3.0), &[]), f64::INFINITY);
+         // A straight cubic is its chord.
++        let inf = f64::INFINITY;
+         let b = [(0.0, 0.0), (10.0, 0.0), (20.0, 0.0), (30.0, 0.0)];
+-        assert!((cubic_dist((15.0, 2.0), &b) - 2.0).abs() < 1e-9);
++        assert!((cubic_dist((15.0, 2.0), &b, inf) - 2.0).abs() < 1e-9);
++        assert!((cubic_dist((33.0, 4.0), &b, inf) - 5.0).abs() < 1e-9);
+         // A bent one: its apex at t = 0.5 is 7.5 above the chord.
+         let arc = [(0.0, 0.0), (0.0, -10.0), (30.0, -10.0), (30.0, 0.0)];
+-        assert!(cubic_dist((15.0, -7.5), &arc) < 1e-6);
+-        assert!((cubic_dist((15.0, 0.0), &arc) - 7.5).abs() < 0.01);
++        assert!(cubic_dist((15.0, -7.5), &arc, inf) < 1e-6);
++        assert!((cubic_dist((15.0, 0.0), &arc, inf) - 7.5).abs() < 0.01);
++        // Against a dense sampling of the curve, at points round it.
++        for k in 0..200 {
++            let q = (-5.0 + 0.2 * k as f64, -12.0 + 0.09 * k as f64);
++            let dense = (0..=20_000)
++                .map(|i| {
++                    let t = i as f64 / 20_000.0;
++                    let u = 1.0 - t;
++                    let (k0, k1, k2, k3) = (u * u * u, 3.0 * u * u * t, 3.0 * u * t * t, t * t * t);
++                    let x = k0 * arc[0].0 + k1 * arc[1].0 + k2 * arc[2].0 + k3 * arc[3].0;
++                    let y = k0 * arc[0].1 + k1 * arc[1].1 + k2 * arc[2].1 + k3 * arc[3].1;
++                    (q.0 - x).hypot(q.1 - y)
++                })
++                .fold(f64::INFINITY, f64::min);
++            assert!((cubic_dist(q, &arc, inf) - dense).abs() < 0.011, "{q:?}");
++        }
++        // Farther than `lim`: not measured.
++        assert_eq!(cubic_dist((15.0, 40.0), &arc, 3.0), f64::INFINITY);
+         assert_eq!(box_gap((15.0, -5.0), &arc), 0.0);
+         assert_eq!(box_gap((33.0, 4.0), &arc), 5.0);
+     }
+diff --git a/src/seq.rs b/src/seq.rs
+index 7e5bbea..0ecead5 100644
+--- a/src/seq.rs
++++ b/src/seq.rs
+@@ -1317,9 +1317,10 @@ impl SeqScene {
+         if let Some(i) = borders.get() {
+             return Some(SeqHit::Frame(i));
+         }
++        // Inside the border as drawn, its corners 4 round.
+         self.frames
+             .iter()
+-            .rposition(|f| in_rect(p, f.x, f.y, f.w, f.h))
++            .rposition(|f| in_round_rect(p, f.x, f.y, f.w, f.h, 4.0))
+             .map(SeqHit::FrameInside)
+     }
+ }
+diff --git a/src/timeline.rs b/src/timeline.rs
+index 7f4f296..af784cf 100644
+--- a/src/timeline.rs
++++ b/src/timeline.rs
+@@ -555,14 +555,14 @@ impl TimelineScene {
+     /// The topmost element at scene point `(x, y)`, or `None`, with the
+     /// conventions of [`crate::scene::Scene::hit_test`]. Z-order is
+     /// [`to_svg`]'s: a section draws its band, then its axis, then each
+-    /// period's task line, tick, label and events, and a later section
+-    /// draws over an earlier one. Texts are their boxes (as wide as their
+-    /// widest line measures, from the cap top of the first line to the
+-    /// descender of the last, centred as drawn), a tick
+-    /// its disc, a band its rounded rectangle (named sections only);
+-    /// the axis and the task lines are strokes `tol` widens (`<= 0`:
+-    /// exact; the nearest wins among the task lines). The title is not an
+-    /// element. `None` off the canvas (`0..=width` x `0..=height`).
++    /// period's task line, tick, label and events in turn (so a period's
++    /// texts lie over the task lines of the periods before it), and a
++    /// later section draws over an earlier one. Texts are their boxes (as
++    /// wide as their widest line measures, from the cap top of the first
++    /// line to the descender of the last, centred as drawn), a tick its
++    /// disc, a band its rounded rectangle (named sections only); the axis
++    /// and the task lines are strokes `tol` widens (`<= 0`: exact). The
++    /// title is not an element. `None` off the canvas (`0..=width` x `0..=height`).
+     ///
+     /// ```
+     /// use flowmaid::{model::Document, parser::parse_document, timeline};
+@@ -596,7 +596,8 @@ impl TimelineScene {
+             w > 0.0 && in_box(p, (cx - w / 2.0, top, w, bottom - top))
+         };
+         for (s, sec) in self.sections.iter().enumerate().rev() {
+-            // Texts and ticks, the last period's first.
++            // The last period first: its events, its label and tick,
++            // then its task line, all over the periods before it.
+             for (k, per) in sec.periods.iter().enumerate().rev() {
+                 for (e, (text, ey)) in per.events.iter().enumerate().rev() {
+                     if block(per.cx, *ey, text, false) {
+@@ -607,8 +608,13 @@ impl TimelineScene {
+                         });
+                     }
+                 }
++                let mut line = Nearest::new(tol);
++                for &(y0, y1) in &per.line_segments {
++                    line.offer_stroke(k, seg_dist(p, (per.cx, y0), (per.cx, y1)), 1.2);
++                }
+                 if block(per.cx, per.label_y, &per.label, true)
+                     || in_disc(p, (per.cx, sec.axis_y), TICK_R)
++                    || line.get().is_some()
+                 {
+                     return Some(TimelineHit::Period {
+                         section: s,
+@@ -616,18 +622,6 @@ impl TimelineScene {
+                     });
+                 }
+             }
+-            let mut near = Nearest::new(tol);
+-            for (k, per) in sec.periods.iter().enumerate() {
+-                for &(y0, y1) in &per.line_segments {
+-                    near.offer_stroke(k, seg_dist(p, (per.cx, y0), (per.cx, y1)), 1.2);
+-                }
+-            }
+-            if let Some(k) = near.get() {
+-                return Some(TimelineHit::Period {
+-                    section: s,
+-                    period: k,
+-                });
+-            }
+             let mut axis = Nearest::new(tol);
+             let d = seg_dist(p, (sec.x, sec.axis_y), (sec.x + sec.w, sec.axis_y));
+             axis.offer_stroke(0, d, 2.0);
+@@ -654,6 +648,51 @@ mod tests {
+         }
+     }
+ 
++    /// A period's task line is drawn over the texts of the periods
++    /// before it, and under those of the periods after it: picking
++    /// follows.
++    #[test]
++    fn picks_follow_the_painter_across_periods() {
++        let t = timeline("timeline\n  2002 : a : b\n  2004 : c : d\n");
++        let mut ts = scene(&t);
++        let wide = "W".repeat(120);
++        let (p0, p1) = (&ts.sections[0].periods[0], &ts.sections[0].periods[1]);
++        let (x0, x1) = (p0.cx, p1.cx);
++        let (y0, y1) = (p0.line_segments[1], p1.line_segments[1]);
++        let (y0, y1) = ((y0.0 + y0.1) / 2.0, (y1.0 + y1.1) / 2.0);
++        // Period 0's first event, widened over period 1's task line.
++        ts.sections[0].periods[0].events[0] = (wide.clone(), y1);
++        assert_eq!(
++            ts.hit_test(x1, y1, 0.0),
++            Some(TimelineHit::Period {
++                section: 0,
++                period: 1
++            })
++        );
++        // The event is under it there.
++        let mut bare = ts.clone();
++        bare.sections[0].periods[1].line_segments.clear();
++        assert_eq!(
++            bare.hit_test(x1, y1, 0.0),
++            Some(TimelineHit::Event {
++                section: 0,
++                period: 0,
++                event: 0
++            })
++        );
++        // Period 1's first event, widened over period 0's task line.
++        ts.sections[0].periods[0].events[0] = ("a".into(), y0 - 1000.0);
++        ts.sections[0].periods[1].events[0] = (wide, y0);
++        assert_eq!(
++            ts.hit_test(x0, y0, 0.0),
++            Some(TimelineHit::Event {
++                section: 0,
++                period: 1,
++                event: 0
++            })
++        );
++    }
++
+     #[test]
+     fn parses_period_and_events_inline() {
+         let t = timeline("timeline\n  2002 : LinkedIn\n  2004 : Facebook : Google\n");
+diff --git a/tests/hit_test.rs b/tests/hit_test.rs
+index 78f34a9..50d2b3f 100644
+--- a/tests/hit_test.rs
++++ b/tests/hit_test.rs
+@@ -371,6 +371,16 @@ fn sequence_frames_tell_label_and_border_from_inside() {
+         let l = &sc.lifelines[2];
+         let on = (l.x, f.y + f.h - 3.0);
+         assert_eq!(sc.hit_test(on.0, on.1, 0.0), Some(SeqHit::Lifeline(2)));
++        // The border's corners are 4 round: a point in the bounding
++        // box's corner, past the stroke, is neither on the frame nor in
++        // it, until `tol` reaches the stroke.
++        let corner = (f.x + 0.5, f.y + f.h - 0.5);
++        let hit = sc.hit_test(corner.0, corner.1, 0.0);
++        assert!(
++            !matches!(hit, Some(SeqHit::Frame(_) | SeqHit::FrameInside(_))),
++            "{hit:?}"
++        );
++        assert_eq!(sc.hit_test(corner.0, corner.1, 1.0), Some(SeqHit::Frame(i)));
+     }
+     // The `else` divider belongs to the `alt` frame.
+     let alt = &sc.frames[1];

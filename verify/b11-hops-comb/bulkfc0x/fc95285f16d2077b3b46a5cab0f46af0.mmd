@@ -1,0 +1,22 @@
+flowchart BT
+  subgraph F0 [Frame 0]
+    n1([Node 1])
+    n3>Node 3]
+  end
+  subgraph F1 [Frame 1]
+    n2[/Node 2 with a long label/]
+    n5[/Node 5/]
+    n0>Node 0]
+  end
+  n4 <-.-> n6
+  n7 <-.-> n0
+  n4 ==> n1
+  n6 <-.->|no| n1
+  n1 <==> n6
+  n5 <--> n2
+  n4 e6@-.-> F1
+  e6@{ curve: step }
+  n3 o--o n6
+  n2 ==> n3
+  linkStyle 4 stroke-width:40px,stroke:#36c,stroke-dasharray:6 3
+  linkStyle 6 stroke-width:2px,stroke:#3a3

@@ -1,0 +1,3 @@
+blocks-overview-bt.svg	Edge and shared services	A 1.45 CDN → GATE: cache miss	B 1.45 CDN → GATE: cache miss
+dense-td.svg	lorem labore	A 0.00 n16 → n44: sed dolor aliqua	B 0.00 n16 → n44: sed dolor aliqua
+dense-td.svg	consectetur nostrud lorem	A 0.00 n16 → n43: do labore	B 0.00 n16 → n43: do labore

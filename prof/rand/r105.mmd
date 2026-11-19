@@ -1,0 +1,15 @@
+flowchart BT
+  H0 -.->|express| N6
+  H0 --- N0
+  H0 -->|gift wrap| N2
+  H0 ==>|retry| N1
+  H0 -->|retry| N2
+  H0 -->|no| N3
+  N1 --> N8
+  N1 --> N8
+  N6 -->|ok| N8
+  N6 --> N9
+  N0 --> N4
+  N6 -->|retry| N9
+  N8 -->|no| N0
+  N9 -->|ok| N8

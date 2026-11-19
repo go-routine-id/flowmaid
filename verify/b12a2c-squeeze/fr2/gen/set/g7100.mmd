@@ -1,0 +1,75 @@
+flowchart LR
+  n1["queue ingest index"]
+  n2["db<br/>split"]
+  n3["search<br/>queue"]
+  subgraph B0["Data tier"]
+    n4["cache"]
+  end
+  subgraph B1["Platform"]
+    n5["ingest queue search"]
+    n6["ship ingest queue"]
+    n7["store"]
+    subgraph B1s0["Back office and finance 0"]
+      n8["index"]
+    end
+    subgraph B1s1["Platform 1"]
+      n9["auth parse report"]
+      n10["auth ship merge"]
+    end
+  end
+  subgraph B2["Back office and finance"]
+    n11["audit"]
+    n12["ingest"]
+    subgraph B2s0["Platform 0"]
+      n13["pack<br/>auth"]
+      n14["index"]
+    end
+    subgraph B2s1["Core 1"]
+      n15["db"]
+      n16["search"]
+    end
+  end
+  subgraph B3["Storefront"]
+    n17["report"]
+    n18["index parse auth"]
+    n19["worker queue notify"]
+    n20["db"]
+    subgraph B3s0["Data tier 0"]
+      n21["index"]
+      n22["notify"]
+      n23["merge<br/>queue"]
+    end
+  end
+  n24["billing"]
+  n1 ==> n21
+  n6 -.-> n24
+  n23 --> n4
+  n7 --> n24
+  n7 --> n5
+  n6 ==> n17
+  n24 --> n1
+  n23 ==> n20
+  n22 -->|parse| n21
+  n17 ==>|mail| n9
+  n10 --> n24
+  n6 -.->|parse| n11
+  n1 --> n4
+  n8 -.-> n10
+  n24 --> n16
+  n2 -->|parse| n19
+  n1 --> n7
+  n19 --> n13
+  n1 --> n10
+  n6 --> n13
+  n4 -.-> n3
+  n1 ==>|ingest| n9
+  n23 -->|search| n22
+  n14 --> n16
+  n9 --> n12
+  n24 -.-> n19
+  n4 -->|billing| B1
+  n6 --> n3
+  n4 --> n8
+  n17 --> n12
+  n24 ==> n13
+  n23 -.-> n21

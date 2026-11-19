@@ -1,0 +1,28 @@
+architecture-beta
+    service s0(cloud)[PostgreSQL Primary 0]
+    service s1(database)[PostgreSQL Primary 1]
+    service s2(monitoring)[Svc 2]
+    service s3(cloud)[Q 3]
+    service s4(cloud)[Q 4]
+    service s5(database)[Svc 5]
+    service s6(disk)[Web App 6]
+    service s7(server)[Svc 7]
+    service s8(disk)[Web App 8]
+    service s9(monitoring)[PostgreSQL Primary 9]
+    service s10(server)[Web App 10]
+    service s11(internet)[Q 11]
+    service s12(internet)[Svc 12]
+    s3:T -- B:s1
+    s10:T <-[publishes order events]-> B:s11
+    s12:B -- T:s4
+    s9:B -- T:s11
+    s0:B -- T:s11
+    s8:B <-[publishes order events]-> T:s4
+    s7:L -[sync]-> R:s9
+    s3:T -- B:s0
+    s10:L <--> R:s7
+    s6:L -[reads config]-> R:s1
+    s1:B -[replicates to standby]- B:s6
+    s11:L -- R:s6
+    s5:R -- L:s7
+    s12:B -[publishes order events]- T:s7

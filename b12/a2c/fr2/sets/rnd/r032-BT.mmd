@@ -1,0 +1,9 @@
+flowchart BT
+    subgraph G[Data ingestion workers]
+        m0[x wide member node]
+        m1[ledger]
+        m2[db]
+    end
+    s0[src0] --> m1
+    s1[src1] -- "lbl5" --> m0
+    m2 --> z[end]

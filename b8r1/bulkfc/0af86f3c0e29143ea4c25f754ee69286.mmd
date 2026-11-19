@@ -1,0 +1,28 @@
+flowchart LR
+  n5 ---> n6
+  n2 -->|x| n2
+  n2 ==> n9
+  n8 --> n0
+  n1 ~~~ n2
+  n3 o--o n3
+  n9 e6@~~~ n8
+  e6@{ curve: stepBefore }
+  n7 ~~~ n8
+  n2 --> n8
+  n9 <-->|x| n9
+  n1 ==> n5
+  n8 o--o n8
+  n8 -.-> n0
+  n8 --x n3
+  n7 --x n3
+  linkStyle 0 stroke-width:16px,stroke:#c33
+  linkStyle 2 interpolate basis stroke-width:2px
+  linkStyle 5 stroke-width:8px
+  linkStyle 7 stroke-width:40px,stroke:#3a3
+  linkStyle 8 stroke-width:3.5px,stroke:#36c,stroke-dasharray:6 3
+  linkStyle 9 stroke-width:2px,stroke:#36c,stroke-dasharray:6 3
+  linkStyle 11 stroke-width:30px,stroke:#c33
+  linkStyle 12 stroke-width:15px,stroke:#36c,stroke-dasharray:6 3
+  linkStyle 13 stroke-width:5px,stroke:#3a3
+  linkStyle 14 stroke-width:40px,stroke:#3a3
+  linkStyle default stroke-width:20px

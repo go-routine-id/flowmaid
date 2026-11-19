@@ -1,0 +1,15 @@
+stateDiagram-v2
+state f1 <<fork>>
+state f2 <<fork>>
+state f3 <<fork>>
+[*] --> f1
+f1 --> A
+f1 --> f2
+f2 --> B
+f2 --> f3
+f3 --> C
+f3 --> D
+A --> [*]
+B --> [*]
+C --> [*]
+D --> [*]

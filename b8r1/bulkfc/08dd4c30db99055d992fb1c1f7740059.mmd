@@ -1,0 +1,13 @@
+flowchart TD
+  A --> B & C & D & E
+  B --> F & G
+  C --> F & G & H
+  D --> F & H
+  E --> G & F
+  F --> I
+  G --> I
+  H --> I
+  I -->|no| A
+  I -->|again| C
+  E --> I
+  B --> H

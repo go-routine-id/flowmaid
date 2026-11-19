@@ -1,0 +1,8 @@
+lane l "L" {
+ n[N] {
+  s1[S1]
+  s2[S2]
+ }
+ m[M]
+}
+n.s1:top --> m

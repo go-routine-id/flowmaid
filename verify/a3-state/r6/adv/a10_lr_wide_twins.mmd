@@ -1,0 +1,12 @@
+stateDiagram-v2
+direction LR
+state c <<choice>>
+[*] --> P
+P --> c
+c --> B : a quite long label on the first twin
+c --> B : another long label on the second twin
+c --> B : and a third very long label here
+c --> C : short
+c --> D : medium sized label
+note right of P : p note
+note left of B : b note

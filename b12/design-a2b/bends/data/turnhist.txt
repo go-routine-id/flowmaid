@@ -1,0 +1,12 @@
+== start
+live       0-5 deg: 1656  5-45 deg: 0  45-135 deg: 1771  135-180 deg: 0  total 3427
+corrected  0-5 deg: 118  5-45 deg: 4  45-135 deg: 1799  135-180 deg: 0  total 1921
+== 0.38
+live       0-5 deg: 1639  5-45 deg: 0  45-135 deg: 1772  135-180 deg: 0  total 3411
+corrected  0-5 deg: 84  5-45 deg: 4  45-135 deg: 1800  135-180 deg: 0  total 1888
+== mermaid
+live       0-5 deg: 420  5-45 deg: 2  45-135 deg: 3075  135-180 deg: 0  total 3497
+corrected  0-5 deg: 393  5-45 deg: 2  45-135 deg: 3075  135-180 deg: 0  total 3470
+== 7122a53
+live       0-5 deg: 1840  5-45 deg: 0  45-135 deg: 2069  135-180 deg: 0  total 3909
+corrected  0-5 deg: 133  5-45 deg: 4  45-135 deg: 2128  135-180 deg: 0  total 2265

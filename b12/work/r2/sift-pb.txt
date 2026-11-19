@@ -1,0 +1,12 @@
+rust final 27 re-derived 29 canonical 89 units 44
+canonical + adjacent exchange: 60
+canonical + sifting: 37
+rust final + sifting: 25
+ restart 0 30 best 30
+ restart 1 40 best 30
+ restart 2 29 best 29
+ restart 3 32 best 29
+ restart 4 36 best 29
+ restart 5 30 best 29
+ restart 6 26 best 26
+ restart 7 28 best 26

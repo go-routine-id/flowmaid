@@ -1,0 +1,8 @@
+[package]
+name = "rpprobe"
+version = "0.1.0"
+edition = "2021"
+[dependencies]
+flowmaid = { path = "/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/wt/rel38" }
+[profile.release]
+debug = false

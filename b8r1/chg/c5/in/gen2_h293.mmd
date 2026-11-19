@@ -1,0 +1,28 @@
+flowchart TD
+  s0["search trace"]
+  s1["web db store"]
+  subgraph g0["api cache zone"]
+    m0["search"]
+  end
+  subgraph g1["billing index zone"]
+    m1["metric"]
+    m2["pay store"]
+    m3["index store"]
+    m4["trace index queue"]
+    m1 --> m2
+    m2 --> m3
+  end
+  subgraph g2["search index billing zone"]
+    m5["cache api auth"]
+    m6["auth"]
+    m7["trace store store"]
+    m8["notify notify"]
+    m5 --> m6
+    m6 --> m8
+  end
+  s1 --> g0
+  s1 --> g1
+  s0 --> g2
+  s1 --> L9["user ship user"]
+  s1 --> L10["queue"]
+  s0 --> L11["search"]

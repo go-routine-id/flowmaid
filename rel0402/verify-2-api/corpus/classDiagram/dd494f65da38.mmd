@@ -1,0 +1,36 @@
+classDiagram
+  direction TB
+  class Hub {
+    +id int
+    +name String
+    +save() bool
+  }
+  class OrderService {
+    +run()
+    -state int
+  }
+  class Cart
+  class User {
+    +run()
+    -state int
+  }
+  class InventoryRepository
+  class AuditLog {
+    +run()
+    -state int
+  }
+  class ShippingCostCalculator
+  class SessionStore {
+    +run()
+    -state int
+  }
+  OrderService *-- "many" Hub : owns
+  Cart *-- "many" Hub : owns
+  PaymentGatewayAdapter *-- "many" Hub : owns
+  User *-- "many" Hub : owns
+  InventoryRepository *-- "many" Hub : owns
+  Mailer *-- "many" Hub : owns
+  AuditLog *-- "many" Hub : owns
+  ShippingCostCalculator *-- "many" Hub : owns
+  Api *-- "many" Hub : owns
+  SessionStore *-- "many" Hub : owns

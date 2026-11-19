@@ -1,0 +1,26 @@
+flowchart LR
+  subgraph F0 [Frame 0]
+    n4{{Node 4}}
+    n1>Node 1]
+  end
+  subgraph F1 [Frame 1]
+    direction LR
+  end
+  subgraph F2 [Frame 2]
+    direction LR
+    n3{Node 3}
+    n0[/Node 0/]
+  end
+  n1 <==> n4
+  n1 o--o n1
+  n1 o--o F0
+  n3 --o n2
+  n3 <--> n2
+  n0 <--> n3
+  n1 x--x n1
+  n2 -.->|dot| n2
+  n0 -.->|dot| n0
+  n1 --x n3
+  n1 -.->|dot| n1
+  n2 -.->|dot| n0
+  n2 -.->|dot| n2

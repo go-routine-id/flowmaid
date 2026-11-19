@@ -1,0 +1,481 @@
+diff --git a/src/corridor.rs b/src/corridor.rs
+new file mode 100644
+index 0000000..bd4b169
+--- /dev/null
++++ b/src/corridor.rs
+@@ -0,0 +1,445 @@
++//! B12 R3 (experiment): corridors in a block layout's `route()`, planned
++//! after the ports stage, so a corridor starts and ends on the ports the
++//! stage gave, and delivered on the axes, so the ortho stage keeps it
++//! (it rounds a path on the axes and re-plans any other path from its
++//! ports, which made a corridor handed over by the builder a no-op
++//! wherever it ran one way across the flow).
++
++use crate::edgepass::{Ctx, EndRef};
++use crate::model::{Direction, Graph};
++use crate::scene::Scene;
++
++type Pt = (f64, f64);
++/// A box in edge-local flow coordinates: (b0, b1, l0, l1).
++type R = (f64, f64, f64, f64);
++
++const PITCH: f64 = crate::ortho::TRACK_PITCH;
++const PAD: f64 = 16.0;
++
++fn knob(name: &str) -> bool {
++    std::env::var(name).is_ok()
++}
++
++/// One planned corridor.
++struct Plan {
++    edge: usize,
++    /// Local start and end (breadth, flow).
++    a: Pt,
++    b: Pt,
++    /// Per band: its flow extent, the gap it passes in (b0, b1), the
++    /// breadth wanted before slots and the side it shifted to.
++    legs: Vec<Leg>,
++    /// Per turn gap (one more than the legs): its flow extent.
++    turns: Vec<(f64, f64)>,
++}
++
++struct Leg {
++    l: (f64, f64),
++    gap: (f64, f64),
++    at: f64,
++    side: i8,
++}
++
++pub(crate) fn route_corridors(g: &Graph, sc: &mut Scene, cx: &Ctx, moved: &mut [bool]) {
++    if !knob("FMX_POST") || !sc.block_layout {
++        return;
++    }
++    let s = match g.direction {
++        Direction::TD => 1.0,
++        Direction::BT => -1.0,
++        _ => return,
++    };
++    let loc = |p: Pt| (p.0, s * p.1);
++    let unloc = |p: Pt| (p.0, s * p.1);
++    let rect = |x0: f64, y0: f64, x1: f64, y1: f64| -> R {
++        let (a, b) = (s * y0, s * y1);
++        (x0, x1, a.min(b), a.max(b))
++    };
++    // Units of the top level: its frames, and the nodes outside them.
++    let mut units: Vec<R> = sc
++        .clusters
++        .iter()
++        .filter(|c| c.depth == 0)
++        .map(|c| rect(c.x, c.y, c.x + c.w, c.y + c.h))
++        .collect();
++    let frames = units.len();
++    let unit_of: Vec<usize> = sc
++        .nodes
++        .iter()
++        .map(|n| {
++            let c = loc((n.x, n.y));
++            units[..frames]
++                .iter()
++                .position(|r| c.0 > r.0 && c.0 < r.1 && c.1 > r.2 && c.1 < r.3)
++                .unwrap_or_else(|| {
++                    units.push(rect(
++                        n.x - n.w / 2.0,
++                        n.y - n.h / 2.0,
++                        n.x + n.w / 2.0,
++                        n.y + n.h / 2.0,
++                    ));
++                    units.len() - 1
++                })
++        })
++        .collect();
++    // The rows of units along the flow, and the gaps between them: where
++    // every corridor turns.
++    let mut rows: Vec<(f64, f64)> = units.iter().map(|r| (r.2, r.3)).collect();
++    rows.sort_by(|p, q| p.0.total_cmp(&q.0));
++    let mut merged: Vec<(f64, f64)> = Vec::new();
++    for r in rows {
++        match merged.last_mut() {
++            Some(m) if r.0 <= m.1 => m.1 = m.1.max(r.1),
++            _ => merged.push(r),
++        }
++    }
++    let gaps: Vec<(f64, f64)> = merged.windows(2).map(|w| (w[0].1, w[1].0)).collect();
++    // The global gap inside (lo, hi) nearest `want` (its middle).
++    let gap_in = |lo: f64, hi: f64, want: f64| -> Option<(f64, f64)> {
++        gaps.iter()
++            .copied()
++            .filter(|g| g.0 >= lo - 1e-6 && g.1 <= hi + 1e-6 && g.1 - g.0 >= 2.0 * crate::router::CORNER_R)
++            .min_by(|p, q| {
++                ((p.0 + p.1) / 2.0 - want)
++                    .abs()
++                    .total_cmp(&((q.0 + q.1) / 2.0 - want).abs())
++            })
++    };
++    let all = knob("FMX_ALL");
++    let mut plans: Vec<Plan> = Vec::new();
++    for i in 0..g.edges.len().min(sc.edges.len()) {
++        if !cx.drawn.get(i).copied().unwrap_or(false)
++            || cx.fixed.get(i).copied().unwrap_or(false)
++            || cx.held.get(i).copied().unwrap_or(false)
++            || sc.edges[i].meta.curve.is_some()
++            || crate::ports::note_link(sc, cx, i)
++        {
++            continue;
++        }
++        let Some((EndRef::Node(u), EndRef::Node(v))) = cx.ends.get(i).copied().flatten() else {
++            continue;
++        };
++        if u == v || unit_of[u] == unit_of[v] {
++            continue;
++        }
++        let (su, tu) = (units[unit_of[u]], units[unit_of[v]]);
++        if su.3 + 2.0 * PAD > tu.2 {
++            continue; // not one after the other along the flow (E1 only)
++        }
++        let e = &sc.edges[i];
++        let (p0, p3) = if e.waypoints.len() >= 2 {
++            (e.waypoints[0], e.waypoints[e.waypoints.len() - 1])
++        } else {
++            (e.bezier[0], e.bezier[3])
++        };
++        let (a, b) = (loc(p0), loc(p3));
++        // Ports on the flow-facing sides only.
++        let nu = &sc.nodes[u];
++        let nv = &sc.nodes[v];
++        let ub = rect(nu.x - nu.w / 2.0, nu.y - nu.h / 2.0, nu.x + nu.w / 2.0, nu.y + nu.h / 2.0);
++        let vb = rect(nv.x - nv.w / 2.0, nv.y - nv.h / 2.0, nv.x + nv.w / 2.0, nv.y + nv.h / 2.0);
++        if (a.1 - ub.3).abs() > 1.0 || (b.1 - vb.2).abs() > 1.0 {
++            continue;
++        }
++        let (s_out, t_in) = (su.3, tu.2);
++        let mut obs: Vec<R> = units
++            .iter()
++            .enumerate()
++            .filter(|&(k, r)| k != unit_of[u] && k != unit_of[v] && r.3 > s_out && r.2 < t_in)
++            .map(|(_, r)| *r)
++            .collect();
++        if obs.is_empty() {
++            // Nothing between: one step, in the gap after the source's
++            // unit, with the others there (when asked).
++            if !all {
++                continue;
++            }
++            let Some(gq) = gap_in(s_out, t_in, s_out) else {
++                continue;
++            };
++            plans.push(Plan {
++                edge: i,
++                a,
++                b,
++                legs: Vec::new(),
++                turns: vec![gq],
++            });
++            continue;
++        }
++        obs.sort_by(|p, q| p.2.total_cmp(&q.2).then(p.0.total_cmp(&q.0)));
++        let mut bands: Vec<((f64, f64), Vec<(f64, f64)>)> = Vec::new();
++        for o in &obs {
++            match bands.last_mut() {
++                Some((l, bs)) if o.2 < l.1 => {
++                    l.1 = l.1.max(o.3);
++                    bs.push((o.0, o.1));
++                }
++                _ => bands.push(((o.2, o.3), vec![(o.0, o.1)])),
++            }
++        }
++        let nb = bands.len();
++        let turns: Vec<(f64, f64)> = (0..=nb)
++            .map(|k| {
++                let lo = if k == 0 { s_out } else { bands[k - 1].0 .1 };
++                let hi = if k == nb { t_in } else { bands[k].0 .0 };
++                (lo, hi)
++            })
++            .collect();
++        if turns.iter().any(|t| t.1 - t.0 < 2.0 * crate::router::CORNER_R) {
++            continue;
++        }
++        // A one-step path in some gap that misses every band: left to
++        // the ortho stage (it draws that Z itself).
++        let clear_col = |x: f64, lo: f64, hi: f64| {
++            obs.iter()
++                .all(|o| !(x > o.0 - PAD && x < o.1 + PAD && o.3 > lo && o.2 < hi))
++        };
++        if let Some(k) = (0..=nb).find(|&k| {
++            let t = (turns[k].0 + turns[k].1) / 2.0;
++            clear_col(a.0, a.1, t) && clear_col(b.0, t, b.1)
++        }) {
++            if !knob("FMX_ONESTEP") {
++                continue;
++            }
++            let Some(gq) = gap_in(turns[k].0, turns[k].1, (turns[k].0 + turns[k].1) / 2.0) else {
++                continue;
++            };
++            plans.push(Plan {
++                edge: i,
++                a,
++                b,
++                legs: Vec::new(),
++                turns: vec![gq],
++            });
++            continue;
++        }
++        let free: Vec<Vec<(f64, f64)>> = bands
++            .iter()
++            .map(|(_, bs)| {
++                let mut bs: Vec<(f64, f64)> = bs.iter().map(|&(p, q)| (p - PAD, q + PAD)).collect();
++                bs.sort_by(|p, q| p.0.total_cmp(&q.0));
++                let mut out = Vec::new();
++                let mut lo = f64::NEG_INFINITY;
++                for (p, q) in bs {
++                    if p > lo {
++                        out.push((lo, p));
++                    }
++                    lo = lo.max(q);
++                }
++                out.push((lo, f64::INFINITY));
++                out
++            })
++            .collect();
++        let mut legs = Vec::with_capacity(nb);
++        let mut at = a.0;
++        let mut ok = true;
++        for k in 0..nb {
++            if let Some(&g0) = free[k].iter().find(|&&(p, q)| p <= at && at <= q) {
++                legs.push(Leg {
++                    l: bands[k].0,
++                    gap: g0,
++                    at,
++                    side: 0,
++                });
++                continue;
++            }
++            let mut best: Option<(f64, (f64, f64), f64, i8)> = None;
++            for &(p, q) in &free[k] {
++                let (edge, side) = if q < at { (q, -1) } else { (p, 1) };
++                if !edge.is_finite() {
++                    continue;
++                }
++                let d = (edge - at).abs() + (edge - b.0).abs();
++                if best.map_or(true, |bb| d < bb.0 - 1e-9) {
++                    best = Some((d, (p, q), edge, side));
++                }
++            }
++            let Some((_, gq, edge, side)) = best else {
++                ok = false;
++                break;
++            };
++            at = edge;
++            legs.push(Leg {
++                l: bands[k].0,
++                gap: gq,
++                at,
++                side,
++            });
++        }
++        if !ok {
++            continue;
++        }
++        let turns: Vec<(f64, f64)> = match turns
++            .iter()
++            .map(|t| gap_in(t.0, t.1, (t.0 + t.1) / 2.0))
++            .collect::<Option<Vec<_>>>()
++        {
++            Some(t) => t,
++            None => continue,
++        };
++        plans.push(Plan {
++            edge: i,
++            a,
++            b,
++            legs,
++            turns,
++        });
++    }
++    if plans.is_empty() {
++        return;
++    }
++    // Slots: legs that shift into one gap of one band, ordered by the
++    // breadth each path takes next, a pitch apart from the near edge.
++    let key = |x: f64| (x * 10.0).round() as i64;
++    let mut breadth: Vec<Vec<f64>> = plans
++        .iter()
++        .map(|p| p.legs.iter().map(|l| l.at).collect())
++        .collect();
++    let mut groups: std::collections::BTreeMap<(i64, i64, i64, i64), Vec<(usize, usize)>> =
++        std::collections::BTreeMap::new();
++    for (pi, p) in plans.iter().enumerate() {
++        for (k, l) in p.legs.iter().enumerate() {
++            groups
++                .entry((key(l.l.0), key(l.l.1), key(l.gap.0), key(l.gap.1)))
++                .or_default()
++                .push((pi, k));
++        }
++    }
++    let next = |pi: usize, k: usize, br: &[Vec<f64>]| -> f64 {
++        br[pi].get(k + 1).copied().unwrap_or(plans[pi].b.0)
++    };
++    for (_, members) in groups {
++        // The side the shifted legs come from: low and high.
++        for side in [-1i8, 1] {
++            let mut legs: Vec<(usize, usize)> = members
++                .iter()
++                .copied()
++                .filter(|&(pi, k)| plans[pi].legs[k].side == side)
++                .collect();
++            if legs.is_empty() {
++                continue;
++            }
++            let sd = f64::from(side);
++            legs.sort_by(|x, y| {
++                (sd * next(x.0, x.1, &breadth))
++                    .total_cmp(&(sd * next(y.0, y.1, &breadth)))
++                    .then(plans[x.0].edge.cmp(&plans[y.0].edge))
++            });
++            for (slot, &(pi, k)) in legs.iter().enumerate() {
++                let l = &plans[pi].legs[k];
++                let edge = if side > 0 { l.gap.0 } else { l.gap.1 };
++                let far = if side > 0 { l.gap.1 } else { l.gap.0 };
++                let x = edge + sd * slot as f64 * PITCH;
++                breadth[pi][k] = if side > 0 { x.min(far) } else { x.max(far) };
++            }
++        }
++    }
++    // Turn tracks: the steps of every corridor in one gap, ordered so a
++    // step lies below another whose incoming column it spans and above
++    // one whose outgoing column it spans.
++    struct Step {
++        pi: usize,
++        k: usize,
++        from: f64,
++        to: f64,
++    }
++    let mut steps_by_gap: std::collections::BTreeMap<(i64, i64), Vec<Step>> =
++        std::collections::BTreeMap::new();
++    for (pi, p) in plans.iter().enumerate() {
++        let cols: Vec<f64> = std::iter::once(p.a.0)
++            .chain(breadth[pi].iter().copied())
++            .chain(std::iter::once(p.b.0))
++            .collect();
++        for k in 0..=p.legs.len() {
++            let (from, to) = (cols[k], cols[k + 1]);
++            if (from - to).abs() < 1e-6 {
++                continue;
++            }
++            steps_by_gap
++                .entry((key(p.turns[k].0), key(p.turns[k].1)))
++                .or_default()
++                .push(Step { pi, k, from, to });
++        }
++    }
++    let mut track: std::collections::BTreeMap<(usize, usize), f64> = std::collections::BTreeMap::new();
++    for ((lo, hi), steps) in steps_by_gap {
++        let (lo, hi) = (lo as f64 / 10.0, hi as f64 / 10.0);
++        let m = steps.len();
++        let within = |x: f64, s: &Step| {
++            let (p, q) = (s.from.min(s.to), s.from.max(s.to));
++            x > p + 1e-6 && x < q - 1e-6
++        };
++        // before[i][j]: i must lie above (upstream of) j.
++        let mut above = vec![vec![false; m]; m];
++        for i in 0..m {
++            for j in 0..m {
++                if i == j {
++                    continue;
++                }
++                if within(steps[j].from, &steps[i]) {
++                    above[j][i] = true; // j's incoming column inside i: i below j
++                }
++                if within(steps[j].to, &steps[i]) {
++                    above[i][j] = true; // j's outgoing column inside i: i above j
++                }
++            }
++        }
++        // Order: repeatedly take the step with the fewest unmet "above"
++        // constraints (a topological order where one exists).
++        let mut left: Vec<usize> = (0..m).collect();
++        let mut order = Vec::with_capacity(m);
++        while !left.is_empty() {
++            let pick = *left
++                .iter()
++                .min_by_key(|&&i| {
++                    (
++                        left.iter().filter(|&&j| j != i && above[j][i]).count(),
++                        plans[steps[i].pi].edge,
++                    )
++                })
++                .expect("non-empty");
++            order.push(pick);
++            left.retain(|&x| x != pick);
++        }
++        let room = (hi - lo) - 2.0 * crate::router::CORNER_R;
++        let spread = knob("FMX_SPREAD");
++        let pitch = if m > 1 {
++            if spread {
++                (room / (m - 1) as f64).min(2.0 * PITCH).max(PITCH.min(room / (m - 1) as f64))
++            } else {
++                PITCH.min(room / (m - 1) as f64)
++            }
++        } else {
++            0.0
++        };
++        let mid = (lo + hi) / 2.0;
++        for (r, &i) in order.iter().enumerate() {
++            let t = mid + (r as f64 - (m as f64 - 1.0) / 2.0) * pitch;
++            track.insert((steps[i].pi, steps[i].k), t);
++        }
++    }
++    for (pi, p) in plans.iter().enumerate() {
++        let cols: Vec<f64> = std::iter::once(p.a.0)
++            .chain(breadth[pi].iter().copied())
++            .chain(std::iter::once(p.b.0))
++            .collect();
++        let mut pts: Vec<Pt> = vec![p.a];
++        for k in 0..=p.legs.len() {
++            if let Some(&t) = track.get(&(pi, k)) {
++                pts.push((cols[k], t));
++                pts.push((cols[k + 1], t));
++            }
++        }
++        pts.push(p.b);
++        let pts: Vec<Pt> = pts.into_iter().map(unloc).collect();
++        if knob("FMDBG_CORR") {
++            let w: Vec<String> = pts.iter().map(|q| format!("({:.0},{:.0})", q.0, q.1)).collect();
++            eprintln!("CORR {}->{} {}", sc.edges[p.edge].from, sc.edges[p.edge].to, w.join(" "));
++        }
++        let e = &mut sc.edges[p.edge];
++        let n = pts.len();
++        e.bezier = [pts[0], pts[1.min(n - 1)], pts[n.saturating_sub(2)], pts[n - 1]];
++        e.waypoints = pts;
++        moved[p.edge] = true;
++    }
++}
+diff --git a/src/edgepass.rs b/src/edgepass.rs
+index cb9f881..d4730f9 100644
+--- a/src/edgepass.rs
++++ b/src/edgepass.rs
+@@ -431,7 +431,13 @@ pub(crate) fn finish_blocks(g: &Graph, sc: &mut Scene, blocks: Option<&[Vec<usiz
+ /// The edge stages over `sc` with its context built.
+ fn stages(g: &Graph, sc: &mut Scene, mut cx: Ctx, mode: Mode) {
+     let mut moved = vec![false; sc.edges.len()];
++    if mode == Mode::Routed && std::env::var("FMX_PRE").is_ok() {
++        crate::corridor::route_corridors(g, sc, &cx, &mut moved);
++    }
+     crate::ports::assign(g, sc, &cx, mode, &mut moved);
++    if mode == Mode::Routed {
++        crate::corridor::route_corridors(g, sc, &cx, &mut moved);
++    }
+     // Every edge on the axes, its corners rounded (report §2.1): from the
+     // ends the ports stage settled, before the router judges them.
+     crate::ortho::orthogonalize(g, sc, &mut cx, mode);
+diff --git a/src/lib.rs b/src/lib.rs
+index 739a028..75da4b8 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -42,6 +42,7 @@ pub mod class;
+ pub(crate) mod clearance;
+ mod comb;
+ mod compound;
++mod corridor;
+ mod edgepass;
+ pub mod emit;
+ pub mod er;

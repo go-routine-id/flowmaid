@@ -1,0 +1,1 @@
+{"file":"mindmap_cd3784d03b09.mmd","type":"mindmap","parts":7,"iso":{"checked0":40405,"bad0":0,"checked4":40405,"bad4":0,"amb":106,"outline":0,"samples":[]},"full":{"checked":59857,"bad":0,"amb":40,"samples":[]},"extra":[]}

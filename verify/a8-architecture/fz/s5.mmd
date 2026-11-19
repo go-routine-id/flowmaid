@@ -1,0 +1,9 @@
+architecture-beta
+    service s0(disk)[Service 0]
+    service s1(cloud)[Service 1]
+    service s2(disk)[Service 2]
+    service s3(disk)[Service 3]
+    s2:B -- T:s3
+    s0:R --> L:s1
+    s2:R -- L:s3
+    s1:B -- T:s2

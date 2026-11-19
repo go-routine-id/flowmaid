@@ -1,0 +1,16 @@
+flowchart TD
+    subgraph O[Data ingestion workers]
+        subgraph G[Order processing]
+            m0[db]
+            m1[queue]
+            m2[queue]
+        end
+        k[k]
+    end
+    m1 --> k
+    m2 --> k
+    s0[src0] --> m1
+    s1[src1] -- "lbl5" --> m2
+    s1 --> m1
+    m2 --> z[end]
+    G --> z2[after]

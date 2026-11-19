@@ -1,0 +1,14 @@
+flowchart LR
+  n6 ~~~ n4
+  n1 --> n6
+  n5 --o|yes| n5
+  n2 ---> n3
+  n5 ==> n1
+  n0 e5@-.-> n4
+  e5@{ curve: bumpY }
+  linkStyle 0 stroke-width:2px,stroke:#3a3
+  linkStyle 1 stroke-width:55px,stroke:#c33
+  linkStyle 2 stroke-width:30px,stroke:#36c,stroke-dasharray:6 3
+  linkStyle 4 interpolate natural stroke-width:30px
+  linkStyle 5 stroke-width:1px,stroke:#c33
+  linkStyle default stroke-width:3.5px

@@ -1,0 +1,30 @@
+advanced	static	1	1	16.1	Gate side1 4 ends 25.7..41.8
+advanced	routed	1	1	16.1	Gate side1 4 ends 25.7..41.8
+back-edge	static	0	0	0.0	
+back-edge	routed	0	0	0.0	
+bench-75	static	26	0	0.0	
+bench-75	routed	25	1	8.4	svc5 side1 3 ends 14.0..22.4
+demo	static	0	0	0.0	
+demo	routed	0	0	0.0	
+dense-lr	static	5	0	0.0	
+dense-lr	routed	5	0	0.0	
+dense-td	static	7	1	92.9	n7 side0 3 ends 28.0..120.9
+dense-td	routed	6	1	92.9	n7 side0 3 ends 28.0..120.9
+fanout-frames	static	0	0	0.0	
+fanout-frames	routed	0	0	0.0	
+fanout	static	2	0	0.0	
+fanout	routed	2	0	0.0	
+long-labels	static	0	0	0.0	
+long-labels	routed	0	0	0.0	
+lr	static	1	0	0.0	
+lr	routed	1	0	0.0	
+shapes	static	0	0	0.0	
+shapes	routed	0	0	0.0	
+stress	static	1	0	0.0	
+stress	routed	1	0	0.0	
+subgraph	static	0	0	0.0	
+subgraph	routed	0	0	0.0	
+wide-labels	static	1	0	0.0	
+wide-labels	routed	1	0	0.0	
+TOTAL	static	44	2	-	
+TOTAL	routed	42	3	-	

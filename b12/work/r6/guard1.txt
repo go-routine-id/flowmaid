@@ -1,0 +1,56 @@
+== fmt
+== clippy
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 13.54s
+== test
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+== doctest
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.48s
+== msrv
+FAILED: cargo +1.75 check --all-targets
+    Checking flowmaid v0.38.0 (/home/user/flowmaid)
+error[E0716]: temporary value dropped while borrowed
+    --> src/router.rs:5453:14
+     |
+5452 |           let tries: &[(Try, bool)] = if round_on {
+     |               ----- borrow later stored here
+5453 |               &[
+     |  ______________^
+5454 | |                 (first, false),
+5455 | |                 (wider, false),
+5456 | |                 (round, true),
+5457 | |                 (walls, false),
+5458 | |                 (back, false),
+5459 | |             ]
+     | |_____________^ creates a temporary value which is freed while still in use
+5460 |           } else {
+     |           - temporary value is freed at the end of this statement
+     |
+     = note: consider using a `let` binding to create a longer lived value
+
+error[E0716]: temporary value dropped while borrowed
+    --> src/router.rs:5461:14
+     |
+5452 |           let tries: &[(Try, bool)] = if round_on {
+     |               ----- borrow later stored here
+...
+5461 |               &[
+     |  ______________^
+5462 | |                 (first, false),
+5463 | |                 (wider, false),
+5464 | |                 (walls, false),
+5465 | |                 (back, false),
+5466 | |             ]
+     | |_____________^ creates a temporary value which is freed while still in use
+5467 |           };
+     |           - temporary value is freed at the end of this statement
+     |
+     = note: consider using a `let` binding to create a longer lived value
+
+For more information about this error, try `rustc --explain E0716`.
+error: could not compile `flowmaid` (lib) due to 2 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `flowmaid` (lib test) due to 2 previous errors
+== wasm
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.35s
+== rustdoc
+GUARD: FAILURES

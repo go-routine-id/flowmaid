@@ -1,0 +1,19 @@
+architecture-beta
+    group left(cloud)[Left Side]
+    group right(database)[Right Side]
+    service l1(server)[L1] in left
+    service l2(server)[L2] in left
+    service l3(server)[L3] in left
+    junction jl in left
+    junction jr in right
+    service r1(database)[R1] in right
+    service r2(database)[R2] in right
+    service r3(disk)[R3] in right
+    l1:B -- T:jl
+    l2:R -- L:jl
+    l3:T -- B:jl
+    jl:R -- L:jr
+    jr:T -- B:r1
+    jr:R -- L:r2
+    jr:B -- T:r3
+    l1{group}:R --> L:r1{group}

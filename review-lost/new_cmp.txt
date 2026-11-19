@@ -1,0 +1,35 @@
+## flowmaid next to mermaid
+
+The same `.mmd` source rendered by mermaid 12.2.0 (left, in headless Chromium) and by flowmaid 0.39.0 (right, `flowmaid file.mmd`). flowmaid keeps its own semantic palette by default; mermaid's look is one `--theme default` away (see [Themes](#themes)).
+
+**Flowchart with subgraphs, a decision and a back-edge**
+
+![advanced flowchart: mermaid 12.2.0 vs flowmaid 0.39.0](docs/img/compare/advanced.png)
+
+**Loop back to an earlier step**
+
+![back-edge flowchart: mermaid vs flowmaid](docs/img/compare/back-edge.png)
+
+**UML class diagram**
+
+![class diagram: mermaid vs flowmaid](docs/img/compare/class.png)
+
+**State diagram with a composite, a choice, fork/join and a note**
+
+![state diagram: mermaid vs flowmaid](docs/img/compare/state.png)
+
+<details>
+<summary>More: basic flowchart, nested subgraphs, ER and sequence diagrams</summary>
+
+![demo flowchart: mermaid vs flowmaid](docs/img/compare/demo.png)
+
+![subgraph flowchart: mermaid vs flowmaid](docs/img/compare/subgraph.png)
+
+![ER diagram: mermaid vs flowmaid](docs/img/compare/er.png)
+
+![sequence diagram: mermaid vs flowmaid](docs/img/compare/sequence.png)
+
+</details>
+
+Rendering is about **113× faster than mermaid** (geometric mean over 25 diagrams) and the SVG is a fraction of the size — see [Performance](#performance).
+

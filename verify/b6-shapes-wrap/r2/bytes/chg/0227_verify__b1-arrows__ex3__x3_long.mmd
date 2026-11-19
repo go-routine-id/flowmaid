@@ -1,0 +1,21 @@
+flowchart TD
+  subgraph F1 [Frame one]
+    a1[Alpha] --> a2[Beta]
+    a2 --> a3[Gamma]
+  end
+  subgraph F2 [Frame two]
+    b1[Delta] --> b2[Epsilon]
+  end
+  start([Start]) --> a1
+  start --> b1
+  start ==> z[(Store)]
+  a3 --> z
+  b2 --> F1
+  start --> a3
+  z --> start
+  a1 --> a1
+  b1 --o b2
+  a2 --x z
+  F2 --> z
+  q{{Hex}} --> start
+  a3 --> q

@@ -1,0 +1,14 @@
+sequenceDiagram
+autonumber
+actor P0 as gamma
+actor P1 as gamma
+actor P2 as a&b
+actor P3 as Long label here
+actor P4 as 日本語
+P4--xP2: <b>bold</b>
+P2-->P1: x
+activate P4
+P4->>P3: act
+deactivate P4
+P0->>P0: self 日本語
+Note over P0,P4: gamma

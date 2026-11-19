@@ -1,0 +1,24 @@
+flowchart TB
+  H0 ==>|gift wrap| N16
+  H0 ==>|yes| N8
+  H0 ---|x| N16
+  H0 -.-> N2
+  H0 -->|no| N0
+  H0 -.->|retry| N1
+  H0 -->|ok| N11
+  H0 -.->|yes| N0
+  N14 -->|no| N10
+  N0 --> N12
+  N1 -->|x| N13
+  N7 --> N14
+  N0 -->|yes| N6
+  N1 --> N0
+  N2 --> N3
+  N6 --> N4
+  N12 --> N7
+  N16 --> N7
+  N0 --> N13
+  N11 --> N2
+  N13 --> N0
+  N14 -->|retry| N0
+  N15 --> N0

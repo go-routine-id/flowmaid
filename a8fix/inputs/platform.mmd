@@ -1,0 +1,11 @@
+architecture-beta
+    group vpc(cloud)[Production VPC]
+    group pub(internet)[Public Subnet] in vpc
+    group priv(server)[Private Subnet] in vpc
+    service igw(internet)[Internet Gateway]
+    service alb(network)[Load Balancer] in pub
+    service app(server)[App Server] in priv
+    service db(database)[Database] in priv
+    igw:B --> T:alb
+    alb:B --> T:app
+    app:R -- L:db

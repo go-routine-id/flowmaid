@@ -1,0 +1,10 @@
+flowchart TD
+    subgraph G[Order processing]
+        m0[auth service]
+        m1[ledger]
+    end
+    s0[src0] -- "lbl9" --> m0
+    s1[src1] --> G
+    s2[src2] --> m1
+    s2 --> G
+    m1 --> z[end]

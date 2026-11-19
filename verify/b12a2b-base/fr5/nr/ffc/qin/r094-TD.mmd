@@ -1,0 +1,13 @@
+flowchart TD
+    subgraph G[Data ingestion workers]
+        m0[w]
+        m1[db]
+        m2[x wide member node]
+        m0 --> m1
+    end
+    s0[src0] --> m1
+    s0 --> G
+    s1[src1] --> m2
+    s1 --> G
+    m2 --> z[end]
+    G --> z2[after]

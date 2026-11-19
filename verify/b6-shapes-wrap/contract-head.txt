@@ -1,0 +1,52 @@
+advanced: end_gaps=0 end_gap_max=0.046 frames=98 partial_frame_worst=1.85 corner_bad=0
+advanced: edges=16 scene_ms=1.41 route_worst=1.12 partial_worst=0.69 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+back-edge: end_gaps=0 end_gap_max=0.048 frames=34 partial_frame_worst=0.75 corner_bad=0
+back-edge: edges=6 scene_ms=0.21 route_worst=0.20 partial_worst=0.16 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=2 cyl_end_off=0 roundtrip=true
+bench-75: end_gaps=0 end_gap_max=0.047 frames=222 partial_frame_worst=11.11 corner_bad=0
+bench-75: edges=75 scene_ms=34.72 route_worst=21.15 partial_worst=6.39 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=538 cyl_end_off=0 roundtrip=true
+demo: end_gaps=0 end_gap_max=0.048 frames=34 partial_frame_worst=0.59 corner_bad=0
+demo: edges=6 scene_ms=0.30 route_worst=0.19 partial_worst=0.16 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=1 cyl_end_off=0 roundtrip=true
+dense-lr: end_gaps=0 end_gap_max=0.047 frames=501 partial_frame_worst=10.73 corner_bad=0
+dense-lr: edges=40 scene_ms=32.64 route_worst=9.71 partial_worst=2.64 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=194 cyl_end_off=0 roundtrip=true
+dense-td: end_gaps=0 end_gap_max=0.042 frames=475 partial_frame_worst=18.66 corner_bad=0
+dense-td: edges=44 scene_ms=27.88 route_worst=12.63 partial_worst=4.39 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=99 cyl_end_off=0 roundtrip=true
+fanout-frames: end_gaps=0 end_gap_max=0.042 frames=137 partial_frame_worst=2.47 corner_bad=0
+fanout-frames: edges=1 scene_ms=3.92 route_worst=1.11 partial_worst=0.81 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=11 cyl_end_off=0 roundtrip=true
+fanout: end_gaps=0 end_gap_max=0.042 frames=58 partial_frame_worst=0.69 corner_bad=0
+fanout: edges=13 scene_ms=0.37 route_worst=0.34 partial_worst=0.26 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+long-labels: end_gaps=0 end_gap_max=0.049 frames=24 partial_frame_worst=0.59 corner_bad=0
+long-labels: edges=4 scene_ms=0.30 route_worst=0.29 partial_worst=0.34 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+lr: end_gaps=0 end_gap_max=0.047 frames=34 partial_frame_worst=1.64 corner_bad=0
+lr: edges=7 scene_ms=0.24 route_worst=0.48 partial_worst=0.55 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+shapes: end_gaps=0 end_gap_max=0.050 frames=42 partial_frame_worst=0.08 corner_bad=0
+shapes: edges=10 scene_ms=0.13 route_worst=0.08 partial_worst=0.07 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+stress: end_gaps=0 end_gap_max=0.000 frames=30 partial_frame_worst=1.54 corner_bad=0
+stress: edges=7 scene_ms=0.27 route_worst=0.37 partial_worst=0.33 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=2 cyl_end_off=0 roundtrip=true
+subgraph: end_gaps=0 end_gap_max=0.000 frames=54 partial_frame_worst=0.38 corner_bad=0
+subgraph: edges=8 scene_ms=0.19 route_worst=0.15 partial_worst=0.10 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=30 cyl_end_off=0 roundtrip=true
+wide-labels: end_gaps=0 end_gap_max=0.045 frames=49 partial_frame_worst=2.25 corner_bad=0
+wide-labels: edges=8 scene_ms=0.90 route_worst=1.73 partial_worst=0.62 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+state: end_gaps=0 end_gap_max=0.049 frames=138 partial_frame_worst=2.96 corner_bad=0
+state: edges=14 scene_ms=0.74 route_worst=0.63 partial_worst=0.42 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+fans-lr: end_gaps=0 end_gap_max=0.049 frames=71 partial_frame_worst=1.77 corner_bad=0
+fans-lr: edges=14 scene_ms=0.41 route_worst=0.48 partial_worst=0.26 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+fans: end_gaps=0 end_gap_max=0.049 frames=61 partial_frame_worst=1.22 corner_bad=0
+fans: edges=12 scene_ms=0.20 route_worst=0.37 partial_worst=0.18 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+loops: end_gaps=0 end_gap_max=0.032 frames=29 partial_frame_worst=0.30 corner_bad=0
+loops: edges=10 scene_ms=0.17 route_worst=0.12 partial_worst=0.06 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+shapes-lr: end_gaps=0 end_gap_max=0.049 frames=38 partial_frame_worst=0.34 corner_bad=0
+shapes-lr: edges=12 scene_ms=0.27 route_worst=0.21 partial_worst=0.25 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+shapes-td: end_gaps=0 end_gap_max=0.049 frames=73 partial_frame_worst=0.51 corner_bad=0
+shapes-td: edges=11 scene_ms=0.22 route_worst=0.17 partial_worst=0.10 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+x1-shapes-fan: end_gaps=2 end_gap_max=1.201 frames=88 partial_frame_worst=2.42 corner_bad=0
+x1-shapes-fan: edges=17 scene_ms=0.65 route_worst=0.52 partial_worst=0.30 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+x2-shapes-lr: end_gaps=0 end_gap_max=0.044 frames=65 partial_frame_worst=1.05 corner_bad=0
+x2-shapes-lr: edges=14 scene_ms=0.48 route_worst=0.53 partial_worst=0.30 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=2 cyl_end_off=0 roundtrip=true
+x3-wrap: end_gaps=0 end_gap_max=0.046 frames=79 partial_frame_worst=3.11 corner_bad=0
+x3-wrap: edges=13 scene_ms=0.91 route_worst=1.38 partial_worst=1.15 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+x4-wrap120: end_gaps=0 end_gap_max=0.000 frames=31 partial_frame_worst=0.73 corner_bad=0
+x4-wrap120: edges=7 scene_ms=0.49 route_worst=0.62 partial_worst=0.40 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+x5-state: end_gaps=0 end_gap_max=0.049 frames=87 partial_frame_worst=2.22 corner_bad=0
+x5-state: edges=10 scene_ms=0.83 route_worst=0.73 partial_worst=0.38 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+x6-hexfan-lr: end_gaps=0 end_gap_max=0.026 frames=69 partial_frame_worst=1.32 corner_bad=0
+x6-hexfan-lr: edges=17 scene_ms=0.26 route_worst=0.36 partial_worst=0.24 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=2 cyl_end_off=0 roundtrip=true

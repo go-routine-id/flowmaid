@@ -1,0 +1,23 @@
+flowchart RL
+    N0{Fetch}
+    N1([Validate])
+    N2[Archive]
+    N3([Store fetch])
+    N4([Emit])
+    N5{Parse}
+    N6[Parse]
+    N7[Emit]
+    N8{Emit emit}
+    N0 --> N1
+    N1 -->|fail| N2
+    N1 -->|yes| N3
+    N3 --> N4
+    N2 --> N5
+    N3 --> N6
+    N5 -->|no| N7
+    N7 --> N8
+    N5 --> N8
+    N4 --> N8
+    N7 ==>|again| N5
+    N4 --> N0
+    N5 --> N3

@@ -1,0 +1,39 @@
+flowchart BT
+  n1["notify<br/>pack"]
+  n2["parse pack api<br/>index"]
+  n3["pack worker ship"]
+  subgraph B0["Ops"]
+    n4["parse"]
+    n5["worker"]
+    n6["store<br/>merge"]
+    subgraph B0s0["Fulfilment desk 0"]
+      n7["parse mail mail"]
+    end
+    subgraph B0s1["Back office and finance 1"]
+      n8["parse"]
+      n9["auth"]
+      n10["notify"]
+    end
+  end
+  subgraph B1["Ingest"]
+    n11["api mail db"]
+    n12["auth"]
+    n13["index store db"]
+    n14["mail merge search"]
+  end
+  n15["api"]
+  n2 --> n11
+  n14 -->|mail| n12
+  n8 --> n15
+  n6 ==> n13
+  n3 -->|api| n11
+  n7 --> n4
+  n5 ==> n10
+  n12 --> n14
+  n8 -->|ingest| n3
+  n15 --> n11
+  n8 ==>|search| n12
+  n11 -.-> n1
+  n8 -.-> n4
+  n6 -.-> n9
+  n10 --> n6

@@ -1,0 +1,12 @@
+flowchart LR
+    N0(Validate parse)
+    N1{Report fetch}
+    N2(Load)
+    N3([Notify check])
+    N4{{Fetch}}
+    N0 --> N1
+    N0 -->|fail| N2
+    N1 --> N3
+    N3 -->|yes| N4
+    N1 --> N2
+    N4 -.->|rollback| N2

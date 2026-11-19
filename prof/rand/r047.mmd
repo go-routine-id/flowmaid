@@ -1,0 +1,19 @@
+flowchart BT
+  H0 -.-> N19
+  H0 -.->|retry| N19
+  H0 -.->|yes| N3
+  H0 --> N0
+  H0 -.-> N3
+  H0 ==>|no| N6
+  H0 -->|x| N8
+  H0 -->|x| N1
+  H0 -.->|gift wrap| N15
+  H0 ---|retry| N16
+  H0 --> N9
+  N24 -->|express| N5
+  N13 -->|express| N11
+  N23 --> N2
+  N12 --> N12
+  N18 -->|ok| N13
+  N25 --> N11
+  N10 --> N21

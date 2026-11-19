@@ -1,0 +1,21 @@
+flowchart LR
+    N0[Retry]
+    N1{Load validate}
+    N2([Done store])
+    N3[Retry check]
+    N4[Notify]
+    N5([Emit])
+    N6[Done]
+    N7([Notify])
+    N8{Check}
+    N9([Queue report])
+    N0 --> N1
+    N0 --> N2
+    N0 --> N3
+    N3 -->|ok| N4
+    N2 -->|fail| N5
+    N3 --> N6
+    N6 --> N7
+    N5 -->|next| N8
+    N6 -->|next| N9
+    N6 ==> N1

@@ -1,0 +1,11 @@
+flowchart LR
+    subgraph G[Payments]
+        m0[w]
+        m1[queue]
+        m2[y]
+        m0 --> m1
+    end
+    s0[src0] --> m1
+    s1[src1] --> G
+    s1 --> m0
+    s2[src2] -- "lbl8" --> G

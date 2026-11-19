@@ -1,0 +1,15 @@
+sequenceDiagram
+autonumber
+participant P0 as delta
+participant P1 as 日本語
+actor P2 as delta
+participant P3 as beta
+actor P4 as beta
+participant P5 as beta
+Note over P0,P5: <b>bold</b>
+activate P1
+P1->>P1: act
+deactivate P1
+par a&b
+P3->>P3: self gamma
+end

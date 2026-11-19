@@ -1,0 +1,19 @@
+run-checks.sh 2026-11-19T08:05:57Z: outdir /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a2c-squeeze/cand-22dac44, mode commit 22dac44, only local,gates,dirs; 8 GB free on /
+worktree /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a2c-squeeze/scratch/wt-22dac44 at 22dac44552e59228c81736cdf9bb1565674f1280
+build.sh: Finished `release` profile [optimized] target(s) in 1.50s; binaries in /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a2c-squeeze/cand-22dac44/bin
+  build.sh 148 s (exit 0)
+  build: src=/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a2c-squeeze/scratch/wt-22dac44
+  build: commit=22dac44552e59228c81736cdf9bb1565674f1280
+  build: dirty_files=0
+  build: rustflags=--cfg flowmaid_blocks
+  build: rustc=rustc 1.97.0 (2d8144b78 2026-07-07)
+  build: built=2026-11-19T08:08:25Z
+rejudge.sh cand-22dac44: 95 static SVGs (0 missing), 95 routed | live judge --due A2 68 must-fail, --due A1 0, routed 18
+  fmrun.sh 14 s (exit 0)
+trun.sh: 8 failing; FAILED. 1224 passed; 5 failed; 5 ignored; 0 measured; 0 filtered out; finished in 27.60s; quality: FAILED. 12 passed; 3 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.66s
+  trun.sh 31 s (exit 0)
+qrun.sh: dirs 332 copies x static/routed
+qrun.sh: dirsx 32 copies x static/routed
+  qrun.sh 13 s (exit 0)
+run-checks.sh: done in 206 s (exit 0). Compare with: /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/tools-a2b/compare.sh <baseline-outdir> /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a2c-squeeze/cand-22dac44
+removed: /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a2c-squeeze/scratch/wt-22dac44 /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a2c-squeeze/scratch/target-22dac44

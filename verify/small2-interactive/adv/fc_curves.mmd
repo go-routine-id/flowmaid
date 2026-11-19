@@ -1,0 +1,18 @@
+flowchart LR
+A{decide} --> B((circ))
+A e1@--> C[/para/]
+B ==> D{{hex}}
+C -.-> D
+D --> A
+D e2@--> E[(db)]
+E e3@--> A
+E e4@-.-> B
+A --> A
+B --o C
+C --x E
+e1@{ curve: natural }
+e2@{ curve: step }
+e3@{ curve: monotoneX }
+e4@{ curve: cardinal }
+linkStyle 4 stroke-width:6px
+linkStyle 5 stroke-width:0.3px

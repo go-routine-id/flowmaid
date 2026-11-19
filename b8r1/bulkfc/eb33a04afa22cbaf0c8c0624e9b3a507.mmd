@@ -1,0 +1,25 @@
+flowchart LR
+    N0(Check report)
+    N1(Parse)
+    N2[Validate]
+    N3([Retry])
+    N4([Notify])
+    N5{Load validate}
+    N6(Validate report)
+    N7[Validate]
+    N8([Store validate])
+    N9(Store)
+    N0 --> N1
+    N1 --> N2
+    N2 --> N3
+    N3 -->|no| N4
+    N2 -->|next| N5
+    N5 --> N6
+    N4 --> N7
+    N7 --> N8
+    N7 --> N9
+    N1 --> N8
+    N3 --> N8
+    N6 --> N3
+    N8 -.->|again| N4
+    N6 --> N0

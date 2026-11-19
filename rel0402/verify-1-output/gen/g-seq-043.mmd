@@ -1,0 +1,31 @@
+sequenceDiagram
+participant P0 as 日本語
+par Long label here
+and 日本語
+P0->>P0: self beta
+P0-)P0: 日本語
+loop alpha
+P0->P0: delta
+P0-->>P0: x
+end
+and Customer Order
+alt beta
+Note left of P0: 日本語
+activate P0
+P0->>P0: act
+deactivate P0
+Note right of P0: alpha
+alt alpha
+loop a&b
+end
+Note over P0: <b>bold</b>
+loop alpha
+end
+Note left of P0: alpha
+activate P0
+P0->>P0: act
+deactivate P0
+P0->P0: 日本語
+end
+end
+end

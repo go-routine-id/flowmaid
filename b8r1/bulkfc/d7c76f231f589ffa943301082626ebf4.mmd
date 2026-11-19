@@ -1,0 +1,6 @@
+flowchart RL
+  A[Alpha] -->|yes| B[Beta]
+  B -->|retry later| C[Gamma]
+  C -->|escalate to on-call| D[Delta]
+  A -->|no| D
+  D -.->|fallback| E[(Store)]

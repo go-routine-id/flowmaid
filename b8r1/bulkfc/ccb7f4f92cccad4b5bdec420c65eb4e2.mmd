@@ -1,0 +1,13 @@
+flowchart LR
+    N0[Store archive]
+    N1[(Parse)]
+    N2{Queue}
+    N3((Load fetch))
+    N4([Check])
+    N0 --> N1
+    N1 -->|no| N2
+    N2 -->|fail| N3
+    N3 --> N4
+    N0 --> N2
+    N4 -.-> N1
+    N4 -->|retry| N1

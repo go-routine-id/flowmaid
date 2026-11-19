@@ -1,0 +1,9 @@
+flowchart TD
+  D{Choose path}
+  D -->|alpha| A[Alpha]
+  D ==>|beta thick| B[Beta]
+  D -.->|gamma| C[Gamma]
+  D -->|delta long label| E[Delta]
+  A -->|next| F[Final]
+  B --> F
+  linkStyle 1 stroke:#2a7,stroke-width:3px

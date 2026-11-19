@@ -1,0 +1,35 @@
+flowchart LR
+    f0[free 0]
+    f1[free 1]
+    f2[free 2]
+    subgraph B0[Block 0]
+        b0n0
+        b0n1
+        b0n2
+    end
+    subgraph B1[Block 1]
+        b1n0
+        b1n1
+        b1n2
+        b1n3
+    end
+    f1 --> f0
+    b0n2 -->|step| f2
+    b1n3 ==> b0n1
+    b0n1 --> b1n3
+    b1n3 -.-> b1n0
+    f2 -->|step| b1n3
+    f1 --> b0n1
+    b0n1 --> b0n0
+    b1n3 ==> b1n2
+    b0n1 ==> b1n3
+    b1n3 --> b0n1
+    f0 --> f1
+    b1n2 --> b0n2
+    f2 --> f1
+    f0 --> b1n1
+    b1n1 --> f0
+    B0 --> b1n3
+    f0 --> B0
+    B1 --> B0
+

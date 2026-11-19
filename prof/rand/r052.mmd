@@ -1,0 +1,19 @@
+flowchart BT
+  H0 --- N5
+  H0 --- N9
+  H0 -->|ok| N10
+  H1 --- N8
+  H1 -.->|a much longer label here| N2
+  H1 -->|yes| N2
+  H1 -->|no| N2
+  H1 -.-> N15
+  H2 -.-> N5
+  H2 ==>|no| N9
+  H2 ==> N3
+  H2 -->|retry| N10
+  H2 --- N12
+  H2 -.-> N3
+  H2 ---|ok| N10
+  H2 --- N2
+  H2 --- N9
+  N4 -->|ok| N15

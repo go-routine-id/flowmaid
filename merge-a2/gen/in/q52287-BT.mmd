@@ -1,0 +1,15 @@
+flowchart BT
+    subgraph G0[Core 0]
+        g0m0[g0m0]
+        g0m1[g0m1]
+        g0m2[g0m2]
+    end
+    subgraph G1[Ops 1]
+        g1m0[g1m0]
+        g1m1[g1m1]
+        g1m2[g1m2]
+        g1m3[g1m3]
+    end
+    G0 ==> o0
+    o2 --> g0m0
+    o3 --> o1

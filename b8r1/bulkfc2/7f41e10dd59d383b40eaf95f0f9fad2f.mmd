@@ -1,0 +1,15 @@
+flowchart RL
+  A[Alpha] --> B[Beta]
+  B --> C[Gamma]
+  A e1@<--> C
+  A e2@--o D[Delta]
+  D e3@--x C
+  B e4@<-.-> D
+  e1@{ curve: stepAfter }
+  e2@{ curve: step }
+  e3@{ curve: stepBefore }
+  e4@{ curve: step }
+  linkStyle 2 stroke-width:18px,stroke:#c33
+  linkStyle 3 stroke-width:12px
+  linkStyle 4 stroke-width:9px
+  linkStyle 5 stroke-width:24px,stroke:#36c

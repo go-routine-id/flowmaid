@@ -1,0 +1,24 @@
+flowchart LR
+    N0([Report])
+    N1{{Done archive}}
+    N2([Archive])
+    N3{Emit parse}
+    N4[Done queue]
+    N5{Emit archive}
+    N6{Fetch}
+    N7{Check emit}
+    N8(Load report)
+    N9{{Load}}
+    N0 --> N1
+    N1 --> N2
+    N1 --> N3
+    N2 --> N4
+    N2 --> N5
+    N5 --> N6
+    N5 --> N7
+    N7 -->|yes| N8
+    N7 -->|next| N9
+    N5 --> N7
+    N4 --> N1
+    N4 --> N1
+    N4 -.-> N0

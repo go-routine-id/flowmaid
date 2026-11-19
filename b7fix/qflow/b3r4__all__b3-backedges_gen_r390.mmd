@@ -1,0 +1,23 @@
+flowchart RL
+    N0([Emit])
+    N1[Check]
+    N2{Archive notify}
+    N3{Queue}
+    N4{Retry}
+    N5(Validate)
+    N6[Load archive]
+    N7([Notify])
+    N8([Report fetch])
+    N0 --> N1
+    N1 --> N2
+    N1 -->|no| N3
+    N3 --> N4
+    N2 --> N5
+    N3 -->|yes| N6
+    N4 --> N7
+    N7 -->|ok| N8
+    N0 --> N8
+    N1 --> N6
+    N2 --> N6
+    N3 ==> N2
+    N7 -.->|again| N2

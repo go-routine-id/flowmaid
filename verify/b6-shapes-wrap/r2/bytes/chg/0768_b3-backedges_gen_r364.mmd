@@ -1,0 +1,20 @@
+flowchart RL
+    N0([Store fetch])
+    N1{Validate}
+    N2(Queue)
+    N3{Validate done}
+    N4[Store parse]
+    N5[/Check/]
+    N6(Archive archive)
+    N7[Notify]
+    N8[Fetch]
+    N0 --> N1
+    N0 -->|next| N2
+    N2 --> N3
+    N1 -->|no| N4
+    N2 -->|ok| N5
+    N3 --> N6
+    N5 --> N7
+    N5 -->|yes| N8
+    N5 --> N7
+    N8 -->|again| N1

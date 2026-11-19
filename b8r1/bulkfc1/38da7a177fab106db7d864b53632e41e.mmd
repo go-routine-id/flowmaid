@@ -1,0 +1,24 @@
+flowchart TD
+    N0([Fetch])
+    N1(Archive)
+    N2[Store]
+    N3([Validate])
+    N4([Retry])
+    N5([Done])
+    N6([Archive])
+    N7([Notify])
+    N8{Fetch validate}
+    N9{Store validate}
+    N0 -->|yes| N1
+    N1 --> N2
+    N1 --> N3
+    N2 --> N4
+    N3 --> N5
+    N4 -->|fail| N6
+    N4 --> N7
+    N6 -->|no| N8
+    N7 --> N9
+    N0 --> N9
+    N2 --> N9
+    N3 --> N5
+    N6 -->|rollback| N5

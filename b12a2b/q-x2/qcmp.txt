@@ -1,0 +1,29 @@
+[dirs static] 332 copies  defects 41->41 (+0/-0)  x_drawn 1283->1284 (+1/-0)  lateral_x 192->191 (+0/-1)  fan_x 30->30 (+0/-0)  edge_chip 8->8 (+0/-0)  side_ends 208->208 (+0/-0)  min_edge_gap down 0
+    WORSE x_drawn (1): quality.dense-td-RL 29->30
+    info edge_edge_x: total 1266->1267, up 1 / down 0 (worse on 1, better on 0): quality.dense-td-RL 29->30
+    info min_node_gap: total 8413.18->8415.3, up 4 / down 0 (worse on 0, better on 4)
+    info center_off: total 49.52->49.4, up 2 / down 14 (no direction)
+    info width: total 275143->275153, up 16 / down 0 (no direction)
+    info height: total 217280->217296, up 30 / down 0 (no direction)
+    info aspect: total 786.33->786.04, up 0 / down 25 (no direction)
+    info area_per_node: total 14812004->14814764, up 46 / down 0 (no direction)
+    info tight_pairs: total 312->313, up 1 / down 0 (worse on 1, better on 0): notes.fork-twins-LR 0->1
+    info tight_len: total 43044->43092, up 1 / down 0 (worse on 1, better on 0): notes.fork-twins-LR 0->48
+    info xgap_max: total 64->65, up 1 / down 0 (worse on 1, better on 0): quality.dense-td-RL 1->2
+    info lat_backtrack: total 46994.4->47009.6, up 32 / down 1 (worse on 32, better on 1): blocks.b9-inside-BT 73.05->73.55; blocks.nested-chain-BT 79.04->80.04; blocks.nested-chain-TD 73.93->74.93; blocks.p08-chain3-BT 23.3->23.8; blocks.p11-lr-BT 20.74->21.24; blocks.p11-lr-TD 20.74->21.24 ...
+    info band_pairs: total 1026->1029, up 2 / down 0 (worse on 2, better on 0): quality.dense-td-RL 51->53; quality.dense-td-TD 55->56
+    info band_len: total 389370->390778, up 2 / down 4 (worse on 2, better on 4): quality.dense-td-RL 25834->27106; quality.dense-td-TD 42878->43022
+    info xhops: total 996->995, up 0 / down 1 (no direction)
+    info compact_max: total 3810.58->3813.21, up 126 / down 0 (worse on 126, better on 0): blocks.b9-inside-BT 11.97->11.98; blocks.b9-inside-LR 8.18->8.2; blocks.b9-inside-TD 13.56->13.57; blocks.b9-inside2-BT 11.97->11.98; blocks.b9-inside2-LR 9.3->9.32; blocks.b9-inside2-RL 9.63->9.66 ...
+    info compact_mean: total 2502.75->2504.28, up 98 / down 0 (worse on 98, better on 0): blocks.b9-inside-BT 8.35->8.36; blocks.b9-inside-LR 6.74->6.75; blocks.b9-inside-RL 7.29->7.3; blocks.b9-inside-TD 10.03->10.04; blocks.b9-inside2-BT 9.35->9.36; blocks.b9-inside2-LR 8.12->8.13 ...
+    info edge_len: total 1.90541e+06->1.90549e+06, up 101 / down 6 (worse on 101, better on 6): blocks.b9-inside-BT 1782.04->1783.04; blocks.b9-inside-RL 2076.48->2077.48; blocks.b9-inside-TD 2092.48->2093.48; blocks.b9-inside2-BT 1433.38->1434.38; blocks.b9-inside2-RL 1538.95->1539.51; blocks.b9-inside2-TD 1432.9->1433.4 ...
+    info bends_max: total 1383->1393, up 6 / down 0 (worse on 6, better on 0): blocks.b9-inside2-RL 4->5; blocks.cycle2-tie-swapped-BT 2->4; blocks.cycle2-tie-swapped-TD 2->4; blocks.p06-block-cycle-BT 2->4; blocks.p06-block-cycle-TD 2->4; quality.dense-td-RL 9->10
+    info detour_max: total 322.72->322.92, up 20 / down 0 (worse on 20, better on 0): blocks.b9-inside-BT 1.36->1.37; blocks.cycle2-LR 1.21->1.22; blocks.cycle2-RL 1.21->1.22; blocks.nested-BT 1.15->1.16; blocks.nested-LR 1.1->1.11; blocks.nested-RL 1.1->1.11 ...
+    info lbl_end_mean: total 31808.7->31822.2, up 40 / down 6 (worse on 40, better on 6): blocks.b9-inside2-TD 97.66->98.15; blocks.cycle2-BT 127.12->127.24; blocks.cycle2-LR 114.17->114.3; blocks.cycle2-RL 114.17->114.3; blocks.cycle2-TD 142.45->142.57; blocks.cycle2-tie-BT 118.16->118.41 ...
+    info chip_crowd: total 265->263, up 0 / down 2 (worse on 0, better on 2)
+    info chip_gap_min: total 8981.63->8987.36, up 2 / down 1 (worse on 1, better on 2): blocks.lr-TD 13.47->13.45
+[dirs routed] 332 copies  defects 169->169 (+0/-0)  x_drawn 1997->1997 (+0/-0)  lateral_x 418->418 (+0/-0)  fan_x 183->183 (+0/-0)  edge_chip 78->78 (+0/-0)  side_ends 361->361 (+0/-0)  min_edge_gap down 0
+    info fr_max: total 12985.2->13058.2, up 146 / down 0 (worse on 146, better on 0): blocks.b9-inside-BT 89.7->90.2; blocks.b9-inside-LR 56->56.5; blocks.b9-inside-RL 63->63.5; blocks.b9-inside-TD 164.4->164.9; blocks.b9-inside2-BT 65.75->66.25; blocks.b9-inside2-LR 40->40.5 ...
+[dirsx static] 32 copies  defects 0->0 (+0/-0)  x_drawn 1->1 (+0/-0)  lateral_x 1->1 (+0/-0)  fan_x 0->0 (+0/-0)  edge_chip 0->0 (+0/-0)  side_ends 2->2 (+0/-0)  min_edge_gap down 0
+[dirsx routed] 32 copies  defects 0->0 (+0/-0)  x_drawn 1->1 (+0/-0)  lateral_x 1->1 (+0/-0)  fan_x 0->0 (+0/-0)  edge_chip 0->0 (+0/-0)  side_ends 2->2 (+0/-0)  min_edge_gap down 0
+dirs: WORSE (1)

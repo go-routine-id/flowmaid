@@ -1,0 +1,16 @@
+flowchart BT
+    N0(Store)
+    N1[Parse]
+    N2([Archive])
+    N3[Report]
+    N4[Retry]
+    N5([Retry])
+    N6{Notify retry}
+    N0 -->|no| N1
+    N0 --> N2
+    N2 --> N3
+    N1 --> N4
+    N2 --> N5
+    N5 --> N6
+    N0 --> N1
+    N3 -.-> N2

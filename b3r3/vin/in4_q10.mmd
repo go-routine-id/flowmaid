@@ -1,0 +1,27 @@
+flowchart LR
+  n6 --- n6
+  n11 -->|lbl| n3
+  n8 --x n10
+  n9 o--o n11
+  n9 x--x n12
+  n1 x--x n0
+  n11 -.-> n4
+  n2 -.-> n8
+  n12 --- n11
+  n1 -.->|dot| n11
+  n10 x--x n11
+  n0 <-.-> n9
+  n0 --o n4
+  n1 <-.-> n3
+  n4 ==>|thick lbl| n3
+  n3 <==> n5
+  n1 --- n10
+  n0 <-.-> n5
+  n3 o--o n11
+  n4 --- n0
+  n9 -.->|dot| n8
+  n5 --o n12
+  n0 o--o n1
+  n7 -->|lbl| n5
+  n1 <==> n8
+  n12 x--x n1

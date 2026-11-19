@@ -1,0 +1,34 @@
+classDiagram
+C12 *-- C5 : x
+C13 ..> C16
+C4 <--> C10
+C11 --> C5
+C6 ..> C8
+C15 "1" -- "*" C0
+C0 o-- C7
+C5 "1" <--> "*" C10 : gamma
+C4 "1" ..|> "*" C0
+C7 "1" o-- "*" C2
+note for C15 "beta"
+note "alpha"
+note for C0 "<b>bold</b>"
+class C1 {
+  +int id
+  +name() String
+}
+class C3 {
+  +int id
+  +name() String
+}
+class C9 {
+  +int id
+  +name() String
+}
+class C14 {
+  +int id
+  +name() String
+}
+class C15 {
+  +int id
+  +name() String
+}

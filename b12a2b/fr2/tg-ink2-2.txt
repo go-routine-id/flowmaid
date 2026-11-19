@@ -1,0 +1,4 @@
+blocks.blocks-overview-BT.svg	Edge and shared services	A 1.45 CDN → GATE: cache miss	B 1.45 CDN → GATE: cache miss
+blocks.blocks-overview-edges-reversed-BT.svg	Edge and shared services	A 1.45 CDN → GATE: cache miss	B 1.45 CDN → GATE: cache miss
+blocks.blocks-overview-rl-BT.svg	Edge and shared services	A 1.45 CDN → GATE: cache miss	B 1.45 CDN → GATE: cache miss
+quality.bench-75-BT.svg	data zone	A 0.00 objects → logs	B 0.00 objects → logs

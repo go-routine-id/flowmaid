@@ -1,0 +1,12 @@
+flowchart BT
+    subgraph G[WWW Mammoth Wombat Overview]
+        m0[db]
+        m1[queue]
+        m2[charge]
+        m0 --> m1
+    end
+    s0[src0] --> G
+    s0 --> m1
+    s1[src1] --> G
+    s1 --> m1
+    m2 --> z[end]

@@ -1,0 +1,10 @@
+[package]
+name = "tp"
+version = "0.1.0"
+edition = "2021"
+[dependencies]
+flowmaid = { path = "/home/user/flowmaid" }
+[[bin]]
+name = "tp"
+path = "src/main.rs"
+[workspace]

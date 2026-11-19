@@ -1,0 +1,33 @@
+classDiagram
+C14 --> C11 : delta
+C5 ..> C16 : 日本語
+C4 "1" o-- "*" C9
+C17 <--> C16
+C7 "1" *-- "*" C1
+C20 -- C9 : gamma
+C15 -- C6
+C4 o-- C8
+C1 o-- C12
+note for C12 "Long label here"
+note "delta"
+note for C5 "beta"
+class C0 {
+  +int id
+  +name() String
+}
+class C5 {
+  +int id
+  +name() String
+}
+class C7 {
+  +int id
+  +name() String
+}
+class C15 {
+  +int id
+  +name() String
+}
+class C22 {
+  +int id
+  +name() String
+}

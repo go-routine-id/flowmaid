@@ -1,0 +1,21 @@
+flowchart LR
+    N0[Validate]
+    N1((Load))
+    N2([Parse])
+    N3{Emit store}
+    N4(Notify fetch)
+    N5{Check}
+    N6([Fetch])
+    N7{Notify archive}
+    N8([Emit archive])
+    N0 --> N1
+    N1 -->|no| N2
+    N0 -->|yes| N3
+    N2 --> N4
+    N2 --> N5
+    N4 -->|next| N6
+    N4 -->|ok| N7
+    N6 -->|yes| N8
+    N3 --> N4
+    N2 --> N6
+    N3 ==>|back| N0

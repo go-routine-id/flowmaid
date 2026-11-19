@@ -1,0 +1,440 @@
+blocks.b9-inside-BT	0	0	0.0
+blocks.b9-inside-LR	0	0	0.0
+blocks.b9-inside-RL	0	0	0.0
+blocks.b9-inside-TD	0	0	0.0
+blocks.b9-inside2-BT	0	0	2.5
+blocks.b9-inside2-LR	0	0	0.0
+blocks.b9-inside2-RL	0	0	2.5
+blocks.b9-inside2-TD	0	0	0.0
+blocks.blocks-overview-BT	2	2	17.4
+    #11>#18 | query          448.4   833.5   49.1  20 | 6.5
+    #14>#4 | receipt        841.4   1394.5  56.4  20 | 17.4
+blocks.blocks-overview-LR	0	0	2.4
+blocks.blocks-overview-RL	0	0	2.4
+blocks.blocks-overview-TD	3	3	23.2
+    #2>#9 | cache miss     371.4   464     84.4  20 | 21.9
+    #11>#18 | query          448.4   1044    49.1  20 | 6.5
+    #20>#4 | digest         975.8   898     51.7  20 | 23.2
+blocks.blocks-overview-actors-reversed-BT	2	2	17.4
+    #11>#18 | query          448.4   833.5   49.1  20 | 6.5
+    #14>#4 | receipt        841.4   1394.5  56.4  20 | 17.4
+blocks.blocks-overview-actors-reversed-LR	0	0	2.4
+blocks.blocks-overview-actors-reversed-RL	0	0	2.4
+blocks.blocks-overview-actors-reversed-TD	3	3	23.2
+    #2>#9 | cache miss     371.4   464     84.4  20 | 21.9
+    #11>#18 | query          448.4   1044    49.1  20 | 6.5
+    #20>#4 | digest         975.8   898     51.7  20 | 23.2
+blocks.blocks-overview-bt-BT	2	2	17.4
+    #11>#18 | query          448.4   833.5   49.1  20 | 6.5
+    #14>#4 | receipt        841.4   1394.5  56.4  20 | 17.4
+blocks.blocks-overview-bt-LR	0	0	2.4
+blocks.blocks-overview-bt-RL	0	0	2.4
+blocks.blocks-overview-bt-TD	3	3	23.2
+    #2>#9 | cache miss     371.4   464     84.4  20 | 21.9
+    #11>#18 | query          448.4   1044    49.1  20 | 6.5
+    #20>#4 | digest         975.8   898     51.7  20 | 23.2
+blocks.blocks-overview-edges-reversed-BT	2	2	17.4
+    #14>#4 | receipt        841.4   1394.5  56.4  20 | 17.4
+    #11>#18 | query          448.4   833.5   49.1  20 | 6.5
+blocks.blocks-overview-edges-reversed-LR	0	0	2.4
+blocks.blocks-overview-edges-reversed-RL	0	0	2.4
+blocks.blocks-overview-edges-reversed-TD	3	3	23.2
+    #20>#4 | digest         975.8   898     51.7  20 | 23.2
+    #11>#18 | query          448.4   1044    49.1  20 | 6.5
+    #2>#9 | cache miss     371.4   464     84.4  20 | 21.9
+blocks.blocks-overview-edges-rotated-BT	2	2	17.4
+    #11>#18 | query          448.4   833.5   49.1  20 | 6.5
+    #14>#4 | receipt        841.4   1394.5  56.4  20 | 17.4
+blocks.blocks-overview-edges-rotated-LR	0	0	2.4
+blocks.blocks-overview-edges-rotated-RL	0	0	2.4
+blocks.blocks-overview-edges-rotated-TD	3	3	23.2
+    #11>#18 | query          448.4   1044    49.1  20 | 6.5
+    #20>#4 | digest         975.8   898     51.7  20 | 23.2
+    #2>#9 | cache miss     371.4   464     84.4  20 | 21.9
+blocks.blocks-overview-lr-BT	2	2	17.4
+    #11>#18 | query          448.4   833.5   49.1  20 | 6.5
+    #14>#4 | receipt        841.4   1394.5  56.4  20 | 17.4
+blocks.blocks-overview-lr-LR	0	0	2.4
+blocks.blocks-overview-lr-RL	0	0	2.4
+blocks.blocks-overview-lr-TD	3	3	23.2
+    #2>#9 | cache miss     371.4   464     84.4  20 | 21.9
+    #11>#18 | query          448.4   1044    49.1  20 | 6.5
+    #20>#4 | digest         975.8   898     51.7  20 | 23.2
+blocks.blocks-overview-rl-BT	2	2	17.4
+    #11>#18 | query          448.4   833.5   49.1  20 | 6.5
+    #14>#4 | receipt        841.4   1394.5  56.4  20 | 17.4
+blocks.blocks-overview-rl-LR	0	0	2.4
+blocks.blocks-overview-rl-RL	0	0	2.4
+blocks.blocks-overview-rl-TD	3	3	23.2
+    #2>#9 | cache miss     371.4   464     84.4  20 | 21.9
+    #11>#18 | query          448.4   1044    49.1  20 | 6.5
+    #20>#4 | digest         975.8   898     51.7  20 | 23.2
+blocks.blocks-overview-subgraphs-reversed-BT	2	2	17.4
+    #13>#6 | query          448.4   833.5   49.1  20 | 6.5
+    #9>#19 | receipt        841.4   1394.5  56.4  20 | 17.4
+blocks.blocks-overview-subgraphs-reversed-LR	0	0	2.4
+blocks.blocks-overview-subgraphs-reversed-RL	0	0	2.4
+blocks.blocks-overview-subgraphs-reversed-TD	3	3	23.2
+    #17>#11 | cache miss     371.4   464     84.4  20 | 21.9
+    #13>#6 | query          448.4   1044    49.1  20 | 6.5
+    #3>#19 | digest         975.8   898     51.7  20 | 23.2
+blocks.cycle2-BT	0	0	2.5
+blocks.cycle2-LR	0	0	2.5
+blocks.cycle2-RL	0	0	2.5
+blocks.cycle2-TD	1	1	27.9
+    #1>#2 | request  105.7  229.1  60.8  20  157.4 | 27.9
+blocks.cycle2-tie-BT	0	0	2.5
+blocks.cycle2-tie-LR	0	0	0.1
+blocks.cycle2-tie-RL	0	0	0.1
+blocks.cycle2-tie-TD	0	0	2.5
+blocks.cycle2-tie-swapped-BT	0	0	2.5
+blocks.cycle2-tie-swapped-LR	0	0	0.1
+blocks.cycle2-tie-swapped-RL	0	0	0.1
+blocks.cycle2-tie-swapped-TD	0	0	2.5
+blocks.empty-target-BT	0	0	0.0
+blocks.empty-target-LR	0	0	0.0
+blocks.empty-target-RL	0	0	0.0
+blocks.empty-target-TD	0	0	0.0
+blocks.hub5-BT	2	2	24.4
+    #0>#3 | bill    271.8  819    32    20  382.3 | 13.4
+    #10>#1 | bounce  431.5  575    60    20  891.0 | 24.4
+blocks.hub5-LR	0	0	0.1
+blocks.hub5-RL	0	0	0.1
+blocks.hub5-TD	1	1	24.4
+    #10>#1 | bounce  431.5  542    60    20  891.0 | 24.4
+blocks.interleave-BT	0	0	0.0
+blocks.interleave-LR	0	0	0.0
+blocks.interleave-RL	0	0	0.0
+blocks.interleave-TD	0	0	0.0
+blocks.iso-lane-BT	0	0	0.1
+blocks.iso-lane-LR	0	0	0.0
+blocks.iso-lane-RL	0	0	0.0
+blocks.iso-lane-TD	0	0	0.1
+blocks.iso-lane-lr-BT	0	0	0.1
+blocks.iso-lane-lr-LR	0	0	0.0
+blocks.iso-lane-lr-RL	0	0	0.0
+blocks.iso-lane-lr-TD	0	0	0.1
+blocks.iso-nest-BT	0	0	0.1
+blocks.iso-nest-LR	0	0	0.0
+blocks.iso-nest-RL	0	0	0.0
+blocks.iso-nest-TD	0	0	0.1
+blocks.iso-state-BT	0	0	0.1
+blocks.iso-state-LR	0	0	0.0
+blocks.iso-state-RL	0	0	0.0
+blocks.iso-state-TD	0	0	0.1
+blocks.l5loop-BT	0	0	0.0
+blocks.l5loop-LR	0	0	0.0
+blocks.l5loop-RL	0	0	0.0
+blocks.l5loop-TD	0	0	0.0
+blocks.lane-beside-BT	0	0	0.1
+blocks.lane-beside-LR	0	0	0.0
+blocks.lane-beside-RL	0	0	0.0
+blocks.lane-beside-TD	0	0	0.1
+blocks.lr-BT	1	1	9.6
+    #7>#2 | page    345.7  425.5  45.2  20  678.9 | 9.6
+blocks.lr-LR	0	0	0.0
+blocks.lr-RL	0	0	0.0
+blocks.lr-TD	0	0	0.1
+blocks.nested-BT	0	0	2.5
+blocks.nested-LR	0	0	2.5
+blocks.nested-RL	0	0	2.5
+blocks.nested-TD	0	0	2.5
+blocks.nested-cases-BT	0	0	0.0
+blocks.nested-cases-LR	0	0	0.0
+blocks.nested-cases-RL	0	0	0.0
+blocks.nested-cases-TD	0	0	0.0
+blocks.nested-chain-BT	0	0	0.0
+blocks.nested-chain-LR	0	0	0.0
+blocks.nested-chain-RL	0	0	0.0
+blocks.nested-chain-TD	0	0	0.0
+blocks.nested-self-only-BT	0	0	0.0
+blocks.nested-self-only-LR	0	0	0.0
+blocks.nested-self-only-RL	0	0	0.0
+blocks.nested-self-only-TD	0	0	0.0
+blocks.nested-wide-title-BT	0	0	0.0
+blocks.nested-wide-title-LR	0	0	0.0
+blocks.nested-wide-title-RL	0	0	0.0
+blocks.nested-wide-title-TD	0	0	0.0
+blocks.note-edge-row-BT	0	0	0.0
+blocks.note-edge-row-LR	0	0	2.5
+blocks.note-edge-row-RL	0	0	2.5
+blocks.note-edge-row-TD	0	0	0.0
+blocks.own-centre-BT	0	0	0.0
+blocks.own-centre-LR	0	0	0.0
+blocks.own-centre-RL	0	0	0.0
+blocks.own-centre-TD	0	0	0.0
+blocks.p01-iso-BT	0	0	0.0
+blocks.p01-iso-LR	0	0	0.0
+blocks.p01-iso-RL	0	0	0.0
+blocks.p01-iso-TD	0	0	0.0
+blocks.p02-iso-dir-BT	0	0	0.0
+blocks.p02-iso-dir-LR	0	0	0.0
+blocks.p02-iso-dir-RL	0	0	0.0
+blocks.p02-iso-dir-TD	0	0	0.0
+blocks.p03-ext-dir-BT	0	0	0.0
+blocks.p03-ext-dir-LR	0	0	0.0
+blocks.p03-ext-dir-RL	0	0	0.0
+blocks.p03-ext-dir-TD	0	0	0.0
+blocks.p04-to-cluster-BT	0	0	0.1
+blocks.p04-to-cluster-LR	0	0	0.0
+blocks.p04-to-cluster-RL	0	0	0.0
+blocks.p04-to-cluster-TD	0	0	0.1
+blocks.p05-siblings-BT	0	0	0.0
+blocks.p05-siblings-LR	0	0	0.0
+blocks.p05-siblings-RL	0	0	0.0
+blocks.p05-siblings-TD	0	0	0.0
+blocks.p06-block-cycle-BT	0	0	2.5
+blocks.p06-block-cycle-LR	0	0	0.1
+blocks.p06-block-cycle-RL	0	0	0.1
+blocks.p06-block-cycle-TD	0	0	2.5
+blocks.p07-nested-BT	0	0	0.0
+blocks.p07-nested-LR	0	0	0.0
+blocks.p07-nested-RL	0	0	0.0
+blocks.p07-nested-TD	0	0	0.0
+blocks.p08-chain3-BT	0	0	2.5
+blocks.p08-chain3-LR	1	1	9.7
+    #0>#5 | skip B  411  45.8  52.8  20  547.8 | 9.7
+blocks.p08-chain3-RL	1	1	9.7
+    #0>#5 | skip B  297  45.8  52.8  20  547.7 | 9.7
+blocks.p08-chain3-TD	1	1	23.9
+    #0>#5 | skip B  148.4  407  52.8  20  498.5 | 23.9
+blocks.p09-disconnected-BT	0	0	0.0
+blocks.p09-disconnected-LR	0	0	0.0
+blocks.p09-disconnected-RL	0	0	0.0
+blocks.p09-disconnected-TD	0	0	0.0
+blocks.p10-mixed-rank-BT	0	0	0.0
+blocks.p10-mixed-rank-LR	0	0	0.0
+blocks.p10-mixed-rank-RL	0	0	0.0
+blocks.p10-mixed-rank-TD	0	0	0.0
+blocks.p11-lr-BT	0	0	2.5
+blocks.p11-lr-LR	0	0	0.0
+blocks.p11-lr-RL	0	0	0.0
+blocks.p11-lr-TD	0	0	2.5
+blocks.p12-state-BT	0	0	0.1
+blocks.p12-state-LR	0	0	0.0
+blocks.p12-state-RL	0	0	0.0
+blocks.p12-state-TD	0	0	0.1
+blocks.p13-inner-dir-ext-BT	0	0	0.0
+blocks.p13-inner-dir-ext-LR	0	0	0.0
+blocks.p13-inner-dir-ext-RL	0	0	0.0
+blocks.p13-inner-dir-ext-TD	0	0	0.0
+blocks.p14-empty-and-self-BT	0	0	0.0
+blocks.p14-empty-and-self-LR	0	0	0.0
+blocks.p14-empty-and-self-RL	0	0	0.0
+blocks.p14-empty-and-self-TD	0	0	0.0
+blocks.ratio2-BT	0	0	0.0
+blocks.ratio2-LR	0	0	0.0
+blocks.ratio2-RL	0	0	0.0
+blocks.ratio2-TD	0	0	0.0
+blocks.ratio2x4-BT	0	0	0.0
+blocks.ratio2x4-LR	1	1	19.9
+    #6>#2 | r2       174.4  323.9  26.5  20  126.4 | 19.9
+blocks.ratio2x4-RL	1	1	19.9
+    #6>#2 | r2       243.3  323.9  26.5  20  126.4 | 19.9
+blocks.ratio2x4-TD	1	1	13.9
+    #6>#2 | r2       334.6  184.3  26.5  20  146.3 | 13.9
+blocks.ratio3-BT	1	1	13.8
+    #0>#5 | request  69     156.7  60.8  20  218.5 | 13.8
+blocks.ratio3-LR	0	0	0.1
+blocks.ratio3-RL	0	0	0.1
+blocks.ratio3-TD	0	0	0.1
+blocks.ratio4-BT	0	0	0.0
+blocks.ratio4-LR	1	1	19.9
+    #6>#2 | r2       174.4  323.9  26.5  20  126.4 | 19.9
+blocks.ratio4-RL	1	1	19.9
+    #6>#2 | r2       243.3  323.9  26.5  20  126.4 | 19.9
+blocks.ratio4-TD	1	1	13.9
+    #6>#2 | r2       334.6  184.3  26.5  20  146.3 | 13.9
+blocks.ratio4mask-BT	0	0	0.0
+blocks.ratio4mask-LR	1	1	19.9
+    #6>#2 | r2       174.4  323.9  26.5  20  126.4 | 19.9
+blocks.ratio4mask-RL	1	1	19.9
+    #6>#2 | r2       243.3  323.9  26.5  20  126.4 | 19.9
+blocks.ratio4mask-TD	1	1	13.9
+    #6>#2 | r2       334.6  184.3  26.5  20  146.3 | 13.9
+blocks.reqresp-BT	1	0	5.0
+    #0>#2 | request   82.4   234.7  60.8  20  210.7 | 5.0
+blocks.reqresp-LR	0	0	0.0
+blocks.reqresp-RL	0	0	0.0
+blocks.reqresp-TD	0	0	0.1
+blocks.reqresp22-BT	1	0	5.0
+    #0>#4 | request   82.4   234.7  60.8  20  210.7 | 5.0
+blocks.reqresp22-LR	0	0	0.0
+blocks.reqresp22-RL	0	0	0.0
+blocks.reqresp22-TD	0	0	0.1
+blocks.self-member-BT	0	0	0.0
+blocks.self-member-LR	0	0	0.0
+blocks.self-member-RL	0	0	0.0
+blocks.self-member-TD	0	0	0.0
+blocks.selfsub-nested-BT	0	0	0.0
+blocks.selfsub-nested-LR	0	0	0.0
+blocks.selfsub-nested-RL	0	0	0.0
+blocks.selfsub-nested-TD	0	0	0.0
+blocks.state-note-BT	0	0	2.4
+blocks.state-note-LR	0	0	2.5
+blocks.state-note-RL	0	0	2.5
+blocks.state-note-TD	0	0	2.4
+blocks.sub-nested-self-BT	0	0	0.0
+blocks.sub-nested-self-LR	0	0	0.0
+blocks.sub-nested-self-RL	0	0	0.0
+blocks.sub-nested-self-TD	0	0	0.0
+blocks.swim-cycle-BT	0	0	0.0
+blocks.swim-cycle-LR	0	0	0.0
+blocks.swim-cycle-RL	0	0	0.0
+blocks.swim-cycle-TD	0	0	0.0
+blocks.swim-nested-BT	0	0	0.0
+blocks.swim-nested-LR	0	0	0.0
+blocks.swim-nested-RL	0	0	0.0
+blocks.swim-nested-TD	0	0	0.0
+blocks.swimlane-BT	0	0	0.0
+blocks.swimlane-LR	0	0	0.0
+blocks.swimlane-RL	0	0	0.0
+blocks.swimlane-TD	0	0	0.0
+blocks.swimlane-nested-BT	0	0	0.0
+blocks.swimlane-nested-LR	0	0	0.0
+blocks.swimlane-nested-RL	0	0	0.0
+blocks.swimlane-nested-TD	0	0	0.0
+blocks.t1-nest-own-BT	0	0	0.0
+blocks.t1-nest-own-LR	0	0	0.0
+blocks.t1-nest-own-RL	0	0	0.0
+blocks.t1-nest-own-TD	0	0	0.0
+blocks.t2-self-nested-BT	0	0	0.0
+blocks.t2-self-nested-LR	0	0	0.0
+blocks.t2-self-nested-RL	0	0	0.0
+blocks.t2-self-nested-TD	0	0	0.0
+blocks.t2b-self-nested-order-BT	0	0	0.0
+blocks.t2b-self-nested-order-LR	0	0	0.0
+blocks.t2b-self-nested-order-RL	0	0	0.0
+blocks.t2b-self-nested-order-TD	0	0	0.0
+blocks.t9-frames-8px-BT	0	0	0.0
+blocks.t9-frames-8px-LR	0	0	0.0
+blocks.t9-frames-8px-RL	0	0	0.0
+blocks.t9-frames-8px-TD	0	0	0.0
+blocks.t9b-frames-8px-lr-BT	0	0	0.0
+blocks.t9b-frames-8px-lr-LR	0	0	0.0
+blocks.t9b-frames-8px-lr-RL	0	0	0.0
+blocks.t9b-frames-8px-lr-TD	0	0	0.0
+blocks.t9c-frames-8px-two-way-BT	0	0	0.0
+blocks.t9c-frames-8px-two-way-LR	0	0	0.0
+blocks.t9c-frames-8px-two-way-RL	0	0	0.0
+blocks.t9c-frames-8px-two-way-TD	0	0	0.0
+blocks.title-entry-BT	0	0	0.0
+blocks.title-entry-LR	0	0	0.0
+blocks.title-entry-RL	0	0	0.0
+blocks.title-entry-TD	0	0	0.0
+blocks.title-hidden-BT	0	0	0.0
+blocks.title-hidden-LR	0	0	0.0
+blocks.title-hidden-RL	0	0	0.0
+blocks.title-hidden-TD	0	0	0.0
+blocks.turned-blocks-BT	1	1	27.1
+    [Quality]>[Intake] | rework   236.6  558.9  56.1  20  228 | 27.1
+blocks.turned-blocks-LR	2	2	10.0
+    #8>#3 | damaged  846.1  72.9   72.5  20  672.8 | 9.0
+    [Quality]>[Intake] | rework   490.3  206.6  56.1  20  319.1 | 10.0
+blocks.turned-blocks-RL	1	1	10.0
+    [Quality]>[Intake] | rework   762.6  206.6  56.1  20  319.1 | 10.0
+blocks.turned-blocks-TD	1	1	35.9
+    #8>#3 | damaged  64.3   827.5  72.5  20  676.6 | 35.9
+blocks.wide-stroke-BT	0	0	2.6
+blocks.wide-stroke-LR	0	0	2.5
+blocks.wide-stroke-RL	0	0	2.5
+blocks.wide-stroke-TD	0	0	2.6
+notes.fork-twins-BT	0	0	0.1
+notes.fork-twins-LR	0	0	0.1
+notes.fork-twins-RL	1	1	9.0
+    #7>#9 | t2    1157.5  410    25.7  20  107.2 | 9.0
+notes.fork-twins-TD	0	0	2.5
+notes.near-drag-BT	0	0	2.0
+notes.near-drag-LR	0	0	3.0
+notes.near-drag-RL	0	0	3.0
+notes.near-drag-TD	0	0	2.0
+notes.nested-composite-BT	2	2	9.9
+    #14>#10 | a     523    432.6  21.8  20  422.5 | 9.9
+    #14>#10 | b     555.3  433.9  21.8  20  422.0 | 9.9
+notes.nested-composite-LR	3	3	9.0
+    #13>#11 | a     1666.6  259.3  21.8  20  151.7 | 6.4
+    #14>#10 | a     1781.2  491.4  21.8  20  426.1 | 9.0
+    #14>#10 | b     1780.2  522.1  21.8  20  429.5 | 9.0
+notes.nested-composite-RL	3	3	9.0
+    #13>#11 | a     587.1   259.3  21.8  20  151.7 | 6.4
+    #14>#10 | a     472.5   491.4  21.8  20  426.1 | 9.0
+    #14>#10 | b     473.5   522.1  21.8  20  429.5 | 9.0
+notes.nested-composite-TD	2	2	9.9
+    #14>#10 | a     523    1433    21.8  20  391.0 | 9.9
+    #14>#10 | b     555.3  1436.2  21.8  20  390.5 | 9.9
+notes.routed-around-BT	3	2	17.7
+    #4>#3 | y     174.6  935.8   21    20  135.2 | 4.6
+    #4>#3 | n     187.8  909.7   21.8  20  148.4 | 6.5
+    #1>[C0] | go1   171.1  1140.5  37.4  20  66.5 | 17.7
+notes.routed-around-LR	1	1	11.1
+    #4>#3 | y     518.1  237.3  21    20  88.1 | 11.1
+notes.routed-around-RL	1	1	11.1
+    #4>#3 | y     945.7   237.3  21    20  88.1 | 11.1
+notes.routed-around-TD	2	2	17.7
+    #4>#3 | n     244.9  454.9  21.8  20  102.2 | 10.0
+    #1>[C0] | go1   243.9  188    37.4  20  66.5 | 17.7
+notes.spread-bottom-BT	0	0	0.1
+notes.spread-bottom-LR	1	0	4.6
+    [K0]>#25 | g5    668.9   77     29.6  20  105.5 | 4.6
+notes.spread-bottom-RL	1	0	4.6
+    [K0]>#25 | g5    1395.3  77     29.6  20  105.5 | 4.6
+notes.spread-bottom-TD	0	0	0.1
+notes.spread-face-BT	0	0	0.1
+notes.spread-face-LR	0	0	0.1
+notes.spread-face-RL	0	0	0.1
+notes.spread-face-TD	0	0	0.1
+notes.straight-link-BT	0	0	0.0
+notes.straight-link-LR	0	0	0.1
+notes.straight-link-RL	0	0	0.1
+notes.straight-link-TD	0	0	0.0
+notes.wide-frames-BT	0	0	0.1
+notes.wide-frames-LR	1	1	9.0
+    [K0N]>#3 | up    535.2  373.5  29.6  20  47.1 | 9.0
+notes.wide-frames-RL	1	1	9.0
+    [K0N]>#3 | up    1330.1  373.5  29.6  20  47.1 | 9.0
+notes.wide-frames-TD	1	1	14.7
+    [K0]>#1 | back  321.6  208.8  43.6  20  67 | 14.7
+quality.back-edge-BT	0	0	0.0
+quality.back-edge-LR	0	0	0.0
+quality.back-edge-RL	0	0	0.0
+quality.back-edge-TD	0	0	0.0
+quality.bench-75-BT	0	0	0.0
+quality.bench-75-LR	0	0	0.0
+quality.bench-75-RL	0	0	0.0
+quality.bench-75-TD	0	0	0.0
+quality.dense-lr-BT	1	1	32.3
+    #44>#51 | eiusmod tempor eiusmod     119.3   472. | 32.3
+quality.dense-lr-LR	2	2	29.4
+    #14>#24 | nostrud                    1102.3  670. | 29.4
+    #44>#51 | eiusmod tempor eiusmod     2925.3  858. | 17.4
+quality.dense-lr-RL	1	1	29.5
+    #14>#24 | nostrud                    2130.5  670. | 29.5
+quality.dense-lr-TD	1	1	5.9
+    #44>#51 | eiusmod tempor eiusmod     119.3   1555 | 5.9
+quality.dense-td-BT	2	2	35.4
+    #17>#42 | labore incididunt           2232.6  576 | 19.5
+    #17>#44 | do labore                   3576.5  905 | 35.4
+quality.dense-td-LR	0	0	2.9
+quality.dense-td-RL	0	0	2.9
+quality.dense-td-TD	1	0	4.0
+    #17>#22 | elit                        2128.3  541 | 4.0
+quality.fanout-frames-BT	0	0	0.0
+quality.fanout-frames-LR	0	0	0.0
+quality.fanout-frames-RL	0	0	0.0
+quality.fanout-frames-TD	0	0	0.0
+quality.wide-labels-BT	4	4	71.3
+    #1>#2 | forwarded after authentication and rate | 10.2
+    #2>#3 | query by primary key | 71.3
+    #5>#3 | writes the projection | 9.2
+    #0>#2 | health probe | 33.2
+quality.wide-labels-LR	2	2	26.5
+    #1>#2 | forwarded after authentication and rate | 26.5
+    #5>#3 | writes the projection | 19.5
+quality.wide-labels-RL	2	2	26.5
+    #1>#2 | forwarded after authentication and rate | 26.5
+    #5>#3 | writes the projection | 19.5
+quality.wide-labels-TD	4	4	71.3
+    #1>#2 | forwarded after authentication and rate | 10.2
+    #2>#3 | query by primary key | 71.3
+    #5>#3 | writes the projection | 9.2
+    #0>#2 | health probe | 33.2

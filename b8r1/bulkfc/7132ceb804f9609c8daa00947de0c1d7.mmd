@@ -1,0 +1,10 @@
+flowchart TD
+  A[Begin] --> D{OK?}
+  D -->|no| D
+  D -->|maybe| D
+  D -->|later| D
+  D -->|yes| C((Done))
+  C --> C
+  C --> C
+  C --> C
+  C -.->|reset| A

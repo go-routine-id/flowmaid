@@ -1,0 +1,20 @@
+sequenceDiagram
+participant P0 as 日本語
+participant P1 as Long label here
+actor P2 as beta
+participant P3 as <b>bold</b>
+actor P4 as x
+actor P5 as delta
+participant P6 as 日本語
+participant P7 as delta
+activate P6
+P6->>P4: act
+deactivate P6
+activate P2
+P2->>P1: act
+deactivate P2
+P7--)P4: a&b
+activate P0
+P0->>P4: act
+deactivate P0
+P1-->>P4: beta

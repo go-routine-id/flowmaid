@@ -1,0 +1,25 @@
+flowchart LR
+    U([User]) --> W
+    subgraph FE[Front end]
+        W[Web app] --> M[Mobile API]
+    end
+    subgraph BE[Back end]
+        direction TB
+        S1[Orders] --> S2[Billing]
+        S2 --> S3[Ledger]
+    end
+    subgraph OPS[Ops]
+        L[Logs]
+        Mx[Metrics]
+    end
+    W -->|place order| S1
+    M -->|query| S2
+    S1 -.-> L
+    S2 -.-> L
+    S3 -.-> Mx
+    S3 ==>|settle| U
+    FE --> OPS
+    linkStyle 0 stroke:#f00,stroke-width:4px
+    linkStyle 3 interpolate linear
+    e1@{ curve: stepAfter }
+    S1 e1@--> Mx

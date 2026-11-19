@@ -1,0 +1,13 @@
+flowchart TD
+  classDef default fill:#ffffff,stroke:#222,stroke-width:2px,color:#000
+  classDef hot fill:#ffe0e0,stroke:#c00
+  A[Start] --> B{Decide}
+  B -->|yes| C([Go]):::hot
+  B -.->|no| D[(Store)]
+  D -.- E[[Sub]]
+  C ==> F((End))
+  E -.-> F
+  T@{ shape: text, label: "free text" }
+  F --> T
+  linkStyle 3 stroke-width:5px
+  style F fill:#e0ffe0

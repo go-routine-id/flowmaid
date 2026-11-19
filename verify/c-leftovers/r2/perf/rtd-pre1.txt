@@ -1,0 +1,9 @@
+in12_arrow_l0_c1_BT.mmd	class scene 0.351	route 0.573
+class.mmd	class scene 0.233	route 0.193
+LR_b8_a3_c2_l1_x0.mmd	class scene 1.727	route 1.115
+TB_b8_a3_c2_l1_x0.mmd	class scene 3.329	route 2.727
+TB_b8_a3_q1_l1_c2.mmd	class scene 3.423	route 2.814
+q260.mmd	class scene 2.615	route 2.987
+q204.mmd	class scene 2.552	route 2.466
+k5_TB.mmd	class scene 0.791	route 0.817
+36cc3a4be3377a27c91f9ebf62f6465b.mmd	class scene 16.687	route 11.174

@@ -1,0 +1,15 @@
+classDiagram
+direction BT
+A --|> B : x
+B ..> C : uses
+B *-- D
+C <|-- E
+B -- C
+E *-- E : e0
+B *-- B : b0
+B o-- B
+class B {
+ +int id
+ +run() void
+ +stop()
+}

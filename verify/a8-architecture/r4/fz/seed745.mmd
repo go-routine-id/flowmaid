@@ -1,0 +1,37 @@
+architecture-beta
+    group g0(cloud)[Edge]
+    group g1(server)[Edge]
+    group g2(nonsense)[Private API]
+    service s0(cloud)[Svc 0] in g2
+    service s1(nonsense)[Q 1]
+    service s2(database)[Authentication and Authorization Service 2]
+    service s3(disk)[Authentication and Authorization Service 3]
+    service s4(database)[Q 4] in g0
+    service s5(server)[Authentication and Authorization Service 5] in g2
+    service s6(nonsense)[PostgreSQL Primary 6] in g1
+    service s7(nonsense)[Q 7] in g0
+    service s8(internet)[PostgreSQL Primary 8] in g0
+    service s9(monitoring)[Authentication and Authorization Service 9] in g0
+    service s10(monitoring)[Authentication and Authorization Service 10] in g2
+    service s11(server)[PostgreSQL Primary 11] in g1
+    service s12(monitoring)[Authentication and Authorization Service 12]
+    service s13(cloud)[PostgreSQL Primary 13] in g1
+    junction s14 in g0
+    junction s15 in g1
+    s9{group}:R -- L:s10
+    s5:T <--> L:s13
+    s8:R <-[reads config]-> L:s4
+    s5:B --> T:s3
+    s0:T --> B:s6
+    s15:T --> B:s7
+    s7:L -- T:s10{group}
+    s11:B <-[replicates to standby]-> T:s10
+    s12:R <-[sync]-> B:s9
+    s15:T <--> B:s7
+    s1:B -[publishes order events]-> T:s15
+    s0:L <-[reads config]-> L:s4
+    s0:R -- L:s15
+    s14:R <--> L:s11
+    s15:T -[publishes order events]-> B:s2
+    s14{group}:T <--> B:s6
+    s12:T -- B:s14{group}

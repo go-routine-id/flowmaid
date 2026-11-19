@@ -1,0 +1,15 @@
+flowchart RL
+    N0(Done archive)
+    N1[Check]
+    N2[Done emit]
+    N3([Validate])
+    N4[Check queue]
+    N5(Report)
+    N0 --> N1
+    N1 -->|next| N2
+    N0 --> N3
+    N1 --> N4
+    N3 --> N5
+    N0 --> N3
+    N4 -.-> N3
+    N5 -->|rollback| N4

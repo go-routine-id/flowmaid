@@ -1,0 +1,18 @@
+flowchart RL
+    N0{Fetch}
+    N1[(Report)]
+    N2([Done])
+    N3{Store report}
+    N4{Fetch}
+    N5([Fetch done])
+    N6[Store]
+    N0 --> N1
+    N1 --> N2
+    N1 --> N3
+    N2 --> N4
+    N2 --> N5
+    N4 --> N6
+    N2 --> N5
+    N0 --> N5
+    N4 -->|rollback| N0
+    N4 -.-> N3

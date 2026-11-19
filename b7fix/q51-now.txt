@@ -1,0 +1,51 @@
+g129	static	A->__end_root end_tilt end on __end_root 19.5deg
+g129	static	K0->K1 end_cross K1->K0 at (541,225)
+g129	static	K1->K0 touch __note_14->K1 0.0px
+g129	static	K1_0->__end_1 end_tilt end on __end_1 28.4deg
+g129	static	port K0 __note_16 __note_17
+g129	static	port K1 __note_14 __note_15
+g129	static	port K1 __note_14 __note_18
+g129	static	port K1 __note_15 __note_18
+g51	static	K0NN->__note_26 end_cross K0NN->__note_27 at (577,1048)
+g51	static	K0NN_0->K0NN_c end_tilt end on K0NN_c 90.0deg
+g51	static	K0NN_0->K0NN_f band K0NN_f->K0NN_0 252px
+g51	static	K0NN_0->K0NN_f tight K0NN_f->K0NN_0 136px
+g51	static	K0NN_c->K0NN_0 band K0NN_0->__note_18 248px
+g51	static	K0NN_c->K0NN_0 band __note_22->K0NN_0 178px
+g51	static	K0NN_c->K0NN_0 hug __note_18 65px
+g51	static	K0NN_c->K0NN_0 tight K0NN_0->__note_18 174px
+g51	static	K0NN_c->K0NN_0 tight __note_22->K0NN_0 174px
+g51	static	K0NN_f->K0NN_0 band __note_12->K0NN_0 254px
+g51	static	K0N_f->K0N_0 border K0NN top 78px
+g51	static	K0N_f->K0N_0 edge_frame K0NN
+g51	static	K0N_f->K0N_0 end_cross K0N_f->K0N_0 at (624,650)
+g51	static	K0N_f->K0N_0 hug K0NN 121px
+g51	static	K0N_f->K0N_0 tight K0N_0->K0NN 38px
+g51	static	K0_0->K0_2 lat_wiggle 4.3
+g51	static	K0_1->K0N_0 band K0_1->K0_c 246px
+g51	static	K0_1->K0N_0 band K0_c->K0_1 276px
+g51	static	K0_1->K0N_0 end_cross K0_1->K0_c at (1111,539)
+g51	static	K0_1->K0N_0 overlap K0_1->K0_c 54px
+g51	static	K0_1->K0N_0 overlap K0_c->K0_1 58px
+g51	static	K0_1->K0N_0 tight K0_1->K0_c 68px
+g51	static	K0_1->K0N_0 tight K0_c->K0_1 104px
+g51	static	K0_1->K0_c edge_frame K0N
+g51	static	K0_1->K0_c end_cross K0_c->K0_1 at (1111,545)
+g51	static	K0_1->K0_c hug K0N_0 74px
+g51	static	K0_c->K0_1 edge_frame K0N
+g51	static	K0_f->K0_0 band B0->K0_0 110px
+g51	static	K0_f->K0_0 tight B0->K0_0 28px
+g51	static	__note_16->K0NN_0 overlap K0_c->K0NN_0 26px
+g51	static	__note_21->K0NN_0 touch __note_22->K0NN_0 2.0px
+g51	static	__start_1->K0N_0 band K0_1->K0_c 142px
+g51	static	__start_1->K0N_0 band K0_c->K0_1 264px
+g51	static	__start_1->K0N_0 overlap K0_1->K0_c 22px
+g51	static	__start_1->K0N_0 overlap K0_c->K0_1 110px
+g51	static	__start_1->K0N_0 tight K0_1->K0_c 30px
+g51	static	__start_1->K0N_0 tight K0_c->K0_1 176px
+g51	static	__start_2->K0NN_0 hug __note_12 53px
+g51	static	port K0NN __note_26 __note_27
+g51	static	port K0NN_0 __note_16 K0_c
+g51	static	port K0NN_0 __note_21 __note_22
+g51	static	port K0NN_0 __start_2 K0_c
+g51	static	port K0NN_c K0NN_0 K0NN_0

@@ -1,0 +1,22 @@
+classDiagram
+A ..> B
+A o-- C
+C ..|> D
+D ..|> E
+B o-- F
+B -- G : owns
+E o-- B
+A --|> G
+G --> G : g0
+E *-- E : e0
+A ..> A : a0
+A --> A : a1
+A --> A
+A --> A : a3
+A o-- A : a4
+A o-- A : a5
+A ..> A : a6
+A *-- A
+D --> D : d0
+D ..> D : d1
+D --> D : d2

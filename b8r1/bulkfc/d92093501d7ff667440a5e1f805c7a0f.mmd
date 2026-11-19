@@ -1,0 +1,14 @@
+flowchart TD
+    A[This is a very long plain label that should wrap at the default width nicely] --> B{Is the submitted application complete and signed by the applicant?}
+    B -->|yes, everything is in order and verified| C([Proceed to the next review stage of the pipeline])
+    B -->|no| D[(A database with a rather long descriptive name for testing)]
+    D --> E{{Hexagon with a pretty long label in it to wrap}}
+    E --> F[/Parallelogram whose label also goes on for quite a while/]
+    F --> G((A circle with a long label inside))
+    G --> H[Short]
+    H --> I[Explicit<br/>break kept as is even if this second line is quite long indeed]
+    I --> J["`**Markdown** label that is _long_ enough to wrap at the width`"]
+    J --> K[Supercalifragilisticexpialidocious_antidisestablishmentarianism word]
+    K --> L[日本語のラベルはとても長いのでここで折り返されるべきでしょうか テスト]
+    L --> M{ok?}
+    M --> N{ }

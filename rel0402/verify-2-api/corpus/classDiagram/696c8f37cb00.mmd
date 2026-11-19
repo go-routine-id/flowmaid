@@ -1,0 +1,15 @@
+classDiagram
+A ..> B
+B --> C : owns
+A --> D
+C --|> E : has many of
+D ..> F
+B ..|> G
+G <|-- E
+G -- B
+G --> G : g0
+G o-- G
+B *-- B : b0
+B --> B
+B o-- B : b2
+B --> B

@@ -1,0 +1,16 @@
+flowchart TD
+    subgraph O[Édition générale des données]
+        subgraph G[Core]
+            m0[y]
+            m1[queue]
+            m2[auth service]
+        end
+        k[k]
+    end
+    m0 --> k
+    m1 --> k
+    s0[src0] --> m2
+    s0 --> G
+    s1[src1] -- "lbl2" --> G
+    s1 -- "lbl9" --> O
+    m2 --> z[end]

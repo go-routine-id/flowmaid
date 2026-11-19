@@ -1,0 +1,21 @@
+flowchart RL
+    N0([Load])
+    N1(Done parse)
+    N2[Report queue]
+    N3{Load}
+    N4([Notify notify])
+    N5([Store])
+    N6(Load fetch)
+    N7([Fetch done])
+    N8(Notify notify)
+    N0 -->|yes| N1
+    N1 --> N2
+    N0 -->|next| N3
+    N3 --> N4
+    N2 -->|next| N5
+    N5 -->|next| N6
+    N4 -->|fail| N7
+    N7 --> N8
+    N7 --> N8
+    N7 --> N8
+    N6 -.-> N0

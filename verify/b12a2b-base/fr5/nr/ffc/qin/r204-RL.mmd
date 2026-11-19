@@ -1,0 +1,14 @@
+flowchart RL
+    subgraph O[Data ingestion workers]
+        subgraph G[WWW Mammoth Wombat Overview]
+            m0[y]
+            m1[charge]
+            m2[y]
+        end
+        k[k]
+    end
+    m0 --> k
+    m1 --> k
+    s0[src0] -- "lbl2" --> G
+    s1[src1] --> m2
+    s1 --> m1

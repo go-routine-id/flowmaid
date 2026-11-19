@@ -1,0 +1,56 @@
+advanced	edges=16	hops=0	masks=0	samples=1308	pick_miss=0	hop_pick_miss=0	under_wrong=0	sharp=2	off_path=0	hop_node=0	hop_label=0	hop_frame=0	hop_edge=0	hop_head=0	hop_unpicked=0	tight_node=0	mermaid=e3007aeca7e9e3bc	svg=bc5b0e08917ed100	drags=0000000000000000	fails=2
+  FAIL advanced static: edge 4 Gate->Cache sharp corner at (408.7,663.2) legs 14.0/16.1
+  FAIL advanced route: edge 4 Gate->Cache sharp corner at (408.7,663.2) legs 14.0/16.1
+back-edge	edges=6	hops=0	masks=0	samples=346	pick_miss=0	hop_pick_miss=0	under_wrong=0	sharp=0	off_path=0	hop_node=0	hop_label=0	hop_frame=0	hop_edge=0	hop_head=0	hop_unpicked=0	tight_node=0	mermaid=904e54dc6698f7e8	svg=f2bc7d1d0f54f0e7	drags=0000000000000000	fails=0
+bench-75	edges=75	hops=451	masks=50	samples=44640	pick_miss=0	hop_pick_miss=4	under_wrong=0	sharp=19	off_path=0	hop_node=0	hop_label=0	hop_frame=0	hop_edge=4	hop_head=0	hop_unpicked=0	tight_node=0	mermaid=d5ebff401df55a5e	svg=06030be529f80add	drags=0000000000000000	fails=10
+  FAIL bench-75 static: edge 5 gw->svc2 sharp corner at (191.3,399.8) legs 14.0/28.0
+  FAIL bench-75 static: edge 5 gw->svc2 sharp corner at (812.1,610.0) legs 15.0/14.0
+  FAIL bench-75 static: edge 19 svc2->cache sharp corner at (985.9,638.0) legs 14.0/15.0
+  FAIL bench-75 route: mid-arc (507.1,738.0) of edge 27's hop picks Some(64)
+  FAIL bench-75 route: mid-arc (514.1,738.0) of edge 27's hop picks Some(64)
+  FAIL bench-75 route: edge 27 svc5->db hop at (510.6,741.5) r 5.0 comes 0.0 px from edge 64 svc5->ext
+  FAIL bench-75 route: mid-arc (605.1,738.0) of edge 27's hop picks Some(64)
+  FAIL bench-75 route: edge 27 svc5->db hop at (608.6,741.5) r 5.0 comes 0.0 px from edge 64 svc5->ext
+  FAIL bench-75 route: edge 64 svc5->ext hop at (510.6,741.4) r 5.0 comes 0.0 px from edge 27 svc5->db
+  FAIL bench-75 route: edge 64 svc5->ext hop at (608.6,741.5) r 5.0 comes 0.0 px from edge 27 svc5->db
+demo	edges=6	hops=0	masks=0	samples=352	pick_miss=0	hop_pick_miss=0	under_wrong=0	sharp=0	off_path=0	hop_node=0	hop_label=0	hop_frame=0	hop_edge=0	hop_head=0	hop_unpicked=0	tight_node=0	mermaid=831bca7bf3f893da	svg=16ca7456b82a883d	drags=0000000000000000	fails=0
+dense-lr	edges=40	hops=55	masks=12	samples=20094	pick_miss=0	hop_pick_miss=0	under_wrong=0	sharp=3	off_path=18	hop_node=0	hop_label=0	hop_frame=0	hop_edge=0	hop_head=0	hop_unpicked=0	tight_node=0	mermaid=7d7938fd26a425e2	svg=464c353258b4f7b5	drags=0000000000000000	fails=6
+  FAIL dense-lr static: edge 0 n12->n30 sharp corner at (1006.2,1362.5) legs 14.0/839.9
+  FAIL dense-lr static: edge 3 n12->n26 sharp corner at (1031.2,1347.1) legs 14.0/21.7
+  FAIL dense-lr static: edge 11 n12->n27 sharp corner at (1018.7,1354.8) legs 14.0/21.7
+  FAIL dense-lr static: edge 0 n12->n30 painted (993.2,1367.5) is 5.0 px off its scene path
+  FAIL dense-lr static: edge 0 n12->n30 painted (993.9,1368.7) is 6.3 px off its scene path
+  FAIL dense-lr static: edge 0 n12->n30 painted (994.6,1370.2) is 7.7 px off its scene path
+dense-td	edges=44	hops=131	masks=8	samples=33211	pick_miss=0	hop_pick_miss=0	under_wrong=0	sharp=3	off_path=0	hop_node=0	hop_label=0	hop_frame=0	hop_edge=0	hop_head=0	hop_unpicked=0	tight_node=0	mermaid=04cc3a83952b8ab8	svg=5443fccb82975c9d	drags=0000000000000000	fails=3
+  FAIL dense-td static: edge 8 n16->n21 sharp corner at (2064.8,1113.3) legs 14.0/17.2
+  FAIL dense-td route: edge 5 n16->n35 sharp corner at (2042.7,1081.3) legs 14.0/20.4
+  FAIL dense-td route: edge 11 n16->n29 sharp corner at (2014.9,1031.3) legs 14.0/16.1
+fanout-frames	edges=1	hops=0	masks=0	samples=2286	pick_miss=0	hop_pick_miss=0	under_wrong=0	sharp=3	off_path=0	hop_node=0	hop_label=0	hop_frame=0	hop_edge=0	hop_head=0	hop_unpicked=0	tight_node=0	mermaid=2a5b7e3111bb753e	svg=7d57554c343b9b75	drags=0000000000000000	fails=3
+  FAIL fanout-frames static: edge 0 n0->n21 sharp corner at (107.5,2264.0) legs 14.0/28.0
+  FAIL fanout-frames static: edge 2 n0->g2 sharp corner at (258.4,1214.8) legs 14.0/17.8
+  FAIL fanout-frames route: edge 2 n0->g2 sharp corner at (258.4,1214.8) legs 14.0/17.8
+fanout	edges=13	hops=0	masks=0	samples=1582	pick_miss=0	hop_pick_miss=0	under_wrong=0	sharp=0	off_path=0	hop_node=0	hop_label=0	hop_frame=0	hop_edge=0	hop_head=0	hop_unpicked=0	tight_node=0	mermaid=7fdba61d24608901	svg=38bfaed9cc11e468	drags=0000000000000000	fails=0
+long-labels	edges=4	hops=0	masks=0	samples=230	pick_miss=0	hop_pick_miss=0	under_wrong=0	sharp=0	off_path=0	hop_node=0	hop_label=0	hop_frame=0	hop_edge=0	hop_head=0	hop_unpicked=0	tight_node=0	mermaid=1cf494d5769ae112	svg=f4ba6b642ee3a982	drags=0000000000000000	fails=0
+lr	edges=7	hops=0	masks=0	samples=400	pick_miss=0	hop_pick_miss=0	under_wrong=0	sharp=0	off_path=0	hop_node=0	hop_label=0	hop_frame=0	hop_edge=0	hop_head=0	hop_unpicked=0	tight_node=0	mermaid=7e591164f710864f	svg=ec188456d2fd55ec	drags=0000000000000000	fails=0
+shapes	edges=10	hops=0	masks=0	samples=308	pick_miss=0	hop_pick_miss=0	under_wrong=0	sharp=0	off_path=0	hop_node=0	hop_label=0	hop_frame=0	hop_edge=0	hop_head=0	hop_unpicked=0	tight_node=0	mermaid=471c7466e6347588	svg=698117fe1b4a2c96	drags=0000000000000000	fails=0
+stress	edges=7	hops=0	masks=0	samples=632	pick_miss=0	hop_pick_miss=0	under_wrong=0	sharp=0	off_path=0	hop_node=0	hop_label=0	hop_frame=0	hop_edge=0	hop_head=0	hop_unpicked=0	tight_node=0	mermaid=8978ce63355df451	svg=42e598e3be68ad49	drags=0000000000000000	fails=0
+subgraph	edges=8	hops=0	masks=0	samples=349	pick_miss=0	hop_pick_miss=0	under_wrong=0	sharp=0	off_path=0	hop_node=0	hop_label=0	hop_frame=0	hop_edge=0	hop_head=0	hop_unpicked=0	tight_node=0	mermaid=c374edec74b5150b	svg=1e31b6ed1b5b3a2a	drags=0000000000000000	fails=0
+wide-labels	edges=8	hops=1	masks=0	samples=1914	pick_miss=0	hop_pick_miss=0	under_wrong=0	sharp=0	off_path=0	hop_node=0	hop_label=0	hop_frame=0	hop_edge=0	hop_head=0	hop_unpicked=0	tight_node=0	mermaid=14bf481da3082839	svg=f6f973cbd33598f3	drags=0000000000000000	fails=0
+s1-hub-td	edges=18	hops=3	masks=0	samples=2103	pick_miss=0	hop_pick_miss=0	under_wrong=0	sharp=3	off_path=0	hop_node=0	hop_label=0	hop_frame=0	hop_edge=0	hop_head=0	hop_unpicked=0	tight_node=0	mermaid=a8917959b505b401	svg=7d33db85f396adae	drags=0000000000000000	fails=3
+  FAIL s1-hub-td route: edge 3 hub->c2 sharp corner at (422.1,204.5) legs 14.0/15.1
+  FAIL s1-hub-td route: edge 6 hub->c5 sharp corner at (498.2,219.6) legs 14.0/15.1
+  FAIL s1-hub-td route: edge 8 hub->c7 sharp corner at (487.3,232.1) legs 14.0/16.2
+s2-bipartite-lr	edges=22	hops=17	masks=21	samples=3084	pick_miss=0	hop_pick_miss=0	under_wrong=0	sharp=1	off_path=0	hop_node=0	hop_label=0	hop_frame=0	hop_edge=1	hop_head=0	hop_unpicked=0	tight_node=0	mermaid=88e3c216f5bfcadb	svg=73d1689603dcd750	drags=0000000000000000	fails=2
+  FAIL s2-bipartite-lr static: edge 9 a3->b2 sharp corner at (135.2,283.5) legs 14.0/15.0
+  FAIL s2-bipartite-lr route: edge 3 a1->b4 hop at (197.7,370.5) r 5.0 comes 0.0 px from edge 15 a4->b1
+s3-frames-hub	edges=18	hops=22	masks=14	samples=3182	pick_miss=0	hop_pick_miss=0	under_wrong=0	sharp=0	off_path=0	hop_node=0	hop_label=0	hop_frame=0	hop_edge=0	hop_head=0	hop_unpicked=0	tight_node=0	mermaid=43f7fdd732363a21	svg=02f5c666c0ccf5f5	drags=0000000000000000	fails=0
+s4-state-hub	edges=17	hops=0	masks=0	samples=2194	pick_miss=0	hop_pick_miss=0	under_wrong=0	sharp=4	off_path=0	hop_node=0	hop_label=0	hop_frame=0	hop_edge=0	hop_head=0	hop_unpicked=0	tight_node=0	mermaid=439ceb0d21f3cc06	svg=c653e64bbe947a25	drags=0000000000000000	fails=3
+  FAIL s4-state-hub static: edge 2 Idle->Editing sharp corner at (98.0,132.0) legs 23.5/14.0
+  FAIL s4-state-hub static: edge 9 Saving->Idle sharp corner at (42.4,118.0) legs 17.0/14.0
+  FAIL s4-state-hub route: edge 2 Idle->Editing sharp corner at (98.0,132.0) legs 23.5/14.0
+s5-cross-bt-rl	edges=17	hops=28	masks=16	samples=2412	pick_miss=0	hop_pick_miss=0	under_wrong=0	sharp=0	off_path=0	hop_node=0	hop_label=0	hop_frame=0	hop_edge=1	hop_head=0	hop_unpicked=0	tight_node=0	mermaid=4c96ccae2a784774	svg=146b5a96a227690b	drags=0000000000000000	fails=1
+  FAIL s5-cross-bt-rl route: edge 0 a->x hop at (134.5,250.5) r 5.0 comes 3.3 px from edge 6 c->x
+s6-curve-mix	edges=14	hops=11	masks=9	samples=1590	pick_miss=0	hop_pick_miss=0	under_wrong=0	sharp=0	off_path=0	hop_node=0	hop_label=0	hop_frame=0	hop_edge=0	hop_head=0	hop_unpicked=0	tight_node=0	mermaid=cfcfb4b5974dfcdd	svg=4de58e32465c4f9c	drags=0000000000000000	fails=0
+s7-rl-hub	edges=16	hops=4	masks=0	samples=1775	pick_miss=0	hop_pick_miss=0	under_wrong=0	sharp=0	off_path=0	hop_node=0	hop_label=0	hop_frame=0	hop_edge=0	hop_head=0	hop_unpicked=0	tight_node=0	mermaid=bd24658baf395a85	svg=5d992591b31cf33d	drags=0000000000000000	fails=0
+s8-lr-frame-fan	edges=20	hops=15	masks=8	samples=3524	pick_miss=0	hop_pick_miss=0	under_wrong=0	sharp=0	off_path=0	hop_node=0	hop_label=0	hop_frame=0	hop_edge=0	hop_head=0	hop_unpicked=0	tight_node=0	mermaid=91788748a1ccfd87	svg=8e8914bf61c968df	drags=0000000000000000	fails=0
+TOTAL fails=33 Stats { edges: 0, hops: 738, samples: 127516, pick_miss: 0, hop_pick_miss: 4, hop_under_wrong: 0, sharp: 38, off_path: 18, hop_node: 0, hop_label: 0, hop_frame: 0, hop_edge: 6, hop_down: 0, hop_head: 0, masks: 0, hop_paint_unpicked: 0, hop_tight_node: 0 }

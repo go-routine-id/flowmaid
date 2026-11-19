@@ -1,0 +1,23 @@
+flowchart TD
+  subgraph F0 [Frame 0]
+    direction TB
+    n0{{Node 0}}
+    n1[Node 1 with a longer label]
+  end
+  subgraph F1 [Frame 1]
+    n4(Node 4)
+  end
+  n5 --- n3
+  n5 ==> n3
+  n1 -.-> n4
+  n5 --o n1
+  n3 --> n5
+  n0 o--o n0
+  n2 <--> n4
+  n1 --x n5
+  n4 --> n1
+  n2 --x n3
+  n0 ==> n0
+  n1 --x n5
+  n3 ==>|thick lbl| n5
+  n1 -.->|dot| n3

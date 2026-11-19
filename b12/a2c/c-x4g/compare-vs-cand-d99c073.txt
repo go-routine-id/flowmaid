@@ -1,0 +1,145 @@
+compare.sh: baseline /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/tools-a2b/cand-d99c073
+            candidate /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/a2c/c-x4g
+
+== 1. local inputs, per cell (LIVE judge)
+[local static A2] cannot read /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/a2c/c-x4g/local/judge-A2-all.txt
+[local routed] cannot read /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/a2c/c-x4g/local/judge-routed-all.txt
+cells: WORSE
+
+== 2. suite-on gate messages
+[gates] tests 1246 / 1246; failing 8 -> 13
+  NEWLY FAILING blockcheck::a_hubs_fan_keeps_its_order_through_the_bands
+      panicked at src/blockcheck.rs
+      [
+          "fan_x n16 Bottom n16->n35 x n16->n32 at (2110,502)",
+      ]
+  NEWLY FAILING blockcheck::an_end_of_a_title_row_member_keeps_out_of_its_chips_breadth_below_the_jog_room
+      panicked at src/blockcheck.rs
+      [
+          "fan_x n16 Bottom n16->n35 x n16->n32 at (2110,502)",
+      ]
+  NEWLY FAILING comb::tests::a_block_layouts_comb_is_settled_after_one_pass
+      panicked at src/comb.rs
+      quality/dense-td: ["n16 -> n32", "n16 -> n35"]
+  NEWLY FAILING comb::tests::a_hubs_fan_is_a_comb_in_scene_and_route
+      panicked at src/comb.rs
+      assertion `left == right` failed: scene: crossings inside the fan
+        left: 1
+       right: 0
+  NEWLY FAILING comb::tests::combing_is_settled_after_one_pass
+      panicked at src/comb.rs
+      assertion `left == right` failed: dense-td
+        left: 2
+       right: 0
+  == defect_baseline_gate: message lines worse 6, better 0
+     ~ WORSE  static lat_backtrack 10599.64 > ceiling 1870  ->  static lat_backtrack 10604.07 > ceiling 1870
+     ~ WORSE  static band_pairs 204.00 > ceiling 132  ->  static band_pairs 206.00 > ceiling 132
+     ~ WORSE  static band_len 91602.00 > ceiling 74730  ->  static band_len 91994.00 > ceiling 74730
+     ~ WORSE  routed lat_backtrack 10599.64 > ceiling 425  ->  routed lat_backtrack 10604.07 > ceiling 425
+     ~ WORSE  routed band_pairs 203.00 > ceiling 141  ->  routed band_pairs 205.00 > ceiling 141
+     ~ WORSE  routed band_len 91456.00 > ceiling 71020  ->  routed band_len 91848.00 > ceiling 71020
+  info stdout defect_baseline_gate: 26 cells changed
+       routed band_len: 91456.0000 -> 91848.0000  higher (worse?)
+       routed band_pairs: 203.0000 -> 205.0000  higher (worse?)
+       routed chip_crowd: 16.0000 -> 13.0000  lower
+       routed chip_gap_min: 3.5538 -> 0.0000  lower (worse?)
+       routed compact_mean: 7.2604 -> 7.2896  higher (worse?)
+       routed detour_max: 2.2989 -> 2.2760  lower
+       routed edge_len: 210464.7227 -> 211093.8119  higher (worse?)
+       routed fan_x: 5.0000 -> 6.0000  higher (worse?)
+       routed lat_backtrack: 10599.6366 -> 10604.0742  higher (worse?)
+       routed lbl_end_mean: 229.4426 -> 228.7493  lower
+       routed sib_stagger: 2.0000 -> 0.0000  lower
+       routed x_drawn: 264.0000 -> 266.0000  higher (worse?)
+       routed xhops: 201.0000 -> 200.0000  lower
+       static band_len: 91602.0000 -> 91994.0000  higher (worse?)
+       static band_pairs: 204.0000 -> 206.0000  higher (worse?)
+       static chip_crowd: 17.0000 -> 14.0000  lower
+       static chip_gap_min: 3.5538 -> 0.0000  lower (worse?)
+       static compact_mean: 7.2604 -> 7.2896  higher (worse?)
+       static detour_max: 2.2989 -> 2.2760  lower
+       static edge_len: 210411.4918 -> 211040.5809  higher (worse?)
+       static fan_x: 4.0000 -> 5.0000  higher (worse?)
+       static lat_backtrack: 10599.6366 -> 10604.0742  higher (worse?)
+       static lbl_end_mean: 222.1808 -> 221.4875  lower
+       static sib_stagger: 2.0000 -> 0.0000  lower
+       static x_drawn: 263.0000 -> 265.0000  higher (worse?)
+       static xhops: 200.0000 -> 199.0000  lower
+  info stdout quality_gate: 66 cells changed
+       dense-lr routed band_len: 15284.00 -> 14942.00  lower
+       dense-lr routed bends_max: 13.00 -> 12.00  lower
+       dense-lr routed chip_gap_min: 4.29 -> 0.00  lower (worse?)
+       dense-lr routed compact_mean: 10.49 -> 10.59  higher (worse?)
+       dense-lr routed detour_max: 1.74 -> 1.75  higher (worse?)
+       dense-lr routed edge_edge_x: 17.00 -> 18.00  higher (worse?)
+       dense-lr routed edge_len: 50203.33 -> 50219.03  higher (worse?)
+       dense-lr routed lat_backtrack: 1249.23 -> 1253.67  higher (worse?)
+       dense-lr routed lbl_edge: 0.00 -> 2.00  higher (worse?)
+       dense-lr routed lbl_end_mean: 371.00 -> 373.72  higher (worse?)
+       dense-lr routed overlap_len: 108.00 -> 78.00  lower
+       dense-lr routed overlap_max: 84.00 -> 56.00  lower
+       dense-lr routed sib_stagger: 2.00 -> 0.00  lower
+       dense-lr routed tight_len: 692.00 -> 700.00  higher (worse?)
+       dense-lr routed x_drawn: 17.00 -> 18.00  higher (worse?)
+       dense-lr routed xhops: 14.00 -> 13.00  lower
+       dense-lr static band_len: 15284.00 -> 14942.00  lower
+       dense-lr static bends_max: 13.00 -> 12.00  lower
+       dense-lr static chip_gap_min: 4.29 -> 0.00  lower (worse?)
+       dense-lr static compact_mean: 10.49 -> 10.59  higher (worse?)
+       dense-lr static detour_max: 1.74 -> 1.75  higher (worse?)
+       dense-lr static edge_edge_x: 17.00 -> 18.00  higher (worse?)
+       dense-lr static edge_len: 50203.33 -> 50219.03  higher (worse?)
+       dense-lr static lat_backtrack: 1249.23 -> 1253.67  higher (worse?)
+       dense-lr static lbl_edge: 0.00 -> 2.00  higher (worse?)
+       dense-lr static lbl_end_mean: 371.00 -> 373.72  higher (worse?)
+       dense-lr static overlap_len: 108.00 -> 78.00  lower
+       dense-lr static overlap_max: 84.00 -> 56.00  lower
+       dense-lr static sib_stagger: 2.00 -> 0.00  lower
+       dense-lr static tight_len: 692.00 -> 700.00  higher (worse?)
+       dense-lr static x_drawn: 17.00 -> 18.00  higher (worse?)
+       dense-lr static xhops: 14.00 -> 13.00  lower
+       dense-td routed band_len: 42878.00 -> 43632.00  higher (worse?)
+       dense-td routed band_pairs: 55.00 -> 57.00  higher (worse?)
+       dense-td routed chip_crowd: 9.00 -> 6.00  lower
+       dense-td routed chip_gap_min: 3.55 -> 4.83  higher
+       dense-td routed compact_mean: 9.05 -> 9.12  higher (worse?)
+       dense-td routed detour_max: 2.30 -> 2.28  lower
+       dense-td routed edge_edge_x: 42.00 -> 43.00  higher (worse?)
+       dense-td routed edge_len: 82765.71 -> 83489.13  higher (worse?)
+       dense-td routed fan_x: 0.00 -> 1.00  higher (worse?)
+       dense-td routed lbl_end_mean: 739.59 -> 732.70  lower
+       dense-td routed min_node_gap: 18.75 -> 12.47  lower (worse?)
+       dense-td routed tight_len: 2064.00 -> 1990.00  lower
+       dense-td routed tight_pairs: 15.00 -> 14.00  lower
+       dense-td routed x_drawn: 42.00 -> 43.00  higher (worse?)
+       dense-td static band_len: 42878.00 -> 43632.00  higher (worse?)
+       dense-td static band_pairs: 55.00 -> 57.00  higher (worse?)
+       dense-td static chip_crowd: 9.00 -> 6.00  lower
+       dense-td static chip_gap_min: 3.55 -> 4.83  higher
+       dense-td static compact_mean: 9.05 -> 9.12  higher (worse?)
+       dense-td static detour_max: 2.30 -> 2.28  lower
+       dense-td static edge_edge_x: 42.00 -> 43.00  higher (worse?)
+       dense-td static edge_len: 82765.71 -> 83489.13  higher (worse?)
+       dense-td static fan_x: 0.00 -> 1.00  higher (worse?)
+       dense-td static lbl_end_mean: 739.59 -> 732.70  lower
+       dense-td static min_node_gap: 18.75 -> 12.47  lower (worse?)
+       dense-td static tight_len: 2064.00 -> 1990.00  lower
+       dense-td static tight_pairs: 15.00 -> 14.00  lower
+       dense-td static x_drawn: 42.00 -> 43.00  higher (worse?)
+       fanout-frames routed band_len: 3386.00 -> 3366.00  lower
+       fanout-frames routed edge_len: 4703.86 -> 4593.83  lower
+       fanout-frames routed tight_len: 170.00 -> 160.00  lower
+       fanout-frames static band_len: 3386.00 -> 3366.00  lower
+       fanout-frames static edge_len: 4703.86 -> 4593.83  lower
+       fanout-frames static tight_len: 170.00 -> 160.00  lower
+panics: WORSE (11)
+
+== 3. direction copies (332 + 32, static and routed)
+[dirs] cannot read /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/a2c/c-x4g/dirs/dirs.tsv
+[dirsx] cannot read /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/a2c/c-x4g/dirs/dirsx.tsv
+dirs: WORSE (2)
+
+VERDICT cells:  WORSE
+VERDICT panics: WORSE
+VERDICT dirs:   WORSE
+VERDICT: WORSE

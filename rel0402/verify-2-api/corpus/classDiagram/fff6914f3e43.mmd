@@ -1,0 +1,17 @@
+classDiagram
+A *-- B
+B <|-- C
+A ..> D
+B *-- D
+C -- A
+B ..> B
+B --> B : b1
+B "1" --> "*" B
+C ..> C : c0
+C o-- C : c1
+C o-- C
+A "1" --> "*" A : a0
+A --> A : a1
+A --> A : a2
+A *-- A : a3
+A "1" --> "*" A : a4

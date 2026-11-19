@@ -1,0 +1,15 @@
+[package]
+name = "probe-base"
+version = "0.0.0"
+edition = "2021"
+[[bin]]
+name = "probe-base"
+path = "../probe-src/main.rs"
+[features]
+head = []
+[dependencies]
+flowmaid = { path = "../base" }
+[profile.release]
+debug = false
+incremental = false
+[workspace]

@@ -1,0 +1,12 @@
+flowchart BT
+    N0([Fetch])
+    N1([Emit])
+    N2([Archive retry])
+    N3{Parse check}
+    N4[/Report queue/]
+    N0 --> N1
+    N1 --> N2
+    N1 --> N3
+    N2 --> N4
+    N2 --> N3
+    N2 --> N1

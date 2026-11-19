@@ -1,0 +1,14 @@
+flowchart BT
+    subgraph G[MMMM WWWW QQQQ]
+        m0[x wide member node]
+        m1[auth service]
+        m2[ledger]
+        m0 --> m1
+    end
+    s0[src0] -- "lbl9" --> m1
+    s0 -- "lbl2" --> m0
+    s1[src1] --> G
+    s2[src2] --> G
+    s3[src3] --> m0
+    s3 --> G
+    s4[src4] -- "lbl3" --> m1

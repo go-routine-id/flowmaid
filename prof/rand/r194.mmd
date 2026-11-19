@@ -1,0 +1,15 @@
+flowchart TB
+  H0 -.->|ok| N1
+  H0 --- N1
+  H0 -.-> N2
+  H1 ==> N1
+  H1 -.-> N4
+  H1 ---|gift wrap| N2
+  H1 -.->|ok| N2
+  H1 -->|a much longer label here| N5
+  H1 --> N5
+  H2 -->|a much longer label here| N0
+  H2 --> N0
+  H2 ==>|no| N0
+  N5 --> N0
+  N3 -->|ok| N0

@@ -1,0 +1,15 @@
+architecture-beta
+    group clients(internet)[Clients]
+    group core(cloud)[Core]
+    service a(web)[Web] in clients
+    service b(mobile)[Mobile] in clients
+    service c(desktop)[Desktop] in clients
+    service d(server)[Partner API] in clients
+    service hub(server)[Hub] in core
+    service db(database)[Primary DB] in core
+    a:R -[https]-> L:hub
+    b:R -[grpc stream]-> L:hub
+    c:R -[websocket upgrade]-> L:hub
+    d:R -[mTLS]-> L:hub
+    hub:B -[writes]-> T:db
+    hub:R -[metrics export]-> L:db

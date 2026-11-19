@@ -1,0 +1,72 @@
+advanced-TD-off route0: pick 15 Users>Mon at (246.25000000000006, 992.5) gives nothing
+advanced-TD-off route0: pick 15 Users>Mon at (246.25000000000006, 1014.5) gives nothing
+advanced-TD-off route0: pick 15 Users>Mon at (246.25000000000006, 1029.5) gives nothing
+advanced-TD-off route k0: pick 15 Users>Mon at (246.25000000000006, 992.5) gives nothing
+advanced-TD-off route k0: pick 15 Users>Mon at (246.25000000000006, 1014.5) gives nothing
+advanced-TD-off route k0: pick 15 Users>Mon at (246.25000000000006, 1029.5) gives nothing
+advanced-TD-off route k13: pick 15 Users>Mon at (246.25000000000006, 992.5) gives nothing
+advanced-TD-off route k13: pick 15 Users>Mon at (246.25000000000006, 1014.5) gives nothing
+advanced-TD-off route k13: pick 15 Users>Mon at (246.25000000000006, 1029.5) gives nothing
+advanced-TD-on route0: pick 15 Users>Mon at (358.07500000000005, 1028.5) gives nothing
+advanced-TD-on route0: pick 15 Users>Mon at (358.07500000000005, 1050.5) gives nothing
+advanced-TD-on route0: pick 15 Users>Mon at (358.07500000000005, 1065.5) gives nothing
+advanced-TD-on route k0: pick 15 Users>Mon at (358.07500000000005, 1028.5) gives nothing
+advanced-TD-on route k0: pick 15 Users>Mon at (358.07500000000005, 1050.5) gives nothing
+advanced-TD-on route k0: pick 15 Users>Mon at (358.07500000000005, 1065.5) gives nothing
+advanced-TD-on route k13: pick 15 Users>Mon at (358.07500000000005, 1028.5) gives nothing
+advanced-TD-on route k13: pick 15 Users>Mon at (358.07500000000005, 1050.5) gives nothing
+advanced-TD-on route k13: pick 15 Users>Mon at (358.07500000000005, 1065.5) gives nothing
+advanced-BT-off route0: pick 15 Users>Mon at (261.75000000000006, 221.0) gives nothing
+advanced-BT-off route0: pick 15 Users>Mon at (261.75000000000006, 206.0) gives nothing
+advanced-BT-off route k0: pick 15 Users>Mon at (261.75000000000006, 221.0) gives nothing
+advanced-BT-off route k0: pick 15 Users>Mon at (261.75000000000006, 206.0) gives nothing
+advanced-BT-off route k7: edge 15 Users>Mon diagonal waypoint segment
+advanced-BT-off route k7: pick 15 Users>Mon at (261.75000000000006, 206.0) gives nothing
+advanced-BT-off partial k7: edge 15 Users>Mon diagonal waypoint segment
+advanced-BT-off partial k7: pick 15 Users>Mon at (261.75000000000006, 206.0) gives nothing
+advanced-BT-off route k13: pick 15 Users>Mon at (261.75000000000006, 221.0) gives nothing
+advanced-BT-off route k13: pick 15 Users>Mon at (261.75000000000006, 206.0) gives nothing
+advanced-BT-on route0: pick 15 Users>Mon at (358.07500000000005, 221.0) gives nothing
+advanced-BT-on route0: pick 15 Users>Mon at (358.07500000000005, 206.0) gives nothing
+advanced-BT-on route k0: pick 15 Users>Mon at (358.07500000000005, 221.0) gives nothing
+advanced-BT-on route k0: pick 15 Users>Mon at (358.07500000000005, 206.0) gives nothing
+advanced-BT-on route k7: edge 15 Users>Mon diagonal waypoint segment
+advanced-BT-on route k7: pick 15 Users>Mon at (358.07500000000005, 206.0) gives nothing
+advanced-BT-on partial k7: edge 15 Users>Mon diagonal waypoint segment
+advanced-BT-on partial k7: pick 15 Users>Mon at (358.07500000000005, 206.0) gives nothing
+advanced-BT-on route k13: pick 15 Users>Mon at (358.07500000000005, 221.0) gives nothing
+advanced-BT-on route k13: pick 15 Users>Mon at (358.07500000000005, 206.0) gives nothing
+advanced-LR-off route k7: edge 15 Users>Mon diagonal waypoint segment
+advanced-LR-off route k7: pick 15 Users>Mon at (1283.5, 248.75) gives nothing
+advanced-LR-off partial k7: edge 15 Users>Mon diagonal waypoint segment
+advanced-LR-off partial k7: pick 15 Users>Mon at (1283.5, 248.75) gives nothing
+advanced-LR-off route k13: pick 15 Users>Mon at (1324.5, 233.75) gives nothing
+advanced-LR-on route0: pick 15 Users>Mon at (1381.85, 323.75) gives nothing
+advanced-LR-on route k0: pick 15 Users>Mon at (1381.85, 323.75) gives nothing
+advanced-LR-on route k7: edge 15 Users>Mon diagonal waypoint segment
+advanced-LR-on partial k7: edge 15 Users>Mon diagonal waypoint segment
+advanced-LR-on route k13: pick 15 Users>Mon at (1381.85, 323.75) gives nothing
+advanced-LR-on route k13: pick 15 Users>Mon at (1403.85, 323.75) gives nothing
+advanced-RL-off route k13: pick 15 Users>Mon at (390.69999999999976, 233.75) gives nothing
+advanced-RL-on route0: pick 15 Users>Mon at (390.69999999999976, 323.75) gives nothing
+advanced-RL-on route k0: pick 15 Users>Mon at (390.69999999999976, 323.75) gives nothing
+advanced-RL-on route k13: pick 15 Users>Mon at (390.69999999999976, 323.75) gives nothing
+advanced-RL-on route k13: pick 15 Users>Mon at (368.6999999999998, 323.75) gives nothing
+blocks-overview-LR-off route0: pick 17 SHIP>DB at (1958.1000000000001, 324.5) gives 27
+blocks-overview-LR-off route k0: pick 17 SHIP>DB at (1958.1000000000001, 324.5) gives 27
+blocks-overview-LR-off route k10: pick 17 SHIP>DB at (1958.1000000000001, 324.5) gives 27
+blocks-overview-LR-off route k20: pick 17 SHIP>DB at (1958.1000000000001, 324.5) gives 27
+blocks-overview-LR-on partial k10: edge 26 REG>ORD diagonal waypoint segment
+blocks-overview-RL-off partial k20: pick 12 LB>GATE at (2054.7999999999997, 585.65) gives 24
+blocks-overview-RL-on partial k10: edge 26 REG>ORD diagonal waypoint segment
+lr-TD-off partial k4: pick 6 cart>PAGER at (186.2, 644.0) gives 8
+nested-BT-on route0: pick 6 i1>s1 at (277.05, 232.4765625) gives 9
+nested-BT-on route k0: pick 6 i1>s1 at (277.05, 232.4765625) gives 9
+nested-BT-on route k7: pick 6 i1>s1 at (277.05, 232.4765625) gives 9
+nested-LR-off route k4: edge 3 s1>s2 diagonal waypoint segment
+twoway-noted-TD-on route0: edge 3 K0>K1 diagonal waypoint segment
+twoway-noted-TD-on route k0: edge 3 K0>K1 diagonal waypoint segment
+twoway-noted-TD-on route k3: edge 3 K0>K1 diagonal waypoint segment
+twoway-noted-TD-on partial k3: edge 3 K0>K1 diagonal waypoint segment
+twoway-noted-TD-on route k6: edge 3 K0>K1 diagonal waypoint segment
+checked 96; with findings 16; worst route_partial off 2.81 ms, on 1.56 ms

@@ -1,0 +1,18 @@
+flowchart LR
+    N0(Check)
+    N1[Report]
+    N2[(Store archive)]
+    N3([Report])
+    N4{Check archive}
+    N5(Notify)
+    N6(Done retry)
+    N7[Check]
+    N0 --> N1
+    N0 --> N2
+    N2 -->|ok| N3
+    N3 --> N4
+    N3 --> N5
+    N4 -->|no| N6
+    N6 --> N7
+    N6 --> N5
+    N7 -->|rollback| N6

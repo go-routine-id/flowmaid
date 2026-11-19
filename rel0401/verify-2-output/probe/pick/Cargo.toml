@@ -1,0 +1,11 @@
+[package]
+name = "pick"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+flowmaid = { path = "../../head" }
+
+[profile.release]
+debug = false
+incremental = false

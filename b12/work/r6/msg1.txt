@@ -1,0 +1,50 @@
+fix(blocks): a searched edge goes round the blocks between before it runs through them; a frame grows only over a strip no foreign segment or own pin crosses (B12 fix round 4 #1, #3, #8)
+
+Behind the block layout (`Ctx::blocks`, static scene); the default build
+is byte-identical (`everything_renders_as_before_with_blocks_off`).
+
+- Runs through a block that holds neither end (spec 4.3 f,
+  `xframe_runs`). bench-75's `gw -> logs` joins the edge block to the
+  ops block past `app` and `data`; both its ends spill round the corner
+  of an over-full side (`gw`'s right, `logs`'s left), so its channel
+  below the two blocks climbed into `logs` from below through
+  `metrics` (a node hit). The repair's window round the two ends held
+  no clear way into `logs`, and its priced search over the whole
+  drawing then ran the edge straight through `app` and `data`. The
+  repair now has one more strict try in a block layout's static scene,
+  after that priced search and only when its best path enters a
+  foreign frame and would replace the original (one through a node):
+  clear of every node, band and foreign frame, over the whole drawing.
+  The way round a block lies past its far side, beyond the window.
+  Suite-on, static: bench-75 edge_frame_pairs 2 -> 0, x_drawn 248 ->
+  240, overlap_pairs 11 -> 6, fan_x 21 -> 18; notes/fork-twins
+  edge_frame_pairs 1 -> 0, x_drawn 13 -> 8 (its note link
+  `__note_17 -> K0_0` no longer runs through `K0N`); no run through a
+  foreign frame on any repository fixture. Tried first and dropped: the
+  same try for every edge the window found no clear way for (also an
+  original that only touches a title chip): it took long ways round
+  across a dozen lines on generated dense diagrams (+12 to +16
+  crossings on 14 of them).
+- `scene::strip_is_free` (fix round 3's frame growth over a block's
+  own edges) tests a foreign line by its segments against the strips
+  the frame would add (`added_strips`), not by its sampled points only
+  (a long straight run crosses a strip between two of them), and keeps
+  the frame when the strip would take in the end of an edge on that
+  frame itself (a whole block's pin on the side that grows: its head
+  would be left inside). No output change on the fixtures.
+- tests/quality.rs BLOCK_CEILINGS, blocks/turned-blocks: (0,0,0,6,0) /
+  (0,0,0,7,0) -> (0,0,0,4,0) / (0,0,0,5,0), the start's own x_drawn
+  (measured with the switch off, byte-identical to the start), as the
+  table's doc says every row holds; the row was written above it in
+  a295de7. (Gate change, lowered to what the table's rule asks.)
+
+Tests: blockcheck::an_edge_the_repair_searches_goes_round_the_blocks_between
+(bench-75's `gw -> logs` off `app`, `data` and `jobs`; edge_frame_pairs
+0 on every block-mode repository fixture),
+scene::tests::a_frame_grows_only_over_a_strip_nothing_foreign_crosses
+(a foreign run across the strip between its points; a pin on the side
+that moves). Suite-on failing tests: the same ten library tests and six
+quality gates as before the round, none new. No snapshot changed.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

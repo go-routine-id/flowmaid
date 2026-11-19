@@ -1,0 +1,36 @@
+flowchart TD
+  n1["billing merge cache"]
+  subgraph B0["Edge services"]
+    n2["audit"]
+    n3["queue"]
+    n4["queue"]
+  end
+  subgraph B1["Core"]
+    n5["api"]
+    n6["api merge index<br/>pack"]
+    n7["ingest"]
+  end
+  subgraph B2["Back office and finance"]
+    n8["parse"]
+    n9["ingest"]
+    n10["index notify pack"]
+  end
+  subgraph B3["Platform"]
+    n11["billing"]
+  end
+  n12["index"]
+  n6 --> n2
+  n5 --> n9
+  n8 -->|merge| n5
+  n2 ==> n1
+  n7 ==> n12
+  n9 -->|split| n11
+  n11 -.-> n1
+  n1 -.-> n2
+  n12 ==> n6
+  n10 --> n5
+  n2 --> n3
+  n1 ==> B3
+  n9 --> n10
+  n10 --> n12
+  n4 ==> n12

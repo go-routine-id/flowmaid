@@ -1,0 +1,58 @@
+flowchart LR
+  n1["search"]
+  n2["search api queue"]
+  n3["pack"]
+  subgraph B0["Analytics"]
+    n4["mail worker db"]
+    n5["queue"]
+  end
+  subgraph B1["Core"]
+    n6["split"]
+  end
+  subgraph B2["Platform"]
+    n7["audit"]
+    n8["cache"]
+    n9["report"]
+    subgraph B2s0["Edge services 0"]
+      n10["audit"]
+      n11["parse"]
+      n12["store"]
+    end
+    subgraph B2s1["Back office and finance 1"]
+      n13["billing ingest audit"]
+      n14["index"]
+      n15["auth"]
+    end
+  end
+  subgraph B3["Core"]
+    n16["report"]
+    n17["pack<br/>ingest"]
+    n18["parse"]
+  end
+  n19["worker"]
+  n20["split"]
+  n11 --> n17
+  n7 --> n6
+  n20 ==> n17
+  n16 --> n3
+  n14 --> n4
+  n17 -->|notify| n19
+  n1 -->|auth| n2
+  n7 -.-> n4
+  n19 --> n5
+  n15 -->|report| n10
+  n10 -.-> n9
+  n10 ==>|mail| n2
+  n4 -->|worker| n6
+  n19 -->|billing| n7
+  n9 --> n4
+  n10 -.-> n5
+  n2 --> n17
+  n12 -.-> n17
+  n16 -->|merge| n6
+  n19 --> n15
+  n18 --> n4
+  n5 --> n6
+  n5 --> B3
+  n2 -->|report| n7
+  n13 --> n16

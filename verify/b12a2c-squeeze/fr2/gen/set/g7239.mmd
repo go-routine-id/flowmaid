@@ -1,0 +1,24 @@
+flowchart TD
+  n1["ship"]
+  n2["report"]
+  subgraph B0["Ops"]
+    n3["db<br/>split"]
+    n4["db pack pack"]
+  end
+  subgraph B1["Core"]
+    n5["search"]
+    n6["audit billing pack<br/>split"]
+    n7["mail queue parse"]
+  end
+  n8["auth<br/>parse"]
+  n9["merge store notify"]
+  n2 ==> n1
+  n9 --> n8
+  n6 ==>|parse| n3
+  n3 -.-> n2
+  n3 --> B1
+  n7 --> n1
+  n9 --> n3
+  n7 -->|queue| n9
+  n6 --> n5
+  n1 --> n6

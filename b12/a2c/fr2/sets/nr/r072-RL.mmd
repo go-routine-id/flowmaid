@@ -1,0 +1,11 @@
+flowchart RL
+    subgraph G[Order processing]
+        m0[w]
+        m1[x wide member node]
+        m2[auth service]
+        m0 --> m1
+    end
+    s0[src0] --> m1
+    s0 --> m0
+    s1[src1] --> G
+    m2 --> z[end]

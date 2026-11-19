@@ -1,0 +1,22 @@
+flowchart LR
+    N0[(Parse)]
+    N1(Validate check)
+    N2[/Queue retry/]
+    N3{Validate}
+    N4([Retry])
+    N5{Queue}
+    N6[Retry retry]
+    N7([Queue emit])
+    N8(Emit)
+    N0 -->|yes| N1
+    N1 -->|ok| N2
+    N0 --> N3
+    N3 --> N4
+    N3 --> N5
+    N5 --> N6
+    N5 --> N7
+    N5 --> N8
+    N5 --> N6
+    N5 -.-> N2
+    N8 ==> N1
+    N4 -->|retry| N2

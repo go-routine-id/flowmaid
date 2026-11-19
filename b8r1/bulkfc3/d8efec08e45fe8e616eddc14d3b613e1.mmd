@@ -1,0 +1,20 @@
+flowchart TD
+    N0(Notify)
+    N1(Report check)
+    N2(Validate retry)
+    N3([Emit])
+    N4(Notify)
+    N5[Emit]
+    N6{Emit}
+    N0 --> N1
+    N1 --> N2
+    N2 -->|ok| N3
+    N3 --> N4
+    N2 -->|fail| N5
+    N4 -->|ok| N6
+    N3 --> N5
+    N5 --> N6
+    N5 --> N6
+    N5 --> N1
+    N6 --> N5
+    N4 -.-> N2

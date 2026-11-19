@@ -1,0 +1,13 @@
+flowchart LR
+    subgraph O[Core]
+        subgraph G[WWW Mammoth Wombat Overview]
+            m0[ledger]
+            m1[ledger]
+            m2[auth service]
+        end
+        k[k]
+    end
+    m1 --> k
+    s0[src0] -- "lbl5" --> G
+    s1[src1] --> O
+    m2 --> z[end]

@@ -1,0 +1,18 @@
+stateDiagram-v2
+  [*] --> Idle
+  Idle --> Work
+  Idle --> Review
+  state Work {
+    [*] --> Typing
+    Typing --> Saving : save
+    Saving --> [*]
+  }
+  state Review {
+    [*] --> Reading
+    Reading --> Commenting : spot an issue in the text
+    Commenting --> Reading
+    Reading --> [*]
+  }
+  Work --> Done : finished all of the work
+  Review --> Done : approved
+  Done --> [*]

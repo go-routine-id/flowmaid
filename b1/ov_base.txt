@@ -1,0 +1,16 @@
+dense-td	routed	n11->n37 overlap n25->n42 146px
+dense-td	routed	n15->n38 overlap n25->n38 204px
+dense-td	routed	n15->n38 overlap n25->n42 386px
+dense-td	routed	n16->n17 overlap n22->n40 70px
+dense-td	routed	n16->n23 overlap n16->n29 666px
+dense-td	routed	n16->n23 overlap n22->n40 172px
+dense-td	routed	n16->n29 overlap n22->n40 156px
+dense-td	routed	n16->n31 overlap n21->n16 30px
+dense-td	routed	n25->n42 overlap n25->n38 198px
+dense-td	routed	n28->n42 overlap n11->n37 238px
+dense-td	routed	n28->n42 overlap n15->n38 188px
+dense-td	routed	n28->n42 overlap n25->n42 306px
+dense-td	routed	n29->n38 overlap n15->n38 86px
+dense-td	routed	n29->n38 overlap n25->n38 114px
+dense-td	routed	n31->n38 overlap n25->n38 1286px
+dense-td	routed	n31->n38 overlap n29->n38 122px

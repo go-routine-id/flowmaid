@@ -1,0 +1,20 @@
+flowchart LR
+    N0{Retry retry}
+    N1([Emit])
+    N2[Load emit]
+    N3(Validate)
+    N4[(Queue fetch)]
+    N5[Emit]
+    N6{Retry}
+    N7([Retry load])
+    N8([Store retry])
+    N0 --> N1
+    N1 --> N2
+    N2 --> N3
+    N3 --> N4
+    N3 -->|no| N5
+    N3 --> N6
+    N6 --> N7
+    N7 --> N8
+    N5 --> N8
+    N8 --> N5

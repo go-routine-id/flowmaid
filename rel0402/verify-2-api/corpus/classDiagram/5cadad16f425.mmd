@@ -1,0 +1,23 @@
+classDiagram
+A "1" o-- "*" B
+B ..> C
+A ..> D
+B <|-- E
+C ..> F
+A *-- G
+C "1" *-- "*" H
+D <|-- G
+C ..> C
+C *-- C : c1
+C o-- C
+C o-- C : c3
+C *-- C : c4
+H --> H : h0
+H ..> H
+H o-- H : h2
+H ..> H
+class H {
+ +int id
+ +run() void
+ +stop()
+}

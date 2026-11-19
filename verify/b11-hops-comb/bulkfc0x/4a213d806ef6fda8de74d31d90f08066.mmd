@@ -1,0 +1,12 @@
+flowchart TD
+  a[Alpha] --> b[Beta]
+  b --> c[Gamma]
+  c --> d[Delta]
+  a e1@--> d
+  b e2@--> x[Side]
+  x e3@--> d
+  c e4@==> a
+  e1@{ curve: step }
+  e2@{ curve: stepAfter }
+  e3@{ curve: stepBefore }
+  e4@{ curve: step }

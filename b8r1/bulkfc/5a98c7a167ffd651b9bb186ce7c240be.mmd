@@ -1,0 +1,15 @@
+flowchart RL
+    N0([Store])
+    N1{{Queue}}
+    N2([Queue])
+    N3(Parse)
+    N4(Archive queue)
+    N5([Load fetch])
+    N0 --> N1
+    N0 --> N2
+    N2 --> N3
+    N3 -->|ok| N4
+    N2 -->|ok| N5
+    N1 --> N4
+    N0 --> N3
+    N2 -.-> N1

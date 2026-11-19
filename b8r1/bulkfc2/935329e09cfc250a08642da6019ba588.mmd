@@ -1,0 +1,14 @@
+flowchart RL
+    N0(Check)
+    N1{Emit}
+    N2(Report)
+    N3(Notify)
+    N4([Archive report])
+    N0 --> N1
+    N1 --> N2
+    N1 --> N3
+    N2 -->|ok| N4
+    N0 --> N2
+    N1 --> N4
+    N0 --> N3
+    N4 -->|again| N1

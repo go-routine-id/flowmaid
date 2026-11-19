@@ -1,0 +1,17 @@
+flowchart RL
+    subgraph O[Shipping and returns desk]
+        subgraph G[WWW Mammoth Wombat Overview]
+            m0[queue]
+            m1[w]
+            m2[charge]
+        end
+        k[k]
+    end
+    s0[src0] --> m2
+    s1[src1] --> G
+    s2[src2] -- "lbl7" --> m1
+    s3[src3] --> m2
+    s4[src4] --> G
+    s4 --> m1
+    m2 --> z[end]
+    G --> z2[after]

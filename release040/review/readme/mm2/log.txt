@@ -1,0 +1,86 @@
+ok d01
+ok d02
+ok d03
+ok d04
+ok d05
+ok d06
+ok d07
+ok d08
+ok d09
+ok d10
+ok d11
+ok d12
+ok d13
+ok d14
+ok d15
+ok d16
+ERR d17 Error: page.evaluate: Error: Parse error on line 2:
+...lassDiagram    pkg.o --> B
+----------------------^
+Expecting 'ALPHA', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'AGGREGATION'
+    at Pars
+ERR d18 Error: page.evaluate: Error: Parse error on line 2:
+...ssDiagram    class o.A
+----------------------^
+Expecting 'ALPHA', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'AGGREGATION'
+    at Parser.p
+ERR d19 Error: page.evaluate: Error: Parse error on line 2:
+classDiagram    o.A : +id int
+----------------^
+Expecting 'acc_title', 'acc_descr', 'acc_descr_multiline_value', 'NAMESPACE', 'ANNOTATION_START', 'C
+ok d20
+ok d21
+ok d22
+ok d23
+ok d24
+ok d25
+ok d26
+ok d27
+ok d28
+ERR d29 Error: page.evaluate: Error: Parse error on line 2:
+...assDiagram    A.B()
+----------------------^
+Expecting 'STR', 'ALPHA', 'LINE', 'DOTTED_LINE', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'N
+ok d30
+ok d31
+ERR d32 Error: page.evaluate: Error: Parse error on line 2:
+...iagram    class A.B, C.D
+----------------------^
+Expecting 'NEWLINE', 'EOF', 'SQS', 'STR', 'DOT', 'GENERICTYPE', 'LABEL', 'STRUCT_START', 'STRUCT
+ok d33
+ok d34
+ok d35
+ok d36
+ERR d37 Error: page.evaluate: Error: Parse error on line 2:
+classDiagram    x.o--o.y
+------------------^
+Expecting 'ALPHA', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'AGGREGATION'
+    at Parser.parseE
+ERR d38 Error: page.evaluate: Error: Parse error on line 2:
+classDiagram    x.o --o o.y
+------------------^
+Expecting 'ALPHA', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'AGGREGATION'
+    at Parser.par
+ERR d39 Error: page.evaluate: Error: Parse error on line 2:
+classDiagram    o.o --> B
+----------------^
+Expecting 'acc_title', 'acc_descr', 'acc_descr_multiline_value', 'NAMESPACE', 'ANNOTATION_START', 'CLASS
+ERR d40 Error: page.evaluate: Error: Parse error on line 2:
+classDiagram    a.o--o
+------------------^
+Expecting 'ALPHA', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'AGGREGATION'
+    at Parser.parseErr
+ERR d41 Error: page.evaluate: Error: Parse error on line 2:
+classDiagram    A.o --> B.o
+------------------^
+Expecting 'ALPHA', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'AGGREGATION'
+    at Parser.par
+ERR d42 Error: page.evaluate: Error: Parse error on line 2:
+classDiagram    o --> A
+----------------^
+Expecting 'acc_title', 'acc_descr', 'acc_descr_multiline_value', 'NAMESPACE', 'ANNOTATION_START', 'CLASS',
+ERR d43 Error: page.evaluate: Error: Parse error on line 2:
+...ssDiagram    A --> o
+----------------------^
+Expecting 'STR', 'ALPHA', 'LINE', 'DOTTED_LINE', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got '
+ok d44

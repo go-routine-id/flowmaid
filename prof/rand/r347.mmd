@@ -1,0 +1,13 @@
+flowchart TD
+  H0 ==> N0
+  H0 ==>|gift wrap| N3
+  H0 -.->|retry| N2
+  H0 --> N1
+  H0 -.->|ok| N0
+  H0 ---|express| N4
+  H0 -.->|no| N2
+  H0 --> N0
+  H0 ---|ok| N2
+  N4 --> N1
+  N1 --> N4
+  N4 -->|no| N1

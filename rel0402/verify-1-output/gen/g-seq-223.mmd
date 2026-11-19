@@ -1,0 +1,16 @@
+sequenceDiagram
+participant P0 as gamma
+participant P1 as <b>bold</b>
+actor P2 as <b>bold</b>
+participant P3 as x
+actor P4 as beta
+P1-xP3: alpha
+activate P4
+P4->>P0: act
+deactivate P4
+P3-->P1: beta
+P0-)P2: delta
+activate P3
+P3->>P2: act
+deactivate P3
+P4->>P4: self beta

@@ -1,0 +1,10 @@
+stateDiagram-v2
+    [*] --> A
+    A --> B
+    note right of A : first
+    note right of A : second
+    note left of A : third on A
+    B --> [*]
+    note right of Unknown : creates a state
+    note "floating" as F1
+    F1 --> B

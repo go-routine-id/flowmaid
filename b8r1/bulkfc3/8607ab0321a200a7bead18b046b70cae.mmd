@@ -1,0 +1,15 @@
+flowchart BT
+    N0([Store])
+    N1[Report]
+    N2([Parse])
+    N3(Check)
+    N4(Fetch)
+    N5(Validate)
+    N6(Check parse)
+    N0 --> N1
+    N1 --> N2
+    N0 --> N3
+    N1 --> N4
+    N4 -->|ok| N5
+    N5 --> N6
+    N6 -.->|rollback| N2

@@ -1,0 +1,21 @@
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> Loading : fetch
+    Loading --> Ready : ok
+    Loading --> Error : fail
+    Error --> Idle : reset
+    Ready --> Editing : edit
+    state Editing {
+        [*] --> Dirty
+        Dirty --> Saving : save
+        Saving --> Clean : done
+        Saving --> Dirty : conflict
+        Clean --> [*]
+    }
+    Editing --> Ready : close
+    state check <<choice>>
+    Ready --> check
+    check --> Idle : stale
+    check --> Ready : fresh
+    note right of Error : shown to user
+    Ready --> [*]

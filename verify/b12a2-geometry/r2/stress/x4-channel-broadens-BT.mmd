@@ -1,0 +1,12 @@
+flowchart BT
+    s[source] --> b1
+    s --> c1
+    subgraph B["Billing and Invoicing Operations Group"]
+        b1[inv] --> b2[pay]
+    end
+    subgraph C[Catalog]
+        c1[item] --> c2[price]
+    end
+    c2 --> b2
+    b2 --> c1
+    s --> b2

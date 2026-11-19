@@ -1,0 +1,8 @@
+%%{init: {"themeVariables": {"primaryColor": "#fafafa", "background": "#fffbe6", "textColor": "#222222"}}}%%
+flowchart TD
+  A[Plain] --> B{Diamond}
+  B -->|label| C([Stadium])
+  B --> D[(DB)]
+  subgraph G[Group]
+    C --> E((Circle))
+  end

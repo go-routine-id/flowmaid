@@ -1,0 +1,11 @@
+flowchart LR
+    subgraph G[MMMM WWWW QQQQ]
+        m0[auth service]
+        m1[auth service]
+    end
+    s0[src0] --> G
+    s1[src1] --> m0
+    s1 --> m1
+    s2[src2] -- "lbl9" --> G
+    m1 --> z[end]
+    G --> z2[after]

@@ -1,0 +1,16 @@
+flowchart TD
+    subgraph A[MMMM WWWW]
+        a1[a1 wide node]
+        a2[a2]
+    end
+    subgraph B[MMMM WWWW two]
+        b1[b1]
+        b2[b2 wide node]
+    end
+    a1 --> b1
+    a2 --> b2
+    a1 --> b2
+    p[p] --> A
+    p --> a2
+    q[q] --> B
+    q --> b1

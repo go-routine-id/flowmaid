@@ -1,0 +1,21 @@
+sequenceDiagram
+    participant A as Alice
+    participant B as Bob
+    A->>+B: one
+    B->>+B: self nest
+    B->>+B: deeper
+    A->>B: from left to stack
+    B->>A: from stack to left
+    B-->>-B: unwind
+    B-->>-A: two
+    B-->>-A: three
+    loop retry until success or the overall timeout expires
+        opt backoff
+            Note left of A: wait 2^n seconds before trying again
+            A->>A: sleep
+        end
+        A->>B: try
+        activate B
+        B--xA: fail
+        deactivate B
+    end

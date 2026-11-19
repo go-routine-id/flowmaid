@@ -1,0 +1,11 @@
+classDiagram
+direction LR
+A *-- B : x
+B o-- C : has many of
+A <|-- D
+A o-- E
+D <|-- C
+E *-- D
+D o-- D : d0
+D *-- D : d1
+D --> D : d2

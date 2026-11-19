@@ -1,0 +1,11 @@
+flowchart BT
+    subgraph A [Alpha]
+        a1 --> a2 --> a3
+    end
+    subgraph B [Beta]
+        b1 --> b2
+        b2 --> b3
+    end
+    A --> B
+    b3 --> C
+    C -->|loop back with a long label| A

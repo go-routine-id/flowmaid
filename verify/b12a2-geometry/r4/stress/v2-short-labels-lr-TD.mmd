@@ -1,0 +1,16 @@
+flowchart TD
+    subgraph EDGE["Edge services for all incoming public traffic"]
+        e1[gw] --> e2[waf]
+    end
+    subgraph CORE["Core business processing tier with long name"]
+        c1[api] --> c2[jobs]
+    end
+    subgraph DATA[Data]
+        d1[(db)]
+        d2[(cache)]
+    end
+    e2 -->|route| c1
+    c1 -->|read| d1
+    c2 -->|warm| d2
+    e1 -->|probe| c2
+    d1 -.->|replica| e2

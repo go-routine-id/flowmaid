@@ -1,0 +1,36 @@
+flowchart LR
+  subgraph ingest [Ingest tier]
+    src1[Source one] --> hub{{Router hub}}
+    src2[Source two] --> hub
+    src3[Source three] --> hub
+  end
+  subgraph work [Workers]
+    w1[Worker 1]
+    w2[Worker 2]
+    w3[Worker 3]
+    w4[Worker 4]
+  end
+  subgraph store [Storage]
+    db[(Main DB)]
+    cache[(Cache)]
+    blob[(Blob store)]
+  end
+  hub -->|a| w1
+  hub -->|b| w2
+  hub -->|c| w3
+  hub -->|d| w4
+  hub -.-> cache
+  hub ==> db
+  w1 --> db
+  w1 --> cache
+  w2 --> blob
+  w2 --> db
+  w3 --> cache
+  w3 --> blob
+  w4 --> db
+  w4 --> blob
+  src1 -.->|audit| blob
+  src3 --> db
+  cache --> out[Output]
+  db --> out
+  blob --> out

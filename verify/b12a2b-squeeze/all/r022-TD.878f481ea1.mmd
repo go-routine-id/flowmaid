@@ -1,0 +1,17 @@
+flowchart TD
+    subgraph G[Data ingestion workers]
+        m0[charge]
+        m1[w]
+        m2[y]
+        m0 --> m1
+    end
+    s0[src0] --> G
+    s0 --> G
+    s1[src1] --> G
+    s2[src2] --> m0
+    s2 --> G
+    s3[src3] --> m2
+    s3 --> m1
+    s4[src4] --> G
+    s4 --> G
+    m2 --> z[end]

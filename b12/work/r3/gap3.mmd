@@ -1,0 +1,18 @@
+flowchart TD
+ subgraph A[Above]
+  subgraph AI[Inner above]
+   a1
+   a2
+   a3
+  end
+ end
+ subgraph B[Below]
+  subgraph BI[Inner below]
+   b1
+   b2
+   b3
+  end
+ end
+ a1 --> b3
+ a2 --> b1
+ a3 --> b2

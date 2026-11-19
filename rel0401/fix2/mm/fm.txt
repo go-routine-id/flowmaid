@@ -1,0 +1,48 @@
+"classDiagram\nclass A~T~."	ERR line 2: 'A~T~.' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and none follows its generic, label, ':::' style or backtick name
+"classDiagram\nclass A~T~. {\n+x\n}"	ERR line 2: 'A~T~.' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and none follows its generic, label, ':::' style or backtick name
+"classDiagram\nclass A~T~..B"	ERR line 2: 'A~T~..B' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and none follows its generic, label, ':::' style or backtick name
+"classDiagram\nclass A.B~T~."	ERR line 2: 'A.B~T~.' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and none follows its generic, label, ':::' style or backtick name
+"classDiagram\nclass A.B~T~.C"	ERR line 2: 'A.B~T~.C' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and none follows its generic, label, ':::' style or backtick name
+"classDiagram\nclass A~T~\n<<interface>> A~T~."	ERR line 3: 'A~T~.' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and none follows its generic, label, ':::' style or backtick name
+"classDiagram\nclass A[\"lbl\"]."	ERR line 2: 'A["lbl"].' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and none follows its generic, label, ':::' style or backtick name
+"classDiagram\nclass A.B[\"lbl\"]."	ERR line 2: 'A.B["lbl"].' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and none follows its generic, label, ':::' style or backtick name
+"classDiagram\nclass A[\"x\"] ."	ERR line 2: 'A["x"] .' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and none follows its generic, label, ':::' style or backtick name
+"classDiagram\nclass A~T~[\"x\"]."	ERR line 2: 'A~T~["x"].' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and none follows its generic, label, ':::' style or backtick name
+"classDiagram\nclass A:::foo."	ERR line 2: 'A:::foo.' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and none follows its generic, label, ':::' style or backtick name
+"classDiagram\nclass A.B:::foo."	ERR line 2: 'A.B:::foo.' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and none follows its generic, label, ':::' style or backtick name
+"classDiagram\nclass A~T~.:::foo"	ERR line 2: 'A~T~.:::foo' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and none follows its generic, label, ':::' style or backtick name
+"classDiagram\nclass `A`."	ERR line 2: '`A`.' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and none follows its generic, label, ':::' style or backtick name
+"classDiagram\nclass `A`.B"	ERR line 2: '`A`.B' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and none follows its generic, label, ':::' style or backtick name
+"classDiagram\nclass `A`.B {\n+x\n}"	ERR line 2: '`A`.B' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and none follows its generic, label, ':::' style or backtick name
+"classDiagram\nclass A.;"	ERR line 2: 'A.;' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and '..' is the dotted line
+"classDiagram\nclass A.$"	ERR line 2: 'A.$' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and '..' is the dotted line
+"classDiagram\nclass A."	ERR line 2: 'A.' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and '..' is the dotted line
+"classDiagram\nclass .A"	ERR line 2: '.A' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and '..' is the dotted line
+"classDiagram\nclass A...B"	ERR line 2: 'A...B' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and '..' is the dotted line
+"classDiagram\nclass A..B"	ERR line 2: 'A..B' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and '..' is the dotted line
+"classDiagram\nclass A.B."	ERR line 2: 'A.B.' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and '..' is the dotted line
+"classDiagram\nclass A. {\n+x\n}"	ERR line 2: 'A.' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and '..' is the dotted line
+"classDiagram\nclass A.:::foo"	ERR line 2: 'A.' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and '..' is the dotted line
+"classDiagram\nclass A.[\"x\"]"	ERR line 2: 'A.' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and '..' is the dotted line
+"classDiagram\nclass A.~T~"	ERR line 2: 'A.' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and '..' is the dotted line
+"classDiagram\nclass a.b.C"	OK ["a.b.C"] notes=0
+"classDiagram\nclass A.B~T~"	OK ["A.B"] notes=0
+"classDiagram\nclass A.`B`"	OK ["A.`B`"] notes=0
+"classDiagram\nclass A.-B"	OK ["A.-B"] notes=0
+"classDiagram\nclass `A.`"	OK ["A."] notes=0
+"classDiagram\nclass Map~a.b~"	OK ["Map"] notes=0
+"classDiagram\nclass A[\"x.y\"]"	OK ["A[\"x.y\"]"] notes=0
+"classDiagram\nclass A.B"	OK ["A.B"] notes=0
+"classDiagram\nclass a.b.C {\n+x\n}"	OK ["a.b.C"] notes=0
+"classDiagram\nclass A:::foo"	OK ["A:::foo"] notes=0
+"classDiagram\nclass A~T~"	OK ["A"] notes=0
+"classDiagram\nclass A.B:::foo"	OK ["A.B:::foo"] notes=0
+"classDiagram\nclass A.B[\"lbl\"]"	OK ["A.B[\"lbl\"]"] notes=0
+"classDiagram\nclass a.b.C\na.b.C <|-- d.e.F"	OK ["a.b.C", "d.e.F"] notes=0
+"classDiagram\nclass A.B.C.D"	OK ["A.B.C.D"] notes=0
+"classDiagram\nclass A1.b2"	OK ["A1.b2"] notes=0
+"classDiagram\nclass A.B~T~ {\n+x\n}"	OK ["A.B"] notes=0
+"classDiagram\nclass a.b\n<<interface>> a.b"	OK ["a.b"] notes=0
+"classDiagram\na.b.C --> d.E"	OK ["a.b.C", "d.E"] notes=0
+"classDiagram\nclass A_B.c_d"	OK ["A_B.c_d"] notes=0
+"classDiagram\nclass A.é"	OK ["A.é"] notes=0

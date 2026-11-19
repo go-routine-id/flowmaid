@@ -1,0 +1,11 @@
+classDiagram
+    A <|-- B
+    B <|-- C
+    C <|-- D
+    D <|-- E
+    Helper ..> E : uses
+    Util ..> D : uses
+    Util ..> A : configures
+    Orphan --> C
+    note for E "Deep leaf"
+    note for A "Root"

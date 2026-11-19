@@ -1,0 +1,16 @@
+flowchart LR
+    Lint
+    Compile
+    Test
+    Kick["Trigger"]
+    Deploy
+    subgraph Pipe["Build pipeline"]
+        Lint
+        Compile
+        Test
+        Kick
+    end
+    Lint --> Compile
+    Compile --> Test
+    Kick -->|"start"| Pipe
+    Pipe --> Deploy

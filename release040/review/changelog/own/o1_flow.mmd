@@ -1,0 +1,11 @@
+flowchart LR
+  subgraph S1[Front]
+    direction TB
+    a[Web] --> b{Auth?}
+  end
+  b -- yes --> c[(DB)]
+  b -- no --> d([Deny])
+  c --> e((Done))
+  d -.-> a
+  e ==> f>Flag]
+  c --> c

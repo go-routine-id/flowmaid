@@ -1,0 +1,238 @@
+diff --git a/src/scene.rs b/src/scene.rs
+index bc61ad1..5d55ca3 100644
+--- a/src/scene.rs
++++ b/src/scene.rs
+@@ -734,7 +734,7 @@ impl<'a> HopPick<'a> {
+         } else {
+             (start, segs)
+         };
+-        let Some(strokes) = hopped(start, &segs, &hops) else {
++        let Some(strokes) = hopped(start, &segs, &hops, self.sc.block_layout) else {
+             return d;
+         };
+         let mut best = f64::INFINITY;
+@@ -1249,6 +1249,15 @@ impl Seg {
+         }
+     }
+ 
++    /// The command with its end moved to `p` (its controls kept).
++    fn ending_at(self, p: (f64, f64)) -> Seg {
++        match self {
++            Seg::L(_) => Seg::L(p),
++            Seg::Q(c, _) => Seg::Q(c, p),
++            Seg::C(a, b, _) => Seg::C(a, b, p),
++        }
++    }
++
+     /// The command with every point mapped through `t`.
+     fn map(self, t: &impl Fn((f64, f64)) -> (f64, f64)) -> Seg {
+         match self {
+@@ -1458,6 +1467,14 @@ enum Stroke {
+     A { r: f64, cw: bool, to: (f64, f64) },
+ }
+ 
++/// How far (px) a hop's foot may lie off its line and still be set on
++/// it in a block layout's painting ([`hopped`]'s `on_line`): below the
++/// SVG's 0.1 px writing, so the stroke moves by nothing a pick or an eye
++/// can tell. The stroke's spline turns a hair before a corner, and a
++/// foot 1e-7 px past a line at y .25 was written 0.1 px above the line
++/// before it (519.3 against 519.2), which read as a step at the hop.
++const FOOT_SNAP: f64 = 0.05;
++
+ /// The path `(start, segs)` with each of `hops` (in the path's own
+ /// coordinates) drawn in (report M15, [`crate::hops`]): where the path
+ /// reaches a hop's near foot it leaves its line on a quarter circle up
+@@ -1466,8 +1483,15 @@ enum Stroke {
+ /// stretch of line under the hop left out. A hop whose near foot the path does not
+ /// pass on its line is left out and the path drawn through; `None`
+ /// when it never comes down from one (the caller then draws the path
+-/// plain).
+-fn hopped(start: (f64, f64), segs: &[Seg], hops: &[crate::hops::Hop]) -> Option<Vec<Stroke>> {
++/// plain). With `on_line` (a block layout's scene, `Scene::block_layout`)
++/// a foot within [`FOOT_SNAP`] of the hop's line is set on it, so both
++/// feet and the line before them are written alike.
++fn hopped(
++    start: (f64, f64),
++    segs: &[Seg],
++    hops: &[crate::hops::Hop],
++    on_line: bool,
++) -> Option<Vec<Stroke>> {
+     let mut out = Vec::with_capacity(segs.len() + 3 * hops.len());
+     let mut cur = start;
+     // The hop the path is stepping over, and whether it runs towards
+@@ -1496,7 +1520,13 @@ fn hopped(start: (f64, f64), segs: &[Seg], hops: &[crate::hops::Hop]) -> Option<
+             match (inside, is_near) {
+                 (None, true) if t >= from => {
+                     if t > from {
+-                        out.push(Stroke::S(seg.part(cur, from, t).1));
++                        let part = seg.part(cur, from, t).1;
++                        let foot = part.end();
++                        out.push(Stroke::S(if on_line && (foot.1 - hops[h].y).abs() < FOOT_SNAP {
++                            part.ending_at((foot.0, hops[h].y))
++                        } else {
++                            part
++                        }));
+                     }
+                     inside = Some((h, fwd));
+                 }
+@@ -1504,6 +1534,11 @@ fn hopped(start: (f64, f64), segs: &[Seg], hops: &[crate::hops::Hop]) -> Option<
+                     let hop = &hops[h];
+                     let (r, cw) = (hop.r, fwd);
+                     let foot = cubic_at(&b, t);
++                    let foot = if on_line && (foot.1 - hop.y).abs() < FOOT_SNAP {
++                        (foot.0, hop.y)
++                    } else {
++                        foot
++                    };
+                     let top = hop.y - r;
+                     let (a, z) = if fwd {
+                         (hop.x0, hop.x1)
+@@ -1543,8 +1578,8 @@ fn hopped(start: (f64, f64), segs: &[Seg], hops: &[crate::hops::Hop]) -> Option<
+ 
+ /// [`curve_d`] of the path `(start, segs)` with each of `hops` drawn in
+ /// ([`hopped`]).
+-fn hopped_d(start: (f64, f64), segs: &[Seg], hops: &[crate::hops::Hop]) -> String {
+-    let strokes = match hopped(start, segs, hops) {
++fn hopped_d(start: (f64, f64), segs: &[Seg], hops: &[crate::hops::Hop], on_line: bool) -> String {
++    let strokes = match hopped(start, segs, hops, on_line) {
+         Some(s) if !hops.is_empty() => s,
+         _ => return curve_d(start, segs, |p| p),
+     };
+@@ -2769,7 +2804,7 @@ fn painted_path(
+     p: &PaintedEdge,
+     t: impl Fn((f64, f64)) -> (f64, f64),
+ ) -> (String, Option<f64>) {
+-    painted_path_hops(e, p, t, &[])
++    painted_path_hops(e, p, t, &[], false)
+ }
+ 
+ /// [`painted_path`] with the edge's crossing `hops` drawn in (scene
+@@ -2782,6 +2817,7 @@ fn painted_path_hops(
+     p: &PaintedEdge,
+     t: impl Fn((f64, f64)) -> (f64, f64),
+     hops: &[crate::hops::Hop],
++    on_line: bool,
+ ) -> (String, Option<f64>) {
+     let (start, segs) = if p.cuts == [None, None] {
+         plain_segs(e, &t)
+@@ -2802,11 +2838,11 @@ fn painted_path_hops(
+     let (a0, a3) = arrow_trims(e);
+     if (t0, t3) != (a0, a3) {
+         if let (_, _, Some(len)) = trim_segs_or_len(start, segs.clone(), a0, a3) {
+-            return (hopped_d(start, &segs, &hops), Some(len));
++            return (hopped_d(start, &segs, &hops, on_line), Some(len));
+         }
+     }
+     let (start, segs, whole) = trim_segs_or_len(start, segs, t0, t3);
+-    (hopped_d(start, &segs, &hops), whole)
++    (hopped_d(start, &segs, &hops, on_line), whole)
+ }
+ 
+ /// How far (px) the painter stops a stroke `width` px wide short of an
+@@ -7899,7 +7935,13 @@ fn frame_boxes(
+         // frame grown to its title is not grown for them: its title
+         // row's entries still go round, see `title_column_width`.)
+         let cols = if title_fit && !bound[i] {
+-            title_column_width(&g.subgraphs[i].title, jog_entries(jog))
++            let k = jog_entries(jog);
++            let pins = if k > 0 && std::env::var("FMX_PINS").is_ok() {
++                title_side_pins(g, nodes, i, miny, maxy)
++            } else {
++                0
++            };
++            title_column_width(&g.subgraphs[i].title, k + pins)
+         } else {
+             0.0
+         };
+@@ -7916,6 +7958,52 @@ fn frame_boxes(
+     (boxes, depth, bound)
+ }
+ 
++/// How many ends of edges to or from the whole of subgraph `i` cross
++/// its title side (TD: the other end lies above the members, `top`;
++/// BT: below them, `bottom`), as the layout counts them
++/// (`layout::title_side_pins`).
++fn title_side_pins(g: &Graph, nodes: &[SceneNode], i: usize, top: f64, bottom: f64) -> usize {
++    let bt = matches!(g.direction, Direction::BT);
++    let inside = |j: usize| -> Vec<usize> {
++        (0..g.subgraphs.len())
++            .filter(|&s| {
++                let mut p = Some(s);
++                while let Some(q) = p {
++                    if q == j {
++                        return true;
++                    }
++                    p = g.subgraphs[q].parent;
++                }
++                false
++            })
++            .flat_map(|s| g.subgraphs[s].nodes.iter().copied())
++            .collect()
++    };
++    let at = |e: &End| -> Option<f64> {
++        match *e {
++            End::Node(v) => nodes.get(v).map(|n| n.y),
++            End::Sub(j) => {
++                let vs = inside(j);
++                (!vs.is_empty()).then(|| vs.iter().map(|&v| nodes[v].y).sum::<f64>() / vs.len() as f64)
++            }
++        }
++    };
++    let mut k = 0;
++    for se in &g.sub_edges {
++        for (mine, other) in [(&se.to, &se.from), (&se.from, &se.to)] {
++            if *mine != End::Sub(i) || *other == End::Sub(i) {
++                continue;
++            }
++            if let Some(y) = at(other) {
++                if (!bt && y < top) || (bt && y > bottom) {
++                    k += 1;
++                }
++            }
++        }
++    }
++    k
++}
++
+ /// Cluster boxes as paintable [`SceneCluster`]s, outermost-first.
+ fn route_clusters(g: &Graph, nodes: &[SceneNode]) -> Vec<SceneCluster> {
+     if g.subgraphs.is_empty() {
+@@ -9199,7 +9287,10 @@ pub fn to_svg_a11y_with(sc: &Scene, default_title: &str, a11y: &A11y, opts: &Svg
+         .iter()
+         .zip(&painted)
+         .enumerate()
+-        .map(|(i, (e, p))| p.as_ref().map(|p| painted_path_hops(e, p, t, &hops[i])))
++        .map(|(i, (e, p))| {
++            p.as_ref()
++                .map(|p| painted_path_hops(e, p, t, &hops[i], sc.block_layout))
++        })
+         .collect();
+     let whole: Vec<Option<f64>> = paths.iter().map(|p| p.as_ref().and_then(|p| p.1)).collect();
+     let markers = edge_markers(&sc.edges, &head_sizes(sc, &painted, &whole), &pal.line);
+@@ -14018,7 +14109,7 @@ mod tests {
+                     // arrowhead; the head inks that stretch, so the
+                     // whole curve is what a pick must cover.
+                     let shift = |p: (f64, f64)| (p.0 + tx, p.1 + ty);
+-                    let painted = painted_path_hops(e, &painted_edge(e), shift, hops).0;
++                    let painted = painted_path_hops(e, &painted_edge(e), shift, hops, s.block_layout).0;
+                     assert!(
+                         svg.contains(&format!("<path d=\"{painted}\"")),
+                         "{what}: {painted} not painted"
+@@ -14033,7 +14124,7 @@ mod tests {
+                             ..*h
+                         })
+                         .collect();
+-                    let d = hopped_d(start, &segs, &hops);
++                    let d = hopped_d(start, &segs, &hops, s.block_layout);
+                     assert_eq!(hops.is_empty(), !d.contains(" A "), "{what}: {d}");
+                     assert_eq!(
+                         painted.matches(" A ").count(),
+@@ -20772,7 +20863,7 @@ mod tests {
+                 // sampled (written to 0.1, so up to ~0.07 off), with the
+                 // hops it steps over the lines it crosses on.
+                 let (start, segs) = drawn_segs(e, |p| p);
+-                let pts = path_d_points(&hopped_d(start, &segs, &hops[i]), 0.5);
++                let pts = path_d_points(&hopped_d(start, &segs, &hops[i], s.block_layout), 0.5);
+                 let gap = |r: &[f64; 4]| {
+                     pts.iter()
+                         .map(|&p| PickTarget::box_gap(p, r[0], r[1], r[2], r[3]))

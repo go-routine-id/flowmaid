@@ -1,0 +1,24 @@
+flowchart TD
+    N0[Report]
+    N1{Parse check}
+    N2(Queue)
+    N3{Fetch check}
+    N4{Archive notify}
+    N5[Parse fetch]
+    N6{Fetch}
+    N7([Archive queue])
+    N8([Emit report])
+    N9[Parse check]
+    N0 --> N1
+    N1 -->|ok| N2
+    N2 --> N3
+    N3 --> N4
+    N3 -->|fail| N5
+    N4 -->|ok| N6
+    N4 --> N7
+    N7 --> N8
+    N6 --> N9
+    N3 --> N8
+    N2 --> N5
+    N7 --> N9
+    N2 -.->|again| N0

@@ -1,0 +1,18 @@
+flowchart TB
+  H0 -.->|ok| N14
+  H0 --- N5
+  H0 ---|no| N8
+  H0 --- N5
+  H0 --- N3
+  H0 ==> N8
+  H0 ==>|ok| N16
+  H0 ==> N2
+  H0 ---|no| N4
+  H0 ---|retry| N10
+  N5 -->|a much longer label here| N13
+  N9 -->|retry| N9
+  N14 -->|gift wrap| N2
+  N3 -->|a much longer label here| N16
+  N15 --> N14
+  N15 --> N15
+  N15 -->|no| N16

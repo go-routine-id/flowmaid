@@ -1,0 +1,48 @@
+-- check-scene advanced
+  canvas: svg 596 x 1236, scene 595.825 x 1235.5 (the SVG prints whole px)
+  translation svg - scene = (0.02, 0.00)
+  max |diff| node boxes 0.981 px (14 nodes; worst Reg (Cylinder)), frames 0.050 px (3), label chips 0.053 px (4)
+  scene waypoints off the drawn path: 3.558 px away from the ends, 5.516 px within 16 px of an end (arrowhead trim)
+  length of the scene's waypoint polyline minus the drawn path, 8 routed edges: mean 13.36 px, max |diff| 18.24 px
+-- check-scene bench-75
+  canvas: svg 2222 x 1965, scene 2221.8 x 1965.25 (the SVG prints whole px)
+  translation svg - scene = (0.00, 0.00)
+  max |diff| node boxes 0.050 px (21 nodes; worst alerts (Rect)), frames 0.050 px (5), label chips 0.000 px (0)
+  scene waypoints off the drawn path: 4.764 px away from the ends, 5.525 px within 16 px of an end (arrowhead trim)
+  length of the scene's waypoint polyline minus the drawn path, 74 routed edges: mean 14.28 px, max |diff| 35.01 px
+-- check-scene dense-lr
+  canvas: svg 2302 x 3468, scene 2301.55 x 3467.5 (the SVG prints whole px)
+  translation svg - scene = (0.05, -0.02)
+  max |diff| node boxes 0.100 px (52 nodes; worst n1 (Rect)), frames 0.100 px (11), label chips 0.100 px (21)
+  scene waypoints off the drawn path: 13.864 px away from the ends, 5.593 px within 16 px of an end (arrowhead trim)
+  length of the scene's waypoint polyline minus the drawn path, 36 routed edges: mean 13.97 px, max |diff| 24.50 px
+-- check-scene dense-td
+  canvas: svg 4249 x 1806, scene 4249.1 x 1806.286 (the SVG prints whole px)
+  translation svg - scene = (0.00, -0.04)
+  max |diff| node boxes 0.814 px (46 nodes; worst n4 (Cylinder)), frames 0.072 px (10), label chips 0.086 px (21)
+  scene waypoints off the drawn path: 3.595 px away from the ends, 5.525 px within 16 px of an end (arrowhead trim)
+  length of the scene's waypoint polyline minus the drawn path, 39 routed edges: mean 14.57 px, max |diff| 28.29 px
+-- check-scene fanout-frames
+  canvas: svg 566 x 2311, scene 565.5 x 2311 (the SVG prints whole px)
+  translation svg - scene = (0.00, 0.00)
+  max |diff| node boxes 0.593 px (22 nodes; worst n1 (Cylinder)), frames 0.050 px (6), label chips 0.000 px (0)
+  scene waypoints off the drawn path: 4.718 px away from the ends, 5.550 px within 16 px of an end (arrowhead trim)
+  length of the scene's waypoint polyline minus the drawn path, 7 routed edges: mean 10.57 px, max |diff| 13.46 px
+-- check-scene infra-overview
+  canvas: svg 2787 x 1225, scene 2786.9 x 1224.929 (the SVG prints whole px)
+  translation svg - scene = (0.02, 0.00)
+  max |diff| node boxes 0.050 px (22 nodes; worst R1 (Rect)), frames 0.050 px (5), label chips 0.069 px (20)
+  scene waypoints off the drawn path: 3.344 px away from the ends, 5.543 px within 16 px of an end (arrowhead trim)
+  length of the scene's waypoint polyline minus the drawn path, 24 routed edges: mean 14.02 px, max |diff| 23.29 px
+-- check-scene state
+  canvas: svg 535 x 873, scene 535.4 x 873.333 (the SVG prints whole px)
+  translation svg - scene = (-0.05, 0.00)
+  max |diff| node boxes 0.050 px (15 nodes; worst Idle (Rounded)), frames 0.050 px (1), label chips 0.096 px (5)
+  scene waypoints off the drawn path: 3.381 px away from the ends, 5.534 px within 16 px of an end (arrowhead trim)
+  length of the scene's waypoint polyline minus the drawn path, 3 routed edges: mean 13.61 px, max |diff| 18.54 px
+-- check-scene subgraph
+  canvas: svg 382 x 758, scene 381.8 x 758 (the SVG prints whole px)
+  translation svg - scene = (0.00, 0.00)
+  max |diff| node boxes 0.050 px (8 nodes; worst GW (Rounded)), frames 0.000 px (2), label chips 0.000 px (0)
+  scene waypoints off the drawn path: 3.288 px away from the ends, 5.500 px within 16 px of an end (arrowhead trim)
+  length of the scene's waypoint polyline minus the drawn path, 2 routed edges: mean 12.82 px, max |diff| 12.82 px

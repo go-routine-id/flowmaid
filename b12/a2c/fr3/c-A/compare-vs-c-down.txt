@@ -1,0 +1,36 @@
+compare.sh: baseline /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/a2c/fr2/c-down
+            candidate /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/a2c/fr3/c-A
+
+== 1. local inputs, per cell (LIVE judge)
+[local static A2] 444 / 444 cells; must-fail 70 -> 70; worse 0 (new 0, worse inside failing 0, changed 0, missing 0); gone 0, better inside failing 0; info: target new 0 / gone 0 / worse 0, drift inside passing 0
+[local routed] 62 / 62 cells; must-fail 18 -> 18; worse 0 (new 0, worse inside failing 0, changed 0, missing 0); gone 0, better inside failing 0; info: target new 0 / gone 0 / worse 0, drift inside passing 0
+cells: no worse
+
+== 2. suite-on gate messages
+[gates] tests 1258 / 1259; failing 8 -> 8
+  info new test blockcheck::a_chip_returns_to_its_line_however_near_another_line_passes: ok
+  info stdout defect_baseline_gate: 2 cells changed
+       routed lbl_end_mean: 226.8593 -> 227.2786  higher (worse?)
+       static lbl_end_mean: 219.5975 -> 220.0168  higher (worse?)
+  info stdout quality_gate: 4 cells changed
+       dense-lr routed lbl_end_mean: 369.06 -> 369.75  higher (worse?)
+       dense-lr static lbl_end_mean: 369.06 -> 369.75  higher (worse?)
+       dense-td routed lbl_end_mean: 726.03 -> 727.85  higher (worse?)
+       dense-td static lbl_end_mean: 726.03 -> 727.85  higher (worse?)
+panics: no worse
+
+== 3. direction copies (332 + 32, static and routed)
+[dirs static] 332 copies  defects 41->41 (+0/-0)  x_drawn 1283->1283 (+0/-0)  lateral_x 201->201 (+0/-0)  fan_x 30->30 (+0/-0)  edge_chip 8->8 (+0/-0)  side_ends 216->216 (+0/-0)  min_edge_gap down 0
+    info lbl_end_mean: total 31744.6->31753.7, up 11 / down 18 (worse on 11, better on 18): blocks.wide-stroke-LR 203.82->205.97; blocks.wide-stroke-RL 203.71->205.85; blocks.wide-stroke-TD 142.71->143.59; notes.fork-twins-BT 147.99->149.25; notes.fork-twins-TD 191.17->192.43; quality.dense-lr-BT 732.96->733.44 ...
+    info chip_gap_min: total 9206.26->9206.09, up 2 / down 3 (worse on 3, better on 2): blocks.wide-stroke-LR 7.8->7.76; blocks.wide-stroke-RL 7.8->7.76; blocks.wide-stroke-TD 11.08->10.97
+[dirs routed] 332 copies  defects 41->41 (+0/-0)  x_drawn 1285->1285 (+0/-0)  lateral_x 201->201 (+0/-0)  fan_x 32->32 (+0/-0)  edge_chip 8->8 (+0/-0)  side_ends 216->216 (+0/-0)  min_edge_gap down 0
+    info lbl_end_mean: total 31682.8->31691.9, up 11 / down 18 (worse on 11, better on 18): blocks.wide-stroke-LR 203.82->205.97; blocks.wide-stroke-RL 203.71->205.85; blocks.wide-stroke-TD 142.71->143.59; notes.fork-twins-BT 147.99->149.25; notes.fork-twins-TD 191.17->192.43; quality.dense-lr-BT 732.96->733.44 ...
+    info chip_gap_min: total 9221.34->9221.17, up 2 / down 3 (worse on 3, better on 2): blocks.wide-stroke-LR 7.8->7.76; blocks.wide-stroke-RL 7.8->7.76; blocks.wide-stroke-TD 11.08->10.97
+[dirsx static] 32 copies  defects 0->0 (+0/-0)  x_drawn 1->1 (+0/-0)  lateral_x 1->1 (+0/-0)  fan_x 0->0 (+0/-0)  edge_chip 0->0 (+0/-0)  side_ends 2->2 (+0/-0)  min_edge_gap down 0
+[dirsx routed] 32 copies  defects 0->0 (+0/-0)  x_drawn 1->1 (+0/-0)  lateral_x 1->1 (+0/-0)  fan_x 0->0 (+0/-0)  edge_chip 0->0 (+0/-0)  side_ends 2->2 (+0/-0)  min_edge_gap down 0
+dirs: no worse
+
+VERDICT cells:  no worse
+VERDICT panics: no worse
+VERDICT dirs:   no worse
+VERDICT: no worse

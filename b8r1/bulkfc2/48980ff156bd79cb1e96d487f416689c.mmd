@@ -1,0 +1,14 @@
+flowchart LR
+  AG[Agent menulis<br/>blok mermaid] --> MSG[Pesan chat]
+  MSG --> RW[flowmaid WASM<br/>di klien]
+  RW --> VIEW[Diagram interaktif]
+  VIEW -->|drag node| RP[route_partial]
+  RP --> VIEW
+  VIEW -->|simpan| TM[to_mermaid]
+  TM -->|konteks baru| AG
+  MSG --> SRV[flowmaid server-side]
+  SRV --> PUSH[Thumbnail notif / email]
+  classDef new fill:#eaeffc,stroke:#1d3fa0,color:#101828
+  classDef old fill:#ffffff,stroke:#c9d2e0,color:#101828
+  class RW,RP,TM,SRV new
+  class AG,MSG,VIEW,PUSH old

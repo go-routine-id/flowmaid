@@ -1,0 +1,63 @@
+--- /home/user/flowmaid/src/ortho.rs	2026-11-17 20:05:55.721733893 +0000
++++ e4-ortho.rs	2026-11-17 20:09:12.830218609 +0000
+@@ -582,8 +582,8 @@
+     } else {
+         Vec::new()
+     };
+-    let stubs = breadth_stubs(sc, cx, dir, &boxes);
+-    let end_stubs = breadth_ends(sc, cx, dir, &boxes);
++    let stubs = breadth_stubs(sc, cx, dir, &boxes, &frames);
++    let end_stubs = breadth_ends(sc, cx, dir, &boxes, &frames);
+     let titles = TitleSides::of(sc, cx, dir, &frames);
+     let mut jogs: Vec<Jog> = Vec::new();
+     let mut plans: Vec<(usize, Vec<Corner>)> = Vec::new();
+@@ -1215,6 +1215,21 @@
+     }
+ }
+ 
++/// e4 attempt: the straight leg off a breadth side leaves a block holding
++/// the end (not the other) through its lateral wall.
++fn leaves_sideways(cx: &Ctx, frames: &[Rect], (end, other): (EndRef, EndRef), p: Pt, to: f64) -> bool {
++    if !cx.blocks { return false; }
++    let held = |e: EndRef| match e {
++        EndRef::Node(v) => cx.node_frames.get(v).cloned().unwrap_or_default(),
++        EndRef::Frame(c) => cx.frame_anc.get(c).cloned().unwrap_or_default(),
++    };
++    let theirs = held(other);
++    held(end).into_iter().filter(|k| !theirs.contains(k)).filter_map(|k| frames.get(k)).any(|r| {
++        p.1 > r.2 && p.1 < r.3 && p.0 > r.0 && p.0 < r.1
++            && (to > r.1 - BLOCK_BORDER_CLEAR || to < r.0 + BLOCK_BORDER_CLEAR)
++    })
++}
++
+ /// Per edge, the breadth (flow coordinates) of the stub its start takes
+ /// off a breadth side whose ends would turn onto their runs through a
+ /// box of the node's own row ([`flow_path`]): a `<<choice>>` diamond's
+@@ -1230,7 +1245,7 @@
+ /// breadth side is a diamond's vertex or a lone port: the router reroutes
+ /// the rare one blocked, which stubbing every such end cost more boxes
+ /// shared and runs crowded than it saved, on the 964-file state set.)
+-fn breadth_stubs(sc: &Scene, cx: &Ctx, dir: Direction, boxes: &[Rect]) -> Vec<Option<f64>> {
++fn breadth_stubs(sc: &Scene, cx: &Ctx, dir: Direction, boxes: &[Rect], frames: &[Rect]) -> Vec<Option<f64>> {
+     struct Start {
+         edge: usize,
+         end: EndRef,
+@@ -1297,7 +1312,8 @@
+                     && f0.1 < r.3 + clear
+                     && b1 > r.0 - clear
+                     && b0 < r.1 + clear
+-            });
++            }) || leaves_sideways(cx, frames, (from, to), f0, first);
++        // (variant b: a separate `sideways` flag; only that start stubs)
+         starts.push(Start {
+             edge: i,
+             end: from,
+@@ -1561,7 +1577,7 @@
+ /// starts ([`breadth_stubs`]), once one end of a side would pass through
+ /// a box, every end into that side takes its run so. Outside a block
+ /// layout every end keeps its turn (`None`).
+-fn breadth_ends(sc: &Scene, cx: &Ctx, dir: Direction, boxes: &[Rect]) -> Vec<Option<f64>> {
++fn breadth_ends(sc: &Scene, cx: &Ctx, dir: Direction, boxes: &[Rect], frames: &[Rect]) -> Vec<Option<f64>> {
+     let mut out = vec![None; sc.edges.len()];
+     if !cx.blocks {
+         return out;

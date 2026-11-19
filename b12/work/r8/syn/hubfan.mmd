@@ -1,0 +1,21 @@
+flowchart TD
+    h[hub] --> p1
+    h --> q1
+    h --> q3
+    h --> r2
+    h --> s1
+    subgraph P[First]
+        p1 --> p2
+    end
+    subgraph Q[Second]
+        q1 --> q2 --> q3
+    end
+    subgraph R[Third]
+        r1 --> r2
+    end
+    subgraph S[Fourth]
+        s1
+    end
+    p2 --> r1
+    q3 --> s1
+    r2 --> h

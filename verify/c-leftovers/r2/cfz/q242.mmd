@@ -1,0 +1,9 @@
+classDiagram
+A "1" *-- "*" B : x
+B "1" ..> "*" C : uses
+A ..> D
+A -- E : uses
+B --> F
+E "1" *-- "*" G
+E --|> A
+C "1" --> "*" C : c0

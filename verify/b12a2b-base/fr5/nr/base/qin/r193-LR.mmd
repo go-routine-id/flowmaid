@@ -1,0 +1,14 @@
+flowchart LR
+    subgraph G[WWW Mammoth Wombat Overview]
+        m0[auth service]
+        m1[queue]
+        m2[db]
+        m0 --> m1
+    end
+    s0[src0] -- "lbl4" --> m1
+    s1[src1] --> G
+    s1 --> m0
+    s2[src2] --> G
+    s3[src3] --> G
+    m2 --> z[end]
+    G --> z2[after]

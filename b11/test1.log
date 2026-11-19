@@ -1,0 +1,42 @@
+test advance::tests::a_style_target_matching_no_edge_is_an_error_either_way ... ok
+test advance::tests::text_error_has_snippet ... ok
+test advance::tests::text_node_after_closed_lane_errors ... ok
+test emit::tests::round3_old_dashed_statement_arguments_get_targeted_errors ... ok
+test emit::tests::round4_mangled_statement_ids_error_instead_of_phantom_nodes ... ok
+test journey::tests::missing_score_is_an_error ... ok
+test json::tests::extreme_nesting_is_an_error_not_a_stack_overflow ... ok
+test json::tests::unterminated_deep_nesting_is_an_error ... ok
+test markdown::tests::raw_backticks_and_quotes_are_errors ... ok
+test parser::tests::acc_unclosed_block_is_a_line_numbered_error ... ok
+test parser::tests::click_malformed_statements_are_line_numbered_errors ... ok
+test parser::tests::deeply_nested_mindmap_errors_instead_of_overflowing ... ok
+test parser::tests::deeply_nested_subgraphs_error_instead_of_overflowing_the_stack ... ok
+test parser::tests::edge_metadata_errors_and_routing ... ok
+test parser::tests::er_errors_have_line_numbers ... ok
+test parser::tests::errors_carry_line_numbers ... ok
+test parser::tests::gitgraph_duplicate_branch_errors ... ok
+test parser::tests::gitgraph_duplicate_commit_id_errors ... ok
+test parser::tests::gitgraph_merge_missing_branch_errors ... ok
+test parser::tests::gitgraph_merge_self_errors ... ok
+test parser::tests::gitgraph_unknown_attribute_errors ... ok
+test parser::tests::gitgraph_unknown_command_errors ... ok
+test parser::tests::link_style_malformed_statements_are_errors ... ok
+test parser::tests::markdown_strings_protect_semicolons_and_report_errors ... ok
+test parser::tests::node_meta_mermaid_errors ... ok
+test parser::tests::sankey_row_shape_errors_carry_line_numbers ... ok
+test parser::tests::state_errors_carry_line_numbers ... ok
+test parser::tests::unsupported_diagram_types_get_explicit_errors ... ok
+test pie::tests::errors_carry_line_numbers ... ok
+test seq::tests::message_errors_have_line_numbers ... ok
+test seq::tests::unbalanced_deactivate_is_a_line_error ... ok
+test seq::tests::unsupported_sequence_elements_error_cleanly ... ok
+test result: ok. 1047 passed; 0 failed; 5 ignored; 0 measured; 0 filtered out; finished in 76.21s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.34s
+test a_one_px_drag_leaves_unrelated_edges_put ... FAILED
+test defect_baseline_gate ... FAILED
+thread 'a_one_px_drag_leaves_unrelated_edges_put' (10594) panicked at tests/quality.rs:1029:5:
+thread 'defect_baseline_gate' (10597) panicked at tests/quality.rs:802:36:
+test result: FAILED. 11 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 12.13s
+error: test failed, to rerun pass `--test quality`

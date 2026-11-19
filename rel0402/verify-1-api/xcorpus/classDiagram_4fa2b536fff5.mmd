@@ -1,0 +1,27 @@
+classDiagram
+direction LR
+class Animal{
+  +String name
+  +eat() void
+}
+class Duck~T~
+Animal <|-- Duck : inherits
+Duck --|> Bird
+Animal *-- Leg : has
+Leg --* Body
+Animal o-- Pond
+Pond --o Lake
+Duck --> Food : eats
+Food <-- Store
+Duck -- Friend
+Duck ..> Water : drinks
+Water <.. Rain
+Duck ..|> Swimmer
+Flyer <|.. Duck
+Duck .. Shadow
+Animal "1" --> "*" Leg : legs
+Duck "0..1" o-- "many" Pond
+Duck --> Duck : self
+Animal <-- Animal
+note for Duck "quacks\nloudly"
+note "general note"

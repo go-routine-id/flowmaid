@@ -1,0 +1,7 @@
+('geom', 'same') 2146
+('hitok', 'same') 2146
+('hits', 'same') 2146
+('o!=0', 'rows') 1106
+('o==0', 'rows') 1040
+('pos', 'same') 2146
+bad: 0

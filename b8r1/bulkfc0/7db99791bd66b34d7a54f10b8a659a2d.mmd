@@ -1,0 +1,17 @@
+flowchart LR
+    N0(Notify check)
+    N1[Validate]
+    N2[Report parse]
+    N3([Notify report])
+    N4(Store fetch)
+    N5([Report validate])
+    N0 --> N1
+    N0 --> N2
+    N1 --> N3
+    N2 --> N4
+    N4 --> N5
+    N2 --> N3
+    N1 --> N4
+    N1 --> N2
+    N5 -.-> N1
+    N4 -->|again| N2

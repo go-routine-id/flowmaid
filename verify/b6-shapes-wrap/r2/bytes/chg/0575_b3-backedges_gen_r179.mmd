@@ -1,0 +1,18 @@
+flowchart BT
+    N0[/Load archive/]
+    N1{Fetch}
+    N2([Check])
+    N3{Store}
+    N4([Store])
+    N5{Notify}
+    N6{Validate}
+    N0 --> N1
+    N1 --> N2
+    N0 --> N3
+    N3 --> N4
+    N4 --> N5
+    N5 --> N6
+    N3 --> N4
+    N0 --> N1
+    N3 ==>|again| N2
+    N5 -.-> N0

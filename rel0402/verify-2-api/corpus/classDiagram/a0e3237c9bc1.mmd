@@ -1,0 +1,14 @@
+classDiagram
+direction BT
+A *-- B
+A "1" *-- "*" C : owns
+B "1" -- "*" D
+B "1" -- "*" E
+D --> F : uses
+D o-- B
+A --|> F
+D --> D
+D --> D : d1
+B ..> B : b0
+B "1" --> "*" B
+B --> B

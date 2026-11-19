@@ -1,0 +1,17 @@
+flowchart BT
+    subgraph A[WWW Mammoth Wombat]
+        a0[a0 wide node]
+        a1[a1]
+        a2[a2]
+    end
+    subgraph B[WWW Mammoth Wombat two]
+        b0[b0 wide node]
+        b1[b1 wide node]
+    end
+    a0 --> b1
+    a1 --> b0
+    a2 --> b1
+    p[p] --> A
+    p --> a2
+    q[q] --> A
+    q --> a2

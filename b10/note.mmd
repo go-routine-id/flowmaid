@@ -1,0 +1,9 @@
+stateDiagram-v2
+direction LR
+[*] --> S
+S --> T1
+S --> T2
+S --> T3
+T1 --> S : back
+note right of S : busy state
+note left of T2 : t2 note

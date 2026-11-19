@@ -1,0 +1,28 @@
+classDiagram
+C0 -- C0 : <b>bold</b>
+C2 ..|> C1
+C3 "1" ..> "*" C4
+C2 "1" *-- "*" C1 : <b>bold</b>
+C3 ..|> C5
+C4 "1" o-- "*" C3
+C5 --> C3 : x
+C3 <--> C3
+C4 o-- C2
+C2 o-- C4
+C2 "1" <|-- "*" C4
+C1 "1" o-- "*" C1 : <b>bold</b>
+C4 <--> C5 : gamma
+C3 -- C5
+C4 *-- C1
+C1 o-- C1
+C4 *-- C2 : beta
+C2 o-- C2 : delta
+C5 <--> C2
+class C0 {
+  +int id
+  +name() String
+}
+class C2 {
+  +int id
+  +name() String
+}

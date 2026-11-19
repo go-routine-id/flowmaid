@@ -1,0 +1,21 @@
+flowchart TD
+    subgraph G0[Ops 0]
+        g0m0[g0m0]
+        g0m1[g0m1]
+        g0m2[g0m2]
+        g0m3[g0m3]
+    end
+    subgraph G1[Edge 1]
+        subgraph H1[inner 1]
+            g1m0[g1m0]
+            g1m1[g1m1]
+        end
+    end
+    g1m1 ==> o2
+    g1m0 -.-> g0m3
+    o2 -.-> g0m2
+    g1m0 --> G0
+    o1 -.-> o0
+    g0m0 -.-> o3
+    o1 -.-> g0m1
+    o2 -.-> g0m3

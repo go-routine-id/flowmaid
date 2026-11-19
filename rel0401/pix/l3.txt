@@ -1,0 +1,3 @@
+blocks__b9-inside.partial-in.svg
+blocks__b9-inside.partial-left.svg
+blocks__b9-inside.partial-over.svg

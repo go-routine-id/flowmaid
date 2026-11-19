@@ -1,0 +1,96 @@
+erDiagram
+    E0 |o..|| E1 : "rel 1"
+    E0 ||..|| E2 : "rel 2"
+    E2 |o--|| E3 : "rel 3"
+    E3 }|--o| E4 : "rel 4"
+    E0 }|--|| E5 : "rel 5"
+    E1 ||..|| E6 : "rel 6"
+    E1 ||--o{ E7 : "rel 7"
+    E6 |o--o{ E8 : "rel 8"
+    E8 |o--o| E9 : "rel 9"
+    E5 ||--|| E10 : "rel 10"
+    E9 |o..|{ E11 : "rel 11"
+    E5 }|..o{ E12 : "rel 12"
+    E4 |o--o| E13 : "rel 13"
+    E1 }o..o{ E14 : "rel 14"
+    E11 }|..|| E15 : "rel 15"
+    E3 }|--o{ E16 : "rel 16"
+    E4 }|..|| E17 : "rel 17"
+    E2 }o..o{ E18 : "rel 18"
+    E15 }|--|| E19 : "rel 19"
+    E8 }|--|| E20 : "rel 20"
+    E9 }|..|{ E21 : "rel 21"
+    E21 }o--|{ E22 : "rel 22"
+    E11 |o--|{ E23 : "rel 23"
+    E1 |o..o| E24 : "rel 24"
+    E23 |o..|{ E25 : "rel 25"
+    E15 ||--|{ E26 : "rel 26"
+    E12 }o--|{ E27 : "rel 27"
+    E27 }o..o{ E28 : "rel 28"
+    E21 }|--o| E29 : "rel 29"
+    E2 |o--o| E5 : x0
+    E21 ||--|{ E7 : x1
+    E26 |o--o{ E18 : x2
+    E9 |o--|{ E0 : x3
+    E17 }o--o| E11 : x4
+    E22 ||--|{ E27 : x5
+    E28 }|--|{ E27 : x6
+    E12 }|--|{ E3 : x7
+    E1 ||--o| E6 : x8
+    E14 ||--o{ E5 : x9
+    E19 ||--|| E1 : x10
+    E18 ||--o{ E4 : x11
+    E19 ||--o| E0 : x12
+    E19 |o--o{ E12 : x13
+    E11 }o--|{ E19 : x14
+    E3 }|--|{ E27 : x15
+    E0 {
+        int id PK "pk"
+        varchar name "not null"
+        int ref FK
+    }
+    E3 {
+        int id PK "pk"
+        varchar name "not null"
+        int ref FK
+    }
+    E6 {
+        int id PK "pk"
+        varchar name "not null"
+        int ref FK
+    }
+    E9 {
+        int id PK "pk"
+        varchar name "not null"
+        int ref FK
+    }
+    E12 {
+        int id PK "pk"
+        varchar name "not null"
+        int ref FK
+    }
+    E15 {
+        int id PK "pk"
+        varchar name "not null"
+        int ref FK
+    }
+    E18 {
+        int id PK "pk"
+        varchar name "not null"
+        int ref FK
+    }
+    E21 {
+        int id PK "pk"
+        varchar name "not null"
+        int ref FK
+    }
+    E24 {
+        int id PK "pk"
+        varchar name "not null"
+        int ref FK
+    }
+    E27 {
+        int id PK "pk"
+        varchar name "not null"
+        int ref FK
+    }

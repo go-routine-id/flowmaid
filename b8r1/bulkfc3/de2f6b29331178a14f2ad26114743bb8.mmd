@@ -1,0 +1,11 @@
+flowchart TD
+  A[Source box wide] e1@--> B[Step target]
+  A e2@-->|labelled linear| C[Linear target]
+  A --> D[Basis default]
+  B --> E[Sink]
+  C --> E
+  D --> E
+  e1@{ curve: step }
+  e2@{ curve: linear }
+  linkStyle 2 stroke:#e33,stroke-width:4px
+  linkStyle 3,4 interpolate stepBefore

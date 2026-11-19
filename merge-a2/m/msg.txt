@@ -1,0 +1,71 @@
+Merge origin/dev into the subgraphs-as-blocks work branch
+
+dev (dbe37ec) holds the 0.40.1 patch and the sync of main: try_route,
+drags past the top-left keep every position (Scene::origin and
+Scene::routed), stray dots in class names, and the CHANGELOG, README and
+ROADMAP edits of that release. The branch last took dev at 9c142b3; it
+carries the first part of step 2 (frames sized to their titles, room for
+labels in the gaps between blocks, entries kept clear of frame titles)
+and four block-mode fixes, all behind the flowmaid_blocks switch.
+
+Conflicts and how they were resolved:
+- tests/fixtures/identity.tsv, the only textual conflict: dev recorded
+  new route() / route_partial() hashes for eight rows in 0.40.1, and
+  the branch had added the rows of its two new fixtures
+  (blocks/nested-wide-title, blocks/twoway-noted). Resolved by
+  recording the table again from a build of origin/dev (see below).
+- Merged without conflict, both sides kept, each file read side by side:
+  - src/scene.rs, src/compound.rs, src/architecture.rs, src/gitgraph.rs:
+    every Scene literal carries dev's origin and routed fields and the
+    branch's block_layout; route_partial_with keeps dev's base origin
+    and the branch's kept-room pass for frames under a drag (switch on
+    only); compound::join joins the parts' canvases from their origins
+    (dev) and keeps block_layout off as before.
+  - src/ortho.rs: the jog walls and TitleSides take dev's canvas right
+    edge (origin + width) together with the branch's inked chip measure.
+  - src/edgepass.rs: dev's routed refit (the canvas grows up or left,
+    nothing moves) and the branch's Ctx::axis_ends.
+  - CHANGELOG.md, README.md, docs/ROADMAP.md, Cargo.toml, Cargo.lock,
+    src/class.rs, src/er.rs, src/mindmap.rs, src/parser.rs,
+    tests/fallible_route.rs: dev only.
+  No source file was taken from one side wholesale.
+
+Re-recorded: tests/fixtures/identity.tsv, from a build of origin/dev
+(dbe37ec) itself, in a scratch worktree with the branch's two new
+fixture files copied in, by FLOWMAID_RECORD_IDENTITY=1 cargo test --lib
+identity (the merged build was not used). All 116 of dev's rows came out
+exactly as dev has them, and the two new rows exactly as the branch had
+recorded them, so the table is dev's plus those two rows. The merged
+default build passes both identity tests. No ceiling, floor or baseline
+was touched.
+
+Default build, merged tree against origin/dev: 29,400 inputs of every
+diagram type (render_svg; for the 9,624 flowcharts and state diagrams
+also scene(), route() and route_partial() as SVG and as geometry, with
+two drags): 0 differences. CLI (default and --compact 600) over
+3,074 inputs: 0 differences.
+
+Block mode, merged tree against the branch before the merge (15b5383),
+the three regression checks: the per-cell check and the direction
+copies (332 + 32, static and routed) are unchanged. Gate messages: the
+14 tests that already failed in block mode fail with the same messages,
+and one of dev's seven new tests fails in block mode:
+scene::tests::drag_past_top_left_keeps_every_position, on
+blocks-overview-lr with "cart service" dragged to x = -60. The drawing
+there starts at y = -0.75, so the viewBox starts at -28.75, written as
+-28.8 at the SVG's 0.1 px; the test allows 0.05 and the float
+difference is 0.05000000000000071. Every position, origin and pick the
+test checks holds in block mode. The test is dev's and stays as dev has
+it; it passes in the default build.
+
+Docs: docs/ROADMAP.md step table (step 2 partly merged behind the
+switch, step 3 next) and the dense test diagram's block-mode numbers
+after step 2's first part (42 static, 107 under route(), against 66 and
+76 today); CHANGELOG.md [Unreleased] gets one Internal line. README
+unchanged.
+
+Guard (fmt, clippy, tests, doctests, MSRV 1.75, wasm, rustdoc): all
+green.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

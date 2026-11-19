@@ -1,0 +1,9 @@
+name	kind	dir	nodes	edges	subgraphs	nested	with_direction	edges_inside	edges_cross	edges_to_subgraph	open_subgraphs	closed_subgraphs	closed_with_direction	sibling_pairs	sibling_pairs_linked	open_ids
+advanced	flowchart	TD	14	19	3	1	2	12	3	4	1	2	1	1	1	Workers
+bench-75	flowchart	LR	21	75	5	0	5	6	69	0	5	0	0	10	8	edge,app,data,ops,jobs
+dense-lr	flowchart	LR	52	42	11	6	3	12	28	2	11	0	0	11	9	g1,g2,g3,g4,g5,g6,g7,g8,g9,g10,g11
+dense-td	flowchart	TD	46	47	10	7	4	14	30	3	10	0	0	4	3	g1,g2,g3,g4,g5,g6,g7,g8,g9,g10
+fanout-frames	flowchart	LR	22	7	6	0	6	1	0	6	0	6	6	15	0	-
+infra-overview	flowchart	TD	22	27	5	0	0	6	18	3	5	0	0	10	8	GH,EXT,DR,PROD,STG
+state	state	TD	15	16	1	0	1	14	0	2	0	1	1	0	0	-
+subgraph	flowchart	TD	8	8	2	1	1	4	4	0	2	0	0	0	0	platform,events

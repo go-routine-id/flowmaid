@@ -1,0 +1,20 @@
+sequenceDiagram
+    actor U as Visitor
+    participant W as Web Server
+    participant A as Auth
+    participant D as Database
+    U->>W: GET /home
+    activate W
+    W->>+A: check token
+    A->>+A: verify signature
+    A->>D: lookup session
+    activate D
+    D-->>A: row
+    deactivate D
+    A-->>-A: ok
+    A-->>-W: valid
+    W->>W: render page
+    W-->>U: 200 OK
+    deactivate W
+    U-->>W: ack
+    U->>U: think about it for a while

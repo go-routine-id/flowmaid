@@ -1,0 +1,36 @@
+{"tool":"structdump","flowmaid":"0.38.0","kind":"state","direction":"TD",
+"nodes":[
+ {"id":"__start_root","label":"","shape":"StateStart","sub":null},
+ {"id":"Idle","label":"Idle","shape":"Rounded","sub":null},
+ {"id":"__start_0","label":"","shape":"StateStart","sub":0},
+ {"id":"Work","label":"Work","shape":"Rounded","sub":0},
+ {"id":"__end_0","label":"","shape":"StateEnd","sub":0},
+ {"id":"Done","label":"Done","shape":"Rounded","sub":null},
+ {"id":"__end_root","label":"","shape":"StateEnd","sub":null}],
+"subgraphs":[
+ {"id":"Busy","title":"A composite state with an exceptionally long descriptive name","parent":null,"direction":null,"nodes":[2,3,4]}],
+"edges":[
+ {"from":{"n":0},"to":{"n":1},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":2},"to":{"n":3},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":3},"to":{"n":4},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":5},"to":{"n":6},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":1},"to":{"s":0},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"s":0},"to":{"n":5},"label":null,"kind":"Arrow","drawn":true}],
+"scene":{"width":148.700,"height":620.000,
+ "nodes":[
+  {"id":"__start_root","x":67.350,"y":28.000,"w":14.000,"h":14.000},
+  {"id":"Idle","x":46.900,"y":102.000,"w":54.900,"h":38.000},
+  {"id":"__start_0","x":67.350,"y":226.000,"w":14.000,"h":14.000},
+  {"id":"Work","x":42.000,"y":300.000,"w":64.700,"h":38.000},
+  {"id":"__end_0","x":65.350,"y":398.000,"w":18.000,"h":18.000},
+  {"id":"Done","x":41.800,"y":476.000,"w":65.100,"h":38.000},
+  {"id":"__end_root","x":65.350,"y":574.000,"w":18.000,"h":18.000}],
+ "clusters":[
+  {"id":"Busy","x":28.000,"y":186.000,"w":92.700,"h":244.000,"depth":0}],
+ "edges":[
+  {"from":"__start_root","to":"Idle","routed":false,"label":null,"points":[[74.350,42.000],[74.350,72.000],[74.350,72.000],[74.350,102.000]]},
+  {"from":"__start_0","to":"Work","routed":false,"label":null,"points":[[74.350,240.000],[74.350,270.000],[74.350,270.000],[74.350,300.000]]},
+  {"from":"Work","to":"__end_0","routed":false,"label":null,"points":[[74.350,338.000],[74.350,368.000],[74.350,368.000],[74.350,398.000]]},
+  {"from":"Done","to":"__end_root","routed":false,"label":null,"points":[[74.350,514.000],[74.350,544.000],[74.350,544.000],[74.350,574.000]]},
+  {"from":"Idle","to":"Busy","routed":false,"label":null,"points":[[74.350,140.000],[74.350,163.000],[74.350,163.000],[74.350,186.000]]},
+  {"from":"Busy","to":"Done","routed":false,"label":null,"points":[[74.350,430.000],[74.350,453.000],[74.350,453.000],[74.350,476.000]]}]}}

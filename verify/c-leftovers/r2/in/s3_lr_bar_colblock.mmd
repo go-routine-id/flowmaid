@@ -1,0 +1,25 @@
+stateDiagram-v2
+direction LR
+[*] --> f
+state f <<fork>>
+f --> P
+f --> Q
+state P {
+  direction TB
+  a --> b
+  b --> c
+  state g <<fork>>
+  c --> g
+  g --> d
+  g --> e
+  state In {
+    direction LR
+    i1 --> i2
+    i2 --> i3
+  }
+  d --> In
+}
+state j <<join>>
+P --> j
+Q --> j
+j --> Done

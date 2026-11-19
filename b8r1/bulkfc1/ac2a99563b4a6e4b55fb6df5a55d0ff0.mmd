@@ -1,0 +1,15 @@
+flowchart LR
+    N0(Emit)
+    N1{Emit}
+    N2[Fetch done]
+    N3(Queue)
+    N4(Load done)
+    N0 --> N1
+    N0 --> N2
+    N0 -->|yes| N3
+    N2 -->|ok| N4
+    N0 --> N2
+    N0 --> N4
+    N3 -.->|rollback| N1
+    N4 ==>|back| N0
+    N4 ==> N1

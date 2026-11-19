@@ -1,0 +1,407 @@
+advanced	fr_max=0.0		cut_scene=0	cut_route=0
+state	fr_max=0.0		cut_scene=0	cut_route=0
+subgraph	fr_max=0.0		cut_scene=0	cut_route=0
+b9-inside	fr_max=164.4	LOG dx=0.0 dy=0.0 dw=164.4 dh=0.0	cut_scene=0	cut_route=0
+b9-inside2	fr_max=65.7	LOG dx=0.0 dy=0.0 dw=65.7 dh=0.0	cut_scene=0	cut_route=0
+blocks-overview-actors-reversed	fr_max=42.3	OBS dx=0.0 dy=0.0 dw=42.3 dh=0.0	cut_scene=0	cut_route=0
+blocks-overview-bt	fr_max=42.3	OBS dx=0.0 dy=0.0 dw=42.3 dh=0.0	cut_scene=0	cut_route=0
+blocks-overview-edges-reversed	fr_max=42.3	OBS dx=0.0 dy=0.0 dw=42.3 dh=0.0	cut_scene=0	cut_route=0
+blocks-overview-edges-rotated	fr_max=42.3	OBS dx=0.0 dy=0.0 dw=42.3 dh=0.0	cut_scene=0	cut_route=0
+blocks-overview-lr	fr_max=44.8	OBS dx=0.0 dy=0.0 dw=0.0 dh=44.8	cut_scene=0	cut_route=0
+blocks-overview-rl	fr_max=44.8	OBS dx=0.0 dy=0.0 dw=0.0 dh=44.8	cut_scene=0	cut_route=0
+blocks-overview-subgraphs-reversed	fr_max=42.3	OBS dx=0.0 dy=0.0 dw=42.3 dh=0.0	cut_scene=0	cut_route=0
+blocks-overview	fr_max=42.3	OBS dx=0.0 dy=0.0 dw=42.3 dh=0.0	cut_scene=0	cut_route=0
+cycle2-tie-swapped	fr_max=19.4	A dx=0.0 dy=0.0 dw=19.4 dh=0.0	cut_scene=0	cut_route=0
+cycle2-tie	fr_max=16.7	A dx=0.0 dy=0.0 dw=16.7 dh=0.0	cut_scene=0	cut_route=0
+cycle2	fr_max=90.5	A dx=45.2 dy=0.0 dw=90.5 dh=0.0	cut_scene=0	cut_route=0
+empty-target	fr_max=0.0		cut_scene=0	cut_route=0
+hub5	fr_max=122.4	E dx=0.0 dy=0.0 dw=122.4 dh=0.0	cut_scene=0	cut_route=0
+interleave	fr_max=0.0	S dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+iso-lane-lr	fr_max=2.0	S dx=0.0 dy=0.0 dw=0.0 dh=2.0	cut_scene=0	cut_route=0
+iso-lane	fr_max=0.0		cut_scene=0	cut_route=0
+iso-nest	fr_max=0.0		cut_scene=0	cut_route=0
+iso-state	fr_max=0.0		cut_scene=0	cut_route=0
+l5loop	fr_max=0.0		cut_scene=0	cut_route=0
+lane-beside	fr_max=75.8	Retry dx=75.8 dy=0.0 dw=2.0 dh=0.0	cut_scene=0	cut_route=0
+lr	fr_max=68.0	ORD dx=0.0 dy=0.0 dw=0.0 dh=68.0	cut_scene=0	cut_route=0
+nested-cases	fr_max=112.7	X dx=112.7 dy=0.0 dw=112.7 dh=0.0	cut_scene=0	cut_route=0
+nested-chain	fr_max=12.5	Z dx=0.0 dy=12.5 dw=5.5 dh=12.5	cut_scene=0	cut_route=0
+nested-self-only	fr_max=0.0		cut_scene=0	cut_route=0
+nested-wide-title	fr_max=0.0		cut_scene=0	cut_route=0
+nested	fr_max=44.7	SIDE dx=0.0 dy=0.0 dw=44.7 dh=0.0	cut_scene=0	cut_route=0
+note-edge-row	fr_max=22.3	K dx=0.0 dy=0.0 dw=22.3 dh=0.0	cut_scene=0	cut_route=0
+own-centre	fr_max=0.0		cut_scene=0	cut_route=0
+p01-iso	fr_max=0.0		cut_scene=0	cut_route=0
+p02-iso-dir	fr_max=0.0		cut_scene=0	cut_route=0
+p03-ext-dir	fr_max=0.0		cut_scene=0	cut_route=0
+p04-to-cluster	fr_max=0.0		cut_scene=0	cut_route=0
+p05-siblings	fr_max=0.0		cut_scene=0	cut_route=0
+p06-block-cycle	fr_max=12.4	A dx=0.0 dy=0.0 dw=12.4 dh=0.0	cut_scene=0	cut_route=0
+p07-nested	fr_max=12.5	O dx=0.0 dy=12.5 dw=5.5 dh=12.5	cut_scene=0	cut_route=0
+p08-chain3	fr_max=10.7	A dx=0.0 dy=0.0 dw=10.7 dh=0.0	cut_scene=0	cut_route=0
+p09-disconnected	fr_max=0.0		cut_scene=0	cut_route=0
+p10-mixed-rank	fr_max=0.0		cut_scene=0	cut_route=0
+p11-lr	fr_max=0.0		cut_scene=0	cut_route=0
+p12-state	fr_max=0.0		cut_scene=0	cut_route=0
+p13-inner-dir-ext	fr_max=0.0		cut_scene=0	cut_route=0
+p14-empty-and-self	fr_max=0.0		cut_scene=0	cut_route=0
+ratio2	fr_max=0.0		cut_scene=0	cut_route=0
+ratio2x4	fr_max=8.1	A dx=0.0 dy=0.0 dw=8.1 dh=0.0	cut_scene=0	cut_route=0
+ratio3	fr_max=0.0	B dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+ratio4	fr_max=8.1	A dx=0.0 dy=0.0 dw=8.1 dh=0.0	cut_scene=0	cut_route=0
+ratio4mask	fr_max=8.1	A dx=0.0 dy=0.0 dw=8.1 dh=0.0	cut_scene=0	cut_route=0
+reqresp	fr_max=25.6	A dx=25.6 dy=0.0 dw=25.6 dh=0.0	cut_scene=0	cut_route=0
+reqresp22	fr_max=25.6	A dx=25.6 dy=0.0 dw=25.6 dh=0.0	cut_scene=0	cut_route=0
+self-member	fr_max=0.0		cut_scene=0	cut_route=0
+selfsub-nested	fr_max=0.0		cut_scene=0	cut_route=0
+state-note	fr_max=98.5	Review dx=0.0 dy=0.0 dw=98.5 dh=0.0	cut_scene=0	cut_route=0
+sub-nested-self	fr_max=26.5	OUT dx=26.5 dy=0.0 dw=26.5 dh=0.0	cut_scene=0	cut_route=0
+swim-cycle	fr_max=0.0		cut_scene=0	cut_route=0
+swim-nested	fr_max=0.0	B dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+swimlane-nested	fr_max=0.0		cut_scene=0	cut_route=0
+swimlane	fr_max=0.0	B dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+t1-nest-own	fr_max=0.0		cut_scene=0	cut_route=0
+t2-self-nested	fr_max=0.0		cut_scene=0	cut_route=0
+t2b-self-nested-order	fr_max=0.0		cut_scene=0	cut_route=0
+t9-frames-8px	fr_max=0.0		cut_scene=0	cut_route=0
+t9b-frames-8px-lr	fr_max=0.0		cut_scene=0	cut_route=0
+t9c-frames-8px-two-way	fr_max=0.0		cut_scene=0	cut_route=0
+title-entry	fr_max=0.0		cut_scene=0	cut_route=0
+title-hidden	fr_max=0.0	S dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+turned-blocks	fr_max=121.7	SHIP dx=121.7 dy=12.5 dw=121.7 dh=12.5	cut_scene=0	cut_route=0
+wide-stroke	fr_max=33.7	A dx=0.0 dy=0.0 dw=33.7 dh=0.0	cut_scene=0	cut_route=0
+bench-75	fr_max=846.0	edge dx=0.0 dy=386.5 dw=0.0 dh=846.0	cut_scene=0	cut_route=0
+dense-lr	fr_max=471.0	g11 dx=0.0 dy=471.0 dw=0.0 dh=471.0	cut_scene=0	cut_route=0
+dense-td	fr_max=72.5	g9 dx=49.9 dy=37.5 dw=72.5 dh=37.5	cut_scene=0	cut_route=0
+fanout-frames	fr_max=0.0		cut_scene=0	cut_route=0
+advanced	fr_max=0.0		cut_scene=0	cut_route=0
+bench-75	fr_max=846.0	edge dx=0.0 dy=386.5 dw=0.0 dh=846.0	cut_scene=0	cut_route=0
+dense-lr	fr_max=471.0	g11 dx=0.0 dy=471.0 dw=0.0 dh=471.0	cut_scene=0	cut_route=0
+dense-td	fr_max=72.5	g9 dx=49.9 dy=37.5 dw=72.5 dh=37.5	cut_scene=0	cut_route=0
+fanout-frames	fr_max=0.0		cut_scene=0	cut_route=0
+state	fr_max=0.0		cut_scene=0	cut_route=0
+subgraph	fr_max=0.0		cut_scene=0	cut_route=0
+x1-broad-frame-bold-title-BT	fr_max=0.0	WIDE dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+x1-broad-frame-bold-title-LR	fr_max=0.0		cut_scene=0	cut_route=0
+x1-broad-frame-bold-title-RL	fr_max=0.0	WIDE dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+x1-broad-frame-bold-title	fr_max=0.0	WIDE dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+x2-wide-caps-title-BT	fr_max=0.0	WM dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+x2-wide-caps-title-LR	fr_max=0.0		cut_scene=0	cut_route=0
+x2-wide-caps-title-RL	fr_max=0.0		cut_scene=0	cut_route=0
+x2-wide-caps-title	fr_max=0.0	WM dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+x3-nested-lr-multiline-BT	fr_max=80.2	OUTER dx=53.8 dy=0.0 dw=80.2 dh=0.0	cut_scene=0	cut_route=0
+x3-nested-lr-multiline-RL	fr_max=0.0	OUTER dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+x3-nested-lr-multiline-TD	fr_max=53.8	OUTER dx=0.0 dy=12.5 dw=53.8 dh=12.5	cut_scene=0	cut_route=0
+x3-nested-lr-multiline	fr_max=0.0	OUTER dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+x4-channel-broadens-BT	fr_max=26.5	C dx=0.0 dy=0.0 dw=26.5 dh=0.0	cut_scene=0	cut_route=0
+x4-channel-broadens-LR	fr_max=18.5	C dx=0.0 dy=0.0 dw=0.0 dh=18.5	cut_scene=0	cut_route=0
+x4-channel-broadens-RL	fr_max=18.5	C dx=0.0 dy=0.0 dw=0.0 dh=18.5	cut_scene=0	cut_route=0
+x4-channel-broadens	fr_max=26.7	C dx=0.0 dy=0.0 dw=26.7 dh=0.0	cut_scene=0	cut_route=0
+x5-state-long-composite	fr_max=0.0		cut_scene=0	cut_route=0
+x6-two-title-bound-siblings-BT	fr_max=0.0	B dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+x6-two-title-bound-siblings-LR	fr_max=0.0		cut_scene=0	cut_route=0
+x6-two-title-bound-siblings-RL	fr_max=0.0		cut_scene=0	cut_route=0
+x6-two-title-bound-siblings	fr_max=0.0	B dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+v1-cyrillic-greek-titles-BT	fr_max=0.0	MIX dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=1	cut_route=1
+v1-cyrillic-greek-titles-LR	fr_max=0.0		cut_scene=1	cut_route=1
+v1-cyrillic-greek-titles-RL	fr_max=0.0	MIX dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=1	cut_route=1
+v1-cyrillic-greek-titles	fr_max=0.0	MIX dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=1	cut_route=1
+v2-lr-labels-end-blocks-RL	fr_max=48.5	FRONT dx=0.0 dy=0.0 dw=0.0 dh=48.5	cut_scene=0	cut_route=0
+v2-lr-labels-end-blocks-TD	fr_max=109.8	BACK dx=0.0 dy=0.0 dw=109.8 dh=0.0	cut_scene=0	cut_route=0
+v2-lr-labels-end-blocks	fr_max=48.5	FRONT dx=0.0 dy=0.0 dw=0.0 dh=48.5	cut_scene=0	cut_route=0
+v3-nested-drag-room-BT	fr_max=0.0	OUT dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+v3-nested-drag-room-LR	fr_max=0.0		cut_scene=0	cut_route=0
+v3-nested-drag-room-RL	fr_max=0.0		cut_scene=0	cut_route=0
+v3-nested-drag-room	fr_max=0.0	OUT dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+v4-cjk-emoji-bt	fr_max=0.0	CJK dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+v4-cjk-emoji-td	fr_max=0.0	CJK dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+v5-state-long-titles	fr_max=0.0	Run dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+s1-wide-titles-td-BT	fr_max=0.0		cut_scene=0	cut_route=0
+s1-wide-titles-td-LR	fr_max=0.0		cut_scene=0	cut_route=0
+s1-wide-titles-td-RL	fr_max=0.0	B dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+s1-wide-titles-td	fr_max=0.0		cut_scene=0	cut_route=0
+s2-lr-long-titles-BT	fr_max=0.0	M dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+s2-lr-long-titles-RL	fr_max=0.0	M dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+s2-lr-long-titles-TD	fr_max=0.0		cut_scene=0	cut_route=0
+s2-lr-long-titles	fr_max=0.0		cut_scene=0	cut_route=0
+s3-nested-linked-BT	fr_max=28.4	B dx=0.0 dy=0.0 dw=28.4 dh=0.0	cut_scene=0	cut_route=0
+s3-nested-linked-LR	fr_max=7.2	A dx=0.0 dy=0.0 dw=0.0 dh=7.2	cut_scene=0	cut_route=0
+s3-nested-linked-RL	fr_max=7.2	A dx=0.0 dy=0.0 dw=0.0 dh=7.2	cut_scene=0	cut_route=0
+s3-nested-linked	fr_max=52.9	A dx=26.5 dy=0.0 dw=52.9 dh=0.0	cut_scene=0	cut_route=0
+s4-nested-wide-title-BT	fr_max=0.0		cut_scene=0	cut_route=0
+s4-nested-wide-title-LR	fr_max=0.0		cut_scene=0	cut_route=0
+s4-nested-wide-title-RL	fr_max=0.0	P dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+s4-nested-wide-title	fr_max=0.0		cut_scene=0	cut_route=0
+s5-state-long	fr_max=0.0	Busy dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+b9-inside-BT	fr_max=89.7	LOG dx=0.0 dy=0.0 dw=89.7 dh=0.0	cut_scene=0	cut_route=0
+b9-inside-LR	fr_max=56.0	LOG dx=0.0 dy=0.0 dw=0.0 dh=56.0	cut_scene=0	cut_route=0
+b9-inside-RL	fr_max=63.0	LOG dx=0.0 dy=0.0 dw=0.0 dh=63.0	cut_scene=0	cut_route=0
+b9-inside-TD	fr_max=164.4	LOG dx=0.0 dy=0.0 dw=164.4 dh=0.0	cut_scene=0	cut_route=0
+b9-inside2-BT	fr_max=65.7	LOG dx=0.0 dy=0.0 dw=65.7 dh=0.0	cut_scene=0	cut_route=0
+b9-inside2-LR	fr_max=40.0	LOG dx=0.0 dy=0.0 dw=0.0 dh=40.0	cut_scene=0	cut_route=0
+b9-inside2-RL	fr_max=40.0	LOG dx=0.0 dy=0.0 dw=0.0 dh=40.0	cut_scene=0	cut_route=0
+b9-inside2-TD	fr_max=65.7	LOG dx=0.0 dy=0.0 dw=65.7 dh=0.0	cut_scene=0	cut_route=0
+bench-75-BT	fr_max=1005.7	edge dx=467.5 dy=75.0 dw=1005.7 dh=75.0	cut_scene=0	cut_route=0
+bench-75-LR	fr_max=846.0	edge dx=0.0 dy=386.5 dw=0.0 dh=846.0	cut_scene=0	cut_route=0
+bench-75-RL	fr_max=846.0	edge dx=0.0 dy=386.5 dw=0.0 dh=846.0	cut_scene=0	cut_route=0
+bench-75-TD	fr_max=1005.7	edge dx=467.5 dy=12.5 dw=1005.7 dh=12.5	cut_scene=0	cut_route=0
+blocks-overview-BT	fr_max=42.3	OBS dx=0.0 dy=0.0 dw=42.3 dh=0.0	cut_scene=0	cut_route=0
+blocks-overview-LR	fr_max=44.8	OBS dx=0.0 dy=0.0 dw=0.0 dh=44.8	cut_scene=0	cut_route=0
+blocks-overview-RL	fr_max=44.8	OBS dx=0.0 dy=0.0 dw=0.0 dh=44.8	cut_scene=0	cut_route=0
+blocks-overview-TD	fr_max=42.3	OBS dx=0.0 dy=0.0 dw=42.3 dh=0.0	cut_scene=0	cut_route=0
+blocks-overview-actors-reversed-BT	fr_max=42.3	OBS dx=0.0 dy=0.0 dw=42.3 dh=0.0	cut_scene=0	cut_route=0
+blocks-overview-actors-reversed-LR	fr_max=44.8	OBS dx=0.0 dy=0.0 dw=0.0 dh=44.8	cut_scene=0	cut_route=0
+blocks-overview-actors-reversed-RL	fr_max=44.8	OBS dx=0.0 dy=0.0 dw=0.0 dh=44.8	cut_scene=0	cut_route=0
+blocks-overview-actors-reversed-TD	fr_max=42.3	OBS dx=0.0 dy=0.0 dw=42.3 dh=0.0	cut_scene=0	cut_route=0
+blocks-overview-bt-BT	fr_max=42.3	OBS dx=0.0 dy=0.0 dw=42.3 dh=0.0	cut_scene=0	cut_route=0
+blocks-overview-bt-LR	fr_max=44.8	OBS dx=0.0 dy=0.0 dw=0.0 dh=44.8	cut_scene=0	cut_route=0
+blocks-overview-bt-RL	fr_max=44.8	OBS dx=0.0 dy=0.0 dw=0.0 dh=44.8	cut_scene=0	cut_route=0
+blocks-overview-bt-TD	fr_max=42.3	OBS dx=0.0 dy=0.0 dw=42.3 dh=0.0	cut_scene=0	cut_route=0
+blocks-overview-edges-reversed-BT	fr_max=42.3	OBS dx=0.0 dy=0.0 dw=42.3 dh=0.0	cut_scene=0	cut_route=0
+blocks-overview-edges-reversed-LR	fr_max=44.8	OBS dx=0.0 dy=0.0 dw=0.0 dh=44.8	cut_scene=0	cut_route=0
+blocks-overview-edges-reversed-RL	fr_max=44.8	OBS dx=0.0 dy=0.0 dw=0.0 dh=44.8	cut_scene=0	cut_route=0
+blocks-overview-edges-reversed-TD	fr_max=42.3	OBS dx=0.0 dy=0.0 dw=42.3 dh=0.0	cut_scene=0	cut_route=0
+blocks-overview-edges-rotated-BT	fr_max=42.3	OBS dx=0.0 dy=0.0 dw=42.3 dh=0.0	cut_scene=0	cut_route=0
+blocks-overview-edges-rotated-LR	fr_max=44.8	OBS dx=0.0 dy=0.0 dw=0.0 dh=44.8	cut_scene=0	cut_route=0
+blocks-overview-edges-rotated-RL	fr_max=44.8	OBS dx=0.0 dy=0.0 dw=0.0 dh=44.8	cut_scene=0	cut_route=0
+blocks-overview-edges-rotated-TD	fr_max=42.3	OBS dx=0.0 dy=0.0 dw=42.3 dh=0.0	cut_scene=0	cut_route=0
+blocks-overview-lr-BT	fr_max=42.3	OBS dx=0.0 dy=0.0 dw=42.3 dh=0.0	cut_scene=0	cut_route=0
+blocks-overview-lr-LR	fr_max=44.8	OBS dx=0.0 dy=0.0 dw=0.0 dh=44.8	cut_scene=0	cut_route=0
+blocks-overview-lr-RL	fr_max=44.8	OBS dx=0.0 dy=0.0 dw=0.0 dh=44.8	cut_scene=0	cut_route=0
+blocks-overview-lr-TD	fr_max=42.3	OBS dx=0.0 dy=0.0 dw=42.3 dh=0.0	cut_scene=0	cut_route=0
+blocks-overview-rl-BT	fr_max=42.3	OBS dx=0.0 dy=0.0 dw=42.3 dh=0.0	cut_scene=0	cut_route=0
+blocks-overview-rl-LR	fr_max=44.8	OBS dx=0.0 dy=0.0 dw=0.0 dh=44.8	cut_scene=0	cut_route=0
+blocks-overview-rl-RL	fr_max=44.8	OBS dx=0.0 dy=0.0 dw=0.0 dh=44.8	cut_scene=0	cut_route=0
+blocks-overview-rl-TD	fr_max=42.3	OBS dx=0.0 dy=0.0 dw=42.3 dh=0.0	cut_scene=0	cut_route=0
+blocks-overview-subgraphs-reversed-BT	fr_max=42.3	OBS dx=0.0 dy=0.0 dw=42.3 dh=0.0	cut_scene=0	cut_route=0
+blocks-overview-subgraphs-reversed-LR	fr_max=44.8	OBS dx=0.0 dy=0.0 dw=0.0 dh=44.8	cut_scene=0	cut_route=0
+blocks-overview-subgraphs-reversed-RL	fr_max=44.8	OBS dx=0.0 dy=0.0 dw=0.0 dh=44.8	cut_scene=0	cut_route=0
+blocks-overview-subgraphs-reversed-TD	fr_max=42.3	OBS dx=0.0 dy=0.0 dw=42.3 dh=0.0	cut_scene=0	cut_route=0
+cycle2-BT	fr_max=90.5	A dx=45.2 dy=12.5 dw=90.5 dh=12.5	cut_scene=0	cut_route=0
+cycle2-LR	fr_max=61.0	A dx=0.0 dy=17.5 dw=0.0 dh=61.0	cut_scene=0	cut_route=0
+cycle2-RL	fr_max=61.0	A dx=0.0 dy=17.5 dw=0.0 dh=61.0	cut_scene=0	cut_route=0
+cycle2-TD	fr_max=90.5	A dx=45.2 dy=0.0 dw=90.5 dh=0.0	cut_scene=0	cut_route=0
+cycle2-tie-BT	fr_max=16.7	A dx=0.0 dy=0.0 dw=16.7 dh=0.0	cut_scene=0	cut_route=0
+cycle2-tie-LR	fr_max=11.2	A dx=0.0 dy=0.0 dw=0.0 dh=11.2	cut_scene=0	cut_route=0
+cycle2-tie-RL	fr_max=11.2	A dx=0.0 dy=0.0 dw=0.0 dh=11.2	cut_scene=0	cut_route=0
+cycle2-tie-TD	fr_max=16.7	A dx=0.0 dy=0.0 dw=16.7 dh=0.0	cut_scene=0	cut_route=0
+cycle2-tie-swapped-BT	fr_max=19.4	A dx=0.0 dy=0.0 dw=19.4 dh=0.0	cut_scene=0	cut_route=0
+cycle2-tie-swapped-LR	fr_max=11.2	A dx=0.0 dy=0.0 dw=0.0 dh=11.2	cut_scene=0	cut_route=0
+cycle2-tie-swapped-RL	fr_max=11.2	A dx=0.0 dy=0.0 dw=0.0 dh=11.2	cut_scene=0	cut_route=0
+cycle2-tie-swapped-TD	fr_max=19.4	A dx=0.0 dy=0.0 dw=19.4 dh=0.0	cut_scene=0	cut_route=0
+dense-lr-BT	fr_max=1039.5	g11 dx=1039.5 dy=0.0 dw=1039.5 dh=0.0	cut_scene=0	cut_route=0
+dense-lr-LR	fr_max=471.0	g11 dx=0.0 dy=471.0 dw=0.0 dh=471.0	cut_scene=0	cut_route=0
+dense-lr-RL	fr_max=471.0	g11 dx=0.0 dy=471.0 dw=0.0 dh=471.0	cut_scene=0	cut_route=0
+dense-lr-TD	fr_max=1001.0	g11 dx=1001.0 dy=12.5 dw=1001.0 dh=12.5	cut_scene=0	cut_route=0
+dense-td-BT	fr_max=45.3	g10 dx=22.6 dy=0.0 dw=45.3 dh=0.0	cut_scene=0	cut_route=0
+dense-td-LR	fr_max=1518.1	g9 dx=0.0 dy=1076.1 dw=0.0 dh=1518.1	cut_scene=0	cut_route=0
+dense-td-RL	fr_max=1518.1	g9 dx=0.0 dy=1076.1 dw=0.0 dh=1518.1	cut_scene=0	cut_route=0
+dense-td-TD	fr_max=72.5	g9 dx=49.9 dy=37.5 dw=72.5 dh=37.5	cut_scene=0	cut_route=0
+empty-target-BT	fr_max=0.0		cut_scene=0	cut_route=0
+empty-target-LR	fr_max=0.0		cut_scene=0	cut_route=0
+empty-target-RL	fr_max=0.0		cut_scene=0	cut_route=0
+empty-target-TD	fr_max=0.0		cut_scene=0	cut_route=0
+fanout-frames-BT	fr_max=0.0		cut_scene=0	cut_route=0
+fanout-frames-LR	fr_max=0.0		cut_scene=0	cut_route=0
+fanout-frames-RL	fr_max=0.0	g3 dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+fanout-frames-TD	fr_max=0.0		cut_scene=0	cut_route=0
+hub5-BT	fr_max=122.4	E dx=0.0 dy=0.0 dw=122.4 dh=0.0	cut_scene=0	cut_route=0
+hub5-LR	fr_max=131.5	E dx=0.0 dy=0.0 dw=0.0 dh=131.5	cut_scene=0	cut_route=0
+hub5-RL	fr_max=131.5	E dx=0.0 dy=0.0 dw=0.0 dh=131.5	cut_scene=0	cut_route=0
+hub5-TD	fr_max=122.4	E dx=0.0 dy=0.0 dw=122.4 dh=0.0	cut_scene=0	cut_route=0
+interleave-BT	fr_max=0.0	S dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+interleave-LR	fr_max=0.0		cut_scene=0	cut_route=0
+interleave-RL	fr_max=0.0	S dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+interleave-TD	fr_max=0.0	S dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+iso-lane-BT	fr_max=0.0		cut_scene=0	cut_route=0
+iso-lane-LR	fr_max=2.0	S dx=0.0 dy=0.0 dw=0.0 dh=2.0	cut_scene=0	cut_route=0
+iso-lane-RL	fr_max=2.0	S dx=0.0 dy=0.0 dw=0.0 dh=2.0	cut_scene=0	cut_route=0
+iso-lane-TD	fr_max=0.0		cut_scene=0	cut_route=0
+iso-lane-lr-BT	fr_max=0.0		cut_scene=0	cut_route=0
+iso-lane-lr-LR	fr_max=2.0	S dx=0.0 dy=0.0 dw=0.0 dh=2.0	cut_scene=0	cut_route=0
+iso-lane-lr-RL	fr_max=2.0	S dx=0.0 dy=0.0 dw=0.0 dh=2.0	cut_scene=0	cut_route=0
+iso-lane-lr-TD	fr_max=0.0		cut_scene=0	cut_route=0
+iso-nest-BT	fr_max=0.0		cut_scene=0	cut_route=0
+iso-nest-LR	fr_max=0.0		cut_scene=0	cut_route=0
+iso-nest-RL	fr_max=0.0		cut_scene=0	cut_route=0
+iso-nest-TD	fr_max=0.0		cut_scene=0	cut_route=0
+l5loop-BT	fr_max=0.0		cut_scene=0	cut_route=0
+l5loop-LR	fr_max=0.0		cut_scene=0	cut_route=0
+l5loop-RL	fr_max=0.0		cut_scene=0	cut_route=0
+l5loop-TD	fr_max=0.0		cut_scene=0	cut_route=0
+lr-BT	fr_max=82.8	ORD dx=0.0 dy=0.0 dw=82.8 dh=0.0	cut_scene=0	cut_route=0
+lr-LR	fr_max=68.0	ORD dx=0.0 dy=0.0 dw=0.0 dh=68.0	cut_scene=0	cut_route=0
+lr-RL	fr_max=68.0	ORD dx=0.0 dy=0.0 dw=0.0 dh=68.0	cut_scene=0	cut_route=0
+lr-TD	fr_max=82.8	ORD dx=0.0 dy=0.0 dw=82.8 dh=0.0	cut_scene=0	cut_route=0
+nested-BT	fr_max=44.7	SIDE dx=0.0 dy=0.0 dw=44.7 dh=0.0	cut_scene=0	cut_route=0
+nested-LR	fr_max=43.2	SIDE dx=0.0 dy=0.0 dw=0.0 dh=43.2	cut_scene=0	cut_route=0
+nested-RL	fr_max=43.2	SIDE dx=0.0 dy=0.0 dw=0.0 dh=43.2	cut_scene=0	cut_route=0
+nested-TD	fr_max=44.7	SIDE dx=0.0 dy=0.0 dw=44.7 dh=0.0	cut_scene=0	cut_route=0
+nested-cases-BT	fr_max=112.7	X dx=112.7 dy=0.0 dw=112.7 dh=0.0	cut_scene=0	cut_route=0
+nested-cases-LR	fr_max=68.5	X dx=0.0 dy=68.5 dw=0.0 dh=68.5	cut_scene=0	cut_route=0
+nested-cases-RL	fr_max=68.5	X dx=0.0 dy=68.5 dw=0.0 dh=68.5	cut_scene=0	cut_route=0
+nested-cases-TD	fr_max=112.7	X dx=112.7 dy=0.0 dw=112.7 dh=0.0	cut_scene=0	cut_route=0
+nested-chain-BT	fr_max=12.5	Y dx=0.0 dy=12.5 dw=7.4 dh=12.5	cut_scene=0	cut_route=0
+nested-chain-LR	fr_max=0.0		cut_scene=0	cut_route=0
+nested-chain-RL	fr_max=0.0		cut_scene=0	cut_route=0
+nested-chain-TD	fr_max=12.5	Z dx=0.0 dy=12.5 dw=5.5 dh=12.5	cut_scene=0	cut_route=0
+nested-self-only-BT	fr_max=0.0		cut_scene=0	cut_route=0
+nested-self-only-LR	fr_max=0.0	OUT dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+nested-self-only-RL	fr_max=0.0		cut_scene=0	cut_route=0
+nested-self-only-TD	fr_max=0.0		cut_scene=0	cut_route=0
+nested-wide-title-BT	fr_max=0.0		cut_scene=0	cut_route=0
+nested-wide-title-LR	fr_max=0.0		cut_scene=0	cut_route=0
+nested-wide-title-RL	fr_max=0.0	OUT dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+nested-wide-title-TD	fr_max=0.0		cut_scene=0	cut_route=0
+own-centre-BT	fr_max=0.0		cut_scene=0	cut_route=0
+own-centre-LR	fr_max=0.0		cut_scene=0	cut_route=0
+own-centre-RL	fr_max=0.0		cut_scene=0	cut_route=0
+own-centre-TD	fr_max=0.0		cut_scene=0	cut_route=0
+p01-iso-BT	fr_max=0.0		cut_scene=0	cut_route=0
+p01-iso-LR	fr_max=0.0		cut_scene=0	cut_route=0
+p01-iso-RL	fr_max=0.0		cut_scene=0	cut_route=0
+p01-iso-TD	fr_max=0.0		cut_scene=0	cut_route=0
+p02-iso-dir-BT	fr_max=0.0		cut_scene=0	cut_route=0
+p02-iso-dir-LR	fr_max=0.0		cut_scene=0	cut_route=0
+p02-iso-dir-RL	fr_max=0.0		cut_scene=0	cut_route=0
+p02-iso-dir-TD	fr_max=0.0		cut_scene=0	cut_route=0
+p03-ext-dir-BT	fr_max=0.0		cut_scene=0	cut_route=0
+p03-ext-dir-LR	fr_max=0.0		cut_scene=0	cut_route=0
+p03-ext-dir-RL	fr_max=0.0		cut_scene=0	cut_route=0
+p03-ext-dir-TD	fr_max=0.0		cut_scene=0	cut_route=0
+p04-to-cluster-BT	fr_max=0.0		cut_scene=0	cut_route=0
+p04-to-cluster-LR	fr_max=0.0		cut_scene=0	cut_route=0
+p04-to-cluster-RL	fr_max=0.0		cut_scene=0	cut_route=0
+p04-to-cluster-TD	fr_max=0.0		cut_scene=0	cut_route=0
+p05-siblings-BT	fr_max=0.0		cut_scene=0	cut_route=0
+p05-siblings-LR	fr_max=0.0		cut_scene=0	cut_route=0
+p05-siblings-RL	fr_max=0.0		cut_scene=0	cut_route=0
+p05-siblings-TD	fr_max=0.0		cut_scene=0	cut_route=0
+p06-block-cycle-BT	fr_max=12.4	A dx=0.0 dy=0.0 dw=12.4 dh=0.0	cut_scene=0	cut_route=0
+p06-block-cycle-LR	fr_max=11.2	A dx=0.0 dy=0.0 dw=0.0 dh=11.2	cut_scene=0	cut_route=0
+p06-block-cycle-RL	fr_max=11.2	A dx=0.0 dy=0.0 dw=0.0 dh=11.2	cut_scene=0	cut_route=0
+p06-block-cycle-TD	fr_max=12.4	A dx=0.0 dy=0.0 dw=12.4 dh=0.0	cut_scene=0	cut_route=0
+p07-nested-BT	fr_max=5.5	O dx=0.0 dy=0.0 dw=5.5 dh=0.0	cut_scene=0	cut_route=0
+p07-nested-LR	fr_max=9.5	O dx=0.0 dy=0.0 dw=0.0 dh=9.5	cut_scene=0	cut_route=0
+p07-nested-RL	fr_max=9.5	O dx=0.0 dy=0.0 dw=0.0 dh=9.5	cut_scene=0	cut_route=0
+p07-nested-TD	fr_max=12.5	O dx=0.0 dy=12.5 dw=5.5 dh=12.5	cut_scene=0	cut_route=0
+p08-chain3-BT	fr_max=10.7	A dx=0.0 dy=0.0 dw=10.7 dh=0.0	cut_scene=0	cut_route=0
+p08-chain3-LR	fr_max=0.0		cut_scene=0	cut_route=0
+p08-chain3-RL	fr_max=0.0		cut_scene=0	cut_route=0
+p08-chain3-TD	fr_max=10.7	A dx=0.0 dy=0.0 dw=10.7 dh=0.0	cut_scene=0	cut_route=0
+p09-disconnected-BT	fr_max=0.0		cut_scene=0	cut_route=0
+p09-disconnected-LR	fr_max=0.0		cut_scene=0	cut_route=0
+p09-disconnected-RL	fr_max=0.0		cut_scene=0	cut_route=0
+p09-disconnected-TD	fr_max=0.0		cut_scene=0	cut_route=0
+p10-mixed-rank-BT	fr_max=0.0		cut_scene=0	cut_route=0
+p10-mixed-rank-LR	fr_max=0.0		cut_scene=0	cut_route=0
+p10-mixed-rank-RL	fr_max=0.0		cut_scene=0	cut_route=0
+p10-mixed-rank-TD	fr_max=0.0		cut_scene=0	cut_route=0
+p11-lr-BT	fr_max=6.8	A dx=0.0 dy=0.0 dw=6.8 dh=0.0	cut_scene=0	cut_route=0
+p11-lr-LR	fr_max=0.0		cut_scene=0	cut_route=0
+p11-lr-RL	fr_max=0.0		cut_scene=0	cut_route=0
+p11-lr-TD	fr_max=6.8	A dx=0.0 dy=0.0 dw=6.8 dh=0.0	cut_scene=0	cut_route=0
+p13-inner-dir-ext-BT	fr_max=0.0		cut_scene=1	cut_route=1
+p13-inner-dir-ext-LR	fr_max=0.0		cut_scene=0	cut_route=0
+p13-inner-dir-ext-RL	fr_max=0.0		cut_scene=0	cut_route=0
+p13-inner-dir-ext-TD	fr_max=0.0	S dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+p14-empty-and-self-BT	fr_max=0.0		cut_scene=0	cut_route=0
+p14-empty-and-self-LR	fr_max=0.0		cut_scene=0	cut_route=0
+p14-empty-and-self-RL	fr_max=0.0		cut_scene=0	cut_route=0
+p14-empty-and-self-TD	fr_max=0.0		cut_scene=0	cut_route=0
+ratio2-BT	fr_max=0.0		cut_scene=0	cut_route=0
+ratio2-LR	fr_max=0.0		cut_scene=0	cut_route=0
+ratio2-RL	fr_max=0.0		cut_scene=0	cut_route=0
+ratio2-TD	fr_max=0.0		cut_scene=0	cut_route=0
+ratio2x4-BT	fr_max=8.1	A dx=0.0 dy=0.0 dw=8.1 dh=0.0	cut_scene=0	cut_route=0
+ratio2x4-LR	fr_max=11.2	A dx=0.0 dy=0.0 dw=0.0 dh=11.2	cut_scene=0	cut_route=0
+ratio2x4-RL	fr_max=11.2	A dx=0.0 dy=0.0 dw=0.0 dh=11.2	cut_scene=0	cut_route=0
+ratio2x4-TD	fr_max=8.1	A dx=0.0 dy=0.0 dw=8.1 dh=0.0	cut_scene=0	cut_route=0
+ratio3-BT	fr_max=0.0	B dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+ratio3-LR	fr_max=0.0		cut_scene=0	cut_route=0
+ratio3-RL	fr_max=0.0	A dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+ratio3-TD	fr_max=0.0	B dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+ratio4-BT	fr_max=8.1	A dx=0.0 dy=0.0 dw=8.1 dh=0.0	cut_scene=0	cut_route=0
+ratio4-LR	fr_max=11.2	A dx=0.0 dy=0.0 dw=0.0 dh=11.2	cut_scene=0	cut_route=0
+ratio4-RL	fr_max=11.2	A dx=0.0 dy=0.0 dw=0.0 dh=11.2	cut_scene=0	cut_route=0
+ratio4-TD	fr_max=8.1	A dx=0.0 dy=0.0 dw=8.1 dh=0.0	cut_scene=0	cut_route=0
+ratio4mask-BT	fr_max=8.1	A dx=0.0 dy=0.0 dw=8.1 dh=0.0	cut_scene=0	cut_route=0
+ratio4mask-LR	fr_max=11.2	A dx=0.0 dy=0.0 dw=0.0 dh=11.2	cut_scene=0	cut_route=0
+ratio4mask-RL	fr_max=11.2	A dx=0.0 dy=0.0 dw=0.0 dh=11.2	cut_scene=0	cut_route=0
+ratio4mask-TD	fr_max=8.1	A dx=0.0 dy=0.0 dw=8.1 dh=0.0	cut_scene=0	cut_route=0
+reqresp-BT	fr_max=25.6	A dx=25.6 dy=0.0 dw=25.6 dh=0.0	cut_scene=0	cut_route=0
+reqresp-LR	fr_max=11.2	B dx=0.0 dy=0.0 dw=0.0 dh=11.2	cut_scene=0	cut_route=0
+reqresp-RL	fr_max=11.2	B dx=0.0 dy=0.0 dw=0.0 dh=11.2	cut_scene=0	cut_route=0
+reqresp-TD	fr_max=25.6	A dx=25.6 dy=0.0 dw=25.6 dh=0.0	cut_scene=0	cut_route=0
+reqresp22-BT	fr_max=25.6	A dx=25.6 dy=0.0 dw=25.6 dh=0.0	cut_scene=0	cut_route=0
+reqresp22-LR	fr_max=11.2	B dx=0.0 dy=0.0 dw=0.0 dh=11.2	cut_scene=0	cut_route=0
+reqresp22-RL	fr_max=11.2	B dx=0.0 dy=0.0 dw=0.0 dh=11.2	cut_scene=0	cut_route=0
+reqresp22-TD	fr_max=25.6	A dx=25.6 dy=0.0 dw=25.6 dh=0.0	cut_scene=0	cut_route=0
+self-member-BT	fr_max=0.0		cut_scene=0	cut_route=0
+self-member-LR	fr_max=0.0		cut_scene=0	cut_route=0
+self-member-RL	fr_max=0.0		cut_scene=0	cut_route=0
+self-member-TD	fr_max=0.0		cut_scene=0	cut_route=0
+selfsub-nested-BT	fr_max=0.0		cut_scene=0	cut_route=0
+selfsub-nested-LR	fr_max=0.0		cut_scene=0	cut_route=0
+selfsub-nested-RL	fr_max=0.0		cut_scene=0	cut_route=0
+selfsub-nested-TD	fr_max=0.0		cut_scene=0	cut_route=0
+sub-nested-self-BT	fr_max=26.5	OUT dx=26.5 dy=0.0 dw=26.5 dh=0.0	cut_scene=0	cut_route=0
+sub-nested-self-LR	fr_max=0.0		cut_scene=0	cut_route=0
+sub-nested-self-RL	fr_max=0.0		cut_scene=0	cut_route=0
+sub-nested-self-TD	fr_max=26.5	OUT dx=26.5 dy=0.0 dw=26.5 dh=0.0	cut_scene=0	cut_route=0
+swim-cycle-BT	fr_max=0.0		cut_scene=0	cut_route=0
+swim-cycle-LR	fr_max=0.0		cut_scene=0	cut_route=0
+swim-cycle-RL	fr_max=0.0		cut_scene=0	cut_route=0
+swim-cycle-TD	fr_max=0.0		cut_scene=0	cut_route=0
+swim-nested-BT	fr_max=0.0	B dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+swim-nested-LR	fr_max=0.0		cut_scene=0	cut_route=0
+swim-nested-RL	fr_max=0.0	A dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+swim-nested-TD	fr_max=0.0	B dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+swimlane-BT	fr_max=0.0	B dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+swimlane-LR	fr_max=0.0		cut_scene=0	cut_route=0
+swimlane-RL	fr_max=0.0	A dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+swimlane-TD	fr_max=0.0	B dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+swimlane-nested-BT	fr_max=0.0		cut_scene=0	cut_route=0
+swimlane-nested-LR	fr_max=0.0		cut_scene=0	cut_route=0
+swimlane-nested-RL	fr_max=0.0	A dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+swimlane-nested-TD	fr_max=0.0		cut_scene=0	cut_route=0
+t1-nest-own-BT	fr_max=0.0		cut_scene=0	cut_route=0
+t1-nest-own-LR	fr_max=0.0	OUT dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+t1-nest-own-RL	fr_max=0.0		cut_scene=0	cut_route=0
+t1-nest-own-TD	fr_max=0.0		cut_scene=0	cut_route=0
+t2-self-nested-BT	fr_max=0.0		cut_scene=0	cut_route=0
+t2-self-nested-LR	fr_max=0.0		cut_scene=0	cut_route=0
+t2-self-nested-RL	fr_max=0.0		cut_scene=0	cut_route=0
+t2-self-nested-TD	fr_max=0.0		cut_scene=0	cut_route=0
+t2b-self-nested-order-BT	fr_max=0.0		cut_scene=0	cut_route=0
+t2b-self-nested-order-LR	fr_max=0.0		cut_scene=0	cut_route=0
+t2b-self-nested-order-RL	fr_max=0.0		cut_scene=0	cut_route=0
+t2b-self-nested-order-TD	fr_max=0.0		cut_scene=0	cut_route=0
+t9-frames-8px-BT	fr_max=0.0		cut_scene=0	cut_route=0
+t9-frames-8px-LR	fr_max=0.0		cut_scene=0	cut_route=0
+t9-frames-8px-RL	fr_max=0.0		cut_scene=0	cut_route=0
+t9-frames-8px-TD	fr_max=0.0		cut_scene=0	cut_route=0
+t9b-frames-8px-lr-BT	fr_max=0.0		cut_scene=0	cut_route=0
+t9b-frames-8px-lr-LR	fr_max=0.0		cut_scene=0	cut_route=0
+t9b-frames-8px-lr-RL	fr_max=0.0		cut_scene=0	cut_route=0
+t9b-frames-8px-lr-TD	fr_max=0.0		cut_scene=0	cut_route=0
+t9c-frames-8px-two-way-BT	fr_max=0.0		cut_scene=0	cut_route=0
+t9c-frames-8px-two-way-LR	fr_max=0.0		cut_scene=0	cut_route=0
+t9c-frames-8px-two-way-RL	fr_max=0.0		cut_scene=0	cut_route=0
+t9c-frames-8px-two-way-TD	fr_max=0.0		cut_scene=0	cut_route=0
+title-entry-BT	fr_max=0.0		cut_scene=0	cut_route=0
+title-entry-LR	fr_max=0.0	S dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+title-entry-RL	fr_max=0.0	S dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+title-entry-TD	fr_max=0.0		cut_scene=0	cut_route=0
+title-hidden-BT	fr_max=0.0		cut_scene=0	cut_route=0
+title-hidden-LR	fr_max=0.0		cut_scene=0	cut_route=0
+title-hidden-RL	fr_max=0.0	S dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+title-hidden-TD	fr_max=0.0	S dx=0.0 dy=0.0 dw=0.0 dh=0.0	cut_scene=0	cut_route=0
+turned-blocks-BT	fr_max=66.1	SHIP dx=66.1 dy=0.0 dw=66.1 dh=0.0	cut_scene=0	cut_route=0
+turned-blocks-LR	fr_max=26.5	SHIP dx=0.0 dy=26.5 dw=0.0 dh=26.5	cut_scene=0	cut_route=0
+turned-blocks-RL	fr_max=26.5	SHIP dx=0.0 dy=26.5 dw=0.0 dh=26.5	cut_scene=0	cut_route=0
+turned-blocks-TD	fr_max=121.7	SHIP dx=121.7 dy=12.5 dw=121.7 dh=12.5	cut_scene=0	cut_route=0
+wide-stroke-BT	fr_max=33.7	A dx=0.0 dy=0.0 dw=33.7 dh=0.0	cut_scene=0	cut_route=0
+wide-stroke-LR	fr_max=64.8	C dx=0.0 dy=24.8 dw=0.0 dh=64.8	cut_scene=0	cut_route=0
+wide-stroke-RL	fr_max=64.8	C dx=0.0 dy=24.8 dw=0.0 dh=64.8	cut_scene=0	cut_route=0
+wide-stroke-TD	fr_max=33.7	A dx=0.0 dy=0.0 dw=33.7 dh=0.0	cut_scene=0	cut_route=0

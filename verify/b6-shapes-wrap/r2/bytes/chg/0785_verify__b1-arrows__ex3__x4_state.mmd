@@ -1,0 +1,21 @@
+stateDiagram-v2
+  [*] --> Idle
+  Idle --> Busy : start
+  Busy --> Idle : done
+  Busy --> Check
+  state Check <<choice>>
+  Check --> Ok : yes
+  Check --> Fail : no
+  Fail --> Idle : retry
+  state Work {
+    [*] --> A
+    A --> B
+    B --> [*]
+  }
+  Ok --> Work
+  Work --> [*]
+  state fork_state <<fork>>
+  Idle --> fork_state
+  fork_state --> P1
+  fork_state --> P2
+  note right of Busy : busy note

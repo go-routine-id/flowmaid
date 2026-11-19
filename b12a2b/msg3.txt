@@ -1,0 +1,72 @@
+fix(blocks): a title-row member's ports clear its frame's chip by ortho's clearance, and the frame's pins and those entries take columns as one set (b12a2b-base item 3, lateral X1 + e2)
+
+X1 (B12 2.7 F2, one free stretch): in a block layout `ports::unshaded`
+cut a title-row member's side at the chip plus `CHIP_SEP`, while the
+layout's jog room (`layout::title_cap`) and `ortho`'s title sides
+measure the chip with `ortho::CHIP_CLEAR`. The first free port then
+stood exactly on the router's limit round the chip, the stroke touched
+the chip's ring and the router took the entry round into its member's
+lateral side (blocks/hub5: the hub's three entries through the frames'
+left walls). A node's side in a block layout is now cut at
+`CHIP_CLEAR`; a frame's own side keeps today's cut (its free pins are
+placed by `free_pins`, which already clears the chip by `CHIP_CLEAR`;
+moved by half a pixel there, crowded pins on a composite's side sent a
+neighbour's path another way, notes/spread-bottom drawn BT).
+
+e2 (B12 2.8, free pins and title-clear entries as one set): with the
+two cuts made one, a frame's free pin and a title-row member's first
+entry took the same column past the chip (blocks/blocks-overview:
+`REG ==> ORD`'s pin and `CART --> QUEUE` at 628.5, on top of each other;
+the router took the entry round into QUEUE's left side). New
+`ports::title_side_columns` (after `free_pins` and `order_pins`, TD and
+BT): where a pin and an entry from outside the frame stand closer than
+a port's spacing, the run of them whose neighbours stand that close
+(taking in the side's next pin or entry when the run would run into
+it) is dealt its columns again, from where it starts but not before
+the chip's clearance, up to a port's spacing short of the side's next
+crossing, in the order their channels come in (so the ortho stage's
+steps into them nest), `PORT_SPACING` apart or a `TRACK_PITCH` apart
+where that does not fit, an entry on its member's port range; nothing
+else on the side moves. Where neither fits,
+`place_ports` keeps today's cut on that member's side
+(`title_side_over_full`), so such a side is drawn as before: the
+public fixture's [WEB] -> METRICS entry on Observability's title row
+(three entries and OPS's pin past a 37 px stretch) keeps its lateral
+entry; displacing an over-full member (lateral X3, with F2's count of
+the pins in the jog room) is item 4's.
+
+lr drawn BT: `cart -> pager` no longer steps 2.2 px at EDGE's title
+side; it comes down straight into pager (its label moved out of
+Storefront into the gap).
+
+Measured against 7122a53 (three checks): local judge A2 89 -> 88
+must-fail lines (hub5 lateral_x 3 -> 0 gone; the public fixture and its
+four permutations lateral_x 3 -> 1 and lbl_crowd 2 -> 1), A1 0, no cell
+worse; routed cells unchanged; suite-on failing tests 14 -> 14, no gate
+message new or worse. Direction copies static: lateral_x 216 -> 192,
+side_ends 231 -> 208, defects, x_drawn, fan_x, edge_chip unchanged;
+routed unchanged. One copy is worse by the tool's rule and is this
+item's declared trade: blocks/swimlane-nested drawn TD, min_edge_gap
+40 -> 25 (the entry `place order -> confirm order` now comes in through
+Shop's title side beside the return leaving the same side, instead of
+through Shop's lateral wall: lateral_x 7 -> 6, side_ends 1 -> 0; 25 px
+is above every gap floor and equals the BT/LR/RL copies' own value).
+
+Bulk (suite-on quality, against item 1's commit): b8r1/bulkst static
+unchanged but one idiom count (964 files); b8r1/bulkfc static
+lateral_x 183 -> 172, side_ends 355 -> 340, x_drawn 86300 -> 86297,
+chip_crowd 657 -> 661 (four files +1), routed unchanged; the 413 valid
+b3r4/all inputs unchanged.
+
+Block mode only (behind the switch); default build byte-identical
+(off-identity test green). New tests
+blockcheck::a_title_rows_first_free_entry_clears_the_chip_ring (hub5:
+lateral_x and side_ends 0, the three entries from above) and
+blockcheck::a_frames_pins_and_its_title_rows_entries_take_columns_apart
+(the public fixture and four permutations TD: no overlap, gap >= 12,
+crossings <= 6, CART -> QUEUE from above a track from ORD's pin); both
+fail before this change. No snapshot or gate changes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5
+

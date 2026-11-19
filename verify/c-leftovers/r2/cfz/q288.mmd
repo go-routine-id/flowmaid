@@ -1,0 +1,13 @@
+classDiagram
+direction LR
+A <|-- B
+B "1" --> "*" C : has many of
+B o-- C
+C --> B
+B <|-- C
+B *-- B
+B "1" --> "*" B : b1
+B o-- B : b2
+B o-- B : b3
+B --> B : b4
+B ..> B : b5

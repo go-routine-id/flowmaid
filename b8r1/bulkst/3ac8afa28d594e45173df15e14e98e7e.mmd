@@ -1,0 +1,13 @@
+stateDiagram-v2
+  [*] --> Idle
+  Idle --> Connecting : dial
+  state Session {
+    Connecting --> Connected : ok
+    Connected --> Busy : work
+    Busy --> Connected : done
+    Busy --> Busy : tick
+    Connected --> Connecting : drop
+  }
+  Session --> Idle : hangup
+  Connecting --> Idle : give up
+  Busy --> Idle : abort

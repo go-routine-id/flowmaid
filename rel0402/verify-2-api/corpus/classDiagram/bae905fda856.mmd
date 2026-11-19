@@ -1,0 +1,16 @@
+classDiagram
+direction TB
+A ..|> B : owns
+A *-- C
+A -- D : owns
+D --|> E : owns
+E *-- A
+E "1" --> "*" E : e0
+E --> E : e1
+E ..> E : e2
+E --> E
+class B {
+ +int id
+ +run() void
+ +stop()
+}

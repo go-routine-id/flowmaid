@@ -1,0 +1,27 @@
+flowchart TD
+  n6 === n2
+  n5 ---> n3
+  n4 ==>|no| n6
+  n4 o--o n6
+  n3 ==> n7
+  n3 ==> n3
+  n5 e6@o--o n5
+  e6@{ curve: step }
+  n3 --x n0
+  n5 --x n5
+  n5 e9@==> n4
+  e9@{ curve: cardinal }
+  n3 x--x n0
+  n4 === n5
+  n3 --- n5
+  n5 --- n2
+  n7 ---> n7
+  linkStyle 0 stroke-width:12px,stroke:#3a3
+  linkStyle 1 stroke-width:2px
+  linkStyle 2 stroke-width:1px
+  linkStyle 3 stroke-width:2px
+  linkStyle 5 stroke-width:16px,stroke:#36c,stroke-dasharray:6 3
+  linkStyle 6 stroke-width:16px,stroke:#36c,stroke-dasharray:6 3
+  linkStyle 7 stroke-width:30px,stroke:#36c,stroke-dasharray:6 3
+  linkStyle 8 stroke-width:12px,stroke:#3a3
+  linkStyle 10 interpolate linear stroke-width:24px

@@ -1,0 +1,13 @@
+classDiagram
+    direction LR
+    class Bus {
+      +publish(e) void
+    }
+    Producer1 "1" --> "*" Bus : emits
+    Producer2 "0..1" --> "1..*" Bus : emits
+    Producer3 "many" ..> "1" Bus : listens
+    Producer4 "2" o-- "1" Bus : pools
+    Bus "1" --> "*" Consumer : delivers
+    note for Bus "Single event bus"
+    note for Producer3 "Reads only"
+    note "System overview"

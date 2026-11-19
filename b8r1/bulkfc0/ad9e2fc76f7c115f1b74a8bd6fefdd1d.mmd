@@ -1,0 +1,18 @@
+flowchart RL
+  n3 <==> n10
+  n5 e1@-.->|yes| n5
+  e1@{ curve: basis }
+  n10 o--o n1
+  n4 --- n0
+  n1 ==> n10
+  n2 ---> n8
+  n3 --x n3
+  n8 ===|yes| n4
+  n5 ==>|a longer label| n5
+  n2 ===|no| n10
+  n2 o--o n8
+  n3 --x n1
+  linkStyle 1 interpolate step stroke-width:12px
+  linkStyle 3 stroke-width:55px,stroke:#3a3
+  linkStyle 4 stroke-width:3.5px,stroke:#c33
+  linkStyle 6 stroke-width:30px

@@ -1,0 +1,51 @@
+classDiagram
+C3 ..> C9
+C11 *-- C12 : a&b
+C3 -- C2 : delta
+C5 --> C2
+C6 "1" <|-- "*" C9
+C17 *-- C6
+C1 ..> C8
+C18 ..|> C12 : delta
+C2 -- C15
+C5 "1" <|-- "*" C2 : x
+C10 o-- C1
+C4 *-- C12 : x
+C7 "1" -- "*" C15 : gamma
+C4 o-- C4
+C0 ..> C4
+C1 *-- C1 : gamma
+C5 "1" -- "*" C16
+C10 <--> C17
+C15 *-- C1
+C3 "1" -- "*" C0 : x
+C12 ..> C0 : Customer Order
+C6 -- C18
+C10 <|-- C2 : a&b
+C5 *-- C8
+C9 --> C10 : a&b
+C11 --> C10
+C3 *-- C7 : alpha
+C2 *-- C11
+C1 ..|> C9
+C10 "1" ..> "*" C9 : 日本語
+C0 o-- C10 : <b>bold</b>
+C5 <|-- C0 : a&b
+C13 <|-- C4
+C3 "1" *-- "*" C18 : gamma
+C4 -- C4
+C3 "1" ..|> "*" C5 : Customer Order
+C10 ..> C2
+C10 <|-- C6
+C0 *-- C18
+C9 o-- C12
+C13 "1" <--> "*" C18
+C18 "1" <|-- "*" C2 : Long label here
+C5 o-- C1 : x
+C6 -- C14 : x
+C5 "1" --> "*" C8
+C1 <--> C16 : alpha
+C1 ..|> C12 : x
+note "beta"
+note for C18 "Long label here"
+note for C6 "<b>bold</b>"

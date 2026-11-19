@@ -1,0 +1,8 @@
+stateDiagram-v2
+  [*] --> A
+  A --> W
+  W --> C
+  state C <<choice>>
+  C --> W : a
+  C --> W : b
+  A --> B

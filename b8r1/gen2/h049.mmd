@@ -1,0 +1,23 @@
+flowchart TD
+  s0["billing log"]
+  subgraph g0["metric db zone"]
+    direction TB
+    m0["cache store"]
+  end
+  subgraph g1["auth zone"]
+    direction LR
+    m1["metric api billing"]
+    m2["notify cache log"]
+    m3["store cache"]
+    m4["user trace billing"]
+    m5["cart billing"]
+    m1 --> m3
+    m2 --> m4
+    m4 --> m5
+  end
+  subgraph g2["report notify user zone"]
+    m6["db notify"]
+  end
+  s0 --> g0
+  s0 --> g1
+  s0 --> m6

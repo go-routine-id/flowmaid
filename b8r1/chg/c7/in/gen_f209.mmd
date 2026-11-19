@@ -1,0 +1,67 @@
+flowchart RL
+  n0["nostrud do"]
+  subgraph g0["dolor tempor"]
+    direction TB
+    n1[("do dolor")]
+    n2("dolor lorem amet<br/>nostrud labore")
+    n3[("laboris<br/>amet ullamco ullamco<br/>do")]
+    n4["incididunt elit<br/>nostrud amet incididunt<br/>ut"]
+  end
+  subgraph g1["sed laboris eiusmod do do veniam"]
+    direction TB
+    n5("incididunt sed veniam<br/>adipiscing<br/>incididunt dolor tempor ipsum")
+  end
+  subgraph g2["sed"]
+    n6(["dolor do sed<br/>ipsum nostrud adipiscing ut<br/>sit aliqua"])
+    n7(["tempor labore<br/>elit ipsum"])
+    n8(["do aliqua incididunt<br/>eiusmod<br/>sit do"])
+    n6 --> n7
+  end
+  subgraph g3["labore dolor ipsum"]
+    direction LR
+    n9("elit<br/>dolor<br/>amet aliqua veniam dolor")
+    n10["elit"]
+    n11["laboris amet veniam sit<br/>labore<br/>nostrud nostrud"]
+    n12(["ipsum dolor<br/>sed nostrud ipsum<br/>veniam ipsum"])
+    n13["adipiscing<br/>magna aliqua veniam dolor<br/>ut ipsum sed"]
+    n9 --> n10
+  end
+  subgraph g4["aliqua adipiscing"]
+    direction TB
+    n14(["sed elit adipiscing<br/>amet tempor<br/>ipsum sed laboris ipsum"])
+    n15(["elit eiusmod amet sed<br/>dolor sed nostrud"])
+    n16["amet lorem ut"]
+    n17(["labore dolor ut sit<br/>labore elit"])
+    n14 --> n15
+  end
+  subgraph g5["incididunt eiusmod tempor dolor do"]
+    direction TB
+    n18(["amet<br/>lorem sed sit"])
+    n19[("eiusmod tempor labore")]
+    n20["veniam elit nostrud elit<br/>elit laboris"]
+    n21(["adipiscing laboris incididunt"])
+    n22["laboris amet"]
+    n18 --> n19
+  end
+  subgraph g6["aliqua sit ut adipiscing do do incididunt tempor ullamco"]
+    direction LR
+    n23("sit<br/>elit")
+    n24[("ipsum<br/>elit incididunt ut lorem<br/>laboris magna tempor")]
+    n25(["magna do adipiscing<br/>lorem magna ullamco"])
+    n26[("elit aliqua amet ipsum")]
+    n27[("laboris sed ut dolor<br/>dolor<br/>sit ullamco laboris")]
+    n23 --> n24
+  end
+  n28(["consectetur laboris amet ullamco<br/>aliqua incididunt elit ipsum"])
+  n29(["sed ut magna amet<br/>amet dolor eiusmod<br/>ullamco"])
+  n30(["sit ut"])
+  n0 -.-> g0
+  n0 --> n5
+  n0 --> g2
+  n0 ==> g3
+  n0 ==> n16
+  n0 --> g5
+  n0 --> g6
+  n0 --> n28
+  n0 --> n29
+  n0 --> n30

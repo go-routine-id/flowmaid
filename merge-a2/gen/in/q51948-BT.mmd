@@ -1,0 +1,29 @@
+flowchart BT
+    subgraph G0[Billing and invoices 0]
+        subgraph H0[inner 0]
+            g0m0[g0m0]
+            g0m1[g0m1]
+        end
+    end
+    subgraph G1[Payments 1]
+        g1m0[g1m0]
+        g1m1[g1m1]
+    end
+    subgraph G2[Edge 2]
+        g2m0[g2m0]
+        g2m1[g2m1]
+        g2m2[g2m2]
+    end
+    g2m1 --> g1m0
+    o0 -.-> g1m1
+    G0 --> g2m0
+    g2m0 --> o0
+    g2m2 --> g0m1
+    g2m2 ==> g0m0
+    g1m1 -.-> o0
+    o1 ==> g2m1
+    o1 --> g0m1
+    g1m0 -- l3 --> G2
+    g0m0 ==> o1
+    g0m1 --> g1m1
+    o1 --> g2m1

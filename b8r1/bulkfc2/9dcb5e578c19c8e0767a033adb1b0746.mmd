@@ -1,0 +1,15 @@
+flowchart TD
+    N0[Parse]
+    N1[Fetch parse]
+    N2[Retry done]
+    N3[Retry]
+    N4[Queue]
+    N5(Load)
+    N0 -->|yes| N1
+    N0 --> N2
+    N2 --> N3
+    N1 -->|fail| N4
+    N4 -->|ok| N5
+    N4 -.->|rollback| N0
+    N4 -.-> N3
+    N2 --> N1

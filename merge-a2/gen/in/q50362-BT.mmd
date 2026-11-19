@@ -1,0 +1,16 @@
+flowchart BT
+    subgraph G0[Order processing 0]
+        g0m0[g0m0]
+        g0m1[g0m1]
+    end
+    subgraph G1[Order processing 1]
+        g1m0[g1m0]
+        g1m1[g1m1]
+    end
+    g1m1 --> o1
+    g0m1 -.-> G0
+    g1m0 ==> g0m0
+    o3 --> o1
+    g0m1 -- l9 --> o1
+    g1m0 ==> o3
+    g0m0 -.-> G1

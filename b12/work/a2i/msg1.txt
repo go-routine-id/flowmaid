@@ -1,0 +1,51 @@
+fix(blocks): a displaced title-side end never steps back over another edge's crossing, and a found path loses the spike past its stub (B12.11 title-clear rule 2, B12.7 X2.2; B12a2 fix round 4 #2, #3)
+
+What (block mode, behind the internal switch; static scene):
+- `ortho`'s title sides (`TitleSides::of`): a displaced end takes a
+  column past the chip only when no other edge's crossing of that
+  title side lies between its port and the column. Past one, its step
+  back to the port crossed that edge's run inside the frame; such an
+  end (and every one after it on that side) is drawn as before.
+- `router::route_edge` drops the spikes of a found path (`despike`, a
+  block layout's static scene only): a goal stub is reached only from
+  outside its node, so where a lattice line ran between a side and its
+  stub the search went on past the stub and came back onto it at no
+  bend's cost, and the drawn path doubled back over itself.
+
+Why (verifier item #2, a regression of 507b0d6): blocks/lr drawn BT
+went from 1 static crossing (the package start and 9f51f77) to 3.
+X2.2's column room made EDGE broad enough for columns past its chip:
+`cdn -> gateway` (an exit wholly under the chip) took one past
+`ship -> pager`'s crossing and stepped back over it and `cart ->
+pager`, and `cart -> pager`, left no column, was rerouted into pager's
+right side through a path that ran 4 px past its stub and back (the
+tick beside the arrowhead). It was the only path reversal among the
+block-mode direction copies.
+
+Changed (static, block mode; default build byte-identical,
+off-identity test green): of the 332 direction copies of
+tests/fixtures/{blocks,quality,notes} and the 32 of examples/, only
+blocks/lr drawn BT: x_drawn 3 -> 1, lateral_x 2 -> 3 (`cdn`'s two
+exits leave by its left wall again, as at 9f51f77: the frame has no
+column past the chip that stays off `ship -> pager`'s), no path
+reversal (verifier's reversals.py: 1 -> 0 over the copies), no title
+struck (the frame keeps X2.2's breadth, so `cart -> pager` passes
+past the title's end where 9f51f77 ran it into the last letter).
+Routed output unchanged on every copy. Suite-on failing tests: the
+same 14 names.
+
+Record (verifier item #3): 507b0d6's message listed 12 changed
+direction copies; it changed 14. Missing were blocks/lr drawn TD
+(EDGE 50 px broader on its right for the column room, `cdn -> queue`
+straight down without its kink; harness numbers unchanged) and blocks/lr
+drawn BT (x_drawn 1 -> 3, lateral_x 3 -> 2, the doubling-back end at
+pager), the regression this commit fixes.
+
+Tests: blockcheck::a_displaced_end_never_steps_back_over_another_edges_crossing_of_its_title_side
+(lr BT x_drawn <= 1, 3 before; no drawn path of any block fixture in
+any direction turns straight back on itself);
+router::tests::a_found_path_loses_the_spike_past_its_stub. No gate or
+snapshot changes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

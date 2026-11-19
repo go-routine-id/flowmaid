@@ -1,0 +1,23 @@
+flowchart LR
+    N0{Fetch}
+    N1([Validate archive])
+    N2[(Done retry)]
+    N3[Notify]
+    N4([Store])
+    N5[Emit]
+    N6{Validate fetch}
+    N7[Load archive]
+    N8{{Retry queue}}
+    N0 -->|yes| N1
+    N0 -->|fail| N2
+    N1 --> N3
+    N2 -->|no| N4
+    N2 --> N5
+    N4 --> N6
+    N5 --> N7
+    N6 --> N8
+    N1 --> N6
+    N0 --> N8
+    N8 --> N3
+    N8 -->|rollback| N3
+    N6 -.->|back| N5

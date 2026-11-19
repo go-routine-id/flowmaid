@@ -1,0 +1,11 @@
+flowchart RL
+    subgraph G[Payments]
+        m0[ledger]
+        m1[auth service]
+    end
+    s0[src0] --> G
+    s1[src1] --> m0
+    s1 --> m0
+    s2[src2] --> G
+    s2 --> m0
+    m1 --> z[end]

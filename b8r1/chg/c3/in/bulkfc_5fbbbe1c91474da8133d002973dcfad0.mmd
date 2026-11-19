@@ -1,0 +1,16 @@
+flowchart BT
+    N0{Parse notify}
+    N1([Check])
+    N2(Parse)
+    N3([Archive])
+    N4{Parse}
+    N0 --> N1
+    N0 --> N2
+    N2 --> N3
+    N1 --> N4
+    N1 --> N2
+    N2 --> N4
+    N0 --> N3
+    N2 --> N1
+    N2 -->|rollback| N0
+    N4 ==> N2

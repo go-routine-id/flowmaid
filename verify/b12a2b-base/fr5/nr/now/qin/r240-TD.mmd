@@ -1,0 +1,14 @@
+flowchart TD
+    subgraph G[WWW Mammoth Wombat Overview]
+        m0[x wide member node]
+        m1[db]
+        m0 --> m1
+    end
+    s0[src0] -- "lbl4" --> G
+    s0 --> m0
+    s1[src1] -- "lbl5" --> G
+    s1 --> m1
+    s2[src2] --> G
+    s3[src3] --> G
+    s4[src4] --> G
+    m1 --> z[end]

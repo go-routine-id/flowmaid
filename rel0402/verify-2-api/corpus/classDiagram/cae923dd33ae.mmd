@@ -1,0 +1,10 @@
+classDiagram
+direction RL
+class Box~T~
+class Map~K, V~
+class List~List~int~~
+Box~T~ <|-- Map~K, V~
+List~List~int~~ --> Box
+note for Box "generic box"
+note for Map "map"
+Box --> Box : self

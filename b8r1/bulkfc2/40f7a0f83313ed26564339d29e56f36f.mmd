@@ -1,0 +1,22 @@
+flowchart LR
+    N0(Archive parse)
+    N1{Fetch}
+    N2(Emit)
+    N3[Queue report]
+    N4([Archive load])
+    N5{Done fetch}
+    N6[Load emit]
+    N7{Archive parse}
+    N0 --> N1
+    N1 -->|no| N2
+    N2 --> N3
+    N3 -->|fail| N4
+    N3 -->|ok| N5
+    N5 --> N6
+    N5 --> N7
+    N6 --> N7
+    N2 --> N6
+    N2 --> N5
+    N1 --> N0
+    N5 -.-> N4
+    N5 -.-> N1

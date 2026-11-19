@@ -1,0 +1,12 @@
+flowchart TD
+    subgraph S[Service]
+        a --> b --> c
+    end
+    S --> b
+    c --> S
+    S --> S
+    T[top] --> S
+    subgraph EMPTY[Nothing here]
+    end
+    T --> EMPTY
+    EMPTY --> c

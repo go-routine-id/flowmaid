@@ -1,0 +1,5 @@
+architecture-beta
+    service user(user)[User]
+    group frontend(cloud)[Frontend]
+    service web(web)[Web App] in frontend
+    user:B --> T:web

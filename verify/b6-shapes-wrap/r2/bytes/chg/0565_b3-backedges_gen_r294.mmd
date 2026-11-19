@@ -1,0 +1,21 @@
+flowchart RL
+    N0(Load notify)
+    N1{Done}
+    N2(Store)
+    N3([Validate])
+    N4[Emit]
+    N5[Archive store]
+    N6(Archive)
+    N7([Report])
+    N8{{Load}}
+    N0 -->|next| N1
+    N0 --> N2
+    N2 -->|fail| N3
+    N2 -->|no| N4
+    N3 -->|yes| N5
+    N5 -->|ok| N6
+    N4 -->|yes| N7
+    N6 -->|yes| N8
+    N0 --> N5
+    N7 -->|back| N1
+    N8 -.->|rollback| N1

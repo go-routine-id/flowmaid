@@ -1,0 +1,26 @@
+== fmt
+== clippy
+FAILED: cargo clippy --all-targets -- -D warnings
+    Checking flowmaid v0.33.0 (/home/user/flowmaid)
+error: very complex type used. Consider factoring parts into `type` definitions
+   --> tests/quality.rs:418:19
+    |
+418 |     let mut cols: [Vec<Vec<(&str, f64, Agg)>>; 2] = [Vec::new(), Vec::new()];
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#type_complexity
+    = note: `-D clippy::type-complexity` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::type_complexity)]`
+
+error: could not compile `flowmaid` (test "quality") due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+== test
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+== doctest
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.32s
+== msrv
+    Finished dev [unoptimized + debuginfo] target(s) in 25.64s
+== wasm
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 10.21s
+== rustdoc
+GUARD: FAILURES

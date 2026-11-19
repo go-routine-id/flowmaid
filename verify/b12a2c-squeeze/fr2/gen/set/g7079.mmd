@@ -1,0 +1,17 @@
+flowchart RL
+  n1["report"]
+  subgraph B0["Data tier"]
+    n2["cache"]
+    n3["search db merge"]
+    n4["ship"]
+  end
+  subgraph B1["Back office and finance"]
+    n5["notify"]
+  end
+  n6["audit<br/>merge"]
+  n2 -.-> n5
+  n6 --> n2
+  n2 ==> n4
+  n4 --> n3
+  n6 -.-> n1
+  n6 ==> n3

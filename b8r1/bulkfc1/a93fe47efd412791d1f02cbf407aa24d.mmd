@@ -1,0 +1,18 @@
+flowchart RL
+  subgraph F0 [Frame 0]
+    n6[Node 6]
+  end
+  n0 <==> F0
+  n5 --x n1
+  n2 <--> n6
+  n3 --- n1
+  n1 --- n6
+  n7 ==> n8
+  n4 --o n5
+  n0 ==>|thick lbl| n4
+  n8 o--o n5
+  n8 --x n1
+  n6 --- n7
+  n1 <--> n4
+  n4 --> n2
+  linkStyle 2 stroke:#c33,stroke-width:12px

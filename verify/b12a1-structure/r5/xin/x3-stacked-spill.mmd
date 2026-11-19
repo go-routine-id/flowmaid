@@ -1,0 +1,22 @@
+flowchart LR
+    h1[Gateway] --> s1
+    h1 --> s2
+    h1 --> s3
+    h2[Worker A] --> s1
+    h2 --> s2
+    h3[Worker B] --> s2
+    h3 --> s3
+    h3 --> s4
+    h4[Worker C] --> s1
+    h4 --> s4
+    subgraph data[Data tier]
+        direction TB
+        s1[(Primary db)]
+        s2[(Cache)]
+        s3[(Queue)]
+        s4[(Objects)]
+    end
+    s1 --> m[Metrics]
+    s2 --> m
+    s3 --> m
+    s4 --> m

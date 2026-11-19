@@ -1,0 +1,85 @@
+flowchart TD
+  n1["audit<br/>ship"]
+  n2["queue"]
+  subgraph B0["Fulfilment desk"]
+    n3["ingest worker queue"]
+    n4["merge"]
+    n5["billing"]
+    n6["split"]
+    subgraph B0s0["Ops 0"]
+      n7["notify"]
+      n8["ship mail notify"]
+    end
+  end
+  subgraph B1["Ingest"]
+    n9["worker"]
+    n10["ship<br/>notify"]
+    n11["mail"]
+    n12["queue"]
+    subgraph B1s0["Ingest 0"]
+      n13["db"]
+    end
+  end
+  subgraph B2["Ingest"]
+    n14["ingest<br/>notify"]
+    n15["merge"]
+    n16["billing cache notify"]
+  end
+  subgraph B3["Core"]
+    n17["ship"]
+    n18["mail"]
+    n19["db"]
+    n20["db<br/>cache"]
+    subgraph B3s0["Ops 0"]
+      n21["search"]
+      n22["mail split report"]
+      n23["search"]
+    end
+    subgraph B3s1["Core 1"]
+      n24["pack search worker<br/>queue"]
+      n25["worker"]
+      n26["api"]
+    end
+  end
+  n27["mail"]
+  n24 --> n18
+  n3 -.-> n11
+  n11 ==> n5
+  n1 --> n20
+  n2 -->|api| n24
+  n16 -->|audit| B3
+  n18 -->|worker| n4
+  n26 --> n15
+  n11 -.->|mail| n17
+  n4 --> n25
+  n9 --> n5
+  n5 --> B3s0
+  n4 --> n14
+  n17 --> n12
+  n1 -->|queue| n18
+  n27 ==>|mail| n2
+  n2 -.-> n23
+  n18 --> n7
+  n20 -.-> n14
+  n6 -->|pack| n25
+  n4 --> n15
+  n10 --> n14
+  n12 --> n19
+  n23 --> n4
+  n17 -->|ingest| n6
+  n20 -->|queue| n12
+  n9 --> n6
+  n6 -->|store| n11
+  n18 -.-> n1
+  n17 -.-> n23
+  n18 ==>|pack| n3
+  n25 -.-> n13
+  n3 --> n19
+  n20 -.-> n25
+  n14 -.->|split| n5
+  n1 ==> n16
+  n17 ==>|index| n14
+  n24 --> n21
+  n2 --> n18
+  n10 -.->|db| n11
+  n11 -.-> n8

@@ -1,0 +1,24 @@
+flowchart RL
+    N0(Validate)
+    N1(Archive)
+    N2(Fetch)
+    N3[Parse]
+    N4[Report load]
+    N5[Parse]
+    N6(Retry report)
+    N7([Archive])
+    N8{Queue check}
+    N9[Archive done]
+    N0 --> N1
+    N1 --> N2
+    N2 --> N3
+    N1 --> N4
+    N2 --> N5
+    N5 --> N6
+    N6 --> N7
+    N5 --> N8
+    N7 -->|ok| N9
+    N1 --> N8
+    N9 --> N8
+    N7 --> N6
+    N6 -.->|again| N5

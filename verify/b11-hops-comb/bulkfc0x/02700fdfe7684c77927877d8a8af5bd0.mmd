@@ -1,0 +1,18 @@
+flowchart LR
+    N0{Parse}
+    N1(Queue)
+    N2([Notify queue])
+    N3(Check archive)
+    N4(Fetch emit)
+    N5(Check)
+    N6[Emit done]
+    N0 --> N1
+    N1 --> N2
+    N1 --> N3
+    N3 --> N4
+    N3 --> N5
+    N4 --> N6
+    N0 --> N5
+    N3 --> N5
+    N3 --> N5
+    N6 -.->|again| N4

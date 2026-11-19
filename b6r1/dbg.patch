@@ -1,0 +1,40 @@
+diff --git a/src/edgepass.rs b/src/edgepass.rs
+index 76c8a99..1b86295 100644
+--- a/src/edgepass.rs
++++ b/src/edgepass.rs
+@@ -310,21 +310,8 @@ pub(crate) fn finish_fixed(g: &Graph, sc: &mut Scene, mode: Mode, fixed: &[bool]
+         *f = x;
+     }
+     let mut moved = vec![false; sc.edges.len()];
+-    let dbg = |sc: &Scene, w: &str| {
+-        if let Ok(v) = std::env::var("FMDBG") {
+-            let (a, b) = v.split_once(',').unwrap();
+-            for e in &sc.edges {
+-                if e.from == a && e.to == b {
+-                    eprintln!("{w} {:?} {:?}", e.waypoints, e.bezier);
+-                }
+-            }
+-        }
+-    };
+-    dbg(sc, "in");
+     crate::ports::assign(g, sc, &cx, mode, &mut moved);
+-    dbg(sc, "assign");
+     crate::router::repair(g, sc, &cx, mode, &mut moved);
+-    dbg(sc, "repair");
+     // A rerouted end may have switched to another side of its node and
+     // landed on a port another edge already holds: space those groups
+     // again. Groups the router left alone are already spaced and stay
+@@ -333,13 +320,9 @@ pub(crate) fn finish_fixed(g: &Graph, sc: &mut Scene, mode: Mode, fixed: &[bool]
+     // After the ports are spaced again, so the channel nudge sees (and
+     // keeps) the final ends; in the static scene it ends by putting each
+     // side's ends in the order their paths now head (G9).
+-    dbg(sc, "respace");
+     crate::router::nudge(g, sc, &cx, mode, &mut moved);
+-    dbg(sc, "nudge");
+     glyph_stubs(sc, &cx, &mut moved);
+-    dbg(sc, "stubs");
+     snap_ends(sc, &cx);
+-    dbg(sc, "snap");
+     let budget = match mode {
+         Mode::Static => crate::labels::LABEL_STATIC_WORK,
+         Mode::Routed => crate::labels::LABEL_ROUTE_WORK,

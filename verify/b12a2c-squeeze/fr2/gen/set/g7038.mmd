@@ -1,0 +1,49 @@
+flowchart BT
+  n1["notify"]
+  n2["notify<br/>index"]
+  subgraph B0["Platform"]
+    n3["search pack api"]
+    n4["parse store notify<br/>parse"]
+    subgraph B0s0["Back office and finance 0"]
+      n5["mail audit report"]
+      n6["ship<br/>notify"]
+      n7["mail"]
+    end
+    subgraph B0s1["Ops 1"]
+      n8["notify"]
+      n9["store"]
+    end
+  end
+  subgraph B1["Storefront"]
+    n10["index"]
+    subgraph B1s0["Core 0"]
+      n11["billing report split"]
+      n12["store"]
+      n13["ingest<br/>parse"]
+    end
+    subgraph B1s1["Back office and finance 1"]
+      n14["search pack pack"]
+      n15["db"]
+      n16["parse split mail<br/>index"]
+    end
+  end
+  n17["ship"]
+  n9 ==> n6
+  n8 --> n5
+  n7 ==>|split| n13
+  n6 -.-> n13
+  n8 -.->|billing| n13
+  n7 -->|pack| n3
+  n7 --> n11
+  n14 -->|search| n1
+  n10 -.-> n17
+  n13 --> n16
+  n13 --> n11
+  n4 -->|index| n16
+  n9 --> n11
+  n4 -->|db| n14
+  n13 -.-> n17
+  n4 --> B0
+  n16 --> n5
+  n12 ==> n7
+  n8 ==> n14

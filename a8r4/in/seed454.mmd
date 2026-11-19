@@ -1,0 +1,25 @@
+architecture-beta
+    group g0(disk)[Data Storage Layer]
+    group g1(nonsense)[Ops] in g0
+    group g2(internet)[Data]
+    group g3(server)[Observability]
+    service s0(internet)[PostgreSQL Primary 0] in g3
+    service s1(internet)[PostgreSQL Primary 1] in g3
+    service s2(nonsense)[Svc 2] in g3
+    service s3(nonsense)[Svc 3]
+    service s4(database)[Svc 4]
+    service s5(disk)[PostgreSQL Primary 5] in g2
+    service s6(disk)[Web App 6] in g1
+    service s7(monitoring)[Web App 7] in g2
+    service s8(cloud)[Authentication and Authorization Service 8] in g3
+    service s9(database)[Svc 9] in g0
+    service s10(server)[Authentication and Authorization Service 10]
+    service s11(monitoring)[Authentication and Authorization Service 11]
+    s10:R <--> L:s11
+    s5:T <--> B:s4
+    s6:R -- B:s8
+    s5{group}:T <-[sync]-> B:s11
+    s8:R -[calls]- L:s11
+    s10:B <-[reads config]-> T:s1
+    s6:R -[calls]-> L:s7
+    s7:R --> L:s3

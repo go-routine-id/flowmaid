@@ -1,0 +1,8 @@
+flowchart TD
+stateDiagram-v2
+classDiagram
+erDiagram
+mindmap
+classDiagram\nnote "x"
+flowchart LR\nA
+mindmap\n  r

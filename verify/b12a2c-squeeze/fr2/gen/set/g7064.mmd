@@ -1,0 +1,27 @@
+flowchart LR
+  n1["auth"]
+  n2["merge<br/>cache"]
+  subgraph B0["Core"]
+    n3["split<br/>billing"]
+  end
+  subgraph B1["Fulfilment desk"]
+    n4["pack"]
+    n5["ship"]
+    n6["store"]
+    n7["db"]
+    subgraph B1s0["Ops 0"]
+      n8["notify store mail"]
+    end
+  end
+  n9["db<br/>pack"]
+  n10["mail ship ship<br/>queue"]
+  n10 -->|parse| n4
+  n5 -->|split| n6
+  n1 -.->|report| n5
+  n10 --> n2
+  n2 --> n1
+  n4 -.-> n7
+  n9 --> n10
+  n9 -.-> n2
+  n1 --> n10
+  n7 --> n5

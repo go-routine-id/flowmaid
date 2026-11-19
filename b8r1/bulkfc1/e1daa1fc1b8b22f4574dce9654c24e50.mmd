@@ -1,0 +1,22 @@
+flowchart RL
+    N0([Done])
+    N1[Archive store]
+    N2[Parse]
+    N3(Parse retry)
+    N4{Done notify}
+    N5([Parse queue])
+    N6[Parse check]
+    N7(Retry done)
+    N8{Notify done}
+    N0 -->|yes| N1
+    N0 --> N2
+    N1 -->|yes| N3
+    N2 -->|yes| N4
+    N2 --> N5
+    N5 --> N6
+    N5 --> N7
+    N5 --> N8
+    N3 --> N8
+    N4 --> N3
+    N7 --> N5
+    N7 -->|again| N3

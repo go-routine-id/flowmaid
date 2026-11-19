@@ -1,0 +1,8 @@
+953c10c fix(state): a note card wholly beside its state links from the facing side
+d54efb0 fix(state): choice labels for twin transitions sit beside their lines; too-wide fans spread (Q14)
+115c383 fix(state): fitting fork/join bars twice changes nothing; nested forks drop straight
+2adae78 fix(state): a left note in an entered composite leads its state by one layer
+6eba1ed fix(state): bars count composite branches; a note beside a bar is no branch
+f4a6e43 fix(state): stack a <<choice>> fan's labels in rows by their targets (Q14)
+810db17 feat(state): fork/join bars span their branches, branches drop straight
+3179cb9 feat(state): draw notes as cards, compact <<choice>>, name choice/bars in tooltips (M9, Q14)

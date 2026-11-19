@@ -1,0 +1,11 @@
+flowchart LR
+  H0 ---|no| N0
+  H0 -->|retry| N2
+  H0 -.->|gift wrap| N3
+  H1 -->|express| N1
+  H1 -->|no| N2
+  H1 -->|a much longer label here| N2
+  H1 ==>|yes| N2
+  H1 ==> N4
+  H1 ==> N0
+  N1 -->|express| N0

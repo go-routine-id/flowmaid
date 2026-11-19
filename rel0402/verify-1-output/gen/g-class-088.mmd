@@ -1,0 +1,62 @@
+classDiagram
+C8 "1" -- "*" C2
+C15 -- C8 : <b>bold</b>
+C14 <|-- C10
+C6 <|-- C12 : <b>bold</b>
+C8 *-- C14
+C3 "1" -- "*" C12 : <b>bold</b>
+C9 "1" <--> "*" C10
+C2 o-- C5 : beta
+C0 "1" ..|> "*" C6
+C11 -- C5 : gamma
+C0 *-- C4
+C0 "1" <--> "*" C5
+C8 <--> C4
+C8 o-- C7
+C5 "1" <|-- "*" C2
+C10 *-- C11 : gamma
+C1 <|-- C4 : beta
+C10 <|-- C8
+C11 -- C12
+C5 -- C8
+C4 <--> C1 : <b>bold</b>
+C3 "1" o-- "*" C8
+C2 <|-- C6 : delta
+C2 "1" o-- "*" C12 : delta
+C2 ..> C3
+C14 -- C5
+C5 <|-- C8
+C9 ..> C5 : <b>bold</b>
+C14 <|-- C5
+C15 --> C10 : delta
+C14 --> C3
+C7 ..> C11 : delta
+C12 --> C12
+C10 *-- C4
+C1 <|-- C1
+C0 ..|> C6
+C3 --> C7 : alpha
+C14 "1" -- "*" C9
+C3 "1" <--> "*" C9
+C11 o-- C2
+C10 "1" o-- "*" C11
+C9 ..> C5
+C8 "1" <|-- "*" C0
+C4 <|-- C15 : Customer Order
+C6 "1" ..|> "*" C11
+C4 *-- C3
+C5 "1" <--> "*" C10 : <b>bold</b>
+C2 -- C5
+C8 <--> C4
+class C0 {
+  +int id
+  +name() String
+}
+class C5 {
+  +int id
+  +name() String
+}
+class C9 {
+  +int id
+  +name() String
+}

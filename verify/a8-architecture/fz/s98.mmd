@@ -1,0 +1,16 @@
+architecture-beta
+    group g0(server)[Frontend]
+    group g1(disk)[Observability]
+    group g2(server)[Data Storage Layer]
+    group g3(internet)[Backend Services]
+    service s0(server)[Service 0]
+    service s1(internet)[Service 1] in g0
+    service s2(database)[Service 2] in g2
+    service s3(internet)[Service 3] in g1
+    s0:T -- B:s3
+    s3:R -- B:s1
+    s2:L --> R:s3
+    s2:L -- L:s1
+    s2:R --> T:s3
+    s1:B -- T:s2
+    s3:L --> R:s1

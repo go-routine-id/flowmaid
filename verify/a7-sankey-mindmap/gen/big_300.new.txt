@@ -1,0 +1,1 @@
+big_300.mmd: n=301 canvas 5273x5181 boxfill 4.5% root@(2640,2593) rel (0.50,0.50) trunks 2448-2511 spokes(all) 58-2511 ratio 43.23 time 20.91ms

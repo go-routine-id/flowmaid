@@ -1,0 +1,15 @@
+sequenceDiagram
+    actor U as User
+    participant S as Service
+    participant W as Worker
+    U->>+S: request
+    S->>+S: validate input
+    S->>W: enqueue job
+    activate W
+    W-->>S: accepted
+    S->>S: log it
+    W->>W: crunch numbers for a while
+    deactivate W
+    S-->>-U: done
+    deactivate S
+    U-->S: bye

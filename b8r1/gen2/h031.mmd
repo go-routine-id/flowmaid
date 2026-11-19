@@ -1,0 +1,23 @@
+flowchart LR
+  s0["api user"]
+  s1["search pay order"]
+  subgraph g0["billing api zone"]
+    direction TB
+    m0["store"]
+  end
+  subgraph g1["metric api metric zone"]
+    m1["auth trace billing"]
+    m2["ship"]
+    m1 --> m2
+  end
+  subgraph g2["metric ship metric zone"]
+    direction LR
+    m3["metric"]
+    m4["ship user"]
+    m5["pay"]
+    m4 --> m5
+  end
+  s1 --> g0
+  s0 --> g1
+  s1 --> g2
+  s1 --> L6["metric search notify"]

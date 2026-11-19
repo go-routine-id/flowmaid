@@ -1,0 +1,12 @@
+flowchart LR
+    subgraph G[Core]
+        m0[db]
+        m1[db]
+        m2[ledger]
+        m0 --> m1
+    end
+    s0[src0] --> m0
+    s0 --> m2
+    s1[src1] -- "lbl6" --> m0
+    s1 -- "lbl9" --> G
+    s2[src2] --> m1

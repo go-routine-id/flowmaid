@@ -1,0 +1,17 @@
+flowchart LR
+    subgraph TOP[Top]
+        subgraph TI[Ti]
+            t1[first target]
+            t2[second target]
+            t3[third target]
+        end
+    end
+    subgraph BOT[Bottom block]
+        s1[source one]
+        s2[source two]
+        s3[source three]
+    end
+    s1 --> t1
+    s2 --> t2
+    s3 --> t3
+    s1 --> t3

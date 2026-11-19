@@ -1,0 +1,20 @@
+flowchart RL
+    N0(Emit)
+    N1(Fetch)
+    N2{Emit}
+    N3([Fetch store])
+    N4(Retry)
+    N5[Retry]
+    N6[/Fetch/]
+    N7[Parse]
+    N8([Retry])
+    N0 --> N1
+    N0 --> N2
+    N0 -->|yes| N3
+    N3 --> N4
+    N4 --> N5
+    N5 -->|next| N6
+    N5 --> N7
+    N5 --> N8
+    N4 --> N8
+    N4 -->|again| N0

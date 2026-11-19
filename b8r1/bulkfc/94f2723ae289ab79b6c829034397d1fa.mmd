@@ -1,0 +1,18 @@
+flowchart LR
+  A[Source] --> B[Target one]
+  A --> C[Target two]
+  A <--> D[Target three]
+  E[Other] --o D
+  E --x B
+  A e1@--> E
+  e1@{ curve: linear }
+  F[Far] -.-> A
+  B ==> F
+  linkStyle 0 stroke-width:14px,stroke:#2a7
+  linkStyle 1 stroke-width:40px,stroke:#a33
+  linkStyle 2 stroke-width:9px
+  linkStyle 3 stroke-width:16px,stroke:#33a
+  linkStyle 4 stroke-width:12px
+  linkStyle 5 stroke-width:20px,stroke:#a7a
+  linkStyle 6 stroke-width:7px,stroke:#777
+  linkStyle 7 stroke-width:30px,stroke:#ca3

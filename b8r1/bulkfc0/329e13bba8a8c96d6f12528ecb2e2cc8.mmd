@@ -1,0 +1,17 @@
+flowchart LR
+  subgraph F0 [Frame 0]
+    n1[Node 1]
+    n6[Node 6]
+    n3[Node 3]
+  end
+  n0[Node 0] -.-> n6[Node 6]
+  n6[Node 6] ==> n4[Node 4]
+  n3[Node 3] --o n6[Node 6]
+  n3[Node 3] -.-> n1[Node 1]
+  n2[Node 2] --o n0[Node 0]
+  n0[Node 0] --> n5[Node 5]
+  n3[Node 3] --> n2[Node 2]
+  n2[Node 2] --> n6[Node 6]
+  n6[Node 6] -.-> n3[Node 3]
+  n6[Node 6] ==> n2[Node 2]
+  n5[Node 5] -.-> n0[Node 0]

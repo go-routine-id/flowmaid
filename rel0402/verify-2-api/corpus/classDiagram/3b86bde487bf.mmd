@@ -1,0 +1,18 @@
+classDiagram
+direction LR
+A --> B : has many of
+A --> C
+B --|> C
+A ..> C
+C --|> B
+A --> A : a0
+A "1" --> "*" A : a1
+A o-- A
+A o-- A
+A --> A : a4
+A o-- A : a5
+A o-- A : a6
+A o-- A : a7
+A *-- A : a8
+C "1" --> "*" C : c0
+C o-- C : c1

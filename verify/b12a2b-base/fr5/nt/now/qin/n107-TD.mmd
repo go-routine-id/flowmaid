@@ -1,0 +1,16 @@
+flowchart TD
+    subgraph A[Shipping and returns desk]
+        a0[a0 wide node]
+        a1[a1]
+    end
+    subgraph B[Shipping and returns desk east]
+        b0[b0]
+        b1[b1]
+    end
+    a1 --> b0
+    a1 --> b1
+    p[p] --> A
+    p --> a0
+    q[q] --> B
+    q --> b0
+    r[r] --> A

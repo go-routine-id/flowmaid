@@ -1,0 +1,18 @@
+lane hw "Hardware" {
+  cpu[CPU] {
+    anchor out bottom 0.5
+    core0[Core 0]
+    core1[Core 1] { anchor irq right }
+    layout column
+  }
+  mem[Memory] {
+    bank0[Bank 0]
+    bank1[Bank 1]
+    layout row
+  }
+}
+lane sw "Software" {
+  bus[Bus]
+}
+cpu.core1@irq --> mem.bank0
+cpu@out       --> bus:top

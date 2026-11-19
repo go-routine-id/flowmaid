@@ -1,0 +1,7 @@
+60:#[non_exhaustive] 61:pub struct SceneNode { 
+84:#[non_exhaustive] 85:pub struct SceneEdge { 
+117:#[non_exhaustive] 118:pub struct SceneCluster { 
+137:#[non_exhaustive] 138:pub struct Scene { 
+156:pub enum Hit { 
+3790:#[non_exhaustive] 3791:pub struct SvgOptions { 
+3834:#[non_exhaustive] 3835:pub struct A11y { 

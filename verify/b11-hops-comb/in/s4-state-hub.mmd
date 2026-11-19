@@ -1,0 +1,18 @@
+stateDiagram-v2
+  [*] --> Idle
+  Idle --> Loading: fetch
+  Idle --> Editing: edit
+  Idle --> Deleting: remove
+  Idle --> Exporting: export
+  Loading --> Idle: done
+  Loading --> Failed: error
+  Editing --> Saving: save
+  Editing --> Idle: cancel
+  Saving --> Idle: ok
+  Saving --> Failed: error
+  Deleting --> Idle: ok
+  Deleting --> Failed: error
+  Exporting --> Idle: ok
+  Exporting --> Failed: timeout
+  Failed --> Idle: retry
+  Failed --> [*]

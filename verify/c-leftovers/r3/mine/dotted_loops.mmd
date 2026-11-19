@@ -1,0 +1,12 @@
+classDiagram
+com.shop.Order --> com.shop.Line : has
+com.shop.Order --> com.shop.Order : parent
+com.shop.Order --> com.shop.Order : next
+com.shop.Order --> com.shop.Order : prev
+com.shop.Line --> com.shop.Product
+x.o--o.y
+note for com.shop.Order "root"
+class com.shop.Line {
+  +int qty
+  +total() Money
+}

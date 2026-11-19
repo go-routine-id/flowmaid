@@ -1,0 +1,22 @@
+classDiagram
+direction TB
+A ..> B
+B -- C
+C <|-- D
+C --> E
+E "1" --> "*" F : has many of
+C ..|> G
+E ..> C
+A <|-- C
+E *-- E
+E o-- E : e1
+E o-- E : e2
+E --> E : e3
+E "1" --> "*" E
+F "1" --> "*" F
+F "1" --> "*" F : f1
+class C {
+ +int id
+ +run() void
+ +stop()
+}

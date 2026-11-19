@@ -1,0 +1,15 @@
+flowchart LR
+    subgraph A[Upstream]
+        a0[start] --> a1
+        subgraph AA[Inner A at the bottom]
+            a1[leaf a]
+        end
+    end
+    subgraph B[Downstream]
+        subgraph BB[Inner B at the top]
+            b1[leaf b]
+        end
+        b1 --> b2[end]
+    end
+    a1 --> b1
+    b2 -. back .-> a0

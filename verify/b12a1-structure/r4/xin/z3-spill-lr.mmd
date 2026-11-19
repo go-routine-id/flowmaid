@@ -1,0 +1,38 @@
+flowchart LR
+  subgraph EDGE[Edge]
+    gw[Gateway]
+  end
+  subgraph APP[App]
+    s1[svc one]
+    s2[svc two]
+    s3[svc three]
+  end
+  subgraph DATA[Data]
+    db[(db)]
+    q[queue]
+    ca[cache]
+  end
+  subgraph OPS[Ops]
+    logs[logs]
+    met[metrics]
+    al[alerts]
+  end
+  gw --> s1
+  gw --> s2
+  gw --> s3
+  gw --> db
+  gw --> q
+  gw --> ca
+  gw --> met
+  gw --> logs
+  s1 --> db
+  s2 --> q
+  s3 --> ca
+  s1 --> logs
+  s2 --> logs
+  s3 --> logs
+  db --> logs
+  q --> logs
+  ca --> logs
+  met --> al
+  logs --> al

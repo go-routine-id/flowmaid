@@ -1,0 +1,1253 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index c365578..cc3c6fc 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -17,6 +17,16 @@ project adheres to [Semantic Versioning](https://semver.org/).
+   the end of an edge drawn straight across is not counted, that end stays
+   where its partner lies). `Metrics::details` lists each label a stroke
+   runs through (`lbl_edge`).
++- **Class diagrams: dotted names** (`com.example.Order`, `A.B --> C`).
++  A name may hold single dots, as in mermaid: `A.B` is one class called
++  `A.B`, the same class in a declaration, a `class A.B { … }` block, an
++  inline member (`A.B : +id int`), a relation, a `note for A.B` and a
++  backtick literal. Only `..` is the dotted line (`A.B..>C` is `A.B`
++  depending on `C`), and a dot never starts or ends a name (`A.`, `.A`
++  and `A...B` stay errors, as in mermaid). Such names were parse errors
++  in a relation, an inline member and a `note for`. A name part that is
++  just `o` is no aggregation glyph: `pkg.o --> B` links the class
++  `pkg.o`, where mermaid's lexer gives up on the line.
+ 
+ ### Changed
+ 
+@@ -160,6 +170,57 @@ project adheres to [Semantic Versioning](https://semver.org/).
+   the pointer; `to_svg` of bench-75 takes a fifth less time
+   (4.1 -> 3.2 ms, fewer masks).
+ 
++### Fixed
++
++- **Class diagrams: a plain fan of six no longer crosses itself.** Six
++  classes into one hub (`Svc0 --> Hub` … `Svc5 --> Hub`, or the hub out
++  to six) left the two outermost relations as curves that swept across
++  their neighbours' routes, 4 crossings where mermaid draws none: the
++  innermost jog took the middle one of the gap's three lanes and the
++  next the lane below, and the outermost — its leg into the hub 3.5 px
++  beside the innermost's leg out of its class — found no lane under
++  both. A curve that would be a jog now joins the jogs of its gap when
++  they are stacked in nesting order, so the six nest a lane's room
++  apart, in every direction and for every relation kind. Fans of other
++  sizes, and every other class diagram tried (900 inputs), draw as
++  before.
++- **Class diagrams: self-relations keep off a neighbour's.** A class's
++  loops were placed clear of the other boxes only, so with a loop on
++  each of two siblings they met in the gap between: five loops on one
++  class set a label on its sibling's loop, eight unlabelled ones ran
++  four deep through the sibling's loop and its label, and two siblings
++  with three loops each wove them together. A class's loops and their
++  labels now also keep off the loops and loop labels of the classes
++  drawn before it (in source order), on whichever face is clear — a box
++  or one of the class's own ends still counts first, so no loop is sent
++  into a box to spare a neighbour's loop. A class with more than eight
++  loops keeps to two faces, as before.
++- **State diagrams: a drag inside a composite resizes no fork or join.**
++  A bar that branches to a composite laid out in its own `direction`
++  spans the composite's frame, and `route()`, `route_sized()` and
++  `route_partial()` fitted it to the frame as it stood, so dragging a
++  state inside the composite, which stretches the frame, stretched the
++  bar too (321 -> 446 px for a state pulled 250 px along its row) —
++  against the rule, since 0.34.0, that a drag never resizes a bar. Every
++  builder now draws the bar the static layout draws: `route()` and
++  `route_sized()` lay such a composite out once more to learn its frame
++  there (only where a bar branches to one), and `route_partial()` keeps
++  each bar as its `base` drew it.
++
++### Documentation
++
++- **State diagrams: where a composite's direction differs from
++  mermaid's.** The README said the `direction` rule is mermaid's for
++  state diagrams too. It is, for a composite that sets one; but a
++  composite that sets none keeps the direction round it here, while
++  mermaid lays it out top-down whichever way the diagram runs — as long
++  as none of its states links out of it and neither it nor a state
++  inside it carries a note (mermaid hangs a note's card outside the
++  composite, which counts there as a link out). Write `direction TB` in
++  the composite for mermaid's column in a `direction LR` diagram. Unlike
++  mermaid, a `direction` a composite does set also holds when a state in
++  it carries a note.
++
+ ## [0.38.0] - 2026-11-10
+ 
+ ### Highlights
+diff --git a/README.md b/README.md
+index 44621a9..e6d5c63 100644
+--- a/README.md
++++ b/README.md
+@@ -357,7 +357,7 @@ Supported subset:
+ 
+ - **States.** `[*]` start/end pseudostates (scoped — a composite gets its own), transitions `A --> B : label`, bare-id state declarations, `state "Long title" as id`, and description lines `id : text` (the first replaces the id as the label, later ones stack).
+ - **Composites.** `state X { ... }` blocks with nesting, and transitions to/from a composite box itself (forward references included).
+-- **Direction.** A composite's `direction` follows the [subgraph rule](#subgraphs): a composite whose states link to each other, and that no edge joins to a state outside it (in either direction), is laid out on its own in its direction — the showcase's `Validating` is one row in a top-down diagram, as in mermaid.
++- **Direction.** A composite's `direction` follows the [subgraph rule](#subgraphs): a composite whose states link to each other, and that no edge joins to a state outside it (in either direction), is laid out on its own in its direction — the showcase's `Validating` is one row in a top-down diagram, as in mermaid. A composite that sets no `direction` keeps the one round it; mermaid lays such a composite out top-down whichever way the diagram runs (unless one of its states links out of it, or it or a state inside it carries a note), so write `direction TB` in the composite for mermaid's column in a `direction LR` diagram. A `direction` the composite does set holds here with a note inside too, where mermaid drops it.
+ - **Choice.** `<<choice>>` is a compact diamond whose branch labels stack in rows by their targets; in `TB`/`BT`, labels too wide for rows spread the targets apart; two transitions to one state put their labels either side of the pair.
+ - **Fork and join.** `<<fork>>` / `<<join>>` are bars laid across the flow (across a composite's own flow inside one) and stretched to span their branches, which drop straight onto their states.
+ - **Notes** are drawn as mermaid draws them:
+@@ -402,10 +402,11 @@ Supported subset:
+   - a fan's jogs nest in order, and a fan wider than its parent's face sends its outermost legs to the side faces, so a class with up to about a dozen subclasses draws its fan without a crossing;
+   - crowded fan-ins (six or more classes pointing at one) can still cross, up to about a dozen times with labels and cardinalities, and much wider fans (twenty or more subclasses) many times, a leg with no free lane keeping a diagonal curve across the others;
+   - cardinalities sit beside their end, clear of lines, glyphs and labels, in every direction;
+-  - a class's self-relations alternate sides and nest, those with cardinalities outermost so each cardinality sits by its own end. They move to a clear face when a sibling sits close (past four loops on such a class, a loop can still pass under the sibling), and their labels sit beside the loops, not on them.
++  - a class's self-relations alternate sides and nest, those with cardinalities outermost so each cardinality sits by its own end. They move to a clear face when a sibling, or a sibling's own loops, sits close (a class with more than eight loops keeps to two faces whatever stands beside it), and their labels sit beside the loops, not on them.
+ - **Notes.** `note "text"` and `note for Class "text"` draw as yellow cards, and an attached note sits just above its class, linked to it by a dotted line. `\n` or `<br/>` breaks a note line. A diagram may hold notes alone. As in mermaid, a note for a class that is never declared stays free.
+ - **Comments.** Trailing `%%` comments are stripped (mermaid prints them as part of the label).
+-- **Not yet supported:** `namespace` blocks, `classDef` / `:::` styling and `click` in class diagrams; dotted names in relations (`A.B --> C`), which are parse errors.
++- **Dotted names.** A name may hold single dots, as in mermaid: `com.example.Order` is one class of that name wherever it is written (`A.B --> C`, `A.B : +id int`, `note for A.B "…"`), `..` stays the dotted line (`A.B..>C`), and a dot never starts or ends a name.
++- **Not yet supported:** `namespace` blocks, `classDef` / `:::` styling and `click` in class diagrams.
+ 
+ See `examples/class.mmd`.
+ 
+diff --git a/src/class.rs b/src/class.rs
+index fa5437d..c98204f 100644
+--- a/src/class.rs
++++ b/src/class.rs
+@@ -384,9 +384,12 @@ const LOOP_NEST: (f64, f64, f64) = (12.0, 28.0, 16.0);
+ /// beside its own end instead of out past the outer loops, next to
+ /// theirs. The labels of a side sit past its outermost loop, side by
+ /// side along the face. A side whose loops would run into another box
+-/// (a sibling close beside the class) or over another edge's end gives
+-/// them to a clear face ([`loop_faces`]). A class's only loop keeps the
+-/// layout's curve while it stays on the layout's side.
++/// (a sibling close beside the class), into the loops or loop labels
++/// of a class drawn before it (classes are drawn in source order: two
++/// siblings' loops used to meet in the gap between them, each label on
++/// the other's loops) or over another edge's end gives them to a clear
++/// face ([`loop_faces`]). A class's only loop keeps the layout's curve
++/// while it stays on the layout's side.
+ fn part_self_loops(sc: &mut Scene, carded: &[bool]) {
+     let idx = node_index(sc);
+     let mut loops: BTreeMap<usize, Vec<usize>> = BTreeMap::new();
+@@ -398,6 +401,9 @@ fn part_self_loops(sc: &mut Scene, carded: &[bool]) {
+         }
+     }
+     let rects: Vec<Rect> = sc.nodes.iter().map(node_rect).collect();
++    // The loops and loop labels of the classes done so far, each one's
++    // box: in the way of a later class's loops like any class.
++    let mut drawn: Vec<Rect> = Vec::new();
+     for (i, js) in loops {
+         let n = sc.nodes[i].clone();
+         let side = face_normal(&n, sc.edges[js[0]].bezier[0]);
+@@ -431,7 +437,7 @@ fn part_self_loops(sc: &mut Scene, carded: &[bool]) {
+             .filter(|&(k, _)| k != i)
+             .map(|(_, &r)| r)
+             .collect();
+-        let faces = loop_faces(&n, &outs, &ends, &widths, &others);
++        let faces = loop_faces(&n, &outs, &ends, &widths, (&others, &drawn));
+         for (f, &out) in outs.iter().enumerate() {
+             let mut on: Vec<usize> = (0..js.len()).filter(|&k| faces[k] == f).collect();
+             // Innermost first: the loops without cardinalities, then
+@@ -449,6 +455,20 @@ fn part_self_loops(sc: &mut Scene, carded: &[bool]) {
+                 }
+             }
+         }
++        for &j in &js {
++            let e = &sc.edges[j];
++            let line = edge_polyline(e);
++            drawn.push(line.iter().fold(
++                (
++                    f64::INFINITY,
++                    f64::INFINITY,
++                    f64::NEG_INFINITY,
++                    f64::NEG_INFINITY,
++                ),
++                |r, p| (r.0.min(p.0), r.1.min(p.1), r.2.max(p.0), r.3.max(p.1)),
++            ));
++            drawn.extend(label_chip(e));
++        }
+     }
+ }
+ 
+@@ -521,16 +541,20 @@ fn face_loops(n: &SceneNode, out: (f64, f64), labels: &[Option<f64>]) -> Vec<Sel
+ /// order of preference) for each of a class's self-loops, `widths`
+ /// their labels' widths: alternately the first two faces, unless the
+ /// loops and labels there would meet a box of `others`, lie over
+-/// `ends` (other edges' ends per face) or meet the loops of another
+-/// face. Then each way of sharing the loops among the four faces is
+-/// tried, round robin as before, the clearest kept; of two as clear,
+-/// the one that uses the preferred faces and nests least.
++/// `ends` (other edges' ends per face), meet the loops of another
++/// face or those `drawn` round other classes (each loop's and each
++/// loop label's box). Then each way of sharing the loops among the
++/// four faces is tried, round robin as before, the clearest kept — a
++/// box, an end or the class's own loops count before any number of
++/// another class's loops, so no loop is sent into a box to spare a
++/// neighbour's loop; of two as clear, the one that uses the preferred
++/// faces and nests least.
+ fn loop_faces(
+     n: &SceneNode,
+     outs: &[(f64, f64); 4],
+     ends: &[usize; 4],
+     widths: &[Option<f64>],
+-    others: &[Rect],
++    (others, drawn): (&[Rect], &[Rect]),
+ ) -> Vec<usize> {
+     let m = widths.len();
+     // Round robin over the faces with loops still to take.
+@@ -547,10 +571,11 @@ fn loop_faces(
+         }
+         faces
+     };
+-    // What a sharing costs: (hits, preference).
++    // What a sharing costs: (hits, other classes' loops met, preference).
+     let cost = |faces: &[usize]| {
+         let mut regions: Vec<Rect> = Vec::new();
+         let mut hits = 0;
++        let mut near = 0;
+         let mut pref = 0;
+         for (f, &out) in outs.iter().enumerate() {
+             let labels: Vec<Option<f64>> = (0..m)
+@@ -588,14 +613,15 @@ fn loop_faces(
+             );
+             hits += others.iter().filter(|&&b| rects_meet(r, b)).count();
+             hits += regions.iter().filter(|&&b| rects_meet(r, b)).count();
++            near += drawn.iter().filter(|&&b| rects_meet(r, b)).count();
+             regions.push(r);
+         }
+-        (hits, pref)
++        (hits, near, pref)
+     };
+     let default = share([m.div_ceil(2), m / 2, 0, 0]);
+     let mut best = (cost(&default), default);
+     // Up to eight loops (165 ways to share them); more keep the default.
+-    if best.0 .0 == 0 || m > 8 {
++    if (best.0 .0, best.0 .1) == (0, 0) || m > 8 {
+         return best.1;
+     }
+     for a in 0..=m {
+@@ -668,7 +694,8 @@ const ORTHO_INSET: f64 = 24.0;
+ /// between perpendicular faces turns once (L). Jogs step aside from
+ /// runs already placed, then restack in nesting order
+ /// ([`nest_jogs`]); a route that would cross a box, or lie on another
+-/// route, keeps its curve. Edges the router routed
++/// route, keeps its curve (unless that restacking finds it a place
++/// among the jogs of its gap). Edges the router routed
+ /// (axis-aligned waypoints) are kept as routed, unless they lie along
+ /// another or enter their glyph on a short leg; a label moves onto its
+ /// new line. `decos[j]` is what edge `j` holds at its start and its end
+@@ -1030,14 +1057,27 @@ impl Zig {
+ /// ([`nest_group`]). The group keeps the new routes only when the whole
+ /// drawing then costs less (crossings, lines merged, label chips
+ /// struck) than before.
++///
++/// An outer route can also find no place at all and keep its curve: in
++/// a plain fan of six the innermost jog takes the middle one of the
++/// gap's three lanes and the next the lane below, and the outermost,
++/// whose leg into the hub drops right beside the innermost's leg out
++/// of its class, has no lane left under both — its curve then swept
++/// across its neighbour's route twice. Such a curve ([`stray_z`])
++/// joins the jogs of its gap as the Z it would be: a group holding one
++/// is drawn again whether or not two of its jogs cross, and keeps the
++/// new routes whenever every jog finds a place — as [`ortho_pass`]
++/// takes any route over a curve. A curve tied to no other jog stays.
+ fn nest_jogs(nodes: &[SceneNode], edges: &mut [SceneEdge]) {
+     let idx: HashMap<&str, usize> = nodes
+         .iter()
+         .enumerate()
+         .map(|(i, n)| (n.id.as_str(), i))
+         .collect();
++    let strays: Vec<Option<SceneEdge>> = edges.iter().map(|e| stray_z(nodes, &idx, e)).collect();
+     let mut zigs: Vec<Zig> = Vec::new();
+     for (j, e) in edges.iter().enumerate() {
++        let e = strays[j].as_ref().unwrap_or(e);
+         if e.from == e.to || e.meta.curve.is_some() || e.waypoints.is_empty() {
+             continue;
+         }
+@@ -1141,7 +1181,16 @@ fn nest_jogs(nodes: &[SceneNode], edges: &mut [SceneEdge]) {
+         let mut routes: Vec<usize> = members.iter().map(|&k| zigs[k].j).collect();
+         routes.sort_unstable();
+         routes.dedup();
+-        if !members.iter().any(|&k| tangled[k]) || routes.len() < members.len() {
++        // The group's curves that would be Zs (alone, a curve stays: the
++        // pass found it no place among routes that are all still there).
++        let lost: Vec<usize> = routes
++            .iter()
++            .copied()
++            .filter(|&j| strays[j].is_some() && members.len() > 1)
++            .collect();
++        if !(members.iter().any(|&k| tangled[k]) || !lost.is_empty())
++            || routes.len() < members.len()
++        {
+             continue;
+         }
+         // Topological order of `above`, the jog highest now first of
+@@ -1166,7 +1215,23 @@ fn nest_jogs(nodes: &[SceneNode], edges: &mut [SceneEdge]) {
+             above: &above,
+             order: &order,
+         };
+-        let before = drawing_cost(&rects, &idx, edges);
++        // With a curve among them the jogs are drawn from the Zs, and
++        // any drawing that places them all beats the one with the curve.
++        let as_zs: Vec<SceneEdge>;
++        let (from, before): (&[SceneEdge], usize) = if lost.is_empty() {
++            (edges, drawing_cost(&rects, &idx, edges))
++        } else {
++            as_zs = edges
++                .iter()
++                .zip(&strays)
++                .enumerate()
++                .map(|(j, (e, z))| match z {
++                    Some(z) if lost.contains(&j) => z.clone(),
++                    _ => e.clone(),
++                })
++                .collect();
++            (&as_zs, usize::MAX)
++        };
+         let mut best: Option<(usize, Vec<SceneEdge>)> = None;
+         for (respect, step, pack) in [
+             (true, ORTHO_ROOM, false),
+@@ -1176,7 +1241,7 @@ fn nest_jogs(nodes: &[SceneNode], edges: &mut [SceneEdge]) {
+             (false, ORTHO_SEP, false),
+             (false, ORTHO_SEP, true),
+         ] {
+-            let Some(trial) = nest_group(nodes, &rects, &idx, edges, &g, (respect, step, pack))
++            let Some(trial) = nest_group(nodes, &rects, &idx, from, &g, (respect, step, pack))
+             else {
+                 continue;
+             };
+@@ -1191,6 +1256,41 @@ fn nest_jogs(nodes: &[SceneNode], edges: &mut [SceneEdge]) {
+     }
+ }
+ 
++/// Edge `e`, when it is a curve [`ortho_pass`] left between two faces
++/// that face each other across room for both end stubs, as the Z it
++/// would be with its jog at mid gap — whatever that jog runs along —
++/// for [`nest_jogs`] to stack with the jogs of its gap. `None` for
++/// anything else: a route, a straight line, a self-loop, an edge with
++/// a `curve` of its own, ends in line or on faces not facing each
++/// other.
++fn stray_z(nodes: &[SceneNode], idx: &HashMap<&str, usize>, e: &SceneEdge) -> Option<SceneEdge> {
++    if e.from == e.to
++        || e.meta.curve.is_some()
++        || !e.waypoints.is_empty()
++        || ortho_corners(e).is_some()
++    {
++        return None;
++    }
++    let (ia, ib) = (*idx.get(e.from.as_str())?, *idx.get(e.to.as_str())?);
++    let (a, b) = edge_ends(e);
++    let (na, nb) = (face_normal(&nodes[ia], a), face_normal(&nodes[ib], b));
++    // From `a` out of its face to `b`, and across that.
++    let out = (b.0 - a.0) * na.0 + (b.1 - a.1) * na.1;
++    let jog = ((b.0 - a.0) * na.1).abs() + ((b.1 - a.1) * na.0).abs();
++    if na.0 * nb.0 + na.1 * nb.1 > -0.5 || out < 2.0 * ORTHO_STUB || jog < 0.5 {
++        return None;
++    }
++    let mid = ((a.0 + b.0) / 2.0, (a.1 + b.1) / 2.0);
++    let corners = if na.0 == 0.0 {
++        [a, (a.0, mid.1), (b.0, mid.1), b]
++    } else {
++        [a, (mid.0, a.1), (mid.0, b.1), b]
++    };
++    let mut z = e.clone();
++    draw_route(&mut z, &corners, (na, nb), None);
++    Some(z)
++}
++
+ /// A group of tied jogs (one per route) for [`nest_group`]: `order`
+ /// (indexes into `zigs`) lists them so that each comes after every jog
+ /// `above[a][b]` says must run above it.
+@@ -4213,6 +4313,87 @@ mod tests {
+         }
+     }
+ 
++    /// A dotted name (`com.example.Order`) is one class of that name, as
++    /// in mermaid: its single dots join the name's parts, and only `..`
++    /// is the dotted line.
++    #[test]
++    fn dotted_names_in_relations() {
++        let ends = |line: &str| -> Vec<(String, String)> {
++            let d = cd(&format!("classDiagram\n{line}"));
++            let n = |i: usize| d.classes[i].name.clone();
++            d.relations.iter().map(|r| (n(r.from), n(r.to))).collect()
++        };
++        let pair = |a: &str, b: &str| vec![(a.to_string(), b.to_string())];
++        for (line, from, to) in [
++            ("A.B --> C", "A.B", "C"),
++            ("A.B-->C.D", "A.B", "C.D"),
++            (
++                "com.example.Customer --> com.example.Order",
++                "com.example.Customer",
++                "com.example.Order",
++            ),
++            ("A.B..>C", "A.B", "C"),
++            ("A.B.. C", "A.B", "C"),
++            ("A.B..C.D", "A.B", "C.D"),
++            ("A..B", "A", "B"),
++            ("A-B.C-D --> E", "A-B.C-D", "E"),
++            ("A.1 --> B.2", "A.1", "B.2"),
++            ("A._x --> B", "A._x", "B"),
++            ("A.-x --> B", "A.-x", "B"),
++            ("A.B~T~ --> C", "A.B", "C"),
++            // A part that is just `o` is no aggregation glyph.
++            ("A.o --> B", "A.o", "B"),
++            ("pkg.o--B", "pkg.o", "B"),
++            ("pkg.o..B", "pkg.o", "B"),
++            ("A.org --> B.out", "A.org", "B.out"),
++        ] {
++            assert_eq!(ends(line), pair(from, to), "{line}");
++        }
++        // Head on the left, glyphs glued to the names.
++        assert_eq!(ends("A.B<|--C.D"), pair("C.D", "A.B"));
++        assert_eq!(ends("A.B o-- C.D"), pair("C.D", "A.B"));
++        let d = cd("classDiagram\nA.B \"1\" *-- \"many\" C.D : owns");
++        let r = &d.relations[0];
++        assert_eq!(
++            (r.from_card.as_deref(), r.to_card.as_deref()),
++            (Some("many"), Some("1"))
++        );
++        assert_eq!(r.label.as_deref(), Some("owns"));
++        // One class per spelling: declaration, block, inline member,
++        // relation, backtick literal, note and lollipop host all name
++        // the same `shop.Order`; the generic is read off a dotted name.
++        let d = cd("classDiagram\n\
++            class shop.Order {\n+int id\n}\n\
++            shop.Order : +total() float\n\
++            shop.Order --> shop.Line~T~\n\
++            `shop.Order` ..> Audit\n\
++            note for shop.Order \"an order\"\n\
++            class shop.Order\n\
++            Sortable ()-- shop.Order");
++        let names: Vec<&str> = d.classes.iter().map(|c| c.name.as_str()).collect();
++        assert_eq!(names, ["shop.Order", "shop.Line", "Audit", "Sortable"]);
++        let c = &d.classes[0];
++        assert_eq!((c.fields.len(), c.methods.len()), (1, 1));
++        assert_eq!(d.classes[1].generic.as_deref(), Some("T"));
++        assert_eq!(d.notes[0].class, Some(0));
++        assert!(d.classes[3].lollipop);
++        // The box shows the whole dotted name and is as wide as it.
++        let cs = scene(&d);
++        let n = node(&cs, "shop.Order");
++        assert!(n.w >= crate::layout::text_width("shop.Order"), "{}", n.w);
++        assert!(to_svg(&cs).contains(">shop.Order</text>"));
++        // A dot never starts or ends a name, and three dots are no line
++        // plus a name: errors, as in mermaid.
++        for bad in [
++            "A. --> B", ".A --> B", "A...B", "A --> B.", "A.o-- .B", "A. : +x",
++        ] {
++            assert!(
++                parse_document(&format!("classDiagram\n{bad}")).is_err(),
++                "{bad}"
++            );
++        }
++    }
++
+     /// Backtick names are mermaid's literal class names: the text
+     /// between the backticks is the class, so it may hold spaces,
+     /// colons, quotes or operators.
+@@ -5535,6 +5716,122 @@ mod tests {
+         )
+     }
+ 
++    /// Verifier repro (r4 `in6_l0_c0_TB`, phase A leftover): six plain
++    /// classes into one hub. The unlabelled gap holds three lanes; the
++    /// innermost jog took the middle one and the next the lane below,
++    /// and the outermost — its leg into the hub 3.5 px beside the
++    /// innermost's leg out of its class — found none under both, kept
++    /// its curve and swept across its neighbour's route twice, on each
++    /// side: 4 crossings where mermaid draws none. A curve that would
++    /// be a Z now joins the jogs of its gap when they are stacked in
++    /// nesting order, so the six nest one lane apart, whichever way the
++    /// relations point and the diagram flows.
++    #[test]
++    fn a_fan_of_six_nests_without_a_curve() {
++        for (op, name) in [
++            ("-->", "arrow"),
++            ("--|>", "triangle"),
++            ("..>", "dotted"),
++            ("--", "link"),
++        ] {
++            for fan_in in [true, false] {
++                let src = (0..6).fold(String::from("classDiagram\n"), |s, i| {
++                    if fan_in {
++                        s + &format!("Svc{i} {op} Hub\n")
++                    } else {
++                        s + &format!("Hub {op} Svc{i}\n")
++                    }
++                });
++                for dir in ["TB", "BT", "LR", "RL"] {
++                    let what = format!("{name} fan_in={fan_in} {dir}");
++                    let cs = scene(&cd(&with_direction(&src, dir)));
++                    for e in &cs.scene.edges {
++                        assert!(
++                            ortho_corners(e).is_some(),
++                            "{what}: {}->{} kept its curve",
++                            e.from,
++                            e.to
++                        );
++                    }
++                    let (merged, crossing) = merged_and_crossing(&cs);
++                    assert!(merged.is_empty(), "{what}: merged {merged:?}");
++                    assert!(crossing.is_empty(), "{what}: crossing {crossing:?}");
++                    // Three jogs a side, each a lane's room from the
++                    // next: none packed tight against its neighbour.
++                    let horizontal = matches!(dir, "LR" | "RL");
++                    let mut jogs: Vec<f64> = cs
++                        .scene
++                        .edges
++                        .iter()
++                        .filter_map(|e| {
++                            let c = ortho_corners(e)?;
++                            (c.len() == 4).then(|| if horizontal { c[1].0 } else { c[1].1 })
++                        })
++                        .collect();
++                    jogs.sort_by(f64::total_cmp);
++                    jogs.dedup_by(|a, b| (*a - *b).abs() < 0.5);
++                    assert_eq!(jogs.len(), 3, "{what}: lanes {jogs:?}");
++                    for w in jogs.windows(2) {
++                        assert!(w[1] - w[0] >= ORTHO_ROOM - 0.5, "{what}: lanes {jogs:?}");
++                    }
++                }
++            }
++        }
++        // Only a curve between two faces that face each other across
++        // both stubs' room would be a Z.
++        let cs = scene(&cd("classDiagram\nA --> B\nB --> B\nC --> D\nC --> E"));
++        let idx: HashMap<&str, usize> = cs
++            .scene
++            .nodes
++            .iter()
++            .enumerate()
++            .map(|(i, n)| (n.id.as_str(), i))
++            .collect();
++        for e in &cs.scene.edges {
++            // Straight lines, a self-loop and routes: none is a stray.
++            assert!(
++                stray_z(&cs.scene.nodes, &idx, e).is_none(),
++                "{}->{}",
++                e.from,
++                e.to
++            );
++        }
++        let (a, b) = (node(&cs, "A"), node(&cs, "B"));
++        let mut curve = cs.scene.edges[0].clone();
++        let (top, bot) = ((a.x - 20.0, a.y + a.h / 2.0), (b.x + 30.0, b.y - b.h / 2.0));
++        curve.waypoints.clear();
++        curve.bezier = [top, (top.0, top.1 + 30.0), (bot.0, bot.1 - 30.0), bot];
++        let z = stray_z(&cs.scene.nodes, &idx, &curve).expect("a curve between facing faces");
++        let c = ortho_corners(&z).unwrap();
++        assert_eq!((c.len(), c[0], c[3]), (4, top, bot));
++        assert!(
++            (c[1].1 - (top.1 + bot.1) / 2.0).abs() < 1e-9,
++            "jog at mid gap: {c:?}"
++        );
++        // In line, a `curve` of its own, or the faces too close: none.
++        let mut inline = curve.clone();
++        inline.bezier = [
++            top,
++            (top.0 + 9.0, top.1 + 30.0),
++            (top.0 - 9.0, bot.1 - 30.0),
++            (top.0, bot.1),
++        ];
++        assert!(stray_z(&cs.scene.nodes, &idx, &inline).is_none());
++        let mut own = curve.clone();
++        own.meta.curve = Some(crate::model::EdgeCurve::Basis);
++        assert!(stray_z(&cs.scene.nodes, &idx, &own).is_none());
++        assert!(
++            bot.1 - top.1 >= 2.0 * ORTHO_STUB,
++            "the test's gap holds both stubs"
++        );
++        let mut near = curve;
++        near.bezier[3] = (b.x + 30.0, b.y + b.h / 2.0);
++        assert!(
++            stray_z(&cs.scene.nodes, &idx, &near).is_none(),
++            "faces not facing"
++        );
++    }
++
+     /// Verifier repro (r3, s5 — a regression from 0.32): the layout
+     /// stacks a class's self-loops on one side, each starting where the
+     /// one before ends, and the source order turned `o--`'s loop round,
+@@ -5842,6 +6139,102 @@ mod tests {
+         }
+     }
+ 
++    /// Verifier repro (r6 `loopk/k5_TB`, phase A leftover): five loops
++    /// on B, between siblings A and C that carry a loop each. A class's
++    /// loops kept off the other boxes only, so B's loop on the side
++    /// facing A set its label on A's loop; eight unlabelled loops ran
++    /// four deep through A's loop and its label, and two siblings with
++    /// three loops each wove them together in the gap between. A
++    /// class's loops now keep off the loops and loop labels of the
++    /// classes drawn before it as well: no loop crosses another class's
++    /// loop or enters another box, and no loop label covers a box, a
++    /// loop or another loop's label, in every direction.
++    #[test]
++    fn self_loops_keep_off_a_neighbours_loops() {
++        let k5 = "classDiagram\nP <|-- A\nP <|-- B\nP <|-- C\nP <|-- D\n\
++                  B --> B : loop0\nB --> B : loop1\nB --> B : loop2\nB --> B : loop3\n\
++                  B --> B : loop4\nA --> A\nC *-- C : c\nD o-- D";
++        let plain8 = (0..8).fold(
++            String::from("classDiagram\nP <|-- A\nP <|-- B\nP <|-- C\n"),
++            |s, _| s + "B --> B\n",
++        ) + "A --> A : a loop\nC *-- C : c loop\n";
++        let woven = "classDiagram\nP <|-- A\nP <|-- B\nP <|-- C\n\
++                     B --> B : b0\nB --> B : b1\nB --> B : b2\n\
++                     A --> A : a0\nA --> A : a1\nA --> A : a2\nC --> C : c0\nC --> C : c1";
++        for src in [k5, plain8.as_str(), woven] {
++            for dir in ["TB", "BT", "LR", "RL"] {
++                let cs = scene(&cd(&with_direction(src, dir)));
++                let sc = &cs.scene;
++                let loops: Vec<&SceneEdge> = sc.edges.iter().filter(|e| e.from == e.to).collect();
++                let lines: Vec<Vec<(f64, f64)>> = loops.iter().map(|e| edge_polyline(e)).collect();
++                for (i, e) in loops.iter().enumerate() {
++                    let chip = label_chip(e);
++                    for n in sc.nodes.iter().filter(|n| n.id != e.from) {
++                        let r = rect(n);
++                        assert!(
++                            !lines[i]
++                                .windows(2)
++                                .any(|s| rect_hits_segment(r, s[0], s[1])),
++                            "{dir}: a loop of {} runs into {}\n{src}",
++                            e.from,
++                            n.id
++                        );
++                        assert!(
++                            !chip.is_some_and(|c| rects_meet(c, r)),
++                            "{dir}: a loop label of {} covers {}\n{src}",
++                            e.from,
++                            n.id
++                        );
++                    }
++                    for (k, o) in loops.iter().enumerate().filter(|&(k, _)| k != i) {
++                        assert!(
++                            !chip.is_some_and(|c| lines[k]
++                                .windows(2)
++                                .any(|s| rect_hits_segment(c, s[0], s[1]))),
++                            "{dir}: {:?} covers a loop of {}\n{src}",
++                            e.label,
++                            o.from
++                        );
++                        if let (Some(c), Some(oc)) = (chip, label_chip(o)) {
++                            assert!(!rects_meet(c, oc), "{dir}: loop labels overlap\n{src}");
++                        }
++                        let crossing = lines[i].windows(2).any(|p| {
++                            lines[k]
++                                .windows(2)
++                                .any(|q| segments_cross(p[0], p[1], q[0], q[1]))
++                        });
++                        assert!(
++                            o.from == e.from || !crossing,
++                            "{dir}: a loop of {} crosses a loop of {}\n{src}",
++                            e.from,
++                            o.from
++                        );
++                    }
++                }
++            }
++        }
++        // A box counts before any number of a neighbour's loops: B's
++        // eight loops fill three of its faces rather than send one into
++        // C's box to spare A's three loops.
++        let crowded = (0..8).fold(
++            String::from("classDiagram\nP <|-- A\nP <|-- B\nP <|-- C\n"),
++            |s, i| s + &format!("B --> B : b{i}\n"),
++        ) + "A --> A : a0\nA --> A : a1\nA --> A : a2\nC --> C : c0\nC --> C : c1\n";
++        let cs = scene(&cd(&crowded));
++        for e in cs.scene.edges.iter().filter(|e| e.from == e.to) {
++            let line = edge_polyline(e);
++            for n in cs.scene.nodes.iter().filter(|n| n.id != e.from) {
++                let r = rect(n);
++                assert!(
++                    !line.windows(2).any(|s| rect_hits_segment(r, s[0], s[1])),
++                    "a loop of {} runs into {}",
++                    e.from,
++                    n.id
++                );
++            }
++        }
++    }
++
+     /// Verifier finding (r3): every attached note sat on the first rank
+     /// — longest-path layering parks every source there — its dotted
+     /// connector running 300-400 px to its class. Sources now rank one
+diff --git a/src/compound.rs b/src/compound.rs
+index 2b2299d..2b30056 100644
+--- a/src/compound.rs
++++ b/src/compound.rs
+@@ -723,10 +723,10 @@ pub(crate) fn route(
+         boxes.push((w, h));
+         blocks.push(sc);
+     }
+-    let rest = crate::scene::route_labelled(
++    let rest = crate::scene::route_fitted(
+         &split.rest.g,
+         &part_of(&split.rest, centers, &at, (0.0, 0.0)),
+-        &part_of(&split.rest, sizes, &boxes, (0.0, 0.0)),
++        &rest_sizes(g, split, sizes, labels, &boxes),
+         &part_of(&split.rest, labels, &[], String::new()),
+     );
+     let mut out = join(g, split, &blocks, &rest)?;
+@@ -734,6 +734,54 @@ pub(crate) fn route(
+     Some(out)
+ }
+ 
++/// The rest's node sizes for [`route`]: each proxy the box of its
++/// block's frame now (`boxes`), each fork/join bar fitted
++/// ([`crate::scene::fit_bars`]) as [`scene`] fits it. A bar that
++/// branches to a block spans the block's frame, and fitted to the frame
++/// as it stands it would stretch whenever a drag inside the block pulls
++/// its states apart — but a drag never resizes a bar. So each block a
++/// bar branches to is laid out as [`scene`] lays it out, for the frame
++/// the bar was fitted to there; the other blocks, and a graph without
++/// such a bar, cost nothing more.
++fn rest_sizes(
++    g: &Graph,
++    split: &Split,
++    sizes: &[(f64, f64)],
++    labels: &[String],
++    boxes: &[(f64, f64)],
++) -> Vec<(f64, f64)> {
++    let rest = &split.rest;
++    let now = part_of(rest, sizes, boxes, (0.0, 0.0));
++    let is_bar = |k: usize| rest.g.nodes[k].shape == Shape::ForkBar;
++    if !(0..rest.g.nodes.len()).any(is_bar) {
++        return now;
++    }
++    let mut laid = now.clone();
++    for (b, (si, part)) in split.blocks.iter().enumerate() {
++        let Some(p) = split.proxy(b) else { continue };
++        let branch = rest
++            .g
++            .edges
++            .iter()
++            .any(|e| (e.from == p && is_bar(e.to)) || (e.to == p && is_bar(e.from)));
++        if !branch {
++            continue;
++        }
++        let sc = crate::scene::scene_labelled(
++            &part.g,
++            &part_of(part, sizes, &[], (0.0, 0.0)),
++            &part_of(part, labels, &[], String::new()),
++        );
++        if let Some(f) = frame(&sc, &g.subgraphs[*si].id) {
++            laid[p] = (f.2, f.3);
++        }
++    }
++    let fitted = crate::scene::fit_bars(&rest.g, &laid);
++    (0..now.len())
++        .map(|k| if is_bar(k) { fitted[k] } else { now[k] })
++        .collect()
++}
++
+ /// `base` cut to `part`: its nodes (each proxy on `frames[b]`, its
+ /// block's frame in `base`), edges and frames, ids as the part names
+ /// them. `subs` holds [`sub_slots`] of the graph in `base`. `None` when
+@@ -1098,8 +1146,7 @@ mod tests {
+             let n = node(&g, &sc, bar);
+             assert!(n.h > 2.0 * n.w, "{bar}: {} x {}", n.w, n.h);
+             let v = g.node_index(bar).unwrap();
+-            let (labels, sizes) = crate::layout::node_texts(&g);
+-            let _ = labels;
++            let (_, sizes) = crate::layout::node_texts(&g);
+             assert_eq!(crate::scene::fit_bars(&g, &sizes)[v], (n.w, n.h), "{bar}");
+         }
+         in_line(&g, &sc, &["A", "B"], false);
+@@ -1108,6 +1155,85 @@ mod tests {
+         assert_eq!(to_svg(&c.scene), to_svg(&sc));
+     }
+ 
++    /// B9 verification leftover: a fork or join that branches to a block
++    /// spans the block's frame, and the interactive builders fitted it
++    /// to the frame as it stood — so dragging a state inside the block,
++    /// which stretches the frame, stretched the bar too (`f` 321 -> 446
++    /// px with `d` pulled 250 px along its row), against the rule that
++    /// a drag never resizes a bar. Every builder now draws the bar the
++    /// static scene draws, wherever the block's states are dragged.
++    #[test]
++    fn a_drag_inside_a_block_resizes_no_bar() {
++        // A fork into a row block and a plain state, joined again; and
++        // a sideways diagram whose column block holds a fork of its own.
++        let row = "stateDiagram-v2\n[*] --> f\nstate f <<fork>>\nf --> P\nf --> Q\n\
++                   state P {\n  direction LR\n  a --> b\n  b --> c\n  c --> d\n}\n\
++                   state j <<join>>\nP --> j\nQ --> j\nj --> [*]";
++        let column = "stateDiagram-v2\ndirection LR\n[*] --> f\nstate f <<fork>>\n\
++                      f --> P\nf --> Q\nstate P {\n  direction TB\n  a --> b\n  b --> c\n  \
++                      state g <<fork>>\n  c --> g\n  g --> d\n  g --> e\n}\n\
++                      P --> Done\nQ --> Done";
++        for (src, dragged, by) in [
++            (row, "d", (250.0, 0.0)),
++            (row, "a", (-120.0, 40.0)),
++            (column, "e", (0.0, 200.0)),
++            (column, "a", (90.0, -60.0)),
++        ] {
++            let g = state(src);
++            assert_eq!(blocks(&g), vec![true], "{src}");
++            let sc = scene(&g);
++            let at: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
++            let sizes: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.w, n.h)).collect();
++            let v = g.node_index(dragged).unwrap();
++            let mut to = at.clone();
++            to[v] = (to[v].0 + by.0, to[v].1 + by.1);
++            let routed = route(&g, &to);
++            let drawings = [
++                ("route", route(&g, &at)),
++                ("route, dragged", routed.clone()),
++                (
++                    "route_sized, dragged",
++                    crate::scene::route_sized(&g, &to, &sizes),
++                ),
++                ("route_partial", route_partial(&g, &to, &sc, &at)),
++                (
++                    "route_partial, dragged back",
++                    route_partial(&g, &at, &routed, &to),
++                ),
++            ];
++            // The drag did stretch the block's frame.
++            let (was, now) = (frame_of(&sc, "P"), frame_of(&routed, "P"));
++            assert!(
++                (now.w - was.w).abs() > 20.0 || (now.h - was.h).abs() > 20.0,
++                "{dragged}: the frame kept {} x {}",
++                now.w,
++                now.h
++            );
++            let bars = g
++                .nodes
++                .iter()
++                .enumerate()
++                .filter(|(_, n)| n.shape == Shape::ForkBar);
++            for (k, bar) in bars {
++                let drawn = (sc.nodes[k].w, sc.nodes[k].h);
++                assert!(
++                    drawn.0.max(drawn.1) > 100.0,
++                    "{} is fitted: {drawn:?}",
++                    bar.id
++                );
++                for (what, d) in &drawings {
++                    contract(&g, d);
++                    assert_eq!(
++                        (d.nodes[k].w, d.nodes[k].h),
++                        drawn,
++                        "{what}, {dragged} dragged: bar {}",
++                        bar.id
++                    );
++                }
++            }
++        }
++    }
++
+     #[test]
+     fn route_and_drags_lay_a_block_out_as_the_scene_does() {
+         let g = state(STATE);
+diff --git a/src/layout.rs b/src/layout.rs
+index 95e943c..402c749 100644
+--- a/src/layout.rs
++++ b/src/layout.rs
+@@ -1098,40 +1098,6 @@ pub fn line_count(s: &str) -> usize {
+     s.split('\n').count().max(1)
+ }
+ 
+-/// Greedy word wrap of `s` to lines at most `max_w` px wide, where a
+-/// line measures `text_width(line) * scale` (pass `size /
+-/// TEXT_CALIBRATION` for text drawn at another size). Existing `\n`
+-/// breaks stay; a single word wider than `max_w` keeps a line to
+-/// itself, unsplit, as mermaid's wrapped labels do. Runs of spaces at
+-/// a break are dropped. For the fixed-column diagrams (journey tasks,
+-/// timeline periods and events) whose text would otherwise widen its
+-/// column without bound.
+-pub(crate) fn wrap_text(s: &str, max_w: f64, scale: f64) -> String {
+-    let mut out: Vec<String> = Vec::new();
+-    for line in s.split('\n') {
+-        if text_width(line) * scale <= max_w {
+-            out.push(line.to_string());
+-            continue;
+-        }
+-        let words: Vec<&str> = line.split(' ').filter(|w| !w.is_empty()).collect();
+-        let starts = crate::wrap::greedy(words.len(), max_w, |i, j| {
+-            text_width(&words[i..j].join(" ")) * scale
+-        });
+-        out.extend(lines_at(&words, &starts));
+-    }
+-    out.join("\n")
+-}
+-
+-/// `words` joined into the lines starting at `starts` (see
+-/// [`crate::wrap`]), one space between words.
+-fn lines_at(words: &[&str], starts: &[usize]) -> Vec<String> {
+-    starts
+-        .iter()
+-        .enumerate()
+-        .map(|(k, &s)| words[s..starts.get(k + 1).copied().unwrap_or(words.len())].join(" "))
+-        .collect()
+-}
+-
+ /// Width (px, at [`TEXT_CALIBRATION`]) a node label without a line break
+ /// of its own wraps at by default ([`wrap_label`], report M7): mermaid's
+ /// documented `flowchart.wrappingWidth` default. Mermaid 12.2.0 draws its
+@@ -6424,34 +6390,6 @@ mod tests {
+         }
+     }
+ 
+-    #[test]
+-    fn wrap_text_is_greedy_keeps_breaks_and_never_splits_words() {
+-        // Fits: untouched (including inner runs of spaces).
+-        assert_eq!(wrap_text("short  text", 200.0, 1.0), "short  text");
+-        let s = "one two three four five six seven eight nine ten";
+-        let w = wrap_text(s, 80.0, 1.0);
+-        assert!(w.lines().count() > 1);
+-        assert_eq!(w.replace('\n', " "), s, "words kept in order");
+-        for line in w.lines() {
+-            assert!(text_width(line) <= 80.0, "{line:?} too wide");
+-        }
+-        // Greedy: no line could take the next line's first word.
+-        let lines: Vec<&str> = w.lines().collect();
+-        for pair in lines.windows(2) {
+-            let next = pair[1].split(' ').next().unwrap();
+-            assert!(text_width(&format!("{} {next}", pair[0])) > 80.0);
+-        }
+-        // An over-long word keeps a line to itself, unsplit.
+-        assert_eq!(
+-            wrap_text("a Pneumonoultramicroscopic b", 40.0, 1.0),
+-            "a\nPneumonoultramicroscopic\nb"
+-        );
+-        // Existing breaks stay; the scale measures at another size.
+-        assert_eq!(wrap_text("x\ny", 1.0, 1.0), "x\ny");
+-        let at_13 = wrap_text(s, 80.0, 13.0 / TEXT_CALIBRATION);
+-        assert!(at_13.lines().count() <= w.lines().count());
+-    }
+-
+     #[test]
+     fn a_left_note_leads_its_state_inside_a_composite_entered_from_outside() {
+         // `First --> Second` keeps Second's members below First (a
+diff --git a/src/parser.rs b/src/parser.rs
+index c6c3929..b8d0d25 100644
+--- a/src/parser.rs
++++ b/src/parser.rs
+@@ -3577,11 +3577,22 @@ fn is_class_name_char(c: char) -> bool {
+     c.is_alphanumeric() || c == '_' || c == '-'
+ }
+ 
++/// A bare class name: runs of [`is_class_name_char`] joined by single
++/// dots, as mermaid's grammar joins them (`com.example.Order`, `A.B`).
++/// The dots are part of the name — `A.B` is one class called `A.B`, in
++/// no way tied to a class `B` or a `namespace A` — and never start or
++/// end it: `A.`, `.A` and `A..B` (the dotted line between `A` and `B`)
++/// are no names, as in mermaid.
++fn is_bare_class_name(id: &str) -> bool {
++    id.split('.')
++        .all(|part| !part.is_empty() && part.chars().all(is_class_name_char))
++}
++
+ /// A class name as written, split into (id, generic): a bare name
+-/// (`Animal-Name`, see [`is_class_name_char`]) or a backtick literal
+-/// whose text is the id, backticks stripped as mermaid strips them
+-/// (`` `Foo Bar` `` is the class `Foo Bar`, `` `Foo` `` is `Foo`),
+-/// either one optionally generic (`Box~T~`, `` `Foo Bar`~T~ ``).
++/// (`Animal-Name`, `shop.Order`, see [`is_bare_class_name`]) or a
++/// backtick literal whose text is the id, backticks stripped as mermaid
++/// strips them (`` `Foo Bar` `` is the class `Foo Bar`, `` `Foo` `` is
++/// `Foo`), either one optionally generic (`Box~T~`, `` `Foo Bar`~T~ ``).
+ /// `None` when it is neither.
+ fn class_name(raw: &str) -> Option<(&str, Option<&str>)> {
+     let raw = raw.trim();
+@@ -3599,7 +3610,7 @@ fn class_name(raw: &str) -> Option<(&str, Option<&str>)> {
+         return (!id.is_empty()).then_some((id, generic));
+     }
+     let (id, generic) = split_generic(raw);
+-    (!id.is_empty() && id.chars().all(is_class_name_char)).then_some((id, generic))
++    is_bare_class_name(id).then_some((id, generic))
+ }
+ 
+ /// `Box~T~` → (`Box`, `Some("T")`): mermaid's generic class name. The
+@@ -3736,9 +3747,16 @@ struct ClassOp {
+ /// `o` is a valid identifier char, so an `o--` / `--o` marker only
+ /// counts at an operand boundary — never inside a name like `Foo` or
+ /// `my_o`. A hyphen is a boundary: mermaid reads `A-o--B` as `A-`
+-/// aggregating `B`.
++/// aggregating `B`. A dot is not: it joins the parts of a dotted name
++/// ([`is_bare_class_name`]), which never ends on one, so `pkg.o--B`
++/// links the class `pkg.o` (mermaid's lexer takes that `o` for a glyph
++/// and gives up on the line).
++///
++/// A dotted name's single dots are no operator either: only `..` is a
++/// line, so `A.B..>C` is `A.B` depending on `C`.
+ fn find_class_op(rel: &str) -> Option<ClassOp> {
+     let word = |c: char| c.is_alphanumeric() || c == '_';
++    let glued = |c: char| word(c) || c == '.';
+     let line_at = |j: usize| match rel.get(j..j + 2) {
+         Some("--") => Some(false),
+         Some("..") => Some(true),
+@@ -3760,7 +3778,7 @@ fn find_class_op(rel: &str) -> Option<ClassOp> {
+             None => {
+                 let left = CLASS_LEFT_ENDS.iter().find(|&&(g, _)| {
+                     rel[i..].starts_with(g)
+-                        && (g != "o" || !prev.is_some_and(word))
++                        && (g != "o" || !prev.is_some_and(glued))
+                         && line_at(i + g.len()).is_some()
+                 });
+                 let (left, at) = match left {
+diff --git a/src/scene.rs b/src/scene.rs
+index 3520e5e..d74adee 100644
+--- a/src/scene.rs
++++ b/src/scene.rs
+@@ -4811,7 +4811,21 @@ pub(crate) fn route_labelled(
+             return sc;
+         }
+     }
+-    let sizes = &fit_bars(g, &sizes)[..];
++    route_fitted(g, centers, &fit_bars(g, &sizes), labels)
++}
++
++/// [`route_labelled`] for a graph without blocks of their own direction
++/// whose `sizes` are sane and hold each fork/join bar at its fitted
++/// length already ([`fit_bars`]): no bar is fitted again. For the rest
++/// of a split graph ([`crate::compound`]), whose bars are fitted to
++/// each block's frame as the static layout draws it, not to the box its
++/// proxy has while a drag stretches the block.
++pub(crate) fn route_fitted(
++    g: &Graph,
++    centers: &[(f64, f64)],
++    sizes: &[(f64, f64)],
++    labels: &[String],
++) -> Scene {
+     let mut sc = route_built(g, centers, sizes, labels, true);
+     crate::edgepass::finish(g, &mut sc, crate::edgepass::Mode::Routed);
+     sc
+@@ -5276,6 +5290,9 @@ pub fn route_partial(
+ /// ([`crate::compound`]) — its box is the block's frame, not one sized
+ /// from a label — and a proxy whose box changed counts as moved however
+ /// its centre lies. A graph with such blocks is re-routed block by block.
++/// Among proxies a fork/join bar keeps the length `base` drew it at:
++/// fitted to a proxy's box now ([`fit_bars`]) it would stretch with the
++/// frame of a block a drag pulls apart.
+ pub(crate) fn route_partial_with(
+     g: &Graph,
+     centers: &[(f64, f64)],
+@@ -5305,7 +5322,18 @@ pub(crate) fn route_partial_with(
+     for &(v, size, _) in sized {
+         raw_sizes[v] = size;
+     }
+-    let sizes = fit_bars(g, &raw_sizes);
++    let mut sizes = fit_bars(g, &raw_sizes);
++    if !sized.is_empty() {
++        for (v, n) in g.nodes.iter().enumerate() {
++            let drawn = base
++                .nodes
++                .get(v)
++                .filter(|b| n.shape == Shape::ForkBar && b.shape == n.shape && b.id == n.id);
++            if let Some(b) = drawn {
++                sizes.to_mut()[v] = (b.w, b.h);
++            }
++        }
++    }
+     // No builder label pass: a redrawn edge's label starts at its spot
+     // on the new line and the label stage moves it only if it covers
+     // something. route() slides every label first so the router can
+@@ -5345,9 +5373,14 @@ pub(crate) fn route_partial_with(
+         }
+         sc
+     };
+-    if !same_graph || !clusters_line_up(g, base) {
++    if !same_graph {
++        // Not `base`'s graph: nothing of `base` is kept, and a bar is
++        // fitted afresh.
+         return full(route_labelled(g, centers, &raw_sizes, &labels));
+     }
++    if !clusters_line_up(g, base) {
++        return full(route_fitted(g, centers, &sizes, &labels));
++    }
+     type R = (f64, f64, f64, f64);
+     let node_rect = |nd: &SceneNode| -> R {
+         (
+@@ -5527,7 +5560,7 @@ pub(crate) fn route_partial_with(
+     // Most of the drawing redrawn afresh (not merely near the drag): a
+     // full route() costs about the same and draws it better.
+     if redrawn as f64 > PARTIAL_ROUTE_SHARE * fixed.len() as f64 {
+-        return full(route_labelled(g, centers, &raw_sizes, &labels));
++        return full(route_fitted(g, centers, &sizes, &labels));
+     }
+     sc.clusters = clusters;
+     // The base canvas already covers the kept geometry; the pipeline's
+@@ -7845,7 +7878,11 @@ pub(crate) fn sane_sizes(sizes: &[(f64, f64)]) -> Cow<'_, [(f64, f64)]> {
+ /// static and the interactive builders fit the same sizes and a drag
+ /// never resizes a bar; fitting fitted sizes again changes nothing.
+ /// A bar in a composite laid out in its own direction
+-/// ([`crate::compound`]) lies across that direction's flow.
++/// ([`crate::compound`]) lies across that direction's flow. A branch
++/// that is such a composite counts at its frame as the static layout
++/// draws it — the interactive builders lay the composite out to learn
++/// it, or keep the bar as drawn — so a drag inside the composite, which
++/// stretches its frame, resizes no bar either.
+ /// Other sizes pass through untouched (borrowed when there is no bar).
+ pub(crate) fn fit_bars<'a>(g: &Graph, sizes: &'a [(f64, f64)]) -> Cow<'a, [(f64, f64)]> {
+     if !g.nodes.iter().any(|n| n.shape == Shape::ForkBar) {
+@@ -15703,6 +15740,29 @@ mod tests {
+         }
+     }
+ 
++    /// The labels of `sc` with another edge's stroke through their box,
++    /// as "'label' under from>to", and each label's distance from its
++    /// own line.
++    fn struck_labels(sc: &Scene) -> (Vec<String>, Vec<(String, f64)>) {
++        let (mut struck, mut off) = (Vec::new(), Vec::new());
++        for l in sc.edges.iter().filter(|e| e.label.is_some()) {
++            let Some((text, c, _)) = &l.label else {
++                continue;
++            };
++            for o in sc.edges.iter().filter(|o| !std::ptr::eq(*o, l)) {
++                if crosses_label(l, &edge_polyline(o)) {
++                    struck.push(format!("'{text}' under {}>{}", o.from, o.to));
++                }
++            }
++            let d = edge_polyline(l)
++                .windows(2)
++                .map(|w| point_seg_dist(c.0, c.1, w[0], w[1]))
++                .fold(f64::INFINITY, f64::min);
++            off.push((text.clone(), d));
++        }
++        (struck, off)
++    }
++
+     #[test]
+     fn a_choice_twins_middle_label_keeps_beside_its_line() {
+         // State twins3: three labelled transitions from a <<choice>> to
+@@ -15711,30 +15771,90 @@ mod tests {
+         // by the nearer line to its centre, and moved onto its own line
+         // between both neighbours, covering two strokes. A labelled line
+         // carries its own label and never takes this one over.
+-        let src = "stateDiagram-v2\nstate c <<choice>>\n[*] --> P\nP --> c\nc --> B : one\n\
+-                   c --> B : two\nc --> B : three";
+-        let g = match crate::parser::parse_document(src).unwrap() {
+-            crate::model::Document::State(g) => g,
+-            _ => panic!("state"),
+-        };
+-        let s = scene(&g);
+-        let c: Vec<(f64, f64)> = s.nodes.iter().map(|n| (n.x, n.y)).collect();
+-        for sc in [s.clone(), route(&g, &c)] {
+-            let twins: Vec<&SceneEdge> = sc
+-                .edges
+-                .iter()
+-                .filter(|e| e.from == "c" && e.to == "B")
+-                .collect();
+-            let covered: usize = twins
+-                .iter()
+-                .map(|l| {
+-                    twins
+-                        .iter()
+-                        .filter(|o| !std::ptr::eq(**o, *l) && crosses_label(l, &edge_polyline(o)))
+-                        .count()
+-                })
+-                .sum();
+-            assert!(covered <= 1, "{covered} twin strokes under labels");
++        //
++        // Phase A leftover: 'two' still lay half over the 'three' stroke
++        // (one twin stroke under a label was let through here). With
++        // the twins drawn square, a lane's room apart, each label sits
++        // on its own line with no other stroke under it: in every
++        // direction, in the static scene, after a full reroute and
++        // while the choice is dragged across the flow. (Dragged toward
++        // the state it leaves the three labels one row, too short for
++        // them side by side: the general placer's best spots then.)
++        let body = "state c <<choice>>\n[*] --> P\nP --> c\nc --> B : one\n\
++                    c --> B : two\nc --> B : three";
++        for dir in ["TB", "BT", "LR", "RL"] {
++            let g = state_graph(&format!("stateDiagram-v2\ndirection {dir}\n{body}"));
++            let s = scene(&g);
++            let at: Vec<(f64, f64)> = s.nodes.iter().map(|n| (n.x, n.y)).collect();
++            let ci = g.node_index("c").unwrap();
++            let mut scenes = vec![("scene".to_string(), s.clone())];
++            scenes.push(("route".to_string(), route(&g, &at)));
++            let across = if matches!(dir, "TB" | "BT") {
++                (30.0, 0.0)
++            } else {
++                (0.0, 30.0)
++            };
++            for k in [-1.0, 1.0] {
++                let mut to = at.clone();
++                to[ci] = (to[ci].0 + k * across.0, to[ci].1 + k * across.1);
++                scenes.push((format!("drag {k}"), route_partial(&g, &to, &s, &at)));
++            }
++            for (what, sc) in &scenes {
++                let (struck, off) = struck_labels(sc);
++                assert!(struck.is_empty(), "{dir} {what}: {struck:?}");
++                assert_eq!(off.len(), 3, "{dir} {what}");
++                for (text, d) in off {
++                    assert!(d < 1.0, "{dir} {what}: '{text}' {d:.1} px off its line");
++                }
++            }
++        }
++    }
++
++    #[test]
++    fn a_wide_choice_label_keeps_off_its_siblings_lines() {
++        // State wide_lr (phase A leftover): in an LR choice whose labels
++        // are about as long as the gap, 'the request is anonymous but
++        // rate limited' covered the start of the transition to A, where
++        // the fan's lines leave the choice side by side. The flowchart
++        // label and port work since has cleared it; this keeps it so: no
++        // label has another transition's stroke under it, and each sits
++        // on its line or just beside it (a label as long as its gap
++        // steps off the arrowhead), in the static scene, after a full
++        // reroute and while the choice is dragged across the flow,
++        // whichever way the diagram runs. (Dragged toward its targets
++        // the choice leaves the gap shorter than the label: the general
++        // placer's best spot then, as before.)
++        let body = "state c <<choice>>\n[*] --> P\nP --> c\n\
++                    c --> A : the request came from a verified partner\n\
++                    c --> B : the request is anonymous but rate limited\nc --> C : failed";
++        for dir in ["LR", "RL", "TB", "BT"] {
++            let g = state_graph(&format!("stateDiagram-v2\ndirection {dir}\n{body}"));
++            let s = scene(&g);
++            let at: Vec<(f64, f64)> = s.nodes.iter().map(|n| (n.x, n.y)).collect();
++            let ci = g.node_index("c").unwrap();
++            let mut scenes = vec![("scene".to_string(), s.clone())];
++            scenes.push(("route".to_string(), route(&g, &at)));
++            let across = if matches!(dir, "TB" | "BT") {
++                (30.0, 0.0)
++            } else {
++                (0.0, 30.0)
++            };
++            for k in [-1.0, 1.0] {
++                let mut to = at.clone();
++                to[ci] = (to[ci].0 + k * across.0, to[ci].1 + k * across.1);
++                scenes.push((format!("drag {k}"), route_partial(&g, &to, &s, &at)));
++            }
++            for (what, sc) in &scenes {
++                let (struck, off) = struck_labels(sc);
++                assert!(struck.is_empty(), "{dir} {what}: {struck:?}");
++                assert_eq!(off.len(), 3, "{dir} {what}");
++                // Beside its line: the chip's half height and the air
++                // `labels::LABEL_SIDE_AIR` keeps between the two.
++                let beside = crate::layout::LABEL_BOX_H / 2.0 + crate::labels::LABEL_SIDE_AIR + 1.0;
++                for (text, d) in off {
++                    assert!(d <= beside, "{dir} {what}: '{text}' {d:.1} px off its line");
++                }
++            }
+         }
+     }
+ 
+diff --git a/src/wrap.rs b/src/wrap.rs
+index 2dfdcea..d8a7e83 100644
+--- a/src/wrap.rs
++++ b/src/wrap.rs
+@@ -359,7 +359,7 @@ const BALANCE_MAX_WORDS: usize = 64;
+ /// Where the lines of `n` words start, filling each line greedily while
+ /// the next word fits in `width` (`line_w(i, j)`: how wide words `i..j`
+ /// are on one line). The first entry is always 0; empty for no words.
+-pub(crate) fn greedy(n: usize, width: f64, line_w: impl Fn(usize, usize) -> f64) -> Vec<usize> {
++fn greedy(n: usize, width: f64, line_w: impl Fn(usize, usize) -> f64) -> Vec<usize> {
+     let mut starts = Vec::new();
+     if n == 0 {
+         return starts;
+@@ -498,15 +498,6 @@ pub(crate) fn into_lines(
+     Some(out)
+ }
+ 
+-/// `crate::layout::wrap_text`, the greedy wrapper journeys and timelines
+-/// used before [`wrap_block`], has no caller left. It lives in
+-/// `layout.rs`, which a parallel change owns; until that file drops it
+-/// (with its `lines_at` helper and its test), this reference keeps the
+-/// unused function from failing the `-D warnings` build. Delete both
+-/// together.
+-#[allow(dead_code)]
+-const RETIRED_GREEDY_WRAP: fn(&str, f64, f64) -> String = crate::layout::wrap_text;
+-
+ #[cfg(test)]
+ mod tests {
+     use super::*;

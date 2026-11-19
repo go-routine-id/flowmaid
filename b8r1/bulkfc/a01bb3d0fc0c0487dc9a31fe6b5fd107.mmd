@@ -1,0 +1,23 @@
+flowchart LR
+    N0{Queue}
+    N1[Load notify]
+    N2[Parse]
+    N3[Archive parse]
+    N4([Report report])
+    N5([Retry queue])
+    N6([Load])
+    N7{Check validate}
+    N8([Done fetch])
+    N0 --> N1
+    N1 --> N2
+    N1 -->|ok| N3
+    N3 --> N4
+    N2 -->|yes| N5
+    N3 -->|no| N6
+    N6 --> N7
+    N7 -->|fail| N8
+    N3 --> N5
+    N1 --> N6
+    N3 -->|back| N0
+    N8 -->|again| N7
+    N7 ==> N1

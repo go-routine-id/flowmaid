@@ -1,0 +1,29 @@
+classDiagram
+direction BT
+A <|-- B : uses
+A "1" ..> "*" C
+C ..|> D
+A <|-- E
+C ..|> F
+B "1" --> "*" B : b0
+B *-- B
+B *-- B
+B "1" --> "*" B : b3
+B *-- B
+B ..> B : b5
+B o-- B : b6
+B *-- B : b7
+C o-- C : c0
+C --> C
+C ..> C : c2
+C ..> C
+C "1" --> "*" C : c4
+C ..> C
+C *-- C : c6
+C ..> C : c7
+C --> C
+class E {
+ +int id
+ +run() void
+ +stop()
+}

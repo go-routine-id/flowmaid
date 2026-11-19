@@ -1,0 +1,22 @@
+flowchart LR
+    N0{Store done}
+    N1([Notify archive])
+    N2(Archive)
+    N3([Emit])
+    N4{Queue notify}
+    N5(Archive emit)
+    N6[Store]
+    N7{Archive}
+    N0 --> N1
+    N0 --> N2
+    N1 --> N3
+    N3 --> N4
+    N2 --> N5
+    N4 --> N6
+    N5 -->|fail| N7
+    N1 --> N5
+    N2 --> N6
+    N0 --> N7
+    N3 ==> N1
+    N5 -.->|back| N4
+    N4 -->|back| N1

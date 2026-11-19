@@ -1,0 +1,23 @@
+ labels:
+  edge         text                                                     x       y      w      h   edge_len  s       off    end_px  detach  own_gap  in_end  gap    on_node  struck  on_label_after
+  U1>DNS       a.example.org · *.a.example.org                          671.4   136.5  219.7  20  297.5     73.2    0.254  73.2    26.5    16.5     -       56.7   0        0       0             
+  T1>DNS       *.dev · *.staging · *.product · ops dashboards           837.9   96.2   310.6  20  125       21.7    0.326  21.7    0.000   0        -       3.800  0        0       0             
+  U2>DNS       b.example.org                                            1004.4  136.5  103.2  20  297.5     73.2    0.254  73.2    26.5    16.5     -       114.9  0        0       0             
+  R1>ARGO      deploy controller pull                                   2278.9  345.5  144.1  20  398.8     202.2   0.007  196.6   0.036   0        -       39.0   0        0       0             
+  DNS>TR2      A 203.0.113.36                                           1138.5  701.1  109.5  20  1507.2    680.0   0.049  680.0   0.050   0        -       70.2   0        0       0             
+  DNS>PSPROD   b A 203.0.113.36                                         1005.2  701.1  121.2  20  1154.9    525.6   0.045  525.6   43.6    0        -       72.7   0        0       0             
+  DNS>DRAPP    only on failover: A record changed by hand               728.2   701.1  281.9  20  899.6     518.4   0.076  381.1   0.050   0        -       72.0   0        0       0             
+  DNS>PSDEV    b.dev A 203.0.113.8                                      160.4   701.1  139.9  20  1759.5    1041.2  0.092  718.3   0.050   0        -       208.9  0        0       0             
+  DNS>SITE     example.org proxied                                      439.1   701.1  141.7  20  1124.4    784.7   0.198  339.7   0.050   0        -       195.4  0        0       0             
+  DNS>TR1      A 203.0.113.177                                          1802.8  437.4  117.3  20  1411.0    1061.9  0.253  349.2   0.033   0        -       15.1   0        0       0             
+  DRAPP>TG     standby-check                                            1263.4  701.1  104.4  20  1310.0    778.7   0.094  531.2   0.100   0        -       72.7   0        0       0             
+  ARGO>TG      alert manager                                            1805.7  392.1  100.9  20  1058.1    547.8   0.018  510.3   0.000   0        -       10.2   0        0       0             
+  PSPROD>TG    backup failed: on failure                                1415.3  701.1  163.3  20  1109.6    654.9   0.090  454.6   12.0    0        -       70.1   0        0       0             
+  LANE>OAI     HTTPS                                                    1682.8  412    62.5   20  604.1     458.5   0.259  145.5   0.011   0        -       9.900  0        0       0             
+  LANE>GITLAB  SMTP mail.example.org                                    1828    963.5  166.4  20  689.7     262.6   0.119  262.6   0.000   0        -       22.4   0        0       0             
+  ARGO>GITLAB  pull image                                               2336.5  907.7  78.8   20  1268.1    305.1   0.259  305.1   0.001   0        -       13.4   0        0       0             
+  PG>DRAPP     SSH tunnel: streaming replication + mirror every 15 min  1630.4  910.9  361    20  1490.5    584.2   0.108  584.2   0.001   0        -       10.2   0        0       0             
+  R2>[STG]     provisioning                                             3100.2  701.1  89.7   20  1836.9    814.2   0.057  814.2   0.051   0        -       96.6   0        0       0             
+  R2>[DR]      playbooks/standby.yml                                    2958.7  701.1  157.2  20  3039.2    700.9   0.269  700.9   0.001   0        -       62.8   0        0       0             
+  R2>[PROD]    provisioning from a laptop                               2681.4  412.1  175.8  20  192       143.6   0.248  48.4    26.7    0        -       10.2   0        0       0
+ bands: U1 T1 U2 / EXT GH / PROD / DR STG

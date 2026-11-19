@@ -1,0 +1,130 @@
+advanced.mmd	block_mode=1	same_as_off=0	violations=43
+    scene: edge 15 (Users>Mon) not picked on 1 of 1 waypoint steps
+    route: edge 15 (Users>Mon) not picked on 3 of 3 waypoint steps
+    drag node 0 by 7,5: partial: edge 15 (Users>Mon) not picked on 1 of 1 waypoint steps
+    drag node 0 by -120,60: partial: edge 15 (Users>Mon) not picked on 1 of 1 waypoint steps
+    drag node 0 by 1,0: partial: edge 15 (Users>Mon) not picked on 1 of 1 waypoint steps
+    drag node 1 by 7,5: partial: edge 15 (Users>Mon) not picked on 1 of 1 waypoint steps
+nested-cases.mmd	block_mode=1	same_as_off=0	violations=11
+    route: edge 7 (o1>x1) not picked on 2 of 3 waypoint steps
+    drag node 1 by 7,5: partial: edge 7 (o1>x1) not picked on 1 of 3 waypoint steps
+    drag node 1 by -120,60: partial: edge 7 (o1>x1) not picked on 2 of 3 waypoint steps
+    drag node 1 by 1,0: partial: edge 7 (o1>x1) not picked on 1 of 3 waypoint steps
+    drag node 3 by -120,60: partial: edge 7 (o1>x1) not picked on 1 of 1 waypoint steps
+    drag node 5 by 7,5: partial: edge 7 (o1>x1) not picked on 1 of 1 waypoint steps
+reqresp22.mmd	block_mode=1	same_as_off=0	violations=1
+    route: edge 5 (b2>a2) leaves the canvas at -4,407 (canvas 465x468)
+self-member.mmd	block_mode=1	same_as_off=0	violations=0
+selfsub-nested.mmd	block_mode=0	same_as_off=1	violations=0
+state-note.mmd	block_mode=1	same_as_off=0	violations=0
+sub-nested-self.mmd	block_mode=1	same_as_off=0	violations=0
+swim-cycle.mmd	block_mode=1	same_as_off=1	violations=0
+bench-75.mmd	block_mode=1	same_as_off=0	violations=1
+    drag node 18 by -120,60: partial: edge 50 (queue>job1) not picked on 5 of 9 waypoint steps
+dense-lr.mmd	block_mode=1	same_as_off=0	violations=0
+dense-td.mmd	block_mode=1	same_as_off=0	violations=0
+fanout-frames.mmd	block_mode=1	same_as_off=0	violations=0
+wide-labels.mmd	block_mode=0	same_as_off=1	violations=0
+infra-overview.mmd	block_mode=1	same_as_off=0	violations=0
+advanced.mmd	block_mode=1	same_as_off=0	violations=43
+    scene: edge 15 (Users>Mon) not picked on 1 of 1 waypoint steps
+    route: edge 15 (Users>Mon) not picked on 3 of 3 waypoint steps
+    drag node 0 by 7,5: partial: edge 15 (Users>Mon) not picked on 1 of 1 waypoint steps
+    drag node 0 by -120,60: partial: edge 15 (Users>Mon) not picked on 1 of 1 waypoint steps
+    drag node 0 by 1,0: partial: edge 15 (Users>Mon) not picked on 1 of 1 waypoint steps
+    drag node 1 by 7,5: partial: edge 15 (Users>Mon) not picked on 1 of 1 waypoint steps
+bench-75.mmd	block_mode=1	same_as_off=0	violations=1
+    drag node 18 by -120,60: partial: edge 50 (queue>job1) not picked on 5 of 9 waypoint steps
+blocks-overview-actors-reversed.mmd	block_mode=1	same_as_off=0	violations=0
+blocks-overview-bt.mmd	block_mode=1	same_as_off=0	violations=0
+blocks-overview-edges-reversed.mmd	block_mode=1	same_as_off=0	violations=0
+blocks-overview-edges-rotated.mmd	block_mode=1	same_as_off=0	violations=0
+blocks-overview-lr.mmd	block_mode=1	same_as_off=0	violations=0
+nested-cases.mmd	block_mode=1	same_as_off=0	violations=11
+    route: edge 7 (o1>x1) not picked on 2 of 3 waypoint steps
+    drag node 1 by 7,5: partial: edge 7 (o1>x1) not picked on 1 of 3 waypoint steps
+    drag node 1 by -120,60: partial: edge 7 (o1>x1) not picked on 2 of 3 waypoint steps
+    drag node 1 by 1,0: partial: edge 7 (o1>x1) not picked on 1 of 3 waypoint steps
+    drag node 3 by -120,60: partial: edge 7 (o1>x1) not picked on 1 of 1 waypoint steps
+    drag node 5 by 7,5: partial: edge 7 (o1>x1) not picked on 1 of 1 waypoint steps
+reqresp22.mmd	block_mode=1	same_as_off=0	violations=1
+    route: edge 5 (b2>a2) leaves the canvas at -4,407 (canvas 465x468)
+routed-around.mmd	block_mode=1	same_as_off=0	violations=0
+self-member.mmd	block_mode=1	same_as_off=0	violations=0
+selfsub-nested.mmd	block_mode=0	same_as_off=1	violations=0
+spread-bottom.mmd	block_mode=1	same_as_off=0	violations=0
+spread-face.mmd	block_mode=1	same_as_off=0	violations=0
+tree_examples_advanced.mmd	block_mode=1	same_as_off=0	violations=43
+    scene: edge 15 (Users>Mon) not picked on 1 of 1 waypoint steps
+    route: edge 15 (Users>Mon) not picked on 3 of 3 waypoint steps
+    drag node 0 by 7,5: partial: edge 15 (Users>Mon) not picked on 1 of 1 waypoint steps
+    drag node 0 by -120,60: partial: edge 15 (Users>Mon) not picked on 1 of 1 waypoint steps
+    drag node 0 by 1,0: partial: edge 15 (Users>Mon) not picked on 1 of 1 waypoint steps
+    drag node 1 by 7,5: partial: edge 15 (Users>Mon) not picked on 1 of 1 waypoint steps
+TOTAL files=228 block_mode=152 with_violations=9 differs_outside_block_mode=0
+tree_tests_fixtures_outline_shapes-td.mmd	block_mode=0	same_as_off=1	violations=0
+tree_tests_fixtures_quality_back-edge.mmd	block_mode=0	same_as_off=1	violations=0
+tree_tests_fixtures_quality_bench-75.mmd	block_mode=1	same_as_off=0	violations=1
+    drag node 18 by -120,60: partial: edge 50 (queue>job1) not picked on 5 of 9 waypoint steps
+tree_tests_fixtures_quality_dense-lr.mmd	block_mode=1	same_as_off=0	violations=0
+tree_tests_fixtures_quality_dense-td.mmd	block_mode=1	same_as_off=0	violations=0
+tree_tests_fixtures_quality_fanout-frames.mmd	block_mode=1	same_as_off=0	violations=0
+tree_tests_fixtures_quality_wide-labels.mmd	block_mode=0	same_as_off=1	violations=0
+u-mermaid_in_infra-overview-flowchart-elk.mmd	block_mode=1	same_as_off=0	violations=0
+advanced.mmd	block_mode=1	same_as_off=0	violations=43
+    scene: edge 15 (Users>Mon) not picked on 1 of 1 waypoint steps
+    route: edge 15 (Users>Mon) not picked on 3 of 3 waypoint steps
+    drag node 0 by 7,5: partial: edge 15 (Users>Mon) not picked on 1 of 1 waypoint steps
+    drag node 0 by -120,60: partial: edge 15 (Users>Mon) not picked on 1 of 1 waypoint steps
+    drag node 0 by 1,0: partial: edge 15 (Users>Mon) not picked on 1 of 1 waypoint steps
+    drag node 1 by 7,5: partial: edge 15 (Users>Mon) not picked on 1 of 1 waypoint steps
+bench-75.mmd	block_mode=1	same_as_off=0	violations=1
+    drag node 18 by -120,60: partial: edge 50 (queue>job1) not picked on 5 of 9 waypoint steps
+demo.mmd	block_mode=0	same_as_off=1	violations=0
+dense-lr.mmd	block_mode=1	same_as_off=0	violations=0
+dense-td.mmd	block_mode=1	same_as_off=0	violations=0
+fanout-frames.mmd	block_mode=1	same_as_off=0	violations=0
+fanout.mmd	block_mode=0	same_as_off=1	violations=0
+g057.mmd	block_mode=1	same_as_off=0	violations=1
+    route: edge 36 (cn2>bxn0) leaves the canvas at -6,322 (canvas 1228x2034)
+g058.mmd	block_mode=1	same_as_off=0	violations=0
+g059.mmd	block_mode=1	same_as_off=0	violations=0
+g060.mmd	block_mode=1	same_as_off=0	violations=0
+g061.mmd	block_mode=1	same_as_off=0	violations=0
+g062.mmd	block_mode=1	same_as_off=0	violations=0
+TOTAL files=158 block_mode=132 with_violations=4 differs_outside_block_mode=0
+g096.mmd	block_mode=1	same_as_off=0	violations=0
+g097.mmd	block_mode=1	same_as_off=0	violations=0
+g098.mmd	block_mode=1	same_as_off=0	violations=0
+g099.mmd	block_mode=1	same_as_off=0	violations=0
+g100.mmd	block_mode=1	same_as_off=0	violations=0
+g101.mmd	block_mode=1	same_as_off=0	violations=0
+g133.mmd	block_mode=1	same_as_off=0	violations=1
+    route: edge 27 (cxxn1>en2) leaves the canvas at 1634,-6 (canvas 3129x1908)
+g134.mmd	block_mode=1	same_as_off=0	violations=0
+g135.mmd	block_mode=1	same_as_off=0	violations=0
+g136.mmd	block_mode=1	same_as_off=0	violations=0
+g137.mmd	block_mode=1	same_as_off=0	violations=0
+g138.mmd	block_mode=1	same_as_off=0	violations=0
+g157.mmd	block_mode=1	same_as_off=0	violations=1
+    route: edge 27 (cxn2>axn0) leaves the canvas at -43,569 (canvas 1680x1984)
+g158.mmd	block_mode=1	same_as_off=0	violations=0
+g159.mmd	block_mode=1	same_as_off=0	violations=0
+g160.mmd	block_mode=1	same_as_off=0	violations=0
+g161.mmd	block_mode=1	same_as_off=0	violations=0
+g162.mmd	block_mode=1	same_as_off=0	violations=0
+g220.mmd	block_mode=1	same_as_off=0	violations=34
+    scene: edge 23 (dn3>bxn2) has a long diagonal waypoint step 37x102
+    drag node 0 by 7,5: partial: edge 23 (dn3>bxn2) has a long diagonal waypoint step 37x102
+    drag node 0 by -120,60: partial: edge 23 (dn3>bxn2) has a long diagonal waypoint step 37x102
+    drag node 0 by 1,0: partial: edge 23 (dn3>bxn2) has a long diagonal waypoint step 37x102
+    drag node 3 by 7,5: partial: edge 23 (dn3>bxn2) has a long diagonal waypoint step 37x102
+    drag node 3 by -120,60: partial: edge 23 (dn3>bxn2) has a long diagonal waypoint step 37x102
+g236.mmd	block_mode=1	same_as_off=0	violations=1
+    route: edge 37 (cxn3>an1) leaves the canvas at -7,390 (canvas 1756x2644)
+g237.mmd	block_mode=1	same_as_off=0	violations=0
+g238.mmd	block_mode=1	same_as_off=0	violations=0
+g239.mmd	block_mode=1	same_as_off=0	violations=0
+s1-gap-nested.mmd	block_mode=1	same_as_off=0	violations=0
+s2-title-pin.mmd	block_mode=1	same_as_off=0	violations=0
+TOTAL files=156 block_mode=155 with_violations=4 differs_outside_block_mode=0

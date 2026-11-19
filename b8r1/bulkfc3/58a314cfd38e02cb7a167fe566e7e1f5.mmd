@@ -1,0 +1,25 @@
+flowchart LR
+    N0([Parse parse])
+    N1{Emit store}
+    N2{Retry done}
+    N3([Parse parse])
+    N4(Store)
+    N5([Store report])
+    N6((Store queue))
+    N7([Check validate])
+    N8[Notify notify]
+    N9[Parse]
+    N0 -->|fail| N1
+    N1 --> N2
+    N2 --> N3
+    N2 --> N4
+    N3 -->|next| N5
+    N4 -->|yes| N6
+    N4 --> N7
+    N6 --> N8
+    N8 --> N9
+    N1 --> N9
+    N1 --> N6
+    N3 -->|back| N0
+    N5 ==> N4
+    N9 ==>|again| N8

@@ -1,0 +1,38 @@
+flowchart LR
+  n1["worker ingest audit"]
+  subgraph B0["Storefront"]
+    n2["pack<br/>report"]
+    n3["cache"]
+    subgraph B0s0["Core 0"]
+      n4["api"]
+      n5["store"]
+      n6["report"]
+    end
+    subgraph B0s1["Edge services 1"]
+      n7["ship audit api"]
+    end
+  end
+  subgraph B1["Ingest"]
+    n8["api"]
+    n9["report"]
+    n10["worker"]
+    n11["index"]
+    subgraph B1s0["Ops 0"]
+      n12["billing<br/>parse"]
+      n13["api"]
+    end
+  end
+  n14["ship<br/>billing"]
+  n7 --> n3
+  n11 --> n5
+  n7 --> n4
+  n5 ==> n14
+  n8 -.->|ship| n12
+  n9 -->|parse| n1
+  n3 -->|store| B0s1
+  n11 -.-> n10
+  n13 ==> B0s1
+  n10 ==> n14
+  n5 -.-> n3
+  n10 --> n13
+  n4 --> n12

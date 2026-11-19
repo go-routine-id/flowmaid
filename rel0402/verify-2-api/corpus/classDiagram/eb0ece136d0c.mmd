@@ -1,0 +1,11 @@
+classDiagram
+direction TB
+A *-- B
+B --> C : uses
+B o-- D : has many of
+A -- E
+D --> F
+A *-- G
+C <|-- H
+F ..> F
+F "1" --> "*" F : f1

@@ -1,0 +1,9 @@
+flowchart TD
+    A[Start] --> F@{ shape: fork }
+    F --> B[One] & C[Two] & D[Three]
+    B --> J@{ shape: join }
+    C --> J
+    D --> J
+    J --> E{ }
+    E --> X[yes]
+    E --> Y[no]

@@ -1,0 +1,45 @@
+flowchart BT
+  n1["worker"]
+  n2["cache"]
+  n3["store"]
+  subgraph B0["Data tier"]
+    n4["audit"]
+    subgraph B0s0["Ingest 0"]
+      n5["report"]
+    end
+    subgraph B0s1["Ingest 1"]
+      n6["store"]
+    end
+  end
+  subgraph B1["Storefront"]
+    n7["split<br/>split"]
+    n8["worker"]
+    n9["ship"]
+    n10["ingest<br/>merge"]
+    subgraph B1s0["Platform 0"]
+      n11["ingest"]
+    end
+  end
+  subgraph B2["Core"]
+    n12["audit"]
+    n13["cache"]
+    subgraph B2s0["Core 0"]
+      n14["ingest"]
+    end
+  end
+  n15["db"]
+  n6 --> n3
+  n13 ==> n11
+  n13 --> n15
+  n9 --> n8
+  n6 -->|api| n12
+  n5 -.-> n9
+  n5 --> n8
+  n8 ==> n13
+  n5 -->|ingest| n7
+  n14 --> n9
+  n3 -.-> n7
+  n11 ==> n1
+  n10 --> n15
+  n4 -->|search| B0s0
+  n7 -.-> n9

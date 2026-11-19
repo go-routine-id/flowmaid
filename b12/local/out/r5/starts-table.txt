@@ -1,0 +1,16 @@
+input                                  s1   s2   s3   s4   s5   s6   s7   s8   s9   granted scene_ms
+bench-75                               230  248  248  248  248  248  248  248  248  248     47.49
+blocks-overview-actors-reversed        6    6    6    6    6    6    6    6    6    6       9.39
+blocks-overview-edges-reversed         6    6    6    6    6    6    6    6    6    6       9.32
+blocks-overview-edges-rotated          6    6    6    6    6    6    6    6    6    6       10.26
+blocks-overview-subgraphs-reversed     6    6    6    6    6    6    6    6    6    6       8.47
+blocks-overview                        6    6    6    6    6    6    6    6    6    6       8.93
+dense-lr                               19   19   17   17   17   17   17   17   17   17      16.09
+dense-td                               98   37   68   68   68   68   68   68   68   68      39.83
+infra-overview-v2                      20   17   17   22   22   22   22   22   15   15      14.72
+infra-overview                         19   19   19   19   15   15   15   15   15   15      10.35
+perm-a-edges-reversed                  19   19   19   19   15   15   15   15   15   15      10.78
+perm-b-subgraphs-reversed              27   27   27   26   26   22   22   22   22   22      15.42
+perm-c-actors-reversed                 19   19   19   19   15   15   15   15   15   15      10.42
+perm-d-edges-rotated                   19   19   19   19   15   15   15   15   15   15      10.24
+perm-e-one-more-inner-edge             31   25   25   25   25   25   17   17   17   17      9.43

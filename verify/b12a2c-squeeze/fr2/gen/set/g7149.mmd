@@ -1,0 +1,35 @@
+flowchart TD
+  n1["auth split mail"]
+  subgraph B0["Data tier"]
+    n2["billing"]
+  end
+  subgraph B1["Ingest"]
+    n3["db"]
+    n4["worker"]
+  end
+  subgraph B2["Fulfilment desk"]
+    n5["billing cache worker"]
+    n6["parse ship audit"]
+    n7["report"]
+  end
+  subgraph B3["Storefront"]
+    n8["billing"]
+    n9["store"]
+    n10["queue"]
+    n11["notify<br/>search"]
+  end
+  n12["audit billing ship"]
+  n13["audit"]
+  n9 --> n13
+  n13 --> n12
+  n8 -->|ship| n2
+  n12 ==>|queue| n7
+  n6 --> n7
+  n6 --> n8
+  n5 -.-> B1
+  n2 -.->|index| n13
+  n9 ==> n8
+  n4 -.->|api| n9
+  n8 ==> n3
+  n13 ==> n7
+  n11 -.-> n12

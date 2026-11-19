@@ -1,0 +1,17 @@
+flowchart TD
+  subgraph S1 [Services]
+    a[API] --> b[Worker]
+  end
+  subgraph S2 [Storage]
+    c[(DB)]
+    d[Cache]
+  end
+  a e1@==> S2
+  S1 e2@--> d
+  b e3@-.-> c
+  e1@{ curve: step }
+  e2@{ curve: stepBefore }
+  e3@{ curve: stepAfter }
+  linkStyle 1 stroke-width:20px
+  linkStyle 2 stroke-width:14px
+  linkStyle 3 stroke-width:6px

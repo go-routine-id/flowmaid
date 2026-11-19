@@ -1,0 +1,13 @@
+flowchart TD
+  u1[Web client] -->|login request| a1
+  u2[Batch job] --> b1
+  subgraph A [Accounts]
+    a1[Sign in] -->|check| a2[Verify token]
+    a2 --> a3[Load profile]
+  end
+  subgraph B [Billing service with a long title]
+    b1["Invoice<br/>generator<br/>nightly"] --> b2[Ledger]
+    b2 -->|post| b3[Statements]
+  end
+  a3 -->|profile ready| done[Dashboard]
+  b3 -->|mail out| done

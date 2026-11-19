@@ -1,0 +1,28 @@
+d01	A.B --> C |	MM:  rel=1
+d02	A.B-->C.D |	MM:  rel=1
+d03	com.example.Customer --> com.example.Order |	MM:  rel=1
+d04	A.B..>C |	MM:  rel=1
+d05	A.B.. C |	MM:  rel=1
+d06	A.B..C.D |	MM:  rel=1
+d07	A..B |	MM:  rel=1
+d08	A.1 --> B.2 |	MM:  rel=1
+d09	A.o --> B |	MM: ERR
+d10	pkg.o--B |	MM: ERR
+d11	pkg.o..B |	MM: ERR
+d12	A.B<|--C.D |	MM:  rel=1
+d13	A.B o-- C.D |	MM:  rel=1
+d14	A.B "1" *-- "many" C.D : owns |	MM:  rel=1
+d15	A.B : +x int |	MM:  rel=0
+d16	class A.B |	MM:  rel=0
+d17	A. --> B |	MM: ERR
+d18	.A --> B |	MM: ERR
+d19	A...B |	MM: ERR
+d20	A --> B. |	MM: ERR
+d21	A.B~T~ --> C |	MM:  rel=1
+d22	A.B --|> C.D : label |	MM:  rel=1
+d23	o.A --> B |	MM: ERR
+d24	A.B o--o C.D |	MM:  rel=1
+d25	A.x--o.B |	MM: ERR
+d26	A.B ()-- C |	MM:  rel=1
+d27	class A.B { |  +int id | } | note for A.B "hello" | A.B --> C |	MM:  rel=2
+d28	class A.B | class A | class B | A --> B | A.B --> A |	MM:  rel=2

@@ -1,0 +1,12 @@
+flowchart BT
+  H[Hub service] --> A1
+  H --> B1
+  H --> C1
+  X[External caller] --> G
+  Y[Second caller] --> G
+  subgraph G [Payments and settlement block]
+    A1[alpha] --> A2[beta]
+    B1[gamma] --> A2
+    C1[delta]
+  end
+  A2 --> Z[Sink]

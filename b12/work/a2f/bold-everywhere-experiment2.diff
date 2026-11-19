@@ -1,0 +1,750 @@
+diff --git a/src/architecture.rs b/src/architecture.rs
+index 3b9f987..3e6ff76 100644
+--- a/src/architecture.rs
++++ b/src/architecture.rs
+@@ -334,6 +334,7 @@ fn build(d: &Architecture) -> (ArchScene, Vec<Vec<Pt>>) {
+                 h: f.y1 - f.y0,
+                 title: titles[g].clone(),
+                 depth: t.depth[g],
++                bold_title: false,
+             }
+         })
+         .collect();
+diff --git a/src/blockcheck.rs b/src/blockcheck.rs
+index 904f999..f1baff3 100644
+--- a/src/blockcheck.rs
++++ b/src/blockcheck.rs
+@@ -2289,6 +2289,104 @@ fn titles_are_drawn_whole_in_every_direction() {
+     }
+ }
+ 
++#[test]
++fn a_frame_holds_its_bold_title_as_a_browser_draws_it() {
++    // A frame's title is drawn bold. Grown to the regular estimate, a
++    // long title ran 6-15 px past its frame's right border in a browser
++    // (title-hidden 12 px), and an edge kept off the estimated chip
++    // touched its last letter (nested-wide-title: `src -> a1`). The
++    // widths below are what Chromium draws these titles at (12 px bold,
++    // Liberation Sans, Helvetica's metrics; widest line), measured once,
++    // so the test does not grade the estimate with itself.
++    let ink_of = |title: &str| -> Option<f64> {
++        [
++            ("A long block title that covers the whole first row", 273.59),
++            (
++                "A long block title that covers the first member and more",
++                318.61,
++            ),
++            (
++                "A nested block whose title runs far past its one member",
++                318.63,
++            ),
++            ("Edge and shared services with a long title", 239.06),
++        ]
++        .iter()
++        .find(|(t, _)| title.split('\n').next() == Some(*t))
++        .map(|&(_, w)| w)
++    };
++    let sep = crate::clearance::CHIP_SEP;
++    for name in ["title-hidden", "title-entry", "lr", "nested-wide-title"] {
++        let src = std::fs::read_to_string(format!(
++            "{}/tests/fixtures/blocks/{name}.mmd",
++            env!("CARGO_MANIFEST_DIR")
++        ))
++        .unwrap();
++        for dir in ["TD", "BT", "LR", "RL"] {
++            let g = graph(&in_direction(&src, dir));
++            let sc = block_scene(&g);
++            let what = format!("{name} {dir}");
++            let mut seen = 0;
++            for (ci, c) in sc.clusters.iter().enumerate() {
++                let Some(ink) = ink_of(&c.title) else {
++                    continue;
++                };
++                seen += 1;
++                assert!(c.bold_title, "{what}: {} measured regular", c.id);
++                // The text starts 10 px in (`to_svg`); its ink ends a
++                // chip pad and a title inset short of the right border.
++                let ink_right = c.x + 10.0 + ink;
++                assert!(
++                    c.x + c.w - ink_right >= 4.0 + 6.0 - 1.0,
++                    "{what}: {}'s title ends {:.1} px from its border",
++                    c.id,
++                    c.x + c.w - ink_right
++                );
++                // The chip edges keep clear of holds the ink, and so
++                // does the chip `to_svg` paints under it.
++                let head = crate::scene::title_head(&sc.clusters, ci, f64::INFINITY);
++                assert!(head.2 >= ink_right, "{what}: chip {head:?} < {ink_right}");
++                let painted = crate::scene::title_text_width(c, &c.title) + 8.0;
++                assert!(c.x + 6.0 + painted >= ink_right, "{what}: painted chip");
++                // No drawn line comes within CHIP_SEP of the ink.
++                let ink_box = (c.x + 10.0, c.y + 5.0, ink_right, c.y + 21.0);
++                for e in &sc.edges {
++                    for w in path_of(e).windows(2) {
++                        let d = seg_box_dist(w[0], w[1], ink_box);
++                        assert!(
++                            d >= sep - 0.5,
++                            "{what}: {} -> {} {d:.1} px from {}'s title",
++                            e.from,
++                            e.to,
++                            c.id
++                        );
++                    }
++                }
++            }
++            assert_eq!(seen, 1, "{what}");
++        }
++    }
++    // Outside a block layout a title keeps the estimate it always had.
++    let g = fixture("blocks/title-hidden");
++    let off = crate::levels::with_blocks(false, || crate::scene::scene(&g));
++    assert!(off.clusters.iter().all(|c| !c.bold_title));
++}
++
++/// Distance from segment `a`-`b` to the box `r` (x0, y0, x1, y1), 0
++/// where they meet: the least over points 0.25 px apart along it.
++fn seg_box_dist(a: (f64, f64), b: (f64, f64), r: (f64, f64, f64, f64)) -> f64 {
++    let n = ((b.0 - a.0).hypot(b.1 - a.1) / 0.25).ceil().max(1.0) as usize;
++    (0..=n)
++        .map(|k| {
++            let t = k as f64 / n as f64;
++            let (x, y) = (a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t);
++            let dx = (r.0 - x).max(0.0).max(x - r.2);
++            let dy = (r.1 - y).max(0.0).max(y - r.3);
++            dx.hypot(dy)
++        })
++        .fold(f64::INFINITY, f64::min)
++}
++
+ /// The jog room of frame `id` in `sc`: how far its top border lies
+ /// above its first row past its pad and title strip (TD).
+ fn jog_room(g: &Graph, sc: &Scene, id: &str) -> f64 {
+diff --git a/src/comb.rs b/src/comb.rs
+index 53eebe9..4122eed 100644
+--- a/src/comb.rs
++++ b/src/comb.rs
+@@ -1283,7 +1283,7 @@ impl World {
+             .map(|i| cx.drawn.get(i).copied().unwrap_or(false))
+             .collect();
+         let heads = (0..sc.clusters.len())
+-            .map(|ci| crate::scene::title_head(&sc.clusters, ci, f64::INFINITY))
++            .map(|ci| crate::scene::title_head_dbg(&sc.clusters, ci, f64::INFINITY, "DBG_CB"))
+             .collect();
+         let ends = (0..sc.edges.len())
+             .map(|i| cx.ends.get(i).copied().flatten())
+@@ -2274,6 +2274,38 @@ mod tests {
+         }
+     }
+ 
++    #[test]
++    #[test]
++    fn dbg_comb_twice() {
++        crate::levels::with_blocks(true, || {
++            let g = crate::blockcheck::fixture("quality/dense-td");
++            let mut sc = scene(&g);
++            let cx = crate::edgepass::ctx(&g, &sc);
++            let show = |sc: &Scene, tag: &str| {
++                for e in &sc.edges {
++                    if e.from == "n16" && (e.to == "n35" || e.to == "n32") {
++                        let c = crate::router::ortho_corners(e).unwrap_or_default();
++                        let s: Vec<String> = c.iter().map(|p| format!("({:.0},{:.0})", p.0, p.1)).collect();
++                        eprintln!("{tag} {}->{} {}", e.from, e.to, s.join(" "));
++                    }
++                }
++            };
++            show(&sc, "final");
++            for (ci, c) in sc.clusters.iter().enumerate() {
++                if c.id == "g9" || c.id == "g8" || c.id == "g10" {
++                    eprintln!("frame {} {:.1}..{:.1} x {:.1}..{:.1} head {:?}", c.id, c.x, c.x + c.w, c.y, c.y + c.h, crate::scene::title_head(&sc.clusters, ci, f64::INFINITY));
++                }
++            }
++            for n in &sc.nodes { if n.id == "n42" { eprintln!("n42 {:.1}..{:.1} y {:.1}..{:.1}", n.x - n.w/2.0, n.x + n.w/2.0, n.y - n.h/2.0, n.y+n.h/2.0); } }
++            for e in &sc.edges { if e.to == "n42" { let c = crate::router::ortho_corners(e).unwrap_or_default(); let s: Vec<String> = c.iter().map(|p| format!("({:.0},{:.0})", p.0, p.1)).collect(); eprintln!("{}->{} {}", e.from, e.to, s.join(" ")); } }
++            let mut moved = vec![false; sc.edges.len()];
++            comb(&mut sc, &cx, &mut moved);
++            show(&sc, "again");
++            let q = crate::quality::measure(&g, &sc);
++            eprintln!("again: fan_x {} x_drawn {}", q.fan_x, q.x_drawn);
++        });
++    }
++
+     #[test]
+     fn a_block_layouts_comb_is_settled_after_one_pass() {
+         // The same of a block layout: a side whose ports the stage
+diff --git a/src/edgepass.rs b/src/edgepass.rs
+index ce9d0ad..35f7916 100644
+--- a/src/edgepass.rs
++++ b/src/edgepass.rs
+@@ -429,29 +429,68 @@ pub(crate) fn finish_blocks(g: &Graph, sc: &mut Scene, blocks: Option<&[Vec<usiz
+ }
+ 
+ /// The edge stages over `sc` with its context built.
++
++fn dbg_dump(sc: &Scene, stage: &str) {
++    if std::env::var("DBG_EDGES").is_err() { return; }
++    for e in &sc.edges {
++        let want = std::env::var("DBG_EDGES").unwrap_or_default();
++        if (want == "1" && e.from == "n16" && (e.to == "n35" || e.to == "n32")) || (want == "n42" && e.to == "n42" && (e.from == "n25" || e.from == "n28")) || (want == "gap" && ((e.from == "n16" && e.to == "n43") || (e.from == "n28" && e.to == "n42"))) {
++            let pts: Vec<(f64, f64)> = if e.waypoints.is_empty() { e.bezier.to_vec() } else { e.waypoints.clone() };
++            let mut out: Vec<String> = Vec::new();
++            for (i, &p) in pts.iter().enumerate() {
++                if i == 0 || i + 1 == pts.len() { out.push(format!("({:.0},{:.0})", p.0, p.1)); continue; }
++                let (a, b) = (pts[i - 1], pts[i + 1]);
++                let cross = (p.0 - a.0) * (b.1 - p.1) - (p.1 - a.1) * (b.0 - p.0);
++                if cross.abs() > 1e-3 { out.push(format!("({:.0},{:.0})", p.0, p.1)); }
++            }
++            eprintln!("{stage:10} {}->{} {}", e.from, e.to, out.join(" "));
++        }
++    }
++}
+ fn stages(g: &Graph, sc: &mut Scene, mut cx: Ctx, mode: Mode) {
++    dbg_dump(sc, "start");
+     let mut moved = vec![false; sc.edges.len()];
+     crate::ports::assign(g, sc, &cx, mode, &mut moved);
++    dbg_dump(sc, "assign");
+     // Every edge on the axes, its corners rounded (report §2.1): from the
+     // ends the ports stage settled, before the router judges them.
+     crate::ortho::orthogonalize(g, sc, &mut cx, mode);
++    dbg_dump(sc, "ortho");
+     crate::router::repair(g, sc, &cx, mode, &mut moved);
++    dbg_dump(sc, "repair");
+     // A rerouted end may have switched to another side of its node and
+     // landed on a port another edge already holds: space those groups
+     // again. Groups the router left alone are already spaced and stay
+     // byte-identical.
+     crate::ports::respace(g, sc, &cx, mode, &mut moved);
++    dbg_dump(sc, "respace");
+     // After the ports are spaced again, so the channel nudge sees (and
+     // keeps) the final ends; in the static scene it ends by putting each
+     // side's ends in the order their paths now head (G9).
+     crate::router::nudge(g, sc, &cx, mode, &mut moved);
++    dbg_dump(sc, "nudge");
+     // Then two unrelated edges the nudge (or the builder) left side by
+     // side under the spacing get one moved clear, where that costs
+     // nothing else (G4).
+     crate::router::spread_close(g, sc, &cx, mode, &mut moved);
++    dbg_dump(sc, "spread");
+     // Then a fan's teeth nest: the ports, the tracks and the turns of
+     // each side's ends in one order (report B4, see [`crate::comb`]).
+     crate::comb::comb(sc, &cx, &mut moved);
++    dbg_dump(sc, "comb");
++    if let Ok(n) = std::env::var("DBG_COMBN") {
++        let n: usize = n.parse().unwrap();
++        for k in 0..n {
++            let before: Vec<Vec<(f64, f64)>> = sc.edges.iter().map(|e| e.waypoints.clone()).collect();
++            let mut mv = vec![false; sc.edges.len()];
++            crate::comb::comb(sc, &cx, &mut mv);
++            let ch = sc.edges.iter().zip(&before).filter(|(e, b)| &e.waypoints != *b).count();
++            for (m, x) in moved.iter_mut().zip(&mv) { *m |= *x; }
++            eprintln!("comb pass {} changed {}", k + 2, ch);
++            dbg_dump(sc, "combN");
++            if ch == 0 { break; }
++        }
++    }
+     glyph_stubs(sc, &cx, &mut moved);
+     straight_cubics(sc, &cx);
+     square_s_cubics(sc, &cx);
+@@ -470,6 +509,20 @@ fn stages(g: &Graph, sc: &mut Scene, mut cx: Ctx, mode: Mode) {
+         Mode::Routed => crate::labels::LABEL_ROUTE_WORK,
+     };
+     crate::labels::relabel(g, sc, &cx, &moved, budget);
++    if std::env::var("DBG_POST").is_ok() {
++        let before: Vec<Vec<(f64, f64)>> = sc.edges.iter().map(|e| e.waypoints.clone()).collect();
++        let mut mv = vec![false; sc.edges.len()];
++        crate::comb::comb(sc, &cx, &mut mv);
++        if std::env::var("DBG_SPREAD2").is_ok() {
++            crate::router::spread_close(g, sc, &cx, mode, &mut mv);
++        }
++        let ch: Vec<String> = sc.edges.iter().zip(&before).filter(|(e, b)| &e.waypoints != *b).map(|(e, _)| format!("{}->{}", e.from, e.to)).collect();
++        eprintln!("post comb changed {:?}", ch);
++        for (i, e) in sc.edges.iter_mut().enumerate() {
++            if mv[i] { crate::ports::reround(e); }
++        }
++        crate::labels::relabel(g, sc, &cx, &mv, budget);
++    }
+     // A scene whose painter strokes its own width (ER, class) is drawn
+     // on its canvas as-is; a flowchart's is fitted like its SVG.
+     refit(sc, mode, g.edge_paint_width.is_none());
+diff --git a/src/hops.rs b/src/hops.rs
+index 0ac25d0..9dccb06 100644
+--- a/src/hops.rs
++++ b/src/hops.rs
+@@ -351,7 +351,7 @@ pub(crate) fn legs_for_pick(sc: &Scene) -> Legs {
+             (x0, y1, x1, y1),
+             (x0, y0, x0, y1),
+             (x1, y0, x1, y1),
+-            crate::scene::title_head(&sc.clusters, ci, f64::INFINITY),
++            crate::scene::title_head_dbg(&sc.clusters, ci, f64::INFINITY, "DBG_H"),
+         ]);
+     }
+     out
+diff --git a/src/labels.rs b/src/labels.rs
+index 341dae1..3d31372 100644
+--- a/src/labels.rs
++++ b/src/labels.rs
+@@ -30,9 +30,7 @@
+ //! first, and a few rounds let a label take a spot another one left.
+ 
+ use crate::edgepass::Ctx;
+-use crate::layout::{
+-    is_branch_point, text_width, title_extra, LABEL_BOX_H, LABEL_CLEAR, LINE_H, TITLE_SCALE,
+-};
++use crate::layout::{is_branch_point, title_extra, LABEL_BOX_H, LABEL_CLEAR, LINE_H};
+ use crate::model::{EdgeKind, Graph};
+ use crate::scene::{
+     basis_sample, edge_drawn, edge_polyline, fit_cluster_title, label_stub, shift_scene, Bbox,
+@@ -1063,7 +1061,7 @@ pub(crate) fn chip_rect(clusters: &[SceneCluster], ci: usize, canvas_right: f64)
+     (
+         x,
+         y,
+-        x + text_width(&title) * TITLE_SCALE + CHIP_PAD_W,
++        x + if std::env::var("DBG_E").is_ok() { crate::layout::text_width(&title) * crate::layout::TITLE_SCALE } else { crate::scene::title_text_width(c, &title) } + CHIP_PAD_W,
+         y + CHIP_H + title_extra(&title),
+     )
+ }
+diff --git a/src/layout.rs b/src/layout.rs
+index 89053b5..73dd8f6 100644
+--- a/src/layout.rs
++++ b/src/layout.rs
+@@ -974,6 +974,28 @@ pub fn text_width(s: &str) -> f64 {
+         .fold(0.0, f64::max)
+ }
+ 
++/// [`text_width`] for text drawn bold throughout, as a subgraph title is
++/// (`font-weight="bold"`): the widest line's advances from
++/// [`bold_line_width`]'s Helvetica-Bold table, in px at
++/// [`TEXT_CALIBRATION`]. Style tags are interpreted (every run is bold
++/// already), their characters count zero.
++///
++/// [`text_width`]'s ~6% for a `<b>` run is too little for a whole bold
++/// line: Helvetica-Bold advances run about 10% past the regular ones on
++/// lowercase text (`n`, `o`, `u` 611 against 556, `r` 389 against 333),
++/// so a frame sized by the regular estimate let a long bold title run
++/// past its border (blocks/title-hidden: 12 px at the title font).
++pub(crate) fn bold_text_width(s: &str) -> f64 {
++    s.split('\n')
++        .map(|l| {
++            if !l.contains(['<', '$']) {
++                return bold_line_width(l);
++            }
++            spans(l).iter().map(|(t, _, _)| bold_line_width(t)).sum()
++        })
++        .fold(0.0, f64::max)
++}
++
+ /// Split one label line into styled runs `(text, bold, italic)`,
+ /// interpreting `<b>`/`<strong>` and `<i>`/`<em>` tags the way
+ /// mermaid does. Unknown tags stay literal text; unclosed tags just
+@@ -1272,6 +1294,53 @@ fn line_width(s: &str) -> f64 {
+         .sum()
+ }
+ 
++/// [`line_width`] for a bold line ([`bold_text_width`]): Helvetica-Bold
++/// advance widths (its AFM, per 1000 em) at [`TEXT_CALIBRATION`] px,
++/// rounded up to 0.1 px, so the estimate never falls short of a browser
++/// drawing the line in Helvetica or a metric-compatible face (Arial,
++/// Liberation Sans) by more than kerning. Characters outside the table
++/// count as a wide lowercase letter.
++fn bold_line_width(s: &str) -> f64 {
++    const EM: f64 = TEXT_CALIBRATION;
++    s.chars()
++        .map(|c| match c {
++            // 278
++            'i' | 'j' | 'l' | ' ' | '.' | ',' | '/' | '\\' | 'I' | '\'' | '|' => 3.9,
++            // 333
++            '!' | ':' | ';' | 'f' | 't' | '(' | ')' | '[' | ']' | '-' | '`' => 4.7,
++            // 389
++            'r' | '*' | '{' | '}' => 5.5,
++            '"' => 6.7,
++            'z' => 7.0,
++            // 556
++            'a' | 'c' | 'e' | 'k' | 's' | 'v' | 'x' | 'y' | 'J' | '0'..='9' | '#' | '$' | '_' => {
++                7.8
++            }
++            // 584
++            '+' | '<' | '=' | '>' | '~' | '^' => 8.2,
++            // 611
++            'b' | 'd' | 'g' | 'h' | 'n' | 'o' | 'p' | 'q' | 'u' | '?' | 'F' | 'L' | 'T' | 'Z' => {
++                8.6
++            }
++            // 667
++            'E' | 'P' | 'S' | 'V' | 'X' | 'Y' => 9.4,
++            // 722
++            'A' | 'B' | 'C' | 'D' | 'H' | 'K' | 'N' | 'R' | 'U' | '&' => 10.2,
++            // 778
++            'w' | 'G' | 'O' | 'Q' => 10.9,
++            'M' => 11.7,
++            'm' | '%' => 12.5,
++            'W' => 13.3,
++            '@' => 13.7,
++            '\u{200D}' | '\u{FE0F}' => 0.0,
++            '—' => EM,
++            '\u{2190}'..='\u{21FF}' | '\u{2600}'..='\u{27BF}' => EM,
++            c if (c as u32) >= 0x2E80 => 14.0,
++            _ => 8.6,
++        })
++        .sum()
++}
++
+ /// Intrinsic node size (width, height) in pixels, based on shape,
+ /// the estimated widest-line width, and the number of label lines.
+ ///
+@@ -5927,7 +5996,7 @@ fn title_chip(g: &Graph, t: &TitleRows, c: usize) -> Option<TitleChip> {
+         lo: left + CHIP_INSET_X - crate::ortho::CHIP_CLEAR,
+         hi: left
+             + CHIP_INSET_X
+-            + text_width(title) * TITLE_SCALE
++            + if std::env::var("DBG_B").is_ok() { text_width(title) } else { bold_text_width(title) } * TITLE_SCALE
+             + CHIP_PAD_W
+             + crate::ortho::CHIP_CLEAR,
+     })
+@@ -10454,6 +10523,46 @@ mod tests {
+         );
+     }
+ 
++    #[test]
++    fn a_bold_title_is_measured_as_a_browser_draws_it() {
++        // Widths (px at the 12 px title font, bold) that Chromium draws
++        // these repository fixtures' subgraph titles at in the face
++        // `Helvetica` resolves to on a Linux box (Liberation Sans Bold,
++        // metric-compatible with Helvetica Bold): measured once with
++        // `getBBox`, so this test does not grade the estimate by itself.
++        let measured = [
++            ("A long block title that covers the whole first row", 273.59),
++            (
++                "A long block title that covers the first member and more",
++                318.61,
++            ),
++            (
++                "A nested block whose title runs far past its one member",
++                318.63,
++            ),
++            ("Edge and shared services with a long title", 239.06),
++            ("second line of the title", 127.01),
++            ("Outer", 32.33),
++        ];
++        for (title, ink) in measured {
++            let bold = bold_text_width(title) * TITLE_SCALE;
++            // Never short by more than a glyph's ink past its advance
++            // (`getBBox` holds the ink), never more than 2 % over.
++            assert!(bold >= ink - 1.0, "{title}: {bold} < {ink}");
++            assert!(bold <= ink * 1.02, "{title}: {bold} > {ink}");
++        }
++        // The regular estimate falls short of a long bold title by more
++        // than a frame's inset and chip pad: why block frames measure bold.
++        let (title, ink) = measured[0];
++        assert!(text_width(title) * TITLE_SCALE + 10.0 < ink);
++        // Tags are read, not measured; multi-line titles take the widest.
++        assert_eq!(bold_text_width("<b>Outer</b>"), bold_text_width("Outer"));
++        assert_eq!(
++            bold_text_width("Outer\nsecond line of the title"),
++            bold_text_width("second line of the title")
++        );
++    }
++
+     #[test]
+     fn bold_labels_render_as_svg_tspans_not_literal_tags() {
+         let svg = crate::render_svg("flowchart TD\nA[\"<b>Go</b> service\"] --> B").unwrap();
+diff --git a/src/ortho.rs b/src/ortho.rs
+index 41a0394..c4da26a 100644
+--- a/src/ortho.rs
++++ b/src/ortho.rs
+@@ -548,7 +548,7 @@ fn ortho_pass(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
+             for l in [r.2, r.3] {
+                 walls.push(((r.0, r.1), (l - clear, l + clear)));
+             }
+-            let h = flow_rect(dir, crate::scene::title_head(&sc.clusters, ci, right));
++            let h = flow_rect(dir, crate::scene::title_head_dbg(&sc.clusters, ci, right, "DBG_OW"));
+             walls.push(((h.0, h.1), (h.2 - CHIP_CLEAR, h.3 + CHIP_CLEAR)));
+         }
+     }
+@@ -1377,7 +1377,7 @@ impl TitleSides {
+                     return None;
+                 }
+                 let r = frames[ci];
+-                let h = flow_rect(dir, crate::scene::title_head(&sc.clusters, ci, right));
++                let h = flow_rect(dir, crate::scene::title_head_dbg(&sc.clusters, ci, right, "DBG_OT"));
+                 // The side the chip sits on, and which way along the flow
+                 // the frame lies from it.
+                 let (t, inward) = if (h.2 - r.2).abs() <= (r.3 - h.3).abs() {
+diff --git a/src/ports.rs b/src/ports.rs
+index babf59e..dcd51d1 100644
+--- a/src/ports.rs
++++ b/src/ports.rs
+@@ -2054,7 +2054,7 @@ fn title_heads(sc: &Scene) -> Vec<(f64, f64, f64, f64)> {
+     grow_scene(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
+     let right = bb.finish().1 + MARGIN;
+     (0..sc.clusters.len())
+-        .map(|ci| title_head(&sc.clusters, ci, right))
++        .map(|ci| crate::scene::title_head_dbg(&sc.clusters, ci, right, "DBG_P"))
+         .collect()
+ }
+ 
+@@ -2104,12 +2104,20 @@ fn unshaded(
+             .collect();
+     }
+     let need = PORT_SPACING * k.saturating_sub(1) as f64;
+-    match free
+-        .into_iter()
+-        .filter(|(p, q)| q - p >= need)
+-        .max_by(|x, y| (x.1 - x.0).total_cmp(&(y.1 - y.0)))
+-    {
+-        Some((p, q)) if shaded => (p, q, true),
++    let longest = free
++        .iter()
++        .copied()
++        .max_by(|x, y| (x.1 - x.0).total_cmp(&(y.1 - y.0)));
++    match longest {
++        Some((p, q)) if shaded && q - p >= need => (p, q, true),
++        Some((p, q)) if shaded && std::env::var("DBG_WIDEN").is_ok() && deep.iter().any(|&d| d) && hi - lo >= need => {
++            let short = need - (q - p);
++            if p > lo + 1e-9 {
++                ((p - short).max(lo), ((p - short).max(lo) + need).min(hi), true)
++            } else {
++                ((q + short).min(hi) - need, (q + short).min(hi), true)
++            }
++        }
+         _ => (lo, hi, false),
+     }
+ }
+diff --git a/src/quality.rs b/src/quality.rs
+index 1f747c1..2f73547 100644
+--- a/src/quality.rs
++++ b/src/quality.rs
+@@ -14,7 +14,7 @@
+ //! Not a stable API: names, fields and thresholds change whenever the
+ //! crew tightens the gate.
+ 
+-use crate::layout::{text_width, title_extra, LABEL_BOX_H, TITLE_SCALE};
++use crate::layout::{title_extra, LABEL_BOX_H};
+ use crate::model::{Direction, EdgeCurve, Graph, Shape};
+ use crate::parser::parse_document;
+ use crate::scene::{
+@@ -1650,7 +1650,7 @@ pub fn measure(g: &Graph, sc: &Scene) -> Metrics {
+             Rect(
+                 x,
+                 y,
+-                x + text_width(&title) * TITLE_SCALE + CHIP_PAD_W,
++                x + scene::title_text_width(c, &title) + CHIP_PAD_W,
+                 y + CHIP_H + title_extra(&title),
+             )
+         })
+@@ -2001,6 +2001,7 @@ pub fn measure(g: &Graph, sc: &Scene) -> Metrics {
+                         a.e.from, a.e.to, b.e.from, b.e.to
+                     ));
+                 }
++                if std::env::var("DBG_GAP").is_ok() && gap < 12.1 { eprintln!("GAP {}->{} {}->{} {gap:.2}", a.e.from, a.e.to, b.e.from, b.e.to); }
+                 m.min_edge_gap = m.min_edge_gap.min(gap);
+             }
+         }
+diff --git a/src/router.rs b/src/router.rs
+index 379655d..4cab7c9 100644
+--- a/src/router.rs
++++ b/src/router.rs
+@@ -776,7 +776,7 @@ impl World {
+         // Title chips with the header corner they sit in, as `to_svg`
+         // draws them (same math as the harness).
+         let chips = (0..sc.clusters.len())
+-            .map(|ci| title_head(&sc.clusters, ci, maxx + MARGIN))
++            .map(|ci| crate::scene::title_head_dbg(&sc.clusters, ci, maxx + MARGIN, "DBG_R"))
+             .collect();
+         let labels = sc
+             .edges
+diff --git a/src/scene.rs b/src/scene.rs
+index 8679f0c..e195976 100644
+--- a/src/scene.rs
++++ b/src/scene.rs
+@@ -202,6 +202,12 @@ pub struct SceneCluster {
+     pub title: String,
+     /// Nesting depth, 0 = outermost.
+     pub depth: usize,
++    /// Whether the title is measured as it is drawn, bold throughout
++    /// ([`title_text_width`]): set on the frames of a block layout, whose
++    /// frame grows to hold its title whole (B12 F1), so the frame, the
++    /// chip edges keep clear of and the chip the painter draws all hold
++    /// the bold ink. Elsewhere the title keeps the estimate it always had.
++    pub(crate) bold_title: bool,
+ }
+ 
+ /// Positioned geometry for one diagram, ready to paint or serialise.
+@@ -3282,6 +3288,21 @@ pub(crate) fn basis_sample_with(pts: &[(f64, f64)], lines: bool) -> Vec<(f64, f6
+ /// the chip and the border. An edge
+ /// that comes within [`crate::clearance::CHIP_SEP`] of it runs through
+ /// or along the frame's name (G6, G11).
++pub(crate) fn title_head_dbg(clusters: &[SceneCluster], ci: usize, canvas_right: f64, key: &str) -> (f64, f64, f64, f64) {
++    let thr: f64 = std::env::var("DBG_THR").ok().and_then(|v| v.parse().ok()).unwrap_or(1e9);
++    let c = &clusters[ci];
++    let diff = (crate::layout::bold_text_width(&c.title) - text_width(&c.title)) * TITLE_SCALE;
++    let only = std::env::var("DBG_BOLDKEYS").ok();
++    let reg = match &only { Some(list) => !list.split(',').any(|k| k == key), None => false };
++    if reg || std::env::var(key).is_ok() || (key == "DBG_R" && diff < thr) {
++        if key == "DBG_R" && std::env::var("DBG_SHOW").is_ok() { eprintln!("reg chip {} diff {diff:.1}", c.title.replace('\n', " / ")); }
++        let mut cl = clusters.to_vec();
++        cl[ci].bold_title = false;
++        title_head(&cl, ci, canvas_right)
++    } else {
++        title_head(clusters, ci, canvas_right)
++    }
++}
+ pub(crate) fn title_head(
+     clusters: &[SceneCluster],
+     ci: usize,
+@@ -3294,17 +3315,31 @@ pub(crate) fn title_head(
+     (
+         x,
+         c.y,
+-        x + text_width(&title) * TITLE_SCALE + CHIP_PAD_W,
++        x + if std::env::var("DBG_D").is_ok() { text_width(&title) * TITLE_SCALE } else { title_text_width(c, &title) } + CHIP_PAD_W,
+         y + CHIP_H + title_extra(&title),
+     )
+ }
+ 
++/// The width (px) cluster `c` measures `title` (its title, or a cut of
++/// it, as drawn) at: [`crate::layout::bold_text_width`] for a frame of a
++/// block layout ([`SceneCluster::bold_title`]), else [`text_width`], at
++/// the title font. The one measure of a title's chip, so the frame
++/// (B12 F1), the chip edges keep clear of and the chip `to_svg` paints
++/// agree.
++pub(crate) fn title_text_width(c: &SceneCluster, title: &str) -> f64 {
++    if c.bold_title && std::env::var("DBG_C").is_err() {
++        crate::layout::bold_text_width(title) * TITLE_SCALE
++    } else {
++        text_width(title) * TITLE_SCALE
++    }
++}
++
+ pub(crate) fn fit_cluster_title(clusters: &[SceneCluster], ci: usize, canvas_right: f64) -> String {
+     let c = &clusters[ci];
+     let (x, y, w, h) = (
+         c.x + TITLE_INSET,
+         c.y,
+-        text_width(&c.title) * TITLE_SCALE + 8.0,
++        title_text_width(c, &c.title) + 8.0,
+         TITLE_STRIP + title_extra(&c.title),
+     );
+     if x + w <= c.x + c.w - TITLE_INSET {
+@@ -3328,11 +3363,11 @@ pub(crate) fn fit_cluster_title(clusters: &[SceneCluster], ci: usize, canvas_rig
+     }
+     let room = c.w - 2.0 * TITLE_INSET - 8.0;
+     let fit_line = |line: &str| -> String {
+-        if text_width(line) * TITLE_SCALE <= room {
++        if title_text_width(c, line) <= room {
+             return line.to_string();
+         }
+         let mut cut = line.to_string();
+-        while !cut.is_empty() && text_width(&format!("{cut}…")) * TITLE_SCALE > room {
++        while !cut.is_empty() && title_text_width(c, &format!("{cut}…")) > room {
+             cut.pop();
+         }
+         // A cut that ends on a separator reads as a dangling "· …".
+@@ -3620,7 +3655,7 @@ fn embrace_own_edges(g: &Graph, sc: &mut Scene) -> bool {
+         }
+         // The title chips of the frames that moved keep clear of every
+         // line, as the router kept them.
+-        let moved_clusters = clusters_of(g, &trial, &depth);
++        let moved_clusters = clusters_of(g, &trial, &depth, true);
+         let chips_clear = (0..g.subgraphs.len()).all(|t| {
+             if boxes[t] == trial[t] {
+                 return true;
+@@ -3649,7 +3684,7 @@ fn embrace_own_edges(g: &Graph, sc: &mut Scene) -> bool {
+         }
+     }
+     if changed {
+-        sc.clusters = clusters_of(g, &boxes, &depth);
++        sc.clusters = clusters_of(g, &boxes, &depth, true);
+     }
+     changed
+ }
+@@ -4351,7 +4386,7 @@ fn scene_clustered(
+             });
+         }
+         renest_boxes(g, &depth, &mut boxes);
+-        let out = clusters_of(g, &boxes, &depth);
++        let out = clusters_of(g, &boxes, &depth, block_paths.is_some());
+         frames = boxes;
+         out
+     };
+@@ -6185,9 +6220,10 @@ fn cluster_raw_boxes(g: &Graph, nodes: &[SceneNode]) -> (Vec<RawBox>, Vec<usize>
+ }
+ 
+ /// The least width (px, on screen) of a block's frame in a block
+-/// layout (B12 F1, F2): its title chip as [`fit_cluster_title`]
+-/// measures it, with a [`TITLE_INSET`] on both sides, so the title is
+-/// drawn whole inside its own frame. In TD / BT that is the frame's
++/// layout (B12 F1, F2): its title chip as a block layout's frame
++/// measures it ([`title_text_width`]: bold, as it is drawn), with a
++/// [`TITLE_INSET`] on both sides, so the title is drawn whole inside its
++/// own frame. In TD / BT that is the frame's
+ /// breadth, in LR / RL its length along the flow: the title runs along
+ /// the screen's x axis in every direction. 0 for a block without a
+ /// title. The layout reserves it (`layout::frame_title_room`).
+@@ -6195,7 +6231,7 @@ pub(crate) fn title_fit_width(title: &str) -> f64 {
+     if title.trim().is_empty() {
+         return 0.0;
+     }
+-    text_width(title) * TITLE_SCALE + 8.0 + 2.0 * TITLE_INSET
++    (if std::env::var("DBG_A").is_ok() { text_width(title) } else { crate::layout::bold_text_width(title) }) * TITLE_SCALE + 8.0 + 2.0 * TITLE_INSET
+ }
+ 
+ /// How far a frame's top border lies above its first row's box without
+@@ -6293,7 +6329,7 @@ fn route_clusters(g: &Graph, nodes: &[SceneNode]) -> Vec<SceneCluster> {
+         return Vec::new();
+     }
+     let (boxes, depth) = cluster_raw_boxes(g, nodes);
+-    clusters_of(g, &boxes, &depth)
++    clusters_of(g, &boxes, &depth, false)
+ }
+ 
+ /// [`route_clusters`] with each frame grown over the back-edge lanes kept
+@@ -6357,7 +6393,7 @@ fn route_lane_clusters(
+         });
+     }
+     renest_boxes(g, &depth, &mut boxes);
+-    clusters_of(g, &boxes, &depth)
++    clusters_of(g, &boxes, &depth, false)
+ }
+ 
+ /// Where a back-edge lane's label lies across the flow, `(centre, half
+@@ -6440,8 +6476,15 @@ fn renest_boxes(g: &Graph, depth: &[usize], boxes: &mut [RawBox]) {
+     }
+ }
+ 
+-/// Per-subgraph boxes as paintable [`SceneCluster`]s, outermost-first.
+-fn clusters_of(g: &Graph, boxes: &[RawBox], depth: &[usize]) -> Vec<SceneCluster> {
++/// Per-subgraph boxes as paintable [`SceneCluster`]s, outermost-first;
++/// with `bold_title` (a block layout's frames) their titles are measured
++/// bold ([`SceneCluster::bold_title`]).
++fn clusters_of(
++    g: &Graph,
++    boxes: &[RawBox],
++    depth: &[usize],
++    bold_title: bool,
++) -> Vec<SceneCluster> {
+     let mut out: Vec<SceneCluster> = (0..g.subgraphs.len())
+         .filter_map(|i| {
+             boxes[i].map(|(x, y, w, h)| SceneCluster {
+@@ -6452,6 +6495,7 @@ fn clusters_of(g: &Graph, boxes: &[RawBox], depth: &[usize]) -> Vec<SceneCluster
+                 h,
+                 title: g.subgraphs[i].title.clone(),
+                 depth: depth[i],
++                bold_title,
+             })
+         })
+         .collect();
+@@ -7396,7 +7440,7 @@ pub fn to_svg_a11y_with(sc: &Scene, default_title: &str, a11y: &A11y, opts: &Svg
+             x, y, c.w, c.h, cs_fill, cs_stroke
+         ));
+         let title = fit_cluster_title(&sc.clusters, ci, maxx + MARGIN);
+-        let tw = text_width(&title) * TITLE_SCALE;
++        let tw = title_text_width(c, &title);
+         cluster_titles.push_str(&format!(
+             "<rect x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"{}\" rx=\"4\" \
+              fill=\"{}\" fill-opacity=\"0.9\"/>\n",
+@@ -13961,6 +14005,7 @@ mod tests {
+             h: 80.0,
+             title: title.into(),
+             depth: 0,
++            bold_title: false,
+         };
+         // The cut falls right after " · ": without the trim the line
+         // would read "ALPHA BRAV ·…".

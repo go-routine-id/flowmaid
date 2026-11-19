@@ -1,0 +1,13 @@
+flowchart TB
+  Start([Start]) -->|submit| P
+  subgraph P [Pipeline]
+    direction LR
+    A[Fetch] --> B{Valid?}
+    B -->|yes| C[(Store)]
+    B -->|no| D[/Repair/]
+    D -->|retry| A
+    C --> E[Index]
+  end
+  P -->|done| F[Report]
+  P -.->|errors| G[Alert]
+  F --> H((End))

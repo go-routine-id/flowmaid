@@ -1,0 +1,22 @@
+classDiagram
+direction LR
+A <|-- B
+B --> C : owns
+C "1" ..> "*" D
+A *-- E : has many of
+A <|-- F : has many of
+A --> F
+F --> F
+F --> F : f1
+F "1" --> "*" F : f2
+F o-- F : f3
+B *-- B : b0
+B *-- B : b1
+B *-- B : b2
+B --> B : b3
+B "1" --> "*" B
+class F {
+ +int id
+ +run() void
+ +stop()
+}

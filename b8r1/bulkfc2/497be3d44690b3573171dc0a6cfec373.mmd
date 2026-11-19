@@ -1,0 +1,11 @@
+flowchart BT
+    N0(Check)
+    N1[Emit]
+    N2{Fetch check}
+    N3[Notify]
+    N4{Load}
+    N0 --> N1
+    N0 --> N2
+    N0 --> N3
+    N3 -->|fail| N4
+    N3 --> N0

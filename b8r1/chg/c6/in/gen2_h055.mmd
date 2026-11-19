@@ -1,0 +1,23 @@
+flowchart LR
+  s0["store cart pay"]
+  s1["cart cart cache"]
+  subgraph g0["report search notify zone"]
+    m0["db cart queue"]
+    m1["pay user"]
+    m0 --> m1
+  end
+  subgraph g1["search billing zone"]
+    m2["ship pay metric"]
+    m3["trace metric"]
+    m2 --> m3
+  end
+  subgraph g2["notify log zone"]
+    direction TB
+    m4["log"]
+    m5["log"]
+  end
+  s1 --> m0
+  s1 --> g1
+  s0 --> m4
+  s0 --> L6["log billing cache"]
+  s0 --> L7["log"]

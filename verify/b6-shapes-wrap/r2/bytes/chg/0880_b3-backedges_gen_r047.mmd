@@ -1,0 +1,15 @@
+flowchart TD
+    N0(Fetch)
+    N1{Report fetch}
+    N2([Retry])
+    N3[Notify]
+    N4[Done]
+    N0 -->|fail| N1
+    N0 --> N2
+    N2 --> N3
+    N2 --> N4
+    N1 --> N4
+    N1 --> N3
+    N0 --> N1
+    N4 -.->|retry| N0
+    N4 --> N0

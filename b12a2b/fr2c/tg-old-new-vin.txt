@@ -1,0 +1,2 @@
+v1-pins-and-entries.svg	Order processing and fulfilment pipeline	A 3.76 hub → q1	B 3.76 hub → q1
+v1-pins-and-entries.svg	Observability stack with a long title	A 0.00 hub → m1	B 7.50 hub → m1

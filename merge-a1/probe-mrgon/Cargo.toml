@@ -1,0 +1,9 @@
+[package]
+name = "idprobe"
+version = "0.0.0"
+edition = "2021"
+[dependencies]
+flowmaid = { path = "/home/user/flowmaid" }
+[profile.release]
+debug = false
+[workspace]

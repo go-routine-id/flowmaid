@@ -1,0 +1,10 @@
+classDiagram
+    direction LR
+    class Shape {
+      +area() double
+    }
+    IDraw ()-- Shape
+    Shape --() IPrint : prints
+    IDraw ().. Circle
+    Circle "1" --() "many" ISize
+    Shape <|-- Circle

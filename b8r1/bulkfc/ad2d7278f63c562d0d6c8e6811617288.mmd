@@ -1,0 +1,14 @@
+flowchart TD
+    N0([Load validate])
+    N1[Emit validate]
+    N2(Fetch validate)
+    N3([Emit done])
+    N4(Load)
+    N0 --> N1
+    N0 --> N2
+    N2 --> N3
+    N3 --> N4
+    N2 --> N4
+    N0 --> N2
+    N1 --> N3
+    N2 -.->|rollback| N0

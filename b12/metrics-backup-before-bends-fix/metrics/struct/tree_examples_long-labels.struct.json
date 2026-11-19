@@ -1,0 +1,26 @@
+{"tool":"structdump","flowmaid":"0.38.0","kind":"flowchart","direction":"TD",
+"nodes":[
+ {"id":"A","label":"ADMINISTRATIVE REQUIREMENTS DOCUMENT VALIDATION","shape":"Rect","sub":null},
+ {"id":"B","label":"Are all documents complete and compliant with the rules?","shape":"Diamond","sub":null},
+ {"id":"C","label":"Issue the certificate","shape":"Rounded","sub":null},
+ {"id":"D","label":"Return documents to the applicant","shape":"Rect","sub":null},
+ {"id":"E","label":"OK","shape":"Circle","sub":null}],
+"subgraphs":[],
+"edges":[
+ {"from":{"n":0},"to":{"n":1},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":1},"to":{"n":2},"label":"complete","kind":"Arrow","drawn":true},
+ {"from":{"n":1},"to":{"n":3},"label":"incomplete","kind":"Arrow","drawn":true},
+ {"from":{"n":2},"to":{"n":4},"label":null,"kind":"Arrow","drawn":true}],
+"scene":{"width":405.600,"height":578.300,
+ "nodes":[
+  {"id":"A","x":104.150,"y":28.000,"w":200.900,"h":72.000},
+  {"id":"B","x":94.840,"y":160.000,"w":219.520,"h":151.300},
+  {"id":"C","x":28.000,"y":391.800,"w":153.400,"h":38.000},
+  {"id":"D","x":231.400,"y":383.300,"w":146.200,"h":55.000},
+  {"id":"E","x":78.700,"y":498.300,"w":52.000,"h":52.000}],
+ "clusters":[],
+ "edges":[
+  {"from":"A","to":"B","routed":false,"label":null,"points":[[204.600,100.000],[204.600,130.000],[204.600,130.000],[204.600,160.000]]},
+  {"from":"B","to":"C","routed":true,"label":{"text":"complete","cx":125.227,"cy":326.933,"w":71.200},"points":[[173.627,289.953],[173.627,312.933],[173.627,326.933],[159.627,326.933],[118.700,326.933],[104.700,326.933],[104.700,340.933],[104.700,391.800]]},
+  {"from":"B","to":"D","routed":true,"label":{"text":"incomplete","cx":270.036,"cy":336.626,"w":82.400},"points":[[235.573,289.953],[235.573,322.626],[235.573,336.626],[249.573,336.626],[290.500,336.626],[304.500,336.626],[304.500,350.626],[304.500,383.300]]},
+  {"from":"C","to":"E","routed":false,"label":null,"points":[[104.700,429.800],[104.700,464.050],[104.700,464.050],[104.700,498.300]]}]}}

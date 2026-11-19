@@ -1,0 +1,14 @@
+flowchart LR
+  In --> W
+  subgraph W [Workers]
+    direction TB
+    Q[(Queue)] --> W1[Worker 1] & W2[Worker 2]
+    W1 --> R[Results]
+    W2 --> R
+  end
+  W --> Out
+  subgraph S [Side]
+    direction TB
+    x1 --> x2
+  end
+  In --> S

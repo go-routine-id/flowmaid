@@ -1,0 +1,22 @@
+flowchart TD
+    N0(Check)
+    N1{Fetch archive}
+    N2([Validate emit])
+    N3[/Validate archive/]
+    N4(Report)
+    N5([Report])
+    N6([Done])
+    N7(Load store)
+    N8(Retry emit)
+    N0 --> N1
+    N1 --> N2
+    N1 -->|fail| N3
+    N1 --> N4
+    N3 --> N5
+    N3 --> N6
+    N5 -->|ok| N7
+    N6 --> N8
+    N2 --> N5
+    N7 --> N3
+    N5 ==> N0
+    N6 -.-> N2

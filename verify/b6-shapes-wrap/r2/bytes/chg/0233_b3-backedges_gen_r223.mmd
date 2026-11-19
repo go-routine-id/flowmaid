@@ -1,0 +1,20 @@
+flowchart LR
+    N0{Check}
+    N1(Done notify)
+    N2{Done done}
+    N3([Check])
+    N4(Done)
+    N5[Check]
+    N6(Validate)
+    N7[Notify]
+    N0 -->|next| N1
+    N0 -->|yes| N2
+    N1 --> N3
+    N1 -->|next| N4
+    N2 --> N5
+    N5 --> N6
+    N6 --> N7
+    N6 --> N7
+    N6 ==>|retry| N4
+    N7 -.->|rollback| N5
+    N5 --> N1

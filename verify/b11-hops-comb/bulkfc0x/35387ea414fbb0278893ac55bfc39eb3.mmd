@@ -1,0 +1,20 @@
+flowchart LR
+    N0{{Store}}
+    N1{Store}
+    N2([Store validate])
+    N3[Emit]
+    N4{Notify}
+    N5[Parse store]
+    N6(Notify done)
+    N7[Store]
+    N0 -->|ok| N1
+    N0 --> N2
+    N2 --> N3
+    N3 --> N4
+    N3 --> N5
+    N5 --> N6
+    N5 -->|fail| N7
+    N3 --> N6
+    N5 -->|back| N3
+    N5 -.-> N2
+    N4 --> N1

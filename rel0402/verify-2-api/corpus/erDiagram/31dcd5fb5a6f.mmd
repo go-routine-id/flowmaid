@@ -1,0 +1,16 @@
+erDiagram
+  E0 {
+    int id PK
+    string name
+  }
+  E1 {
+    int id PK
+    string name
+  }
+  E2 {
+    int id PK
+    string name
+  }
+  E1 }|..|{ E2 : "rel0"
+  E0 }o--|| E2 : "rel1"
+  E0 |o--o| E2 : "rel2"

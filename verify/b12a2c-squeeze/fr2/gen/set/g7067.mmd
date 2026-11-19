@@ -1,0 +1,87 @@
+flowchart BT
+  n1["search"]
+  n2["ship<br/>auth"]
+  subgraph B0["Analytics"]
+    n3["billing auth store"]
+    n4["index"]
+    n5["search"]
+    subgraph B0s0["Analytics 0"]
+      n6["ship db worker"]
+      n7["split"]
+      n8["billing<br/>ingest"]
+    end
+    subgraph B0s1["Data tier 1"]
+      n9["audit<br/>auth"]
+      n10["index"]
+      n11["mail<br/>report"]
+    end
+  end
+  subgraph B1["Ops"]
+    n12["split"]
+    n13["ingest"]
+    n14["api"]
+  end
+  subgraph B2["Analytics"]
+    n15["parse ship pack<br/>worker"]
+    n16["worker<br/>ship"]
+    n17["parse"]
+    n18["auth<br/>index"]
+    subgraph B2s0["Storefront 0"]
+      n19["store"]
+      n20["search"]
+      n21["pack"]
+    end
+  end
+  subgraph B3["Ingest"]
+    n22["cache"]
+    n23["auth api cache"]
+    n24["mail pack api"]
+    subgraph B3s0["Storefront 0"]
+      n25["search cache store"]
+      n26["parse<br/>db"]
+    end
+  end
+  n27["merge"]
+  n28["api"]
+  n20 --> n12
+  n6 --> n4
+  n13 -->|billing| n1
+  n26 --> n6
+  n14 ==> n10
+  n10 --> n27
+  n22 --> n24
+  n27 --> n26
+  n13 --> n3
+  n12 --> B3s0
+  n12 -->|pack| n5
+  n13 ==> n23
+  n2 -.-> n10
+  n20 --> n26
+  n7 --> B2
+  n6 --> n15
+  n28 --> n23
+  n9 --> n15
+  n15 --> n12
+  n9 --> n14
+  n28 --> n15
+  n11 -->|cache| n20
+  n3 -->|notify| n12
+  n14 -->|report| n11
+  n21 -.-> n10
+  n27 ==> B3
+  n26 --> n9
+  n1 --> n21
+  n14 --> n1
+  n4 -->|report| n11
+  n2 --> n22
+  n14 --> n24
+  n8 -.-> n3
+  n24 --> n7
+  n22 -.->|api| n18
+  n14 -->|queue| n3
+  n15 --> n14
+  n26 --> n11
+  n11 --> n26
+  n7 --> B1
+  n16 --> n19
+  n27 --> n21

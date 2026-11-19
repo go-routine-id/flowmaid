@@ -1,0 +1,2 @@
+11 ('classDiagram', 'off', '<text')
+2 ('flowchart', 'skeleton')

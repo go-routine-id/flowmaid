@@ -1,0 +1,46 @@
+1.07 1.40 1.48 1/112 30895
+0
+== head on 1
+dense-lr	route_partial worst 5.62 ms (node 46)	0 of 624 frames >= 6 ms
+dense-td	route_partial worst 8.56 ms (node 17)	19 of 552 frames >= 6 ms
+bench-75	route_partial worst 7.48 ms (node 7)	11 of 252 frames >= 6 ms
+blocks-overview	route_partial worst 3.31 ms (node 11)	0 of 252 frames >= 6 ms
+infra-overview	route_partial worst 3.94 ms (node 6)	0 of 264 frames >= 6 ms
+infra-overview-v2	route_partial worst 4.22 ms (node 13)	0 of 264 frames >= 6 ms
+== pre on 1
+dense-lr	route_partial worst 5.44 ms (node 46)	0 of 624 frames >= 6 ms
+dense-td	route_partial worst 8.36 ms (node 44)	18 of 552 frames >= 6 ms
+bench-75	route_partial worst 6.89 ms (node 4)	5 of 252 frames >= 6 ms
+blocks-overview	route_partial worst 3.81 ms (node 10)	0 of 252 frames >= 6 ms
+infra-overview	route_partial worst 5.64 ms (node 6)	0 of 264 frames >= 6 ms
+infra-overview-v2	route_partial worst 4.20 ms (node 13)	0 of 264 frames >= 6 ms
+== head off 1
+dense-lr	route_partial worst 5.93 ms (node 14)	0 of 624 frames >= 6 ms
+dense-td	route_partial worst 6.57 ms (node 17)	3 of 552 frames >= 6 ms
+bench-75	route_partial worst 6.82 ms (node 11)	3 of 252 frames >= 6 ms
+blocks-overview	route_partial worst 4.54 ms (node 12)	0 of 252 frames >= 6 ms
+infra-overview	route_partial worst 5.41 ms (node 6)	0 of 264 frames >= 6 ms
+infra-overview-v2	route_partial worst 4.30 ms (node 16)	0 of 264 frames >= 6 ms
+1.03 1.33 1.45 1/111 30923
+0
+== head on 2
+dense-lr	route_partial worst 5.45 ms (node 14)	0 of 624 frames >= 6 ms
+dense-td	route_partial worst 8.51 ms (node 17)	17 of 552 frames >= 6 ms
+bench-75	route_partial worst 6.24 ms (node 2)	2 of 252 frames >= 6 ms
+blocks-overview	route_partial worst 3.24 ms (node 11)	0 of 252 frames >= 6 ms
+infra-overview	route_partial worst 4.89 ms (node 16)	0 of 264 frames >= 6 ms
+infra-overview-v2	route_partial worst 6.27 ms (node 13)	1 of 264 frames >= 6 ms
+== pre on 2
+dense-lr	route_partial worst 7.63 ms (node 8)	1 of 624 frames >= 6 ms
+dense-td	route_partial worst 8.34 ms (node 44)	20 of 552 frames >= 6 ms
+bench-75	route_partial worst 7.99 ms (node 7)	8 of 252 frames >= 6 ms
+blocks-overview	route_partial worst 3.57 ms (node 11)	0 of 252 frames >= 6 ms
+infra-overview	route_partial worst 3.82 ms (node 6)	0 of 264 frames >= 6 ms
+infra-overview-v2	route_partial worst 4.15 ms (node 6)	0 of 264 frames >= 6 ms
+== head off 2
+dense-lr	route_partial worst 5.89 ms (node 14)	0 of 624 frames >= 6 ms
+dense-td	route_partial worst 6.46 ms (node 17)	3 of 552 frames >= 6 ms
+bench-75	route_partial worst 6.15 ms (node 2)	2 of 252 frames >= 6 ms
+blocks-overview	route_partial worst 5.60 ms (node 19)	0 of 252 frames >= 6 ms
+infra-overview	route_partial worst 4.81 ms (node 6)	0 of 264 frames >= 6 ms
+infra-overview-v2	route_partial worst 4.29 ms (node 16)	0 of 264 frames >= 6 ms

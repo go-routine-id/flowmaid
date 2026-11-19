@@ -1,0 +1,20 @@
+flowchart LR
+  subgraph F0 [Frame 0]
+    n7[Node 7]
+    n1>Node 1]
+    n8>Node 8 with a long label]
+  end
+  n8 <==>|a longer label| n5
+  n6 e1@-.->|yes| n6
+  e1@{ curve: monotoneX }
+  n4 === n1
+  n3 ---> F0
+  n7 ==> F0
+  n0 -.->|a longer label| n0
+  n3 -.-|a longer label| n4
+  n4 e7@--->|no| n7
+  e7@{ curve: cardinal }
+  n3 --x n2
+  linkStyle 0 interpolate step stroke-width:1px
+  linkStyle 1 stroke-width:12px
+  linkStyle 4 stroke-width:40px,stroke:#36c,stroke-dasharray:6 3

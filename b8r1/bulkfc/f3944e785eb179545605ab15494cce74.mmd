@@ -1,0 +1,16 @@
+flowchart RL
+    N0{Queue archive}
+    N1(Validate)
+    N2[Parse archive]
+    N3(Report)
+    N4{{Done}}
+    N5(Retry)
+    N6([Notify])
+    N0 --> N1
+    N0 --> N2
+    N0 --> N3
+    N3 --> N4
+    N3 --> N5
+    N5 -->|no| N6
+    N2 ==>|back| N1
+    N5 -.-> N2

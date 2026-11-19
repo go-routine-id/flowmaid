@@ -1,0 +1,32 @@
+flowchart TB
+  H0 -->|gift wrap| N10
+  H0 ---|ok| N4
+  H0 -->|x| N8
+  H0 ==> N10
+  H0 -.->|a much longer label here| N10
+  H0 -.->|retry| N11
+  H0 --- N3
+  H0 --> N6
+  H0 ==>|express| N2
+  H0 -.->|a much longer label here| N2
+  H1 --> N3
+  H1 ==>|express| N7
+  H1 -.->|gift wrap| N0
+  H1 ---|express| N3
+  H1 ==>|gift wrap| N5
+  H1 ---|retry| N1
+  H1 --> N8
+  H1 --- N4
+  H1 -->|a much longer label here| N6
+  H1 -->|retry| N4
+  H1 --- N9
+  N11 --> N12
+  N6 -->|x| N12
+  N2 --> N4
+  N10 -->|a much longer label here| N2
+  N11 --> N11
+  N2 --> N8
+  N9 -->|retry| N12
+  N1 -->|gift wrap| N0
+  N1 --> N6
+  N8 --> N0

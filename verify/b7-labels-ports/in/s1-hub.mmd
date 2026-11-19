@@ -1,0 +1,13 @@
+flowchart TD
+  H[Central hub service] --> A[Alpha]
+  H --> B[Beta]
+  H --> C[Gamma]
+  H --> D[Delta]
+  H --> E[Epsilon]
+  A --> Z[Sink]
+  E --> Z
+  C --> W[Other sink]
+  B --> W
+  D --> Z
+  X[Lonely] --> Y[Partner]
+  W --> H

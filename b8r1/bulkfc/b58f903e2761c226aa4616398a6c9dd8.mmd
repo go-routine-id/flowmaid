@@ -1,0 +1,24 @@
+flowchart BT
+    N0[Check report]
+    N1([Notify notify])
+    N2[Notify retry]
+    N3[Emit]
+    N4{Parse}
+    N5(Check check)
+    N6([Done])
+    N7[Emit parse]
+    N8([Report])
+    N9([Validate])
+    N0 --> N1
+    N1 --> N2
+    N1 -->|next| N3
+    N3 --> N4
+    N3 --> N5
+    N5 --> N6
+    N6 --> N7
+    N5 --> N8
+    N6 --> N9
+    N5 --> N6
+    N4 --> N7
+    N7 -->|again| N1
+    N8 --> N0

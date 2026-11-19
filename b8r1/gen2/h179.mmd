@@ -1,0 +1,24 @@
+flowchart LR
+  s0["ship queue pay"]
+  subgraph g0["index search user zone"]
+    direction LR
+    m0["pay"]
+  end
+  subgraph g1["cart search web zone"]
+    m1["user"]
+  end
+  subgraph g2["user order zone"]
+    m2["metric cache"]
+    m3["cache db"]
+    m4["web web"]
+    m5["web db"]
+    m2 --> m3
+    m2 --> m4
+    m2 --> m5
+  end
+  s0 --> m0
+  s0 --> g1
+  s0 --> g2
+  s0 --> L6["log"]
+  s0 --> L7["order notify"]
+  s0 --> L8["metric"]

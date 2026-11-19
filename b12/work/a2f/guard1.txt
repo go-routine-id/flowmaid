@@ -1,0 +1,73 @@
+== fmt
+== clippy
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 13.12s
+== test
+FAILED: cargo test --all-targets
+   7: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- identity::everything_renders_as_before_with_blocks_off stdout ----
+
+thread 'identity::everything_renders_as_before_with_blocks_off' (32307) panicked at src/identity.rs:138:5:
+1 of 117 drawings differ from tests/fixtures/identity.tsv:
+no recorded row: tests/fixtures/blocks/nested-wide-title.mmd	39d3b6e6b55ad1af	d7b5bb4c0df9b037	ed90591a3a6239e9	blocks
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: flowmaid::identity::everything_renders_as_before_with_blocks_off
+             at ./src/identity.rs:138:5
+   3: flowmaid::identity::everything_renders_as_before_with_blocks_off::{closure#0}
+             at ./src/identity.rs:108:50
+   4: <flowmaid::identity::everything_renders_as_before_with_blocks_off::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+   5: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- levels::tests::the_permanent_identity_rows_are_the_fixtures_outside_block_mode stdout ----
+
+thread 'levels::tests::the_permanent_identity_rows_are_the_fixtures_outside_block_mode' (32421) panicked at src/levels.rs:765:36:
+blocks/nested-wide-title has no row
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: flowmaid::levels::tests::the_permanent_identity_rows_are_the_fixtures_outside_block_mode::{closure#0}::{closure#2}
+             at ./src/levels.rs:765:36
+   3: <core::option::Option<&str>>::unwrap_or_else::<flowmaid::levels::tests::the_permanent_identity_rows_are_the_fixtures_outside_block_mode::{closure#0}::{closure#2}>
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/option.rs:1064:21
+   4: flowmaid::levels::tests::the_permanent_identity_rows_are_the_fixtures_outside_block_mode::{closure#0}
+             at ./src/levels.rs:765:18
+   5: flowmaid::levels::tests::the_permanent_identity_rows_are_the_fixtures_outside_block_mode
+             at ./src/levels.rs:772:28
+   6: flowmaid::levels::tests::the_permanent_identity_rows_are_the_fixtures_outside_block_mode::{closure#0}
+             at ./src/levels.rs:753:73
+   7: <flowmaid::levels::tests::the_permanent_identity_rows_are_the_fixtures_outside_block_mode::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+   8: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+
+failures:
+    blockcheck::a_hubs_fan_keeps_its_order_through_the_bands
+    blockcheck::an_end_of_a_title_row_member_keeps_out_of_its_chips_breadth_below_the_jog_room
+    comb::tests::a_block_layouts_comb_is_settled_after_one_pass
+    identity::everything_renders_as_before_with_blocks_off
+    levels::tests::the_permanent_identity_rows_are_the_fixtures_outside_block_mode
+
+test result: FAILED. 1176 passed; 5 failed; 5 ignored; 0 measured; 0 filtered out; finished in 130.85s
+
+error: test failed, to rerun pass `--lib`
+== doctest
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.47s
+== msrv
+    Finished dev [unoptimized + debuginfo] target(s) in 8.98s
+== wasm
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 4.07s
+== rustdoc
+GUARD: FAILURES

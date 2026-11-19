@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="517" height="358" viewBox="0 0 517 358" font-family="Helvetica, Arial, sans-serif" font-size="14" role="img" aria-label="State diagram">
+<title>State diagram</title>
+<rect width="517" height="358" fill="#ffffff"/>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 1 L 9 5 L 0 9 z" fill="#44507a"/></marker></defs>
+<path d="M 42.0 179.0 C 72.0 179.0, 72.0 179.0, 102.0 179.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>start → f</title></path>
+<path d="M 110.0 47.0 C 140.4 47.0, 140.4 47.0, 170.8 47.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>f → A</title></path>
+<path d="M 110.0 135.0 C 140.4 135.0, 140.4 135.0, 170.8 135.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>f → B</title></path>
+<path d="M 110.0 223.0 C 140.0 223.0, 140.0 223.0, 170.0 223.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>f → Ccc</title></path>
+<path d="M 110.0 311.0 C 140.4 311.0, 140.4 311.0, 170.8 311.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>f → D</title></path>
+<path d="M 224.8 47.0 C 255.3 47.0, 255.3 47.0, 285.7 47.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>A → j</title></path>
+<path d="M 224.8 135.0 C 255.3 135.0, 255.3 135.0, 285.7 135.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>B → j</title></path>
+<path d="M 225.7 223.0 C 255.7 223.0, 255.7 223.0, 285.7 223.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>Ccc → j</title></path>
+<path d="M 224.8 311.0 C 255.3 311.0, 255.3 311.0, 285.7 311.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>D → j</title></path>
+<path d="M 293.7 179.0 C 323.7 179.0, 323.7 179.0, 353.7 179.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>j → End</title></path>
+<path d="M 411.0 179.0 C 441.0 179.0, 441.0 179.0, 471.0 179.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>End → end</title></path>
+<g><title>f</title>
+<rect x="102.0" y="31.0" width="8.0" height="296.0" rx="3" fill="#44507a" stroke="#44507a" stroke-width="1.6"/>
+<text x="106.0" y="179.0" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<g><title>j</title>
+<rect x="285.7" y="31.0" width="8.0" height="296.0" rx="3" fill="#44507a" stroke="#44507a" stroke-width="1.6"/>
+<text x="289.7" y="179.0" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<g><title>start</title>
+<circle cx="35.0" cy="179.0" r="7.0" fill="#44507a" stroke="#44507a" stroke-width="1.6"/>
+<text x="35.0" y="179.0" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<g><title>A</title>
+<rect x="170.8" y="28.0" width="54.0" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="197.8" y="47.0" dy="0.33em" text-anchor="middle" fill="#232840">A</text>
+</g>
+<g><title>B</title>
+<rect x="170.8" y="116.0" width="54.0" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="197.8" y="135.0" dy="0.33em" text-anchor="middle" fill="#232840">B</text>
+</g>
+<g><title>Ccc</title>
+<rect x="170.0" y="204.0" width="55.7" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="197.8" y="223.0" dy="0.33em" text-anchor="middle" fill="#232840">Ccc</text>
+</g>
+<g><title>D</title>
+<rect x="170.8" y="292.0" width="54.0" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="197.8" y="311.0" dy="0.33em" text-anchor="middle" fill="#232840">D</text>
+</g>
+<g><title>End</title>
+<rect x="353.7" y="160.0" width="57.3" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="382.3" y="179.0" dy="0.33em" text-anchor="middle" fill="#232840">End</text>
+</g>
+<g><title>end</title>
+<circle cx="480.0" cy="179.0" r="9.0" fill="#ffffff" stroke="#44507a" stroke-width="1.6"/>
+<circle cx="480.0" cy="179.0" r="5.0" fill="#44507a" stroke="#44507a" stroke-width="1.6"/>
+<text x="480.0" y="179.0" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+</svg>

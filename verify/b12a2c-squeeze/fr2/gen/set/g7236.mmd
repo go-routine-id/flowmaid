@@ -1,0 +1,45 @@
+flowchart TD
+  n1["ship"]
+  subgraph B0["Edge services"]
+    n2["billing"]
+    n3["ship"]
+    n4["index<br/>mail"]
+    subgraph B0s0["Storefront 0"]
+      n5["queue"]
+    end
+    subgraph B0s1["Ingest 1"]
+      n6["notify"]
+      n7["merge worker mail"]
+      n8["api"]
+    end
+  end
+  subgraph B1["Fulfilment desk"]
+    n9["queue"]
+    n10["merge"]
+    n11["report"]
+  end
+  subgraph B2["Fulfilment desk"]
+    n12["mail"]
+    n13["queue"]
+  end
+  subgraph B3["Core"]
+    n14["cache"]
+  end
+  n15["merge"]
+  n16["ingest worker db<br/>search"]
+  n12 -->|ingest| n15
+  n7 -.->|auth| n8
+  n2 -->|ingest| n7
+  n15 --> n12
+  n12 --> n14
+  n6 --> n15
+  n3 --> n16
+  n16 --> n2
+  n1 --> n4
+  n1 --> n6
+  n5 -->|mail| B1
+  n3 --> B1
+  n10 --> n14
+  n11 --> n8
+  n10 ==> n12
+  n8 -->|notify| n5

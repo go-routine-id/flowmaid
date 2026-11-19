@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="236" height="390" viewBox="0 0 236 390" font-family="Helvetica, Arial, sans-serif" font-size="14" role="img" aria-label="State diagram">
+<title>State diagram</title>
+<rect width="236" height="390" fill="#ffffff"/>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 1 L 9 5 L 0 9 z" fill="#44507a"/></marker></defs>
+<path d="M 119.3 42.0 C 119.3 72.0, 119.3 72.0, 119.3 102.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>start → IsPositive</title></path>
+<path d="M 119.3 140.0 C 119.3 170.0, 119.3 170.0, 119.3 200.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>IsPositive → if_state</title></path>
+<path d="M 113.0 221.7 C 113.0 271.9, 81.9 273.8, 81.9 324.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>if_state → False: if n &lt; 0</title></path>
+<path d="M 125.6 221.7 C 125.6 271.9, 157.7 273.8, 157.7 324.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>if_state → True: if n &gt;= 0</title></path>
+<g><title>if_state</title>
+<polygon points="119.3,200.0 133.3,214.0 119.3,228.0 105.3,214.0" fill="#fcf2da" stroke="#d99114" stroke-width="1.6"/>
+<text x="119.3" y="214.0" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<g><title>start</title>
+<circle cx="119.3" cy="35.0" r="7.0" fill="#44507a" stroke="#44507a" stroke-width="1.6"/>
+<text x="119.3" y="35.0" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<g><title>IsPositive</title>
+<rect x="72.8" y="102.0" width="92.9" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="119.3" y="121.0" dy="0.33em" text-anchor="middle" fill="#232840">IsPositive</text>
+</g>
+<g><title>False</title>
+<rect x="28.0" y="324.0" width="67.7" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="61.8" y="343.0" dy="0.33em" text-anchor="middle" fill="#232840">False</text>
+</g>
+<g><title>True</title>
+<rect x="145.7" y="324.0" width="62.0" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="176.7" y="343.0" dy="0.33em" text-anchor="middle" fill="#232840">True</text>
+</g>
+<rect x="57.9" y="283.2" width="56.4" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="86.1" y="293.2" dy="0.33em" text-anchor="middle" fill="#232840">if n &lt; 0</text>
+<rect x="121.3" y="283.2" width="64.2" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="153.4" y="293.2" dy="0.33em" text-anchor="middle" fill="#232840">if n &gt;= 0</text>
+</svg>

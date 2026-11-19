@@ -1,0 +1,23 @@
+flowchart RL
+    N0{Done}
+    N1[Archive store]
+    N2((Validate))
+    N3{Check archive}
+    N4[Store]
+    N5([Archive])
+    N6[Notify report]
+    N7[Archive load]
+    N8[Fetch]
+    N9[(Parse)]
+    N0 --> N1
+    N0 -->|fail| N2
+    N2 --> N3
+    N3 --> N4
+    N2 --> N5
+    N5 -->|ok| N6
+    N6 --> N7
+    N5 -->|next| N8
+    N8 --> N9
+    N3 --> N7
+    N9 --> N6
+    N7 -.->|again| N3

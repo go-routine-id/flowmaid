@@ -1,0 +1,47 @@
+[package]
+name = "probe"
+version = "0.1.0"
+edition = "2021"
+[dependencies]
+flowmaid = { path = "/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b11r1/presrc" }
+[profile.release]
+debug = false
+[[bin]]
+name = "rp"
+path = "../probe/bin/rp.rs"
+[[bin]]
+name = "contract"
+path = "../probe/bin/contract.rs"
+[[bin]]
+name = "dbg"
+path = "../probe/bin/dbg.rs"
+[[bin]]
+name = "grid"
+path = "../probe/bin/grid.rs"
+[[bin]]
+name = "part"
+path = "../probe/bin/part.rs"
+[[bin]]
+name = "ends"
+path = "../probe/bin/ends.rs"
+[[bin]]
+name = "tie"
+path = "../probe/bin/tie.rs"
+[[bin]]
+name = "fuzz"
+path = "../probe/bin/fuzz.rs"
+[[bin]]
+name = "el"
+path = "../probe/bin/el.rs"
+[[bin]]
+name = "rsvg"
+path = "../probe/bin/rsvg.rs"
+[[bin]]
+name = "pk"
+path = "../probe/bin/pk.rs"
+[[bin]]
+name = "pk2"
+path = "../probe/bin/pk2.rs"
+[[bin]]
+name = "part2"
+path = "../probe/bin/part2.rs"

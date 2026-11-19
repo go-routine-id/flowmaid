@@ -1,0 +1,18 @@
+flowchart TD
+  subgraph A[Alpha]
+    subgraph A1[Alpha inner]
+      a[node a]
+    end
+    a2[node a two]
+  end
+  subgraph B[Beta block]
+    subgraph B1[Beta inner one]
+      b[node b]
+    end
+    c[node c]
+  end
+  a -->|go| b
+  b -->|back| a
+  a2 --> c
+  c --> a2
+  a --> c

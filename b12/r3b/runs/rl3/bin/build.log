@@ -1,0 +1,6 @@
+   Compiling flowmaid v0.40.1 (/home/user/flowmaid)
+    Finished `release` profile [optimized] target(s) in 9m 16s
+  Executable unittests src/lib.rs (/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/r3b/target-rl/release/deps/flowmaid-a062c92827b03ca0)
+  Executable tests/quality.rs (/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/r3b/target-rl/release/deps/quality-a03567c7e1a07e98)
+   Compiling flowmaid v0.40.1 (/home/user/flowmaid)
+    Finished `release` profile [optimized] target(s) in 3.09s

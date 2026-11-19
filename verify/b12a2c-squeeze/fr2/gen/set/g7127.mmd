@@ -1,0 +1,24 @@
+flowchart TD
+  n1["api ship cache"]
+  subgraph B0["Analytics"]
+    n2["ingest"]
+    n3["store"]
+  end
+  subgraph B1["Ops"]
+    n4["worker<br/>db"]
+    subgraph B1s0["Edge services 0"]
+      n5["queue"]
+      n6["split<br/>store"]
+    end
+  end
+  n7["index"]
+  n8["store pack split"]
+  n6 --> n3
+  n3 --> n8
+  n8 -.-> n2
+  n5 --> n4
+  n1 --> n8
+  n3 -->|db| n2
+  n3 ==>|audit| n6
+  n2 --> n4
+  n2 -->|auth| n1

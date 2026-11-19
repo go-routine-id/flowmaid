@@ -1,0 +1,12 @@
+flowchart TD
+  a[Start] --> b[Step one]
+  b --> c[Step two]
+  c --> d[Step three]
+  d --> a
+  d --> b
+  c --> a
+  d -->|retry| c
+  linkStyle 3 stroke-width:20px,stroke:#d55
+  linkStyle 4 stroke-width:32px,stroke:#5a5
+  linkStyle 5 stroke-width:14px
+  linkStyle 6 stroke-width:48px,stroke:#55d

@@ -1,0 +1,22 @@
+classDiagram
+C13 --> C3
+C2 <|-- C0 : delta
+C2 -- C6 : beta
+C3 "1" -- "*" C6
+note "gamma"
+class C0 {
+  +int id
+  +name() String
+}
+class C3 {
+  +int id
+  +name() String
+}
+class C6 {
+  +int id
+  +name() String
+}
+class C7 {
+  +int id
+  +name() String
+}

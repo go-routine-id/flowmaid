@@ -1,0 +1,10 @@
+classDiagram
+direction BT
+P <|-- S0
+P <|-- M
+P <|-- S1
+M "1" --> "*" M : m0
+M o-- M : m1
+M "1" --> "*" M : m2
+M o-- M : m3
+S0 --> S0 : s

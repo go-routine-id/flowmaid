@@ -1,0 +1,18 @@
+flowchart TD
+    N0(Validate archive)
+    N1[(Notify)]
+    N2{Emit}
+    N3[Fetch archive]
+    N4([Parse])
+    N5{Check}
+    N6(Store)
+    N7([Validate])
+    N0 -->|yes| N1
+    N1 --> N2
+    N2 -->|fail| N3
+    N3 --> N4
+    N3 -->|fail| N5
+    N4 --> N6
+    N6 -->|next| N7
+    N1 --> N2
+    N7 --> N2

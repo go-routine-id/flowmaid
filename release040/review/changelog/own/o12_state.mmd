@@ -1,0 +1,15 @@
+stateDiagram-v2
+ [*] --> Idle
+ state f <<fork>>
+ Idle --> f
+ f --> A
+ f --> Blk
+ state Blk {
+  direction LR
+  x --> y
+  y --> z
+ }
+ state j <<join>>
+ A --> j
+ Blk --> j
+ j --> [*]

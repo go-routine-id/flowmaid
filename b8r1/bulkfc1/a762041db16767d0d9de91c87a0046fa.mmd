@@ -1,0 +1,12 @@
+flowchart TD
+  S[Start] --> Q{Ready?}
+  Q -->|yes, go ahead| P[Process the request]
+  Q -->|no| R[Retry later]
+  Q -->|maybe if allowed| M[Manual review]
+  P --> F[Finish]
+  R --> S
+  M -->|approved after a long and careful review| F
+  subgraph G [Gate]
+    P
+    M
+  end

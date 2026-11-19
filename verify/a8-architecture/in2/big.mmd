@@ -1,0 +1,33 @@
+architecture-beta
+    group edge(cloud)[Edge]
+    service cdn(internet)[CDN] in edge
+    service waf(firewall)[WAF] in edge
+    service lb(network)[Load Balancer] in edge
+    group app(server)[Application Tier]
+    service web1(server)[Web 1] in app
+    service web2(server)[Web 2] in app
+    service web3(server)[Web 3] in app
+    service worker(cpu)[Worker] in app
+    group data(database)[Data Tier]
+    service pg(database)[Postgres Primary] in data
+    service pgr(database)[Postgres Replica] in data
+    service redis(cache)[Redis] in data
+    service s3(disk)[Object Storage] in data
+    group obs(monitoring)[Observability]
+    service prom(metrics)[Prometheus] in obs
+    service graf(chart)[Grafana] in obs
+    service loki(logs)[Loki] in obs
+    cdn:R --> L:waf
+    waf:R --> L:lb
+    lb:B --> T:web1
+    lb:B --> T:web2
+    lb:B --> T:web3
+    web1:B -- T:pg
+    web2:B -- T:redis
+    web3:B -- T:s3
+    worker:L -- R:web3
+    worker:B -- T:pg
+    pg:R -- L:pgr
+    prom:L -- R:worker
+    prom:B -- T:graf
+    loki:L -- R:graf

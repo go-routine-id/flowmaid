@@ -1,0 +1,16 @@
+flowchart BT
+    src[source] --> hub[hub]
+    hub --> p1
+    hub -->|long way round| q2
+    up[upstream feed] --> q1
+    subgraph P[Parent region]
+        subgraph A[Standby<br/>second line<br/>third line]
+            p1[standby one]
+            p2[standby two]
+        end
+        subgraph B[Main]
+            q1[entry] --> q2[worker]
+            q2 --> q3[store]
+        end
+    end
+    q3 --> sink[sink]

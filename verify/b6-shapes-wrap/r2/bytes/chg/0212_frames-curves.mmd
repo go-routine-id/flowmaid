@@ -1,0 +1,16 @@
+flowchart TB
+  subgraph outer[Outer frame]
+    subgraph inner[Inner]
+      a1[(db1)] --> a2{{hex}}
+      a2 --> a3[/io/]
+    end
+    a3 --> b1[[sub]]
+    b1 --> a1
+  end
+  c1((c)) --> outer
+  outer --> d1[\out\]
+  a2 e7@--> d1
+  e7@{ curve: linear }
+  linkStyle 0 interpolate basis stroke:#f0f,stroke-width:3px
+  classDef hot fill:#fdd,stroke:#900,stroke-width:2px
+  class a1,b1 hot

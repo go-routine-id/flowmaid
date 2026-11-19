@@ -1,0 +1,25 @@
+gitGraph
+  commit id: "init" tag: "v0"
+  branch dev
+  checkout dev
+  commit id: "d1" tag: "dev-t"
+  branch feat
+  checkout feat
+  commit id: "f1" tag: "feat-t"
+  branch fix
+  checkout fix
+  commit id: "x1" type: HIGHLIGHT tag: "hl"
+  branch rel
+  checkout rel
+  commit id: "r1" tag: "rc1"
+  branch exp
+  checkout exp
+  commit id: "e1" type: REVERSE tag: "rev"
+  branch docs
+  checkout docs
+  commit id: "o1" tag: "doc"
+  branch ops
+  checkout ops
+  commit id: "p1" tag: "ops"
+  checkout main
+  merge dev

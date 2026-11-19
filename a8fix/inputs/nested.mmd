@@ -1,0 +1,17 @@
+architecture-beta
+    group public_api(cloud)[Public API]
+    group private_api(cloud)[Private API] in public_api
+    service database(database)[Database] in private_api
+    service server(server)[Server] in private_api
+    service gateway(internet)[Gateway] in public_api
+    service lb(network)[Load Balancer]
+    group storage(disk)[Storage]
+    service s3(disk)[Object Store] in storage
+    service bk(disk)[Backup] in storage
+
+    lb:R --> L:gateway
+    gateway:R --> L:server
+    server:R -- L:database
+    database:B -- T:s3
+    s3:R -- L:bk
+    server:B -- T:bk

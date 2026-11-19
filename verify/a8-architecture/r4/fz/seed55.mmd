@@ -1,0 +1,13 @@
+architecture-beta
+    service s0(cloud)[PostgreSQL Primary 0]
+    service s1(internet)[Q 1]
+    service s2(nonsense)[Svc 2]
+    service s3(monitoring)[Web App 3]
+    service s4(internet)[Svc 4]
+    s0:T --> L:s2
+    s2:L --> R:s4
+    s1:L -- R:s2
+    s1:R <-[calls]-> L:s4
+    s4:L --> T:s2
+    s4:L -[calls]-> R:s1
+    s0:B --> T:s3

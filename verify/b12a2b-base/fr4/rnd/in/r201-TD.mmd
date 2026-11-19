@@ -1,0 +1,17 @@
+flowchart TD
+    subgraph O[WWW Mammoth Wombat Overview]
+        subgraph G[Order processing]
+            m0[queue]
+            m1[auth service]
+            m2[queue]
+        end
+        k[k]
+    end
+    m0 --> k
+    m1 --> k
+    m2 --> k
+    s0[src0] -- "lbl5" --> G
+    s0 --> m1
+    s1[src1] --> G
+    s1 -- "lbl5" --> O
+    m2 --> z[end]

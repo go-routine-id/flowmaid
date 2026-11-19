@@ -1,0 +1,10 @@
+[package]
+name = "probe"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+flowmaid = { path = "FMPATH" }
+
+[profile.release]
+debug = false

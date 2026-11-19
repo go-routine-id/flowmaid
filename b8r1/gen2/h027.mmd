@@ -1,0 +1,35 @@
+flowchart LR
+  s0["ship index auth"]
+  subgraph g0["cart notify api zone"]
+    m0["metric"]
+    m1["search user search"]
+    m2["api order"]
+    m3["web trace cache"]
+    m4["web notify search"]
+    m0 --> m1
+    m1 --> m2
+    m0 --> m3
+    m0 --> m4
+  end
+  subgraph g1["cache notify queue zone"]
+    m5["report report log"]
+    m6["queue"]
+    m5 --> m6
+  end
+  subgraph g2["order cache zone"]
+    m7["api"]
+    m8["api queue"]
+    m9["cache"]
+    m10["metric log"]
+    m11["ship"]
+    m7 --> m8
+    m7 --> m9
+    m8 --> m10
+    m9 --> m11
+  end
+  s0 --> m0
+  s0 --> g1
+  s0 --> g2
+  m6 --> m3
+  m7 --> m4
+  s0 --> L12["cart"]

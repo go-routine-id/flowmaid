@@ -1,0 +1,41 @@
+[dirs static] 332 copies  defects 41->41 (+0/-0)  x_drawn 1283->1287 (+2/-1)  lateral_x 192->185 (+2/-3)  fan_x 30->32 (+1/-0)  edge_chip 8->8 (+0/-0)  side_ends 208->210 (+2/-0)  min_edge_gap down 1
+    WORSE x_drawn (2): quality.bench-75-RL 190->192; quality.bench-75-TD 214->217
+    WORSE lateral_x (2): quality.bench-75-LR 2->3; quality.bench-75-TD 10->11
+    WORSE fan_x (1): quality.bench-75-LR 4->6
+    WORSE side_ends (2): quality.bench-75-LR 37->38; quality.bench-75-RL 38->39
+    WORSE min_edge_gap drop > 0.5 px (1): quality.bench-75-LR 15.25->12.5
+    info edge_edge_x: total 1266->1270, up 2 / down 1 (worse on 2, better on 1): quality.bench-75-RL 190->192; quality.bench-75-TD 214->217
+    info overlap_len: total 532->648, up 2 / down 0 (worse on 2, better on 0): quality.dense-lr-LR 108->166; quality.dense-lr-RL 108->166
+    info min_node_gap: total 8413.18->8407.3, up 1 / down 2 (worse on 2, better on 1): quality.bench-75-RL 12.53->12.52; quality.bench-75-TD 20.39->14.5
+    info lbl_edge: total 11->23, up 2 / down 0 (worse on 2, better on 0): quality.dense-lr-LR 0->6; quality.dense-lr-RL 0->6
+    info center_off: total 49.52->49.5, up 0 / down 1 (no direction)
+    info width: total 275143->275109, up 0 / down 1 (no direction)
+    info aspect: total 786.33->786.38, up 1 / down 0 (no direction)
+    info area_per_node: total 14812004->14808092, up 0 / down 1 (no direction)
+    info border_runs: total 3->1, up 0 / down 1 (worse on 0, better on 1)
+    info border_len: total 514.35->86.43, up 0 / down 1 (worse on 0, better on 1)
+    info tight_pairs: total 312->316, up 2 / down 1 (worse on 2, better on 1): quality.bench-75-LR 46->49; quality.bench-75-RL 48->50
+    info tight_len: total 43044->43714, up 5 / down 1 (worse on 5, better on 1): quality.bench-75-LR 7416->7978; quality.bench-75-RL 7804->7992; quality.bench-75-TD 5760->5768; quality.dense-lr-LR 692->1082; quality.dense-lr-RL 692->1082
+    info hug_runs: total 12->9, up 0 / down 1 (worse on 0, better on 1)
+    info hug_len: total 1394.36->888.54, up 0 / down 1 (worse on 0, better on 1)
+    info hug_max: total 1195.13->888.54, up 0 / down 1 (worse on 0, better on 1)
+    info xgap_max: total 64->65, up 1 / down 0 (worse on 1, better on 0): quality.bench-75-LR 2->3
+    info lat_wiggles: total 323->327, up 4 / down 0 (worse on 4, better on 0): quality.bench-75-BT 20->21; quality.bench-75-LR 18->19; quality.bench-75-RL 20->21; quality.bench-75-TD 25->26
+    info lat_backtrack: total 46994.4->47129.2, up 3 / down 1 (worse on 3, better on 1): quality.bench-75-BT 3349.88->3377.08; quality.bench-75-LR 2260.7->2331.7; quality.bench-75-RL 2537.45->2575.95
+    info band_pairs: total 1027->1046, up 6 / down 0 (worse on 6, better on 0): quality.bench-75-BT 150->152; quality.bench-75-LR 106->110; quality.bench-75-RL 100->101; quality.bench-75-TD 122->124; quality.dense-lr-LR 33->38; quality.dense-lr-RL 32->37
+    info band_len: total 389476->395918, up 5 / down 1 (worse on 5, better on 1): quality.bench-75-BT 40104->40590; quality.bench-75-LR 29346->30500; quality.bench-75-TD 35170->36888; quality.dense-lr-LR 15284->17028; quality.dense-lr-RL 15018->16762
+    info end_kink: total 17->16, up 0 / down 1 (worse on 0, better on 1)
+    info xhops: total 996->1004, up 3 / down 1 (no direction)
+    info edge_len: total 1.90551e+06->1.9057e+06, up 3 / down 3 (worse on 3, better on 3): quality.bench-75-BT 77476.5->77516.2; quality.bench-75-LR 68501.1->68647.1; quality.bench-75-RL 69081.5->69169.5
+    info bends_max: total 1383->1384, up 1 / down 0 (worse on 1, better on 0): quality.bench-75-BT 8->9
+    info detour_max: total 322.72->322.75, up 2 / down 0 (worse on 2, better on 0): quality.bench-75-LR 1.42->1.44; quality.bench-75-RL 1.43->1.44
+    info lbl_end_mean: total 31825.2->31880.6, up 2 / down 0 (worse on 2, better on 0): quality.dense-lr-LR 371->398.73; quality.dense-lr-RL 370.16->397.9
+    info chip_crowd: total 265->273, up 2 / down 0 (worse on 2, better on 0): quality.dense-lr-LR 5->9; quality.dense-lr-RL 5->9
+    info chip_gap_min: total 8981.63->8973.05, up 0 / down 2 (worse on 2, better on 0): quality.dense-lr-LR 4.29->0; quality.dense-lr-RL 4.29->0
+[dirs routed] 332 copies  defects 169->169 (+0/-0)  x_drawn 1997->1997 (+0/-0)  lateral_x 418->418 (+0/-0)  fan_x 183->183 (+0/-0)  edge_chip 78->78 (+0/-0)  side_ends 361->361 (+0/-0)  min_edge_gap down 0
+    info band_len: total 320258->320256, up 0 / down 1 (worse on 0, better on 1)
+    info edge_len: total 1.87976e+06->1.87975e+06, up 0 / down 1 (worse on 0, better on 1)
+    info ends_apart: total 878->878, up 1 / down 1 (worse on 1, better on 1): quality.bench-75-LR 19->21
+[dirsx static] 32 copies  defects 0->0 (+0/-0)  x_drawn 1->1 (+0/-0)  lateral_x 1->1 (+0/-0)  fan_x 0->0 (+0/-0)  edge_chip 0->0 (+0/-0)  side_ends 2->2 (+0/-0)  min_edge_gap down 0
+[dirsx routed] 32 copies  defects 0->0 (+0/-0)  x_drawn 1->1 (+0/-0)  lateral_x 1->1 (+0/-0)  fan_x 0->0 (+0/-0)  edge_chip 0->0 (+0/-0)  side_ends 2->2 (+0/-0)  min_edge_gap down 0
+dirs: WORSE (8)

@@ -1,0 +1,134 @@
+name	engine	dir	W	H	area	aspect	fill	nodes	edges	frames	top_frames	compact_mean	compact_max	compact_max_id	span_max	span_max_id	sib_pairs	sib_side	sib_stacked	sib_stagger	sib_side_linked	frame_overlap	frame_foreign_nodes	xframe_runs	xframe_len	xframe_edges	node_hits	crossings	hops	edge_len	edge_len_n	straight_max	straight_max_edge	bends	lanes_max	lane_gap_min	lbl_n	lbl_off_mean	lbl_off_max	lbl_endpx_mean	lbl_endpx_max	lbl_detach_max	lbl_lbl	lbl_node	lbl_struck	lbl_gap_min	lbl_crowd	membership	edge_ends	warn	lateral_x	lateral_edges	flow_x	bends_max	bends_max_edge	detour_max	detour_max_edge	lbl_in_end	lbl_own_gap_max	breadth	bands_n	bands	band_sets
+blocks-overview	fm	TD	1142	1804	2060168	0.63	0.053	21	30	7	6	7.26	19.97	OBS	0.203	ORD	15	1	14	1	0	0	0	0	0	0	0	6	4	15483	214.1	1410	ALERT>MAIL	83	3	12.4	22	0.133	0.307	231	850	23.2	0	0	0	4.5	2	struct	struct	0	3	3	32	8	OPS>[OBS]	1.22	SHOP>CDN	0	0.0	1142	6	OPS SHOP / CI EDGE / WEB / ORD / DATA / OBS	OPS SHOP / CI EDGE / WEB / ORD / DATA / OBS
+== blocks-overview [fm] 1142 x 1804, dir TD, membership struct, edge ends struct
+ frames:
+  id    parent  x      y     w      h      members  node_area  compact  span   foreign_nodes
+  EDGE  -       302.7  155   811.3  121.5  4        21365      4.614    0.067  0            
+  CI    -       114.8  176   167.9  329    3        16143.8    3.422    0.182  0            
+  WEB   -       169.9  577   353.9  190    3        12847.8    5.234    0.105  0            
+  ORD   -       516.5  839   413.3  366    4        18350.6    8.243    0.203  0            
+  DATA  -       161.3  1277  480.3  234    3        19782.2    5.681    0.130  0            
+  OBS   -       238.9  1583  815.3  192.5  2        7858.4     20.0     0.107  0            
+  PAY   ORD     767    985   148.9  206    2        8375.6     3.662    0.114  0
+ sibling pairs:
+  a     b     kind           flow_overlap  linked
+  EDGE  CI    side(stagger)  100.5         -     
+  EDGE  WEB   stacked        -300.5        edge  
+  EDGE  ORD   stacked        -562.5        edge  
+  EDGE  DATA  stacked        -1000.5       -     
+  EDGE  OBS   stacked        -1306.5       edge  
+  CI    WEB   stacked        -72           edge  
+  CI    ORD   stacked        -334          edge  
+  CI    DATA  stacked        -772          -     
+  CI    OBS   stacked        -1078         -     
+  WEB   ORD   stacked        -72           edge  
+  WEB   DATA  stacked        -510          edge  
+  WEB   OBS   stacked        -816          edge  
+  ORD   DATA  stacked        -72           edge  
+  ORD   OBS   stacked        -378          edge  
+  DATA  OBS   stacked        -72           edge
+ edges:
+  edge            len     straight_max  bends  detour  hops  xframe_runs  xframe_len  node_hits  lateral_x  flow_x  ends         
+  REPO>BUILD      79.5    79.5          0      -       0     0            0           0          0          0       struct/struct
+  BUILD>REG       54.5    54.5          0      -       0     0            0           0          0          0       struct/struct
+  GATE>CART       113.4   41.1          2      -       0     0            0           0          0          0       struct/struct
+  GATE>SEARCH     119.1   40.8          2      -       0     0            0           0          0          0       struct/struct
+  CHARGE>LEDGER   54.5    54.5          0      -       0     0            0           0          0          0       struct/struct
+  QUEUE>CHARGE    247.0   76.0          3      0.979   0     0            0           0          1          0       struct/struct
+  QUEUE>SHIP      102.5   102.5         0      -       0     0            0           0          0          0       struct/struct
+  METRICS>ALERT   673.2   498.4         4      0.989   0     0            0           0          0          0       struct/struct
+  SHOP>CDN        239.1   69.2          3      1.224   0     0            0           0          0          1       struct/struct
+  SHOP>LB         186.4   76.3          3      -       0     0            0           0          0          1       struct/struct
+  OPS>REPO        212.9   70.7          3      0.966   0     0            0           0          0          1       struct/struct
+  CDN>GATE        349     349           0      1       0     0            0           0          0          2       struct/struct
+  LB>GATE         529.3   171.4         5      0.973   0     0            0           0          0          2       struct/struct
+  LB>QUEUE        635.4   512.6         2      0.988   0     0            0           0          0          2       struct/struct
+  CART>QUEUE      390.3   197.4         3      0.990   1     0            0           0          1          1       struct/struct
+  CART>CACHE      558.5   558.5         0      1       0     0            0           0          0          2       struct/struct
+  SEARCH>INDEX    689.3   689.3         0      1       0     0            0           0          0          2       struct/struct
+  SHIP>DB         330.5   171.8         5      0.978   0     0            0           0          0          2       struct/struct
+  LEDGER>DB       357.1   166.5         4      0.979   1     0            0           0          0          3       struct/struct
+  CHARGE>MAIL     765.5   765.5         0      1       0     0            0           0          0          3       struct/struct
+  SHIP>MAIL       915.7   530.4         7      0.984   0     0            0           0          0          2       struct/struct
+  DB>INDEX        71.4    71.4          0      -       0     0            0           0          0          0       struct/struct
+  ALERT>PAGER     1524.3  1188.9        5      0.995   0     0            0           0          0          2       struct/struct
+  ALERT>MAIL      1531.0  1409.6        2      0.995   0     0            0           0          0          2       struct/struct
+  OPS>[OBS]       1778.8  1156.6        8      1.030   0     0            0           0          0          0       struct/struct
+  REG>[WEB]       174.2   72.3          2      -       0     0            0           0          0          1       struct/struct
+  REG>[ORD]       709.8   243.4         6      0.979   2     0            0           0          0          1       struct/struct
+  [WEB]>METRICS   1117.1  457.0         6      1.190   0     0            0           0          1          0       struct/struct
+  [ORD]>METRICS   765.6   339.3         4      0.990   0     0            0           0          0          1       struct/struct
+  [DATA]>METRICS  207.8   73.2          4      0.974   0     0            0           0          0          1       struct/struct
+ crossings of the border of a frame that holds exactly one end:
+  edge            frame  side  kind     at             
+  QUEUE>CHARGE    PAY    L     lateral  (767.0,1044.0) 
+  SHOP>CDN        EDGE   T     flow     (476.7,155.0)  
+  SHOP>LB         EDGE   T     flow     (600.1,155.0)  
+  OPS>REPO        CI     T     flow     (234.2,176.0)  
+  CDN>GATE        EDGE   B     flow     (349.5,276.5)  
+  CDN>GATE        WEB    T     flow     (349.5,577.0)  
+  LB>GATE         EDGE   B     flow     (576.7,276.5)  
+  LB>GATE         WEB    T     flow     (381.5,577.0)  
+  LB>QUEUE        EDGE   B     flow     (610.1,276.5)  
+  LB>QUEUE        ORD    T     flow     (642.0,839.0)  
+  CART>QUEUE      WEB    B     flow     (275.8,767.0)  
+  CART>QUEUE      ORD    L     lateral  (516.5,898.0)  
+  CART>CACHE      WEB    B     flow     (235.9,767.0)  
+  CART>CACHE      DATA   T     flow     (235.9,1277.0) 
+  SEARCH>INDEX    WEB    B     flow     (454.8,767.0)  
+  SEARCH>INDEX    DATA   T     flow     (454.8,1277.0) 
+  SHIP>DB         ORD    B     flow     (560.9,1205.0) 
+  SHIP>DB         DATA   T     flow     (560.9,1277.0) 
+  LEDGER>DB       ORD    B     flow     (841.4,1205.0) 
+  LEDGER>DB       DATA   T     flow     (615.6,1277.0) 
+  LEDGER>DB       PAY    B     flow     (841.4,1191.0) 
+  CHARGE>MAIL     EDGE   B     flow     (854.7,276.5)  
+  CHARGE>MAIL     ORD    T     flow     (854.7,839.0)  
+  CHARGE>MAIL     PAY    T     flow     (854.7,985.0)  
+  SHIP>MAIL       EDGE   B     flow     (839.6,276.5)  
+  SHIP>MAIL       ORD    T     flow     (719.0,839.0)  
+  ALERT>PAGER     EDGE   B     flow     (1039.7,276.5) 
+  ALERT>PAGER     OBS    T     flow     (1039.7,1583.0)
+  ALERT>MAIL      EDGE   B     flow     (878.0,276.5)  
+  ALERT>MAIL      OBS    T     flow     (952.6,1583.0) 
+  REG>[WEB]       CI     B     flow     (237.1,505.0)  
+  REG>[ORD]       CI     B     flow     (251.1,505.0)  
+  [WEB]>METRICS   OBS    L     lateral  (238.9,1642.0) 
+  [ORD]>METRICS   OBS    T     flow     (357.5,1583.0) 
+  [DATA]>METRICS  OBS    T     flow     (342.8,1583.0)
+ runs through a frame holding neither end:
+  (none)
+ crossings:
+  a             b              x      y     
+  QUEUE>CHARGE  SHIP>MAIL      674.4  1001.2
+  CDN>GATE      REG>[ORD]      349.5  519.5 
+  LB>GATE       REG>[ORD]      533.1  519.6 
+  CART>QUEUE    SEARCH>INDEX   454.8  898   
+  LEDGER>DB     [ORD]>METRICS  718.3  1226.2
+  OPS>[OBS]     [WEB]>METRICS  88.8   1557.9
+ labels:
+  edge            text           x       y       w     h   edge_len  s       off    end_px  detach  own_gap  in_end  gap    on_node  struck  on_label_after
+  SHOP>CDN        browse         476.7   136.6   59.2  20  239.1     75.4    0.185  75.4    0.000   0        -       36.9   0        0       0             
+  SHOP>LB         checkout       599.9   111.6   70.1  20  186.4     96.0    0.015  90.4    0.005   0        -       88.6   0        0       0             
+  OPS>REPO        merge          223.9   113.5   53.8  20  212.9     109.2   0.013  103.7   0.036   0        -       91.6   0        0       0             
+  CDN>GATE        cache miss     371.4   464     84.4  20  349       201.5   0.077  147.5   21.9    0        -       45.5   0        0       0             
+  LB>GATE         HTTPS          533.4   464     62.5  20  529.3     237.5   0.051  237.5   0.050   0        -       45.5   0        0       0             
+  LB>QUEUE        webhooks       610.0   636     77.1  20  635.4     373.5   0.088  261.9   0.051   0        -       7.400  0        0       0             
+  CART>QUEUE      place order    282.6   897.3   84.5  20  390.3     147.9   0.121  147.9   0.024   0        -       4.500  0        0       0             
+  CART>CACHE      sessions       235.9   1044    68.8  20  558.5     291     0.021  267.5   0       0        -       17.6   0        0       0             
+  SEARCH>INDEX    query          448.4   1044    49.1  20  689.3     291     0.078  291     6.450   0        -       99.1   0        0       0             
+  SHIP>DB         write          560.9   1240.5  43.9  20  330.5     259.5   0.285  71      0.050   0        -       32.8   0        0       0             
+  LEDGER>DB       write          615.6   1247    43.9  20  357.1     288.3   0.307  68.8    0.053   0        -       32.7   0        0       0             
+  CHARGE>MAIL     receipt        854.7   464     56.4  20  765.5     561     0.233  204.5   0       0        -       69.7   0        0       0             
+  SHIP>MAIL       tracking mail  719     464     93.6  20  915.7     598.2   0.153  317.5   0.001   0        -       62.1   0        0       0             
+  DB>INDEX        reindex        550.5   1409.4  60.3  20  71.4      38.5    0.039  32.9    0.050   0        -       65.6   0        0       0             
+  ALERT>PAGER     page           1042.2  617.7   45.2  20  1524.3    1166.1  0.265  358.2   2.500   0        -       67.0   0        0       0             
+  ALERT>MAIL      digest         975.8   898     51.7  20  1531.0    825.5   0.039  705.5   23.2    0        -       38.1   0        0       0             
+  OPS>[OBS]       dashboards     71.7    898     87.3  20  1778.8    849.7   0.022  849.7   0.050   0        -       68.6   0        0       0             
+  REG>[WEB]       deploy         267.3   552     55.6  20  174.2     89.8    0.016  84.4    0       0        -       22.5   0        0       0             
+  REG>[ORD]       deploy         564.1   734     55.6  20  709.8     553.4   0.280  156.4   0.000   0        -       18.2   0        0       0             
+  [WEB]>METRICS   scrape         183.9   1081.4  56.1  20  1117.1    314.4   0.219  314.4   0.049   0        -       24     0        0       0             
+  [ORD]>METRICS   scrape         718.3   1451.6  56.1  20  765.6     246.6   0.178  246.6   0.050   0        -       139.6  0        0       0             
+  [DATA]>METRICS  scrape         278.3   1525.5  56.1  20  207.8     54.9    0.236  54.9    0       0        -       22.5   0        0       0
+ bands: OPS SHOP / CI EDGE / WEB / ORD / DATA / OBS
+ widest bundle of parallel lanes: 3 at y=993,x=632..674

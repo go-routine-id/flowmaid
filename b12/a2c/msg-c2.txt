@@ -1,0 +1,49 @@
+fix(blocks): the top-level sibling frames of a TD / BT band start level, each block moved whole; hop feet in a block layout's paint sit on their line (b12a2c-squeeze item 4, B12 X4)
+
+Sibling frames of a band whose first rows differ in height started
+apart along the flow and read as interleaved (gate `sib_stagger`; the
+public fixture's build pipeline beside its shared services). In a block
+layout `place` now levels them (`level_sibling_frames`): on a layer that
+is the first row of two or more top-level blocks, every block whose
+frame starts later than the earliest moves upstream as a whole (members
+at any depth and the dummies of the chains it holds) until its frame's
+leading edge (first-row members less FRAME_PAD and, in TD, the title
+strip and jog room) meets the earliest. It needs no room (the earliest
+edge is one the layer lines already reserve) and the frame keeps its
+size; frames stay functions of their own members, so route() at the
+scene's centres draws them the same. Top-level only and TD / BT only:
+levelling nested siblings lengthened dense-td's parallel runs, and in
+LR / RL the shift took one more crossing on dense-lr and moved two lines
+of notes/spread-bottom nearer.
+
+Levelling exposed a paint artifact: a level stroke at y .25 whose spline
+lay a hair off its line at a hop wrote the hop's feet 0.1 px off the line
+before them, which reads as a step (the public fixture's REG --> ORD:
+five turns counted instead of four). In a block layout's paint
+(`Scene::block_layout`) a foot within FOOT_SNAP (0.05 px, under the
+SVG's writing) of the hop's line is set on it; picking uses the same
+strokes (HopPick), so pick == render holds.
+
+Tests: blockcheck::sibling_frames_of_a_band_start_level_and_keep_their_size
+(blocks-overview TD and BT: sib_stagger 0, the CI frame holds its
+members' flow span within the old bound, TD tops level, route() at the
+scene's centres gives the same frames);
+scene::tests::a_block_layouts_hop_feet_are_written_on_their_line.
+
+Checks against the package start (d99c073), suite-on:
+- local acceptance judge (A2): fewer must-fail cells; sib_stagger gone
+  on every local input and on the public fixture and its four
+  reorderings (blocks-overview*: 1 -> 0). Declared trade inside rows
+  failing at the start: the crowded chip that the previous commit
+  cleared comes back on the inputs where it had cleared (equal to the
+  package start), and one input's lbl_crowd is one above the package
+  start (a chip near a levelled frame drops just under the crowd floor).
+  For the lead; details in the checkpoint report.
+- gate messages: no worse (failing 8 -> 8, same names); no gate cell
+  moved by this commit.
+- direction copies (332 + 32): no worse.
+Block mode only (`blocks`); the default build is byte-identical.
+Guard green.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

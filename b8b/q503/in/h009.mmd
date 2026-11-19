@@ -1,0 +1,26 @@
+flowchart LR
+  s0["notify"]
+  s1["db notify"]
+  subgraph g0["store zone"]
+    direction TB
+    m0["metric"]
+    m1["ship"]
+    m0 --> m1
+  end
+  subgraph g1["billing pay auth zone"]
+    m2["user queue queue"]
+    m3["pay store cart"]
+    m2 --> m3
+  end
+  subgraph g2["pay report zone"]
+    direction TB
+    m4["billing billing"]
+    m5["pay"]
+    m6["search billing store"]
+    m7["queue queue log"]
+    m4 --> m5
+  end
+  s0 --> g0
+  s0 --> m2
+  s1 --> m4
+  s1 --> L8["notify"]

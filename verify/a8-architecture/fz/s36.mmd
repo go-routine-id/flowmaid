@@ -1,0 +1,19 @@
+architecture-beta
+    group g0(internet)[Data]
+    service s0(server)[Service 0] in g0
+    service s1(internet)[Service 1] in g0
+    service s2(disk)[Service 2] in g0
+    service s3(internet)[Service 3] in g0
+    service s4(disk)[Service 4] in g0
+    service s5(disk)[Service 5] in g0
+    service s6(cloud)[Service 6] in g0
+    s0:L --> R:s6
+    s4:L -- R:s0
+    s1:B -- T:s5
+    s3:L --> R:s6
+    s0:B --> L:s1
+    s4:B --> B:s5
+    s3:B -- R:s2
+    s5:T -- B:s0
+    s6:T --> B:s5
+    s2:T -- R:s4

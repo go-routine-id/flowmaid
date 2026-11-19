@@ -1,0 +1,23 @@
+flowchart LR
+    N0{Queue}
+    N1(Done done)
+    N2(Archive)
+    N3{Store check}
+    N4[Store]
+    N5(Store)
+    N6([Emit])
+    N7([Archive archive])
+    N8(Store)
+    N9([Notify store])
+    N0 --> N1
+    N1 --> N2
+    N2 --> N3
+    N1 -->|fail| N4
+    N4 --> N5
+    N5 --> N6
+    N6 --> N7
+    N5 -->|ok| N8
+    N6 --> N9
+    N5 --> N9
+    N6 --> N8
+    N3 ==> N0

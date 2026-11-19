@@ -1,0 +1,36 @@
+flowchart TD
+  n0["aliqua magna elit sed"]
+  subgraph g0["magna ullamco dolor ut incididunt ullamco"]
+    direction LR
+    n1[("lorem laboris incididunt<br/>sit sit nostrud<br/>elit do elit")]
+    n2("lorem do elit nostrud")
+    n3[("ullamco<br/>do ullamco<br/>tempor")]
+    n4["nostrud amet"]
+  end
+  subgraph g1["magna sit dolor consectetur ipsum"]
+    direction LR
+    n5["incididunt ut consectetur<br/>lorem"]
+    n6["nostrud<br/>ullamco"]
+    n7[("amet<br/>incididunt amet<br/>sed dolor")]
+    n8["nostrud elit adipiscing<br/>amet"]
+    n9("sed veniam ipsum elit<br/>elit lorem amet nostrud")
+    n10(["adipiscing sit aliqua<br/>amet eiusmod labore laboris<br/>ut amet"])
+  end
+  subgraph g2["magna ut magna magna dolor"]
+    n11["ut incididunt"]
+  end
+  subgraph g3["lorem sed laboris sed elit incididunt"]
+    direction TB
+    n12["eiusmod adipiscing incididunt labore<br/>ipsum"]
+    n13[("laboris eiusmod ut dolor")]
+  end
+  n14(["sed ut ut<br/>nostrud lorem"])
+  n15(["dolor lorem<br/>eiusmod<br/>nostrud ullamco incididunt nostrud"])
+  n16(["labore labore labore"])
+  n0 ==> g0
+  n0 ==> n10
+  n0 --> g2
+  n0 --> g3
+  n0 --> n14
+  n0 --> n15
+  n0 --> n16

@@ -1,0 +1,16 @@
+flowchart LR
+  n5 ==> n5
+  n1 <--> n1
+  n1 e2@x--x n3
+  e2@{ curve: basis }
+  n5 === n4
+  n3 ==>|yes| n3
+  n3 -.-> n3
+  n4 === n6
+  n1 --o|yes| n3
+  linkStyle 0 stroke-width:12px
+  linkStyle 1 stroke-width:24px,stroke:#c33
+  linkStyle 3 stroke-width:55px,stroke:#36c,stroke-dasharray:6 3
+  linkStyle 5 stroke-width:12px,stroke:#36c,stroke-dasharray:6 3
+  linkStyle 7 stroke-width:55px,stroke:#c33
+  linkStyle default stroke-width:20px

@@ -1,0 +1,14 @@
+flowchart BT
+    s1[caller] --> q1
+    s2[client] --> G
+    s3[batch] --> G
+    s4[hub] --> q2
+    s4 --> q1
+    subgraph G[Monitoring Workloads Platform]
+        q1[queue]
+        q2[charge]
+        q3[ship]
+        q1 --> q3
+        q2 --> q3
+    end
+    q3 --> m[metrics]

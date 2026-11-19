@@ -1,0 +1,13 @@
+    Finished `release` profile [optimized] target(s) in 0.01s
+     Running unittests src/lib.rs (/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a1-structure/r5/t-prerel/release/deps/flowmaid-e879d16ae13d6102)
+
+running 1 test
+test router::tests::fixture_drag_perf_guard ... dense-lr: route_partial worst 6.27 ms (node 46); route() worst 10.40 ms (node 14), 2 frames over 8 ms (route() reported, not asserted)
+dense-td: route_partial worst 6.79 ms (node 17); route() worst 12.72 ms (node 19), 62 frames over 8 ms (route() reported, not asserted)
+bench-75: route_partial worst 7.75 ms (node 2); route() worst 17.41 ms (node 14), 239 frames over 8 ms (route() reported, not asserted)
+fan-40-labelled: route_partial worst 17.72 ms (node 0); route() worst 17.45 ms (node 0), 166 frames over 8 ms (route() reported, not asserted)
+parallel-labelled: route_partial worst 15.94 ms (node 1); route() worst 18.99 ms (node 1), 10 frames over 8 ms (route() reported, not asserted)
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1090 filtered out; finished in 117.74s
+

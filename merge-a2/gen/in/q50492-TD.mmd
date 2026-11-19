@@ -1,0 +1,14 @@
+flowchart TD
+    subgraph G0[Edge 0]
+        g0m0[g0m0]
+        g0m1[g0m1]
+        g0m2[g0m2]
+    end
+    subgraph G1[Core 1]
+        g1m0[g1m0]
+        g1m1[g1m1]
+    end
+    o0 --> g1m0
+    g1m1 --> g0m0
+    g0m0 -- l5 --> G1
+    g1m0 --> G1

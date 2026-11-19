@@ -1,0 +1,16 @@
+flowchart RL
+    subgraph Outer[Outer system]
+      direction RL
+      subgraph Inner[Inner core]
+        P[Parse] --> Q[Plan]
+        Q --> R[Run]
+        R -->|fail| P
+        R -->|replan| Q
+      end
+      R --> T[Report]
+      T -->|again| P
+    end
+    T --> U[Archive]
+    U -->|restore| T
+    U -->|restore twice| T
+    Q --> Q

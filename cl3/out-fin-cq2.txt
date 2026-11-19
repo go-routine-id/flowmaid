@@ -1,0 +1,20 @@
+=== cq2 (pre -> fin)
+31711 31711 []
+('scene', 'route') rows 6343 changed 593
+  curves     worse    0 better   49 net   -86  rows>0:   95 ->   47 []
+  cross      worse    0 better  190 net  -942  rows>0: 2183 -> 2008 []
+  loop_cross worse    0 better  137 net  -430  rows>0:  137 ->    0 []
+  through    worse    0 better    0 net     0  rows>0:   52 ->   52 []
+  loop_node  worse    0 better    0 net     0  rows>0:   52 ->   52 []
+  chip_edge  worse    0 better  480 net  -995  rows>0: 1999 -> 1553 []
+  chip_chip  worse    0 better    0 net     0  rows>0:    2 ->    2 []
+  chip_node  worse    0 better    0 net     0  rows>0:    0 ->    0 []
+('dragA', 'dragB', 'dragC', 'dragD') rows 25368 changed 2777
+  curves     worse    0 better  415 net  -462  rows>0: 4492 -> 4134 []
+  cross      worse   10 better 1299 net -5388  rows>0: 12921 -> 12035 [('0093ff1c44e7b1665668165e7ea688fb.mmd', 'dragD', 5, 7), ('k8_TB.mmd', 'dragD', 7, 8), ('BT_b6_a1_c0_l1_x1.mmd', 'dragC', 0, 1), ('RL_b8_a1_c0_l1_x1.mmd', 'dragA', 0, 1)]
+  loop_cross worse    0 better  343 net -1035  rows>0:  343 ->    0 []
+  through    worse    0 better   30 net   -38  rows>0:  513 ->  483 []
+  loop_node  worse    0 better   30 net   -38  rows>0:  272 ->  242 []
+  chip_edge  worse   75 better 1421 net -2467  rows>0: 8872 -> 7700 [('002a08a13defd65090ba25d2faacfe56.mmd', 'dragD', 0, 1), ('3f770e1c19ad0def895f904520c02752.mmd', 'dragB', 1, 2), ('5cd1d506f042e5a91ab51a15f22ce073.mmd', 'dragA', 1, 2), ('c67253643d6afe910b
+  chip_chip  worse    0 better    0 net     0  rows>0:    1 ->    1 []
+  chip_node  worse    0 better    0 net     0  rows>0:    0 ->    0 []

@@ -1,0 +1,14 @@
+flowchart TD
+    subgraph O[Édition générale des données]
+        subgraph G[Shipping and returns desk]
+            m0[auth service]
+            m1[charge]
+        end
+        k[k]
+    end
+    m1 --> k
+    s0[src0] --> m0
+    s1[src1] --> G
+    s2[src2] --> m0
+    s2 --> m0
+    m1 --> z[end]

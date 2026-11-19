@@ -1,0 +1,13 @@
+flowchart LR
+    N0{Archive}
+    N1([Retry validate])
+    N2{Notify}
+    N3([Retry])
+    N4[Done parse]
+    N5[Store parse]
+    N0 --> N1
+    N1 --> N2
+    N2 -->|no| N3
+    N2 -->|fail| N4
+    N4 --> N5
+    N1 ==>|rollback| N0

@@ -1,0 +1,16 @@
+[package]
+name = "pickcmp"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+fm38 = { package = "flowmaid", path = "../src-038" }
+fmpre = { package = "flowmaid", path = "../src-pre" }
+fmfix = { package = "flowmaid", path = "../src-fixed" }
+
+[profile.release]
+opt-level = 2
+debug = false
+incremental = false
+
+[workspace]

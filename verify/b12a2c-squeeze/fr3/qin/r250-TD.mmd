@@ -1,0 +1,11 @@
+flowchart TD
+    subgraph G[WWW Mammoth Wombat Overview]
+        m0[ledger]
+        m1[ledger]
+        m2[db]
+    end
+    s0[src0] --> m0
+    s1[src1] --> G
+    s1 --> m2
+    m2 --> z[end]
+    G --> z2[after]

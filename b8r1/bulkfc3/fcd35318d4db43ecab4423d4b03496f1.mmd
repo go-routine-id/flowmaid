@@ -1,0 +1,20 @@
+flowchart LR
+  subgraph F0 [Frame 0]
+    n5(Node 5)
+    n6>Node 6]
+  end
+  n3 ==> n0
+  n6 --x n1
+  n6 x--x|x| n7
+  n3 <-.-> n1
+  n5 o--o n4
+  n3 <==>|a longer label| n3
+  n3 ---> n1
+  n7 e7@---> n3
+  e7@{ curve: basis }
+  n3 o--o F0
+  linkStyle 2 stroke-width:55px
+  linkStyle 3 stroke-width:24px,stroke:#3a3
+  linkStyle 4 stroke-width:12px,stroke:#3a3
+  linkStyle 5 stroke-width:5px,stroke:#3a3
+  linkStyle 6 stroke-width:40px,stroke:#c33

@@ -1,0 +1,18 @@
+flowchart RL
+  u1[user one] --> g1
+  u2[user two] --> g2
+  u3[user three] --> g3
+  ext[external] --> g4
+  subgraph GW["A gateway block whose long title runs over its members"]
+    g1[a] 
+    g2[b]
+    g3[c]
+    g4[d wide member node]
+  end
+  g1 --> s1
+  g2 --> s1
+  g4 --> s2
+  subgraph SV[Services]
+    s1[service] --> s2[store]
+  end
+  s2 -->|ack| u1

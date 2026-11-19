@@ -1,0 +1,11 @@
+flowchart RL
+    subgraph G[Édition générale des données]
+        m0[queue]
+        m1[ledger]
+        m0 --> m1
+    end
+    s0[src0] -- "lbl4" --> m0
+    s0 --> G
+    s1[src1] -- "lbl2" --> m1
+    s2[src2] --> m1
+    s3[src3] -- "lbl9" --> m1

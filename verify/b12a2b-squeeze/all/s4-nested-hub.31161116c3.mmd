@@ -1,0 +1,17 @@
+flowchart TD
+  HUB{{Router}} --> a1 & b1 & c1 & d1
+  subgraph Outer [Outer region with a fairly long title]
+    subgraph InA [Inner A]
+      a1[a one] --> a2[a two]
+    end
+    subgraph InB [Inner B title]
+      b1[b one]
+    end
+    c1[c one]
+  end
+  subgraph Side [Side]
+    d1[d one] --> d2[d two]
+  end
+  a2 --> d2
+  b1 -->|label| d1
+  Outer --> Side

@@ -1,0 +1,29 @@
+flowchart RL
+  subgraph F0 [Frame 0]
+    n6(Node 6)
+  end
+  subgraph F1 [Frame 1]
+    direction TB
+    n4([Node 4])
+  end
+  subgraph F2 [Frame 2]
+    n0{{Node 0}}
+  end
+  n0 -.->|dot| n3
+  n5 <==> n5
+  n4 --o n4
+  n4 --- n0
+  n1 -.->|dot| n4
+  n2 <==> n5
+  n1 --x n4
+  n2 ==>|thick lbl| n6
+  n5 <--> n0
+  n0 --x n3
+  n1 <-.-> n6
+  n1 --- n5
+  n2 --- n5
+  n1 x--x n3
+  n2 x--x n4
+  linkStyle 10 stroke:#3a3,stroke-width:9px
+  linkStyle 13 stroke:#3a3,stroke-width:9px
+  linkStyle 1 stroke-width:7px

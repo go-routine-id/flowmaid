@@ -1,0 +1,17 @@
+stateDiagram-v2
+  [*] --> Login
+  [*] --> Sync
+  state Login {
+    [*] --> Form
+    Form --> Check : submit
+    Check --> [*]
+  }
+  state Sync {
+    [*] --> Pull
+    Pull --> Merge : changes found
+    Merge --> Push
+    Push --> [*]
+  }
+  Login --> Home : success
+  Sync --> Home : synced
+  Home --> [*]

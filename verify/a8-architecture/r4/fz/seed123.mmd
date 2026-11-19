@@ -1,0 +1,18 @@
+architecture-beta
+    group g0(disk)[Frontend]
+    group g1(nonsense)[Telemetry and Logging Platform] in g0
+    group g2(disk)[WWW]
+    group g3(cloud)[Edge]
+    service s0(internet)[PostgreSQL Primary 0] in g2
+    service s1(internet)[Q 1] in g1
+    service s2(internet)[Web App 2] in g3
+    service s3(monitoring)[Q 3]
+    service s4(server)[Web App 4] in g1
+    service s5(disk)[Q 5]
+    service s6(nonsense)[Q 6] in g3
+    service s7(disk)[Svc 7] in g2
+    service s8(internet)[Q 8]
+    service s9(nonsense)[Q 9] in g0
+    s5:L <--> R:s8
+    s8:L <--> R:s9{group}
+    s2{group}:R -[replicates to standby]-> L:s5

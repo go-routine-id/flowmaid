@@ -1,0 +1,19 @@
+flowchart LR
+  s0["order search"]
+  s1["ship ship notify"]
+  subgraph g0["cart zone"]
+    m0["user"]
+    m1["cart index store"]
+    m2["ship store log"]
+    m1 --> m2
+  end
+  subgraph g1["auth zone"]
+    m3["log cache auth"]
+  end
+  subgraph g2["ship db zone"]
+    m4["user pay billing"]
+  end
+  s0 --> g0
+  s1 --> m3
+  s1 --> g2
+  s1 --> L5["log web"]

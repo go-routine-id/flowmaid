@@ -1,0 +1,8 @@
+[local static A2] 444 / 444 cells; must-fail 86 -> 87; worse 1 (new 1, worse inside failing 0, changed 0, missing 0); gone 0, better inside failing 1; info: target new 0 / gone 0 / worse 1, drift inside passing 2
+  NEW      dense-lr lbl_struck 6 (must <= 5; baseline 0)
+  better       dense-lr lateral_x 5 -> 1 (must <= 0)
+  target-worse bench-75 lateral_x 2 -> 3 (must <= 3)
+  drift        dense-lr lbl_crowd 5 -> 9 (must <= 10)
+  drift        bench-75 edge_len 68183 -> 68353 (must <= 106034)
+[local routed] 62 / 62 cells; must-fail 37 -> 37; worse 0 (new 0, worse inside failing 0, changed 0, missing 0); gone 0, better inside failing 0; info: target new 0 / gone 0 / worse 0, drift inside passing 0
+cells: WORSE

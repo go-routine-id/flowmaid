@@ -1,0 +1,9 @@
+flowchart RL
+  H0 ==>|retry| N1
+  H0 ---|no| N2
+  H0 -.->|x| N0
+  H0 -->|express| N3
+  H1 -.->|express| N2
+  H1 ==>|express| N0
+  H1 ==> N1
+  H1 ---|no| N1

@@ -1,0 +1,41 @@
+flowchart RL
+  n1["store cache report"]
+  n2["split<br/>pack"]
+  subgraph B0["Edge services"]
+    n3["worker"]
+    n4["audit"]
+    n5["merge mail parse"]
+  end
+  subgraph B1["Ingest"]
+    n6["notify"]
+  end
+  subgraph B2["Data tier"]
+    n7["ingest"]
+    n8["billing search ingest"]
+    subgraph B2s0["Ops 0"]
+      n9["cache"]
+      n10["split audit split"]
+    end
+  end
+  subgraph B3["Fulfilment desk"]
+    n11["ship search ship<br/>parse"]
+    n12["parse"]
+  end
+  n13["mail search queue"]
+  n14["ship"]
+  n1 -->|parse| n5
+  n1 -.-> n8
+  n12 -->|search| n9
+  n9 --> n14
+  n12 --> n14
+  n2 --> n3
+  n14 ==>|parse| n7
+  n3 ==> n8
+  n14 --> n6
+  n14 --> n10
+  n4 -->|api| n7
+  n14 --> n12
+  n7 -->|ship| n5
+  n1 -.-> n7
+  n8 ==> n12
+  n13 --> n8

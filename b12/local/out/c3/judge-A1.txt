@@ -1,0 +1,6 @@
+target missed infra-overview                     crossings               17  must <= 20        target <= 16        [0.38 24, start 23, mermaid 16]  4.3 (a): mermaid's + 4
+target missed infra-overview-v2                  crossings               16  must <= 17        target <= 13        [0.38 19, start 19, mermaid 13]  4.3 (b): mermaid's + 4
+accepted      perm-c-actors-reversed             bands            U2 T1 U1 / EXT GH / PROD / DR STG  == infra-overview: U1 T1 U2 / EXT GH / PROD / DR STG  up to crossing-neutral units: U2~U1 (both: out DNS); U1~U2 (both: out DNS)
+target missed dense-lr                           crossings               18  must <= 51.5      target <= 10        [0.38 46, start 45, mermaid 10]  4.3 (f): the smaller of 1.1 x 0.38's + 2 and 1.1 x the starting release's + 2
+judge: --due A1: 109 rule(s) due at a later checkpoint left out
+judge: 155 checks on 92 diagram(s): 0 must-fail, 3 target missed

@@ -1,0 +1,21 @@
+flowchart RL
+    N0((Archive))
+    N1{Emit notify}
+    N2([Notify emit])
+    N3[Queue]
+    N4[Load]
+    N5{Emit}
+    N6([Store])
+    N7{Emit}
+    N8[(Archive)]
+    N0 -->|yes| N1
+    N1 --> N2
+    N1 --> N3
+    N1 --> N4
+    N3 --> N5
+    N5 --> N6
+    N4 --> N7
+    N5 --> N8
+    N2 --> N6
+    N4 --> N8
+    N1 -->|rollback| N0

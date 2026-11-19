@@ -1,0 +1,43 @@
+flowchart LR
+  n1["ship ship ingest"]
+  n2["notify"]
+  subgraph B0["Data tier"]
+    n3["merge"]
+    n4["worker report audit<br/>store"]
+    subgraph B0s0["Platform 0"]
+      n5["ship"]
+      n6["store<br/>audit"]
+      n7["db"]
+    end
+  end
+  subgraph B1["Fulfilment desk"]
+    n8["ingest"]
+    n9["cache report auth"]
+    n10["auth"]
+    subgraph B1s0["Platform 0"]
+      n11["ingest auth notify"]
+      n12["billing"]
+      n13["cache"]
+    end
+    subgraph B1s1["Ingest 1"]
+      n14["auth worker report<br/>ingest"]
+      n15["cache api split"]
+    end
+  end
+  n16["billing"]
+  n12 --> n11
+  n3 ==> n10
+  n15 ==> n10
+  n6 --> n16
+  n3 -.-> n2
+  n11 --> n15
+  n13 --> n6
+  n9 ==>|mail| n12
+  n3 --> n16
+  n3 -.-> n12
+  n7 --> n16
+  n10 -->|mail| n7
+  n7 --> n1
+  n14 --> n10
+  n7 -->|report| n14
+  n15 --> n3

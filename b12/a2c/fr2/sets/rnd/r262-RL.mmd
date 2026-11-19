@@ -1,0 +1,10 @@
+flowchart RL
+    subgraph G[Payments]
+        m0[db]
+        m1[charge]
+        m2[x wide member node]
+    end
+    s0[src0] -- "lbl7" --> m1
+    s0 --> m0
+    s1[src1] --> m0
+    s1 --> G

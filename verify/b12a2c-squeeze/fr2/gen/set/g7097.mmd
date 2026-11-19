@@ -1,0 +1,39 @@
+flowchart TD
+  n1["worker"]
+  subgraph B0["Fulfilment desk"]
+    n2["search"]
+    n3["cache"]
+    n4["worker"]
+    n5["merge"]
+    subgraph B0s0["Back office and finance 0"]
+      n6["api"]
+    end
+    subgraph B0s1["Edge services 1"]
+      n7["split cache index<br/>notify"]
+    end
+  end
+  subgraph B1["Analytics"]
+    n8["db"]
+    n9["billing"]
+    n10["queue"]
+    subgraph B1s0["Ingest 0"]
+      n11["queue"]
+    end
+  end
+  n12["store"]
+  n6 -->|db| B1
+  n4 --> n2
+  n10 -->|ingest| B0s0
+  n10 -->|api| n8
+  n12 --> n2
+  n12 ==>|mail| n3
+  n6 -.->|split| n9
+  n5 ==> n8
+  n8 --> n2
+  n1 ==> n10
+  n11 -->|search| n10
+  n6 --> n2
+  n10 -.-> n2
+  n5 -.-> n6
+  n6 --> n1
+  n8 ==>|mail| n9

@@ -1,0 +1,31 @@
+flowchart TD
+  s0["db"]
+  subgraph g0["pay zone"]
+    m0["store report log"]
+    m1["trace"]
+    m2["ship store db"]
+    m3["billing"]
+    m0 --> m1
+    m1 --> m2
+    m1 --> m3
+  end
+  subgraph g1["user search zone"]
+    m4["pay"]
+    m5["db"]
+    m6["pay search"]
+    m4 --> m5
+    m5 --> m6
+  end
+  subgraph g2["order zone"]
+    m7["notify index"]
+    m8["pay auth index"]
+    m9["report log"]
+    m10["report log"]
+    m7 --> m8
+    m8 --> m9
+    m7 --> m10
+  end
+  s0 --> g0
+  s0 --> m4
+  s0 --> g2
+  s0 --> L11["pay"]

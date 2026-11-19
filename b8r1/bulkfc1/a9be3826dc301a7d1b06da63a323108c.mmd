@@ -1,0 +1,18 @@
+flowchart BT
+    N0(Store queue)
+    N1(Archive)
+    N2{Store retry}
+    N3(Store)
+    N4([Notify])
+    N5[Validate archive]
+    N6{Fetch}
+    N7(Load)
+    N0 -->|ok| N1
+    N1 -->|ok| N2
+    N1 --> N3
+    N1 --> N4
+    N3 --> N5
+    N5 --> N6
+    N4 --> N7
+    N7 ==> N1
+    N2 ==> N1

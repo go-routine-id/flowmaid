@@ -1,0 +1,33 @@
+classDiagram
+A <|-- B
+A ..|> C : x
+A <|-- D
+A ..|> E
+A --> F
+D -- A
+F o-- F : f0
+F o-- F : f1
+C *-- C : c0
+C ..> C : c1
+C o-- C : c2
+C *-- C : c3
+C *-- C : c4
+C o-- C : c5
+C ..> C
+C "1" --> "*" C : c7
+A ..> A : a0
+A --> A : a1
+A o-- A
+A ..> A : a3
+A *-- A : a4
+A --> A
+A o-- A : a6
+A o-- A : a7
+D o-- D
+D "1" --> "*" D : d1
+D o-- D
+D ..> D
+D *-- D : d4
+D --> D : d5
+D --> D : d6
+D ..> D

@@ -1,0 +1,16 @@
+flowchart TD
+subgraph B
+direction LR
+subgraph K
+a --> b
+end
+subgraph E
+end
+K --> a
+b -->|x| K
+b --> E
+E --> K
+K ~~~ b
+end
+x --> B
+B ~~~ y

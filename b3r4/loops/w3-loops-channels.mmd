@@ -1,0 +1,16 @@
+flowchart TD
+  A[Ingest] --> B[Parse]
+  A --> C[Enrich]
+  B --> B
+  C --> C
+  A ==> D[Store]
+  B --> D
+  C --> D
+  D --> E[Index]
+  E --> E
+  E -.->|reindex| B
+  D -->|fix| A
+  subgraph W[Workers]
+    B
+    C
+  end

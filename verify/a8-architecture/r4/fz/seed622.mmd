@@ -1,0 +1,17 @@
+architecture-beta
+    group g0(cloud)[Ops]
+    group g1(internet)[Edge] in g0
+    group g2(nonsense)[Data Storage Layer]
+    group g3(monitoring)[Observability]
+    service s0(server)[Web App 0] in g2
+    service s1(disk)[PostgreSQL Primary 1]
+    service s2(database)[Web App 2] in g0
+    service s3(disk)[Q 3] in g0
+    junction s4
+    s1:B -[sync]-> T:s4
+    s1:R -- B:s3
+    s3:L <--> R:s1
+    s1:T -[publishes order events]- B:s2
+    s0:B -- T:s1
+    s4:R <-[replicates to standby]-> B:s1
+    s2:R <--> R:s0

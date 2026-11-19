@@ -1,0 +1,23 @@
+flowchart RL
+    N0{Check load}
+    N1([Check])
+    N2(Store emit)
+    N3((Done))
+    N4(Parse)
+    N5([Emit])
+    N6([Validate queue])
+    N7([Load])
+    N8[(Done)]
+    N9{Done}
+    N0 --> N1
+    N1 -->|next| N2
+    N1 --> N3
+    N2 --> N4
+    N4 -->|yes| N5
+    N3 --> N6
+    N6 -->|yes| N7
+    N6 --> N8
+    N7 --> N9
+    N3 --> N9
+    N3 --> N5
+    N8 -.->|rollback| N1

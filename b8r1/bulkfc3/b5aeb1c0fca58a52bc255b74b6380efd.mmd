@@ -1,0 +1,20 @@
+flowchart LR
+    N0(Check)
+    N1([Validate report])
+    N2[/Retry check/]
+    N3([Fetch load])
+    N4[Done]
+    N5((Validate))
+    N6(Queue report)
+    N7([Parse])
+    N0 --> N1
+    N0 -->|next| N2
+    N1 --> N3
+    N2 -->|no| N4
+    N3 --> N5
+    N3 --> N6
+    N5 -->|fail| N7
+    N2 --> N4
+    N3 --> N5
+    N5 --> N3
+    N4 --> N2

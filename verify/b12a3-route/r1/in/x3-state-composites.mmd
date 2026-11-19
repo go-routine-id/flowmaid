@@ -1,0 +1,17 @@
+stateDiagram-v2
+  [*] --> Idle
+  state Active {
+    [*] --> Loading
+    Loading --> Ready : loaded
+    Ready --> Busy : work
+    Busy --> Ready : done
+  }
+  state Failed {
+    [*] --> Retrying
+    Retrying --> GaveUp : max
+  }
+  Idle --> Active : start
+  Active --> Failed : error
+  Failed --> Idle : reset
+  Ready --> Idle : stop
+  GaveUp --> [*]

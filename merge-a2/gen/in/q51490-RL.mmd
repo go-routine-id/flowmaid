@@ -1,0 +1,28 @@
+flowchart RL
+    subgraph G0[Edge 0]
+        g0m0[g0m0]
+        g0m1[g0m1]
+    end
+    subgraph G1[Core 1]
+        subgraph H1[inner 1]
+            g1m0[g1m0]
+            g1m1[g1m1]
+        end
+        g1m2[g1m2]
+    end
+    subgraph G2[Billing and invoices 2]
+        subgraph H2[inner 2]
+            g2m0[g2m0]
+            g2m1[g2m1]
+        end
+    end
+    g0m1 ==> G0
+    o2 -.-> g1m2
+    g2m0 --> G1
+    g0m1 -.-> o0
+    G0 --> o3
+    g2m0 --> G0
+    g1m1 --> o3
+    g1m2 ==> g2m0
+    o3 ==> g1m0
+    o0 ==> g1m1

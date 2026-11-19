@@ -1,0 +1,51 @@
+flowchart BT
+  subgraph A[Block A title]
+    an0[A 0]
+    an1[A 1]
+    an2[A 2]
+    subgraph Ax[Block Ax title]
+      axn0[Ax 0]
+      axn1[Ax 1]
+      axn2[Ax 2]
+      axn3[Ax 3]
+      axn4[Ax 4]
+      subgraph Axx[Block Axx title]
+        axxn0[Axx 0]
+        axxn1[Axx 1]
+        axxn2[Axx 2]
+      end
+    end
+  end
+  subgraph B[Block B title]
+    bn0[B 0]
+    bn1[B 1]
+    bn2[B 2]
+    bn3[B 3]
+    bn4[B 4]
+  end
+  f0([free f0])
+  f1([free f1])
+  f2([free f2])
+  f3([free f3])
+  an0 --> an1
+  an1 --> an2
+  axn0 --> axn1
+  axn3 --> axn4
+  axn0 --> axn4
+  axxn1 --> axxn2
+  axxn0 --> axxn2
+  bn1 --> bn2
+  bn3 --> bn4
+  bn0 --> bn4
+  bn4 --> bn0
+  an1 ==> axxn2
+  f2 --> axn2
+  axn0 --> axn3
+  bn1 --> axn0
+  f2 --> bn3
+  A --> f3
+  B -.-> axxn1
+  f2 --> axn1
+  axn0 -->|sync| bn3
+  B --> axxn2
+  axn2 --> B

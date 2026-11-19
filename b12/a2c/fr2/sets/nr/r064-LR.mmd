@@ -1,0 +1,15 @@
+flowchart LR
+    subgraph O[WWW Mammoth Wombat Overview]
+        subgraph G[Order processing]
+            m0[db]
+            m1[queue]
+            m2[auth service]
+        end
+        k[k]
+    end
+    m1 --> k
+    m2 --> k
+    s0[src0] --> G
+    s1[src1] --> O
+    s1 --> m2
+    m2 --> z[end]

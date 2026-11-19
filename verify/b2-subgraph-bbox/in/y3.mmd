@@ -1,0 +1,6 @@
+flowchart TD
+    subgraph CI
+        Dev --> Build --> Scan --> Reg
+    end
+    Reg --> CI
+    Scan -->|fail| CI

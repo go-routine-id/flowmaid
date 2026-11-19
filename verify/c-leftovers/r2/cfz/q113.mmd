@@ -1,0 +1,22 @@
+classDiagram
+A o-- B
+B ..|> C
+B "1" ..|> "*" D
+D "1" o-- "*" E
+C o-- F
+D --|> G : uses
+C --> F
+D ..> F
+E ..> E : e0
+E o-- E
+E *-- E : e2
+E *-- E
+E ..> E
+A "1" --> "*" A : a0
+A *-- A : a1
+A o-- A : a2
+B o-- B
+B ..> B : b1
+B ..> B : b2
+G "1" --> "*" G
+G "1" --> "*" G : g1

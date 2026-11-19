@@ -1,0 +1,16 @@
+flowchart TD
+  subgraph F0 [Frame 0]
+    n1[Node 1]
+    n0[Node 0]
+    n2[[Node 2]]
+  end
+  n0 <==>|x| n3
+  n0 ==> n2
+  n3 <==> n0
+  n0 x--x|no| n2
+  n0 ~~~ n2
+  n1 --o n2
+  n3 ---> n2
+  n2 ==>|a longer label| F0
+  linkStyle 5 stroke-width:20px,stroke:#c33
+  linkStyle 7 stroke-width:24px,stroke:#3a3

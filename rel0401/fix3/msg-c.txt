@@ -1,0 +1,9 @@
+docs(scene): Scene::origin: a laid-out class scene can still be moved onto its canvas
+
+The Scene::origin doc said a class or ER SVG draws the scene on its
+canvas at the scene's coordinates. That holds for a routed scene only:
+a laid-out class scene whose drawing reaches into the top-left margin
+is moved out of it by fit_top_left, as it always was. Doc comment only.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

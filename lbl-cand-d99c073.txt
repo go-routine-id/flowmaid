@@ -1,0 +1,24 @@
+ labels:
+  edge         text                                                     x       d  gap    on_node  struck  on_label_after
+  U1>DNS       a.example.org · *.a.example.org                          1183.8     30.1   0        0       0             
+  T1>DNS       *.dev · *.staging · *.product · ops dashboards           1322.      0      0        2       0             
+  U2>DNS       b.example.org                                            1550.4     147.2  0        0       0             
+  R1>ARGO      deploy controller pull                                   141.3      26.1   0        0       0             
+  DNS>TR2      A 203.0.113.36                                           2500.2     112.9  0        0       0             
+  DNS>PSPROD   b A 203.0.113.36                                         2713       152.2  0        0       0             
+  DNS>DRAPP    only on failover: A record changed by hand               1312.9     0      0        1       0             
+  DNS>PSDEV    b.dev A 203.0.113.8                                      1136.5     16.9   0        0       0             
+  DNS>SITE     example.org proxied                                      1065.8     16.9   0        0       0             
+  DNS>TR1      A 203.0.113.177                                          1556.1     101.2  0        0       0             
+  DRAPP>TG     standby-check                                            1877.8     10.2   0        0       0             
+  ARGO>TG      alert manager                                            1825.3     26.0   0        0       0             
+  PSPROD>TG    backup failed: on failure                                3009.3     214.6  0        0       0             
+  LANE>OAI     HTTPS                                                    2423.9     88.0   0        0       0             
+  LANE>GITLAB  SMTP mail.example.org                                    2084.4     123.7  0        0       0             
+  ARGO>GITLAB  pull image                                               1361.5     114.0  0        0       0             
+  DRAPP>PG     SSH tunnel: streaming replication + mirror every 15 min  1513.5     6.500  0        0       0             
+  R2>[STG]     provisioning                                             239.3      253.8  0        0       0             
+  R2>[DR]      playbooks/standby.yml                                    807.5      37.5   0        0       0             
+  R2>[PROD]    provisioning from a laptop                               519.6      24.6   0        0       0
+ bands: U1 T1 U2 / GH EXT / DR / PROD / STG
+ widest bundle of parallel lanes: 6 at y=277,x=1268..1380

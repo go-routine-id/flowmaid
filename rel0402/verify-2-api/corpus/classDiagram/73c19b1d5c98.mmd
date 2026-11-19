@@ -1,0 +1,17 @@
+classDiagram
+direction BT
+A --|> B
+A --> C
+C "1" --|> "*" D : x
+D ..> E : has many of
+C ..|> B
+D *-- A
+C o-- C
+C ..> C
+C *-- C : c2
+B --> B : b0
+E ..> E : e0
+E --> E : e1
+E "1" --> "*" E : e2
+E o-- E : e3
+E ..> E : e4

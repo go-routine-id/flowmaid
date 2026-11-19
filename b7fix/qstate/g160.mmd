@@ -1,0 +1,52 @@
+stateDiagram-v2
+direction RL
+[*] --> A
+state K0 {
+  direction RL
+  [*] --> K0_0
+  K0_0 --> K0_1
+  K0_0 --> K0_2 : t2
+  K0_1 --> K0_3
+  state K0_f <<fork>>
+  K0_0 --> K0_f
+  K0_f --> K0_1
+  K0_f --> K0_3
+  note left of K0_3
+    in817 line one
+    second line
+  end note
+  note right of K0_3
+    in352 line one
+    second line
+  end note
+}
+state K1 {
+  [*] --> K1_0
+  state K1N {
+    [*] --> K1N_0
+    K1N_0 --> K1N_1 : t1
+    state K1N_c <<choice>>
+    K1N_1 --> K1N_c
+    K1N_c --> K1N_1 : a
+    K1N_c --> K1N_1 : b
+    note right of K1N_1 : in165
+    note left of K1N_0
+      in646 line one
+      second line
+    end note
+    note right of K1N_0 : in223
+  }
+  K1_0 --> K1N
+  K1N --> K1_0 : up
+  K1_0 --> K1N_0
+  note right of K1N_1
+    in106 line one
+    second line
+  end note
+  note right of K1_0 : in582
+}
+A --> K0 : g1
+A --> K1 : g2
+A --> B0
+K1N_0 --> K0 : out
+note left of K0 : on162

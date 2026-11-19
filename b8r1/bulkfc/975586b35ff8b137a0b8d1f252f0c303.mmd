@@ -1,0 +1,12 @@
+flowchart LR
+    N0([Emit])
+    N1[Done notify]
+    N2[Report]
+    N3([Validate])
+    N4(Load report)
+    N0 --> N1
+    N0 -->|ok| N2
+    N1 --> N3
+    N2 --> N4
+    N1 --> N2
+    N4 ==> N0

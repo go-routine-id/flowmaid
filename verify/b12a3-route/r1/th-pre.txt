@@ -1,0 +1,290 @@
+    lane-beside drag Idle by (0.0, 220.0) [chained]: __start_root->Idle through node Load
+    lane-beside drag Idle by (0.0, 220.0) [chained]: __start_root->Idle through node __start_0
+    lane-beside drag Idle by (0.0, 220.0): __start_root->Idle through node Load
+    lane-beside drag Idle by (0.0, 220.0): __start_root->Idle through node __start_0
+    lane-beside drag __start_root by (0.0, 220.0) [chained]: __start_root->Idle through node __start_0
+    lane-beside drag __start_root by (0.0, 220.0): __start_root->Idle through node __start_0
+    nested-cases drag done by (-150.0, 80.0) [chained]: o1->x1 through node e1
+    nested-cases drag done by (-150.0, 80.0) [chained]: o1->x1 through node i2
+    nested-cases drag done by (-150.0, 80.0) [chained]: o1->x1 through node o2
+    nested-cases drag done by (-150.0, 80.0) [chained]: pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag done by (-150.0, 80.0): o1->x1 through node e1
+    nested-cases drag done by (-150.0, 80.0): o1->x1 through node i2
+    nested-cases drag done by (-150.0, 80.0): o1->x1 through node o2
+    nested-cases drag done by (-150.0, 80.0): pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag done by (0.0, -1.0) [chained]: o1->x1 through node e1
+    nested-cases drag done by (0.0, -1.0) [chained]: o1->x1 through node i2
+    nested-cases drag done by (0.0, -1.0) [chained]: o1->x1 through node o2
+    nested-cases drag done by (0.0, -1.0) [chained]: pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag done by (0.0, -1.0): o1->x1 through node e1
+    nested-cases drag done by (0.0, -1.0): o1->x1 through node i2
+    nested-cases drag done by (0.0, -1.0): o1->x1 through node o2
+    nested-cases drag done by (0.0, -1.0): pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag done by (0.0, 220.0) [chained]: o1->x1 through node e1
+    nested-cases drag done by (0.0, 220.0) [chained]: o1->x1 through node i2
+    nested-cases drag done by (0.0, 220.0) [chained]: o1->x1 through node o2
+    nested-cases drag done by (0.0, 220.0) [chained]: pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag done by (0.0, 220.0): o1->x1 through node e1
+    nested-cases drag done by (0.0, 220.0): o1->x1 through node i2
+    nested-cases drag done by (0.0, 220.0): o1->x1 through node o2
+    nested-cases drag done by (0.0, 220.0): pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag done by (1.0, 0.0): o1->x1 through node e1
+    nested-cases drag done by (1.0, 0.0): o1->x1 through node i2
+    nested-cases drag done by (1.0, 0.0): o1->x1 through node o2
+    nested-cases drag done by (1.0, 0.0): pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag done by (60.0, 25.0) [chained]: o1->x1 through node e1
+    nested-cases drag done by (60.0, 25.0) [chained]: o1->x1 through node i2
+    nested-cases drag done by (60.0, 25.0) [chained]: o1->x1 through node o2
+    nested-cases drag done by (60.0, 25.0) [chained]: pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag done by (60.0, 25.0): o1->x1 through node e1
+    nested-cases drag done by (60.0, 25.0): o1->x1 through node i2
+    nested-cases drag done by (60.0, 25.0): o1->x1 through node o2
+    nested-cases drag done by (60.0, 25.0): pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag done by (60.0, 25.0): pick at (87.64999999999999, 463.0) on o1->x1 got nothing
+    nested-cases drag e1 by (-150.0, 80.0) [chained]: o1->x1 through node i2
+    nested-cases drag e1 by (-150.0, 80.0) [chained]: o1->x1 through node o2
+    nested-cases drag e1 by (-150.0, 80.0): o1->x1 through node i2
+    nested-cases drag e1 by (-150.0, 80.0): o1->x1 through node o2
+    nested-cases drag e1 by (0.0, -1.0) [chained]: o1->x1 through node e1
+    nested-cases drag e1 by (0.0, -1.0) [chained]: o1->x1 through node i2
+    nested-cases drag e1 by (0.0, -1.0) [chained]: o1->x1 through node o2
+    nested-cases drag e1 by (0.0, -1.0) [chained]: pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag e1 by (0.0, -1.0): o1->x1 through node e1
+    nested-cases drag e1 by (0.0, -1.0): o1->x1 through node i2
+    nested-cases drag e1 by (0.0, -1.0): o1->x1 through node o2
+    nested-cases drag e1 by (0.0, -1.0): pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag e1 by (0.0, 220.0) [chained]: o1->x1 through node i2
+    nested-cases drag e1 by (0.0, 220.0) [chained]: o1->x1 through node o2
+    nested-cases drag e1 by (0.0, 220.0) [chained]: x1->x2 through node e1
+    nested-cases drag e1 by (0.0, 220.0): o1->x1 through node i2
+    nested-cases drag e1 by (0.0, 220.0): o1->x1 through node o2
+    nested-cases drag e1 by (0.0, 220.0): pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag e1 by (0.0, 220.0): x1->x2 through node e1
+    nested-cases drag e1 by (1.0, 0.0): o1->x1 through node e1
+    nested-cases drag e1 by (1.0, 0.0): o1->x1 through node i2
+    nested-cases drag e1 by (1.0, 0.0): o1->x1 through node o2
+    nested-cases drag e1 by (1.0, 0.0): pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag e1 by (60.0, 25.0) [chained]: o1->x1 through node i2
+    nested-cases drag e1 by (60.0, 25.0) [chained]: o1->x1 through node o2
+    nested-cases drag e1 by (60.0, 25.0) [chained]: pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag e1 by (60.0, 25.0): o1->x1 through node i2
+    nested-cases drag e1 by (60.0, 25.0): o1->x1 through node i2
+    nested-cases drag e1 by (60.0, 25.0): o1->x1 through node o2
+    nested-cases drag e1 by (60.0, 25.0): o1->x1 through node o2
+    nested-cases drag e1 by (60.0, 25.0): pick at (121.69490198206017, 222.1487250434028) on o1->x1 got nothing
+    nested-cases drag e1 by (60.0, 25.0): pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag hub by (-150.0, 80.0) [chained]: o1->x1 through node e1
+    nested-cases drag hub by (-150.0, 80.0) [chained]: o1->x1 through node i2
+    nested-cases drag hub by (-150.0, 80.0) [chained]: o1->x1 through node o2
+    nested-cases drag hub by (-150.0, 80.0) [chained]: pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag hub by (-150.0, 80.0): o1->x1 through node e1
+    nested-cases drag hub by (-150.0, 80.0): o1->x1 through node i2
+    nested-cases drag hub by (-150.0, 80.0): o1->x1 through node o2
+    nested-cases drag hub by (-150.0, 80.0): pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag hub by (0.0, -1.0) [chained]: o1->x1 through node e1
+    nested-cases drag hub by (0.0, -1.0) [chained]: o1->x1 through node i2
+    nested-cases drag hub by (0.0, -1.0) [chained]: o1->x1 through node o2
+    nested-cases drag hub by (0.0, -1.0) [chained]: pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag hub by (0.0, -1.0): o1->x1 through node e1
+    nested-cases drag hub by (0.0, -1.0): o1->x1 through node i2
+    nested-cases drag hub by (0.0, -1.0): o1->x1 through node o2
+    nested-cases drag hub by (0.0, -1.0): pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag hub by (0.0, 220.0) [chained]: o1->x1 through node e1
+    nested-cases drag hub by (0.0, 220.0) [chained]: o1->x1 through node i2
+    nested-cases drag hub by (0.0, 220.0) [chained]: o1->x1 through node o2
+    nested-cases drag hub by (0.0, 220.0) [chained]: pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag hub by (0.0, 220.0): o1->x1 through node e1
+    nested-cases drag hub by (0.0, 220.0): o1->x1 through node i2
+    nested-cases drag hub by (0.0, 220.0): o1->x1 through node o2
+    nested-cases drag hub by (0.0, 220.0): pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag hub by (1.0, 0.0): o1->x1 through node e1
+    nested-cases drag hub by (1.0, 0.0): o1->x1 through node i2
+    nested-cases drag hub by (1.0, 0.0): o1->x1 through node o2
+    nested-cases drag hub by (1.0, 0.0): pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag hub by (60.0, 25.0) [chained]: o1->x1 through node e1
+    nested-cases drag hub by (60.0, 25.0) [chained]: o1->x1 through node i2
+    nested-cases drag hub by (60.0, 25.0) [chained]: o1->x1 through node o2
+    nested-cases drag hub by (60.0, 25.0) [chained]: pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag hub by (60.0, 25.0): o1->x1 through node e1
+    nested-cases drag hub by (60.0, 25.0): o1->x1 through node i2
+    nested-cases drag hub by (60.0, 25.0): o1->x1 through node o2
+    nested-cases drag hub by (60.0, 25.0): pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag hub by (60.0, 25.0): pick at (87.64999999999999, 463.0) on o1->x1 got nothing
+    nested-cases drag i1 by (-150.0, 80.0) [chained]: o1->x1 through node e1
+    nested-cases drag i1 by (-150.0, 80.0) [chained]: o1->x1 through node i2
+    nested-cases drag i1 by (-150.0, 80.0) [chained]: o1->x1 through node o2
+    nested-cases drag i1 by (-150.0, 80.0) [chained]: pick at (121.69490198206017, 223.72585720486114) on o1->x1 got hub->i1 (6.5 px away)
+    nested-cases drag i1 by (-150.0, 80.0): o1->x1 through node e1
+    nested-cases drag i1 by (-150.0, 80.0): o1->x1 through node i2
+    nested-cases drag i1 by (-150.0, 80.0): o1->x1 through node o2
+    nested-cases drag i1 by (-150.0, 80.0): pick at (121.69490198206017, 223.72585720486114) on o1->x1 got hub->i1 (6.5 px away)
+    nested-cases drag i1 by (0.0, -1.0) [chained]: o1->x1 through node e1
+    nested-cases drag i1 by (0.0, -1.0) [chained]: o1->x1 through node i2
+    nested-cases drag i1 by (0.0, -1.0) [chained]: o1->x1 through node o2
+    nested-cases drag i1 by (0.0, -1.0): o1->x1 through node e1
+    nested-cases drag i1 by (0.0, -1.0): o1->x1 through node i2
+    nested-cases drag i1 by (0.0, -1.0): o1->x1 through node o2
+    nested-cases drag i1 by (0.0, 220.0) [chained]: o1->x1 through node e1
+    nested-cases drag i1 by (0.0, 220.0) [chained]: o1->x1 through node i1
+    nested-cases drag i1 by (0.0, 220.0) [chained]: o1->x1 through node i2
+    nested-cases drag i1 by (0.0, 220.0) [chained]: o1->x1 through node o2
+    nested-cases drag i1 by (0.0, 220.0) [chained]: pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag i1 by (0.0, 220.0): o1->x1 through node e1
+    nested-cases drag i1 by (0.0, 220.0): o1->x1 through node i1
+    nested-cases drag i1 by (0.0, 220.0): o1->x1 through node i2
+    nested-cases drag i1 by (0.0, 220.0): o1->x1 through node o2
+    nested-cases drag i1 by (0.0, 220.0): pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag i1 by (1.0, 0.0): o1->x1 through node e1
+    nested-cases drag i1 by (1.0, 0.0): o1->x1 through node i2
+    nested-cases drag i1 by (1.0, 0.0): o1->x1 through node o2
+    nested-cases drag i1 by (60.0, 25.0) [chained]: o1->x1 through node e1
+    nested-cases drag i1 by (60.0, 25.0) [chained]: o1->x1 through node i2
+    nested-cases drag i1 by (60.0, 25.0) [chained]: o1->x1 through node o2
+    nested-cases drag i1 by (60.0, 25.0) [chained]: pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag i1 by (60.0, 25.0): o1->x1 through node e1
+    nested-cases drag i1 by (60.0, 25.0): o1->x1 through node i2
+    nested-cases drag i1 by (60.0, 25.0): o1->x1 through node o2
+    nested-cases drag i1 by (60.0, 25.0): pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag i1 by (60.0, 25.0): pick at (87.64999999999999, 463.0) on o1->x1 got nothing
+    nested-cases drag i2 by (-150.0, 80.0) [chained]: o1->x1 through node e1
+    nested-cases drag i2 by (-150.0, 80.0) [chained]: o1->x1 through node o2
+    nested-cases drag i2 by (-150.0, 80.0) [chained]: pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag i2 by (-150.0, 80.0): o1->x1 through node e1
+    nested-cases drag i2 by (-150.0, 80.0): o1->x1 through node o2
+    nested-cases drag i2 by (-150.0, 80.0): pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag i2 by (0.0, -1.0) [chained]: o1->x1 through node e1
+    nested-cases drag i2 by (0.0, -1.0) [chained]: o1->x1 through node i2
+    nested-cases drag i2 by (0.0, -1.0) [chained]: o1->x1 through node o2
+    nested-cases drag i2 by (0.0, -1.0): o1->x1 through node e1
+    nested-cases drag i2 by (0.0, -1.0): o1->x1 through node i2
+    nested-cases drag i2 by (0.0, -1.0): o1->x1 through node o2
+    nested-cases drag i2 by (0.0, 220.0) [chained]: pick at (87.64999999999999, 463.0) on o1->x1 got nothing
+    nested-cases drag i2 by (0.0, 220.0): o1->x1 through node e1
+    nested-cases drag i2 by (0.0, 220.0): o1->x1 through node o2
+    nested-cases drag i2 by (1.0, 0.0): o1->x1 through node e1
+    nested-cases drag i2 by (1.0, 0.0): o1->x1 through node i2
+    nested-cases drag i2 by (1.0, 0.0): o1->x1 through node o2
+    nested-cases drag i2 by (60.0, 25.0) [chained]: o1->x1 through node e1
+    nested-cases drag i2 by (60.0, 25.0) [chained]: o1->x1 through node o2
+    nested-cases drag i2 by (60.0, 25.0): o1->x1 through node e1
+    nested-cases drag i2 by (60.0, 25.0): o1->x1 through node o2
+    nested-cases drag i2 by (60.0, 25.0): pick at (87.64999999999999, 463.0) on o1->x1 got nothing
+    nested-cases drag o1 by (-150.0, 80.0) [chained]: pick at (-62.35000000000001, 503.0) on o1->x1 got nothing
+    nested-cases drag o1 by (-150.0, 80.0): pick at (-62.35000000000001, 503.0) on o1->x1 got nothing
+    nested-cases drag o1 by (0.0, -1.0) [chained]: pick at (87.64999999999999, 462.5) on o1->x1 got nothing
+    nested-cases drag o1 by (0.0, -1.0): pick at (87.64999999999999, 462.5) on o1->x1 got nothing
+    nested-cases drag o1 by (0.0, 220.0) [chained]: pick at (87.64999999999999, 573.0) on o1->x1 got nothing
+    nested-cases drag o1 by (0.0, 220.0): pick at (87.64999999999999, 573.0) on o1->x1 got nothing
+    nested-cases drag o1 by (60.0, 25.0): pick at (147.64999999999998, 475.5) on o1->x1 got nothing
+    nested-cases drag o2 by (-150.0, 80.0) [chained]: o1->x1 through node e1
+    nested-cases drag o2 by (-150.0, 80.0) [chained]: o1->x1 through node i2
+    nested-cases drag o2 by (-150.0, 80.0) [chained]: pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag o2 by (-150.0, 80.0): o1->x1 through node e1
+    nested-cases drag o2 by (-150.0, 80.0): o1->x1 through node i2
+    nested-cases drag o2 by (-150.0, 80.0): pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag o2 by (0.0, -1.0) [chained]: o1->x1 through node e1
+    nested-cases drag o2 by (0.0, -1.0) [chained]: o1->x1 through node i2
+    nested-cases drag o2 by (0.0, -1.0) [chained]: o1->x1 through node o2
+    nested-cases drag o2 by (0.0, -1.0) [chained]: pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag o2 by (0.0, -1.0): o1->x1 through node e1
+    nested-cases drag o2 by (0.0, -1.0): o1->x1 through node i2
+    nested-cases drag o2 by (0.0, -1.0): o1->x1 through node o2
+    nested-cases drag o2 by (0.0, -1.0): pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag o2 by (0.0, 220.0) [chained]: o1->x1 through node e1
+    nested-cases drag o2 by (0.0, 220.0) [chained]: o1->x1 through node i2
+    nested-cases drag o2 by (0.0, 220.0) [chained]: o1->x1 through node o2
+    nested-cases drag o2 by (0.0, 220.0): o1->x1 through node e1
+    nested-cases drag o2 by (0.0, 220.0): o1->x1 through node i2
+    nested-cases drag o2 by (0.0, 220.0): o1->x1 through node o2
+    nested-cases drag o2 by (1.0, 0.0): o1->x1 through node e1
+    nested-cases drag o2 by (1.0, 0.0): o1->x1 through node i2
+    nested-cases drag o2 by (1.0, 0.0): o1->x1 through node o2
+    nested-cases drag o2 by (60.0, 25.0) [chained]: o1->x1 through node e1
+    nested-cases drag o2 by (60.0, 25.0) [chained]: o1->x1 through node i2
+    nested-cases drag o2 by (60.0, 25.0) [chained]: pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag o2 by (60.0, 25.0): o1->x1 through node e1
+    nested-cases drag o2 by (60.0, 25.0): o1->x1 through node i2
+    nested-cases drag o2 by (60.0, 25.0): pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag o2 by (60.0, 25.0): pick at (87.64999999999999, 463.0) on o1->x1 got nothing
+    nested-cases drag start by (-150.0, 80.0) [chained]: o1->x1 through node e1
+    nested-cases drag start by (-150.0, 80.0) [chained]: o1->x1 through node i2
+    nested-cases drag start by (-150.0, 80.0) [chained]: o1->x1 through node o2
+    nested-cases drag start by (-150.0, 80.0) [chained]: pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag start by (-150.0, 80.0): o1->x1 through node e1
+    nested-cases drag start by (-150.0, 80.0): o1->x1 through node i2
+    nested-cases drag start by (-150.0, 80.0): o1->x1 through node o2
+    nested-cases drag start by (-150.0, 80.0): pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag start by (0.0, -1.0) [chained]: o1->x1 through node e1
+    nested-cases drag start by (0.0, -1.0) [chained]: o1->x1 through node i2
+    nested-cases drag start by (0.0, -1.0) [chained]: o1->x1 through node o2
+    nested-cases drag start by (0.0, -1.0) [chained]: pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag start by (0.0, -1.0): o1->x1 through node e1
+    nested-cases drag start by (0.0, -1.0): o1->x1 through node i2
+    nested-cases drag start by (0.0, -1.0): o1->x1 through node o2
+    nested-cases drag start by (0.0, -1.0): pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag start by (0.0, 220.0) [chained]: o1->x1 through node e1
+    nested-cases drag start by (0.0, 220.0) [chained]: o1->x1 through node i2
+    nested-cases drag start by (0.0, 220.0) [chained]: o1->x1 through node o2
+    nested-cases drag start by (0.0, 220.0) [chained]: pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag start by (0.0, 220.0): o1->x1 through node e1
+    nested-cases drag start by (0.0, 220.0): o1->x1 through node i2
+    nested-cases drag start by (0.0, 220.0): o1->x1 through node o2
+    nested-cases drag start by (0.0, 220.0): pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag start by (1.0, 0.0): o1->x1 through node e1
+    nested-cases drag start by (1.0, 0.0): o1->x1 through node i2
+    nested-cases drag start by (1.0, 0.0): o1->x1 through node o2
+    nested-cases drag start by (1.0, 0.0): pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag start by (60.0, 25.0) [chained]: o1->x1 through node e1
+    nested-cases drag start by (60.0, 25.0) [chained]: o1->x1 through node i2
+    nested-cases drag start by (60.0, 25.0) [chained]: o1->x1 through node o2
+    nested-cases drag start by (60.0, 25.0) [chained]: pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag start by (60.0, 25.0): o1->x1 through node e1
+    nested-cases drag start by (60.0, 25.0): o1->x1 through node i2
+    nested-cases drag start by (60.0, 25.0): o1->x1 through node o2
+    nested-cases drag start by (60.0, 25.0): pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag start by (60.0, 25.0): pick at (87.64999999999999, 463.0) on o1->x1 got nothing
+    nested-cases drag x1 by (60.0, 25.0): pick at (87.64999999999999, 463.0) on o1->x1 got nothing
+    nested-cases drag x2 by (-150.0, 80.0) [chained]: o1->x1 through node e1
+    nested-cases drag x2 by (-150.0, 80.0) [chained]: o1->x1 through node i2
+    nested-cases drag x2 by (-150.0, 80.0) [chained]: o1->x1 through node o2
+    nested-cases drag x2 by (-150.0, 80.0) [chained]: pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag x2 by (-150.0, 80.0): o1->x1 through node e1
+    nested-cases drag x2 by (-150.0, 80.0): o1->x1 through node i2
+    nested-cases drag x2 by (-150.0, 80.0): o1->x1 through node o2
+    nested-cases drag x2 by (-150.0, 80.0): pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag x2 by (0.0, -1.0) [chained]: o1->x1 through node e1
+    nested-cases drag x2 by (0.0, -1.0) [chained]: o1->x1 through node i2
+    nested-cases drag x2 by (0.0, -1.0) [chained]: o1->x1 through node o2
+    nested-cases drag x2 by (0.0, -1.0) [chained]: pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag x2 by (0.0, -1.0): o1->x1 through node e1
+    nested-cases drag x2 by (0.0, -1.0): o1->x1 through node i2
+    nested-cases drag x2 by (0.0, -1.0): o1->x1 through node o2
+    nested-cases drag x2 by (0.0, -1.0): pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag x2 by (0.0, 220.0) [chained]: pick at (87.64999999999999, 463.0) on o1->x1 got nothing
+    nested-cases drag x2 by (0.0, 220.0): o1->x1 through node e1
+    nested-cases drag x2 by (0.0, 220.0): o1->x1 through node i2
+    nested-cases drag x2 by (0.0, 220.0): o1->x1 through node o2
+    nested-cases drag x2 by (0.0, 220.0): pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag x2 by (1.0, 0.0): o1->x1 through node e1
+    nested-cases drag x2 by (1.0, 0.0): o1->x1 through node i2
+    nested-cases drag x2 by (1.0, 0.0): o1->x1 through node o2
+    nested-cases drag x2 by (1.0, 0.0): pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag x2 by (60.0, 25.0) [chained]: o1->x1 through node e1
+    nested-cases drag x2 by (60.0, 25.0) [chained]: o1->x1 through node i2
+    nested-cases drag x2 by (60.0, 25.0) [chained]: o1->x1 through node o2
+    nested-cases drag x2 by (60.0, 25.0) [chained]: pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag x2 by (60.0, 25.0): o1->x1 through node e1
+    nested-cases drag x2 by (60.0, 25.0): o1->x1 through node i2
+    nested-cases drag x2 by (60.0, 25.0): o1->x1 through node o2
+    nested-cases drag x2 by (60.0, 25.0): pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+    nested-cases drag x2 by (60.0, 25.0): pick at (87.64999999999999, 463.0) on o1->x1 got nothing
+    nested-cases route@scene: pick at (87.64999999999999, 463.0) on o1->x1 got nothing
+    nested-cases scene: o1->x1 through node e1
+    nested-cases scene: o1->x1 through node i2
+    nested-cases scene: o1->x1 through node o2
+    nested-cases scene: pick at (121.69490198206017, 223.72585720486114) on o1->x1 got nothing
+cycle2-tie	clusters=2	frames=42	parallel=0	finite=0	detached=0	sharp=0	pick=0	nondet=0	member_out=0	canvas=0	through=0	cold_warm=0	route_vs_partial=4	chained_nonfinite=0	hash=f92671d28f9e36bb	route_hash=30dabde42e507fef
+cycle2-tie-swapped	clusters=2	frames=42	parallel=0	finite=0	detached=0	sharp=2	pick=0	nondet=0	member_out=0	canvas=0	through=0	cold_warm=0	route_vs_partial=4	chained_nonfinite=0	hash=86f0441d757656c6	route_hash=a9129c20ba330201
+lane-beside	clusters=2	frames=132	parallel=0	finite=0	detached=0	sharp=5	pick=0	nondet=0	member_out=0	canvas=0	through=6	cold_warm=0	route_vs_partial=13	chained_nonfinite=0	hash=b2ffbd80c2d202a9	route_hash=f9deb48f7c909803
+nested-cases	clusters=4	frames=102	parallel=0	finite=0	detached=0	sharp=28	pick=75	nondet=0	member_out=0	canvas=0	through=204	cold_warm=0	route_vs_partial=10	chained_nonfinite=0	hash=1ef9bc216393c7f4	route_hash=827dada85d559351
+p06-block-cycle	clusters=2	frames=42	parallel=0	finite=0	detached=0	sharp=0	pick=0	nondet=0	member_out=0	canvas=0	through=0	cold_warm=0	route_vs_partial=4	chained_nonfinite=0	hash=5974bc69456cec31	route_hash=21f09b918a5eef2e

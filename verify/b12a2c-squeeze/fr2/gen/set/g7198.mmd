@@ -1,0 +1,33 @@
+flowchart LR
+  n1["billing"]
+  n2["search"]
+  subgraph B0["Storefront"]
+    n3["api"]
+    n4["store"]
+  end
+  subgraph B1["Analytics"]
+    n5["merge"]
+  end
+  subgraph B2["Fulfilment desk"]
+    n6["merge queue mail"]
+    n7["mail"]
+    n8["store auth pack"]
+    n9["notify ship split"]
+  end
+  n10["billing queue parse"]
+  n11["notify<br/>parse"]
+  n10 --> n8
+  n6 --> n8
+  n9 --> n11
+  n10 ==> n3
+  n11 ==> n10
+  n4 -.-> n11
+  n9 --> n5
+  n3 -.-> n8
+  n10 -->|api| n7
+  n5 ==>|worker| n11
+  n4 -.-> n6
+  n8 -.-> n6
+  n4 -.-> n10
+  n9 --> n3
+  n11 --> n3

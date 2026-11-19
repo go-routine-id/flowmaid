@@ -1,0 +1,6 @@
+tighter  rule  15 must   bends_max  <= 8 -> 4   scope: infra-overview   (4.3 (a): 0.38's own worst edge)
+tighter  rule  44 must   bends_max  <= 8 -> 4   scope: infra-overview-v2   (4.3 (b): the analog's bound)
+tighter  rule  69 must   bends_max  <= 8 -> 4   scope: perm-a-edges-reversed, perm-b-subgraphs-reversed, perm-c-actors-reversed, perm-d-edges-rotated, perm-e-one-more-inner-edge   (4.3 (b))
+tighter  rule  92 must   bends      <= 110 -> 108   scope: blocks-overview, blocks-overview-edges-reversed, blocks-overview-edges-rotated, blocks-overview-actors-reversed, blocks-overview-subgraphs-reversed   (4.3 (c): mermaid's + 20 %)
+tighter  rule  93 must   bends_max  <= 8 -> 4   scope: blocks-overview, blocks-overview-edges-reversed, blocks-overview-edges-rotated, blocks-overview-actors-reversed, blocks-overview-subgraphs-reversed   (4.3 (c))
+summary: 5 tighter, 0 looser, 0 other, 134 rules

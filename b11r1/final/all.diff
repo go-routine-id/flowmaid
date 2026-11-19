@@ -1,0 +1,2127 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index c9afe39..039a2da 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -15,7 +15,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
+   do (`quality::FAN_MIN`); `fan_uneven`, such sides whose neighbouring
+   ports are not one pitch apart (`quality::FAN_PITCH_TOL`; a side holding
+   the end of an edge drawn straight across is not counted, that end stays
+-  where its partner lies).
++  where its partner lies). `Metrics::details` lists each label a stroke
++  runs through (`lbl_edge`).
+ 
+ ### Changed
+ 
+@@ -31,19 +32,28 @@ project adheres to [Semantic Versioning](https://semver.org/).
+   after comparing dense-td, dense-lr, bench-75 and fanout rendered each
+   way: with gaps every third line of bench-75 came out chopped (up to 9
+   cuts on one line), while hops leave each line one stroke and read the
+-  same everywhere. A hop needs both strokes straight where they cross, so
++  same everywhere. A hop needs both strokes straight where they cross and
++  room for its arc: a line is stepped over from 12 px past its corner on
++  (the hop's crown that far below a corner above it), and an edge whose
++  end leg its shape's outline tilts a few px takes part like any other;
+   a crossing in a corner's rounding, next to an arrowhead or a node, under
+-  another level line a few px above, or on an edge with its own `curve:`
+-  keeps the casing's gap (never within a head of an end, and spread so no
+-  line reads as dashed), and a drawing of more than 400 edges still draws
+-  its crossings plain. Over the 14 corpus drawings (static | routed)
+-  351 | 406 of the 410 | 478 crossings are hops; the most gaps cut into
+-  one line fell from 9 | 12 to 2 | 3, and bench-75's SVG from 66.6 to
+-  63.8 kB (272 mask holes -> 37). Hops are paint: `Scene` keeps the
++  another level line a few px above, where the arc would touch a label
++  chip, a frame's border or its title, or on an edge with its own `curve:`
++  keeps the casing's gap (never within a head of an end, spread so no
++  line reads as dashed, and never in a short jog it would take whole).
++  Next to a hop the gap is cut into the line that does not hop there, so
++  no line steps over one crossing and is cut at the next (where both hop,
++  the crossing is drawn plain). A drawing of more than 400 edges still
++  draws its crossings plain. Over the 14 corpus drawings (static | routed)
++  366 | 422 of the 409 | 471 crossings are hops; the most gaps cut into
++  one line fell from 9 | 12 to 2 | 2, and bench-75's SVG from 66.6 to
++  61.9 kB (272 mask holes -> 29). Hops are paint: `Scene` keeps the
+   plain paths, which is what a host draws from, `to_svg` strokes them, and
+   picking follows the paint — `Scene::edge_at` and `hits_in_rect` cover a
+   hop's arc, and at the crossing under a hop they answer the line that is
+-  stepped over, not the one stepping over it.
++  stepped over, not the one stepping over it. The painter and a pick work
++  the hops out by one rule from the same legs, read in one order, in
++  `scene()`, `route()` and under a drag alike.
+ - **A fan is drawn as a comb** (report B4). A new last path stage (`comb`)
+   puts each box side's ends in one order: its teeth take the side's ports
+   in the order of their turns, and the tracks of the teeth stepping one
+@@ -65,18 +75,25 @@ project adheres to [Semantic Versioning](https://semver.org/).
+   line through, along or newly cramped beside a box, no more frame
+   borders, title chips or labels crossed, no two lines on top of each
+   other or closer beside each other or along a frame's border for longer
+-  than before. Two edges of a fan can still cross further out, where
+-  their far ends lie the other way round and putting them in order would
+-  cost a crossing elsewhere (dense-td's `n16 -> n37` under `n20 -> n37`).
+-  The same rule runs in `scene()`, `route()` and every drag frame; in
+-  `route_partial()` an end a drag keeps stays where it is and the others
+-  comb round it. Over the corpus (static | routed): crossings inside fans
+-  29 | 36 -> 14 | 25 (fanout-frames 0 | 1 -> 0 | 0, the two ends of its
+-  hub's bottom side no longer cross in `route()`), drawn crossings
+-  428 | 494 -> 410 | 478, defects 47 | 46 -> 46 | 44; over 303 generated
+-  flowcharts drawn crossings 2 874 | 2 775 -> 2 858 | 2 752 with no file
+-  worse on any defect count, over 964 state diagrams 712 | 826 ->
+-  688 | 760 (defects 616 | 537 -> 615 | 537).
++  than before. Two stubs of the side itself are not held against it:
++  they stand as far apart as its ports in any order, so a hub with more
++  ends on a side than fit a spacing clear apart (ten on the bottom of a
++  small box, 11 px between ports) is combed like any other, in `route()`
++  too. A track that lies beyond its room may move back towards it, and a
++  label some line crosses already — the label stage places it afresh —
++  is no reason to refuse a comb. Two edges of a fan can still cross
++  further out, where their far ends lie the other way round and putting
++  them in order would cost a crossing elsewhere (dense-td's `n16 -> n37`
++  under `n20 -> n37`). The same rule runs in `scene()`, `route()` and
++  every drag frame; in `route_partial()` an end a drag keeps stays where
++  it is and the others comb round it. Over the corpus (static | routed):
++  crossings inside fans 29 | 36 -> 13 | 18 (fanout-frames 0 | 1 -> 0 | 0,
++  the two ends of its hub's bottom side no longer cross in `route()`;
++  dense-lr's hub `n12` 2 -> 0 there), drawn crossings 428 | 494 ->
++  409 | 471, defects 47 | 46 -> 46 | 44; over 303 generated flowcharts
++  drawn crossings 2 874 | 2 775 -> 2 853 | 2 747 with no file worse on any
++  defect count, over 964 state diagrams 712 | 826 -> 678 | 735 (defects
++  616 | 537 -> 615 | 536).
+ - **A hub keeps its order under a drag.** In `route_partial()`, a side
+   that takes one redrawn end more than it has room for round its kept
+   ends is spaced afresh in the order it is drawn in — the kept ends close
+@@ -85,15 +102,20 @@ project adheres to [Semantic Versioning](https://semver.org/).
+   do not touch: bench-75 16 -> 13 (dense-td 5, dense-lr 0 as before).
+ - Known costs: a comb's teeth run side by side a track pitch apart where
+   they crossed each other, which the yardstick counts as cables (pairs of
+-  edges 6-26 px apart for over 100 px: 124 | 139 -> 130 | 140 over the six
+-  gated fixtures). Judging each side's comb costs time: `scene()` takes
+-  3-5 % longer on the dense drawings, `route()` about 5 % on dense-td and
+-  dense-lr (5.6 -> 5.8 ms, 3.6 -> 3.8 ms) and 17 % on bench-75
+-  (7.2 -> 8.4 ms, 46 sides judged per call); the drag budget holds on
+-  every corpus file. A pick takes up to a tenth longer (fanout
+-  2.9 -> 3.2 us per `hit_test`, bench-75 28 -> 28 us), for looking up the
+-  hops near the pointer; `to_svg` of bench-75 takes a quarter less time
+-  (4.0 -> 3.0 ms, fewer masks).
++  edges 6-26 px apart for over 100 px: 124 | 139 -> 130 | 142 over the six
++  gated fixtures), and on a crowded side closer than the spacing clear,
++  as its ports stand (pairs under 12 px apart for over 24 px: 31 | 33 ->
++  30 | 37). Nested, the label of an inner tooth has a neighbour beside
++  its whole step: in `route()` one more of dense-lr's fan labels sits
++  over a neighbouring line (3 -> 4). Judging each side's comb costs
++  time: `scene()` takes 4-8 % longer on the dense drawings, `route()`
++  about 10 % on dense-td and dense-lr (5.6 -> 6.1 ms, 3.6 -> 4.1 ms) and
++  15 % on bench-75 (7.8 -> 9.0 ms, 46 sides judged per call); the drag
++  budget holds on every corpus file. A pick on a line takes up to a
++  quarter longer (bench-75 26 -> 33 us per `hit_test` along its edges,
++  dense-lr 12 -> 14, fanout 4.5 -> 5.2), for working out the hops near
++  the pointer; `to_svg` of bench-75 takes a fifth less time
++  (4.1 -> 3.2 ms, fewer masks).
+ 
+ ## [0.38.0] - 2026-11-10
+ 
+diff --git a/README.md b/README.md
+index 2c42064..44c0edc 100644
+--- a/README.md
++++ b/README.md
+@@ -267,8 +267,8 @@ Mermaid v11 node metadata works too: `A@{ shape: cyl, label: "DB" }`.
+ - **Labels** come in both mermaid spellings: `-->|text|` and inline `-- text -->` (`-. text .-`, `== text ==>`).
+ - **Ends.** Cross and circle ends (`--x`, `-.-x`, `==x`, `--o`, `-.-o`, `==o`, also `-- text --x`) and two-way links (`<-->`, `<-.->`, `<==>`, `x--x`, `o--o`, also `<-- text -->`) draw the matching glyph at each end. As in mermaid, a marker letter glued to the operator is the marker: `A---oB` is a circle edge to `B` — write `A --- oB` to target a node named `oB`.
+ - **Drawing.** As mermaid 12.2's ELK renderer draws them, flowchart and state edges run on the axes with rounded corners: an edge between adjacent ranks is a Z (an L into a side) whose step runs across the gap between the ranks — its label on that step, or, where the gap has room for it (as in a decision fan whose gap grew for its tracks), the step runs between the source and the label, as mermaid draws a labelled branch, and the label rides the straight run into the target; a long edge runs down its layout column and steps across a gap only where it must; the steps in one gap sit on their own tracks, a pitch apart, ordered so their turns cross as little as possible. A straight edge stays straight, and back-edge lanes were on the axes already. An edge with an explicit `curve:` or `linkStyle … interpolate` keeps that curve (`basis`, or an unknown name, which means `basis`, included), as do a state note card's link and self-loops. A drawing of more than 400 edges, past the router's cap, keeps the earlier curves (S-shaped cubics, bowed twins and splines through a long edge's dummies) and grows no gap between its ranks for tracks, but for an S whose ends lie under 28 px apart across, which is drawn straight (within a px) or as a rounded Z there too. The count is taken per laid-out part: each subgraph laid out on its own in its `direction` (see [Subgraphs](#subgraphs)), and the rest of the drawing round it, so a larger drawing whose parts each hold 400 or fewer edges is drawn on the axes.
+-- **Fans.** The edges leaving (or entering) one side of a box are drawn as a comb: each keeps its own port and its own track, the ports a hub's side holds stand one pitch apart, and the ports, the tracks and the turns of a side run in one order — of the edges stepping one way, the one that turns furthest out leaves from the outermost port on the track nearest the box — so the teeth nest and do not cross each other under their box. A side is put in that order wherever it leaves the drawing with fewer crossings and nothing else worse (no new run through a box, a frame border, a title or a label, no two lines closer together); two edges of a fan can still cross further out, where their far ends lie the other way round.
+-- **Crossings.** Where a level stretch of one edge crosses a plumb stretch of another, the level one steps over on a small semicircle (5 px radius, wider over a thick stroke), always upwards, so both lines stay whole — a dotted edge keeps its dots and a solid one never reads as dashed. Hops over lines closer together than a hop's width join into one bridge, flat on top. A hop needs both strokes straight where they cross: a crossing in a corner's rounding, right next to an arrowhead or a node, under another level line a few px above, or on an edge with its own `curve:` gets a small gap in one of the two strokes instead (never within an arrowhead of an end, and spread so that no line reads as dashed). A drawing of more than 400 edges draws its crossings plain. Hops and gaps are paint: the `Scene` keeps the plain paths (see [Interactive API](#interactive-api)), and picking follows the painted stroke.
++- **Fans.** The edges leaving (or entering) one side of a box are drawn as a comb: each keeps its own port and its own track, the ports a hub's side holds stand one pitch apart, and the ports, the tracks and the turns of a side run in one order — of the edges stepping one way, the one that turns furthest out leaves from the outermost port on the track nearest the box — so the teeth nest and do not cross each other under their box. A side is put in that order wherever it leaves the drawing with fewer crossings and nothing else worse (no new run through a box, a frame border, a title or a label, no two lines closer together — but for the stubs of the side itself, which stand as far apart as its ports, so a crowded side is combed too); two edges of a fan can still cross further out, where their far ends lie the other way round.
++- **Crossings.** Where a level stretch of one edge crosses a plumb stretch of another, the level one steps over on a small semicircle (5 px radius, wider over a thick stroke), always upwards, so both lines stay whole — a dotted edge keeps its dots and a solid one never reads as dashed. Hops over lines closer together than a hop's width join into one bridge, flat on top. A hop needs both strokes straight where they cross and room for its arc: a crossing in a corner's rounding (a line is stepped over from 12 px past its corner on), right next to an arrowhead or a node, under another level line a few px above, where the arc would touch a label, a frame's border or its title, or on an edge with its own `curve:` gets a small gap in one of the two strokes instead (never within an arrowhead of an end, spread so that no line reads as dashed, never in a short jog it would take whole, and next to a hop always in the line that does not hop there, so no line steps over one crossing and is cut at the next). A drawing of more than 400 edges draws its crossings plain. Hops and gaps are paint: the `Scene` keeps the plain paths (see [Interactive API](#interactive-api)), and picking follows the painted stroke.
+ - **Fan-out** lists work on either side: `A --> B & C`, `A & B --> C`. Chains like `A --> B & C --> D` are supported, as are cycles (`E --> B` looping back up) and self-loops (`A --> A`).
+ 
+ ### Edge ids, animation and curves
+diff --git a/src/casing.rs b/src/casing.rs
+index 246b9a3..d29be02 100644
+--- a/src/casing.rs
++++ b/src/casing.rs
+@@ -11,6 +11,14 @@
+ //! Which edge goes under is chosen per crossing, so that no edge
+ //! collects a run of closely spaced gaps: a stroke cut every few dozen
+ //! px reads as dashed, and a dashed edge means `-.->` in mermaid.
++//!
++//! Since report M15 most crossings of flowchart edges are no gaps but
++//! hops ([`crate::hops`]: a level leg steps over a plumb one, and
++//! neither stroke is cut); the casing takes the crossings a hop cannot.
++//! Next to a hop the choice is made for it: the line that steps over a
++//! crossing a few px on goes over here as well ([`Hit::over`]), so no
++//! line hops and is cut in one breath. Nor is a gap cut into a jog it
++//! would take whole.
+ 
+ use crate::labels::seg_cells;
+ use crate::scene::{
+@@ -318,18 +326,42 @@ fn crossings_in(
+                 }
+                 let v = hits.entry((ka, kb)).or_default();
+                 if v.iter().all(|h| dist(p, h.p) >= CROSS_MERGE) {
++                    let at = [
++                        starts[ka][sa] + dist(wa[0], p),
++                        starts[kb][sb] + dist(pb[sb], p),
++                    ];
++                    // A line that steps over a crossing a few px on, or
++                    // jogs right here, is the over-line (see
++                    // [`Hit::over`]).
++                    let over = |k: usize, seg: usize, at: f64| {
++                        hops.get(idx[k])
++                            .is_some_and(|hs| hs.iter().any(|h| h.gap(p) < CROSS_CLUSTER))
++                            || turning(lines[k], &starts[k], seg, at) >= JOG_TURN
++                    };
+                     v.push(Hit {
+                         p,
+-                        at: [
+-                            starts[ka][sa] + dist(wa[0], p),
+-                            starts[kb][sb] + dist(pb[sb], p),
+-                        ],
++                        at,
++                        over: [over(ka, sa, at[0]), over(kb, sb, at[1])],
+                     });
+                 }
+             }
+         }
+     }
+ 
++    // A crossing both of whose lines hop next to it is drawn plain:
++    // either gap would cut a line beside its own hop.
++    let mut plain = Vec::new();
++    for (&(ka, kb), v) in hits.iter_mut() {
++        v.retain(|h| {
++            let both = h.over == [true, true];
++            if both {
++                plain.push((idx[ka], idx[kb], h.p, Cut::Plain));
++            }
++            !both
++        });
++    }
++    hits.retain(|_, v| !v.is_empty());
++
+     let mut a_under = choose_under(&hits, &back, &length).into_iter();
+     let mut out = Vec::new();
+     let mut gaps = Vec::new();
+@@ -347,6 +379,7 @@ fn crossings_in(
+     for (x, kind) in out.iter_mut().zip(cut_kinds(&gaps)) {
+         x.3 = kind;
+     }
++    out.extend(plain);
+     out
+ }
+ 
+@@ -364,6 +397,59 @@ fn gap_reach(a: &crate::scene::SceneEdge, b: &crate::scene::SceneEdge) -> f64 {
+ struct Hit {
+     p: Pt,
+     at: [f64; 2],
++    /// Whether `a` and `b` are not to be cut here. A line that steps
++    /// over another crossing on a hop within [`CROSS_CLUSTER`] of this
++    /// one (report M15, [`crate::hops`]) is the over-line here as well,
++    /// so it never hops at one crossing and is cut at the next a few px
++    /// on, which reads as a chopped line. So is a line that jogs here —
++    /// turns one way and back within a gap's length ([`JOG_TURN`]): the
++    /// gap would take the whole jog and leave its two ends apart. The
++    /// gap goes to the other line ([`Ctx::pin`]); where neither is to
++    /// be cut, the crossing is drawn plain.
++    over: [bool; 2],
++}
++
++/// Reach (px) either way along a line within which [`turning`] adds up
++/// its turns: a little over a gap's radius, the stretch a gap takes out
++/// and what must be left either side of it to read as a line.
++const JOG_REACH: f64 = 12.0;
++/// How far (rad) a stroke turns within [`JOG_REACH`] of a crossing for
++/// it to be a jog there: two rounded corners back to back (a step of
++/// under two roundings between two long legs, half a turn in 30 px of
++/// stroke), where one corner's rounding alone is a quarter turn at
++/// most.
++const JOG_TURN: f64 = 2.0;
++
++/// How far (rad) the stroke `pts` turns, left and right added up,
++/// within [`JOG_REACH`] of the point `at` px along it on its segment
++/// `seg` (`starts`: where each segment starts along the stroke).
++fn turning(pts: &[Pt], starts: &[f64], seg: usize, at: f64) -> f64 {
++    let dir = |i: usize| {
++        let (a, b) = (pts[i], pts[i + 1]);
++        (b.1 - a.1).atan2(b.0 - a.0)
++    };
++    let long = |i: usize| dist(pts[i], pts[i + 1]) > 1e-9;
++    let n = starts.len();
++    let lo = (0..=seg)
++        .rev()
++        .take_while(|&i| i == seg || starts[i + 1] > at - JOG_REACH)
++        .last()
++        .unwrap_or(seg);
++    let hi = (seg..n)
++        .take_while(|&i| i == seg || starts[i] < at + JOG_REACH)
++        .last()
++        .unwrap_or(seg);
++    let mut sum = 0.0;
++    let mut prev: Option<f64> = None;
++    for i in (lo..=hi).filter(|&i| long(i)) {
++        let d = dir(i);
++        if let Some(p) = prev {
++            let turn = (d - p).abs();
++            sum += turn.min(std::f64::consts::TAU - turn);
++        }
++        prev = Some(d);
++    }
++    sum
+ }
+ 
+ /// Gaps of one edge in a row, each closer than [`GAP_PERIOD`] to the
+@@ -429,6 +515,17 @@ fn choose_under(
+         .flat_map(|(&(a, b), v)| v.iter().map(move |_| [a, b]))
+         .collect();
+     let at: Vec<[f64; 2]> = hits.values().flatten().map(|h| h.at).collect();
++    // The lower line goes under where the higher one hops close by,
++    // over where it hops itself.
++    let pin: Vec<Option<bool>> = hits
++        .values()
++        .flatten()
++        .map(|h| match h.over {
++            [false, true] => Some(true),
++            [true, false] => Some(false),
++            _ => None,
++        })
++        .collect();
+     let mut members = vec![Vec::new(); back.len()];
+     for (c, p) in pair.iter().enumerate() {
+         members[p[0]].push(c);
+@@ -437,6 +534,7 @@ fn choose_under(
+     let ctx = Ctx {
+         pair: &pair,
+         at: &at,
++        pin: &pin,
+         members: &members,
+         back,
+         length,
+@@ -458,6 +556,9 @@ struct Ctx<'a> {
+     pair: &'a [[usize; 2]],
+     /// Where each crossing falls along its lower and its higher line.
+     at: &'a [[f64; 2]],
++    /// The crossings whose under-line is given ([`Hit::over`]): whether
++    /// the lower line takes the gap. The search leaves them alone.
++    pin: &'a [Option<bool>],
+     /// The crossings of each line.
+     members: &'a [Vec<usize>],
+     /// Which lines run against the flow.
+@@ -471,6 +572,11 @@ impl Ctx<'_> {
+     fn at_on(&self, c: usize, e: usize) -> f64 {
+         self.at[c][usize::from(e != self.pair[c][0])]
+     }
++
++    /// Whether crossing `c`'s under-line is given ([`Ctx::pin`]).
++    fn pinned(&self, c: usize) -> bool {
++        self.pin[c].is_some()
++    }
+ }
+ 
+ /// Under-edge choices in progress: the choice per crossing and the gaps
+@@ -580,7 +686,16 @@ impl<'a> Assign<'a> {
+             add_gap(&mut h, x);
+             greedy_cost(&h) - greedy_cost(g)
+         };
++        // The given ones first, so every choice sees their gaps.
++        for c in (0..pair.len()).filter(|&c| ctx.pinned(c)) {
++            self.under_a[c] = ctx.pin[c] == Some(true);
++            let side = usize::from(!self.under_a[c]);
++            self.put(pair[c][side], at[c][side], c);
++        }
+         for c in order {
++            if ctx.pinned(c) {
++                continue;
++            }
+             let [a, b] = pair[c];
+             let (ga, gb) = (&self.gaps[a], &self.gaps[b]);
+             let (la, lb) = (ctx.length[a], ctx.length[b]);
+@@ -631,6 +746,7 @@ impl<'a> Assign<'a> {
+         let chained: Vec<usize> = (0..mine.len())
+             .filter(|&i| (i > 0 && near(i, i - 1)) || (i + 1 < mine.len() && near(i, i + 1)))
+             .map(|i| mine[i])
++            .filter(|&c| !ctx.pinned(c))
+             .collect();
+         let every_other: Vec<usize> = chained.iter().copied().skip(1).step_by(2).collect();
+         let kicks = std::iter::once(every_other).chain(chained.iter().map(|&c| vec![c]));
+@@ -674,7 +790,7 @@ impl<'a> Assign<'a> {
+         for line in lines {
+             for i in 0..ctx.members[line].len() {
+                 let c = ctx.members[line][i];
+-                if self.under_line(c) != line {
++                if self.under_line(c) != line || ctx.pinned(c) {
+                     continue;
+                 }
+                 let other = ctx.pair[c][usize::from(ctx.pair[c][0] == line)];
+@@ -738,6 +854,9 @@ impl<'a> Assign<'a> {
+                         .copied()
+                         .filter(|&c| (self.under_line(c) == line) != under)
+                         .collect();
++                    if flips.iter().any(|&c| ctx.pinned(c)) {
++                        continue;
++                    }
+                     let mut touched: Vec<usize> = flips
+                         .iter()
+                         .flat_map(|&c| ctx.pair[c])
+@@ -780,6 +899,9 @@ impl<'a> Assign<'a> {
+                 if self.gaps[line].len() <= 1 {
+                     break;
+                 }
++                if ctx.pinned(c) {
++                    continue;
++                }
+                 let other = ctx.pair[c][usize::from(ctx.pair[c][0] == line)];
+                 // A back-edge keeps its gaps (it goes under by preference).
+                 if ctx.length[other] <= ctx.length[line]
+@@ -940,7 +1062,7 @@ impl<'a> Assign<'a> {
+     /// Keeps the first chain that lowers the cost, with its crossings in
+     /// `chain`, and says so; otherwise undoes every flip.
+     fn eject(&mut self, c: usize, delta: i64, chain: &mut Vec<usize>) -> bool {
+-        if self.budget == 0 {
++        if self.budget == 0 || self.ctx.pinned(c) {
+             return false;
+         }
+         self.budget -= 1;
+@@ -1312,6 +1434,131 @@ mod tests {
+         }
+     }
+ 
++    /// A scene of `n` edges drawn along the given corners (a straight
++    /// stroke for two, a rounded orthogonal path for more), its nodes
++    /// out of the way.
++    fn drawn(paths: &[&[Pt]]) -> Scene {
++        let src: String = std::iter::once("flowchart TD".to_string())
++            .chain((0..paths.len()).map(|k| format!("a{k} --- b{k}")))
++            .collect::<Vec<_>>()
++            .join("\n");
++        let mut sc = scene(&parse(&src).unwrap());
++        for (e, c) in sc.edges.iter_mut().zip(paths) {
++            let (a, b) = (c[0], c[c.len() - 1]);
++            let at = |t: f64| (a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t);
++            e.bezier = [a, at(1.0 / 3.0), at(2.0 / 3.0), b];
++            e.waypoints = if c.len() > 2 {
++                crate::router::smooth(c, crate::router::CORNER_R)
++            } else {
++                Vec::new()
++            };
++        }
++        for n in &mut sc.nodes {
++            (n.x, n.y) = (-1000.0, -1000.0);
++        }
++        sc
++    }
++
++    /// B11 review r1 #3: a line that steps over one crossing on a hop
++    /// is not cut at the next a few px on — hop, gap, hop read as a
++    /// chopped line. The gap goes to the other line; where that one hops
++    /// right there too, the crossing is drawn plain.
++    #[test]
++    fn a_line_is_not_cut_next_to_its_own_hop() {
++        // A plumb line at x = 100; a level one that steps over it, the
++        // shorter and later-drawn of the two below — the one the search
++        // cuts, left to itself; and a long slanted one (no hop for that)
++        // crossing the level line 20 px past the hop, or 300 px on.
++        let plumb: &[Pt] = &[(100.0, 0.0), (100.0, 100.0)];
++        let level: &[Pt] = &[(60.0, 50.0), (460.0, 50.0)];
++        let slanted = |x: f64| [(x - 40.0, -450.0), (x + 40.0, 550.0)];
++        for (x, by_hop) in [(120.0, true), (400.0, false)] {
++            let sc = drawn(&[plumb, &slanted(x), level]);
++            let hops = crate::hops::find(&sc);
++            assert_eq!(hops[2].len(), 1, "{hops:?}");
++            let xs = crossings(&sc);
++            assert_eq!(xs.len(), 1, "{xs:?}");
++            // By its hop the level line goes over; away from it the
++            // search decides as it always did.
++            let (under, over) = if by_hop { (1, 2) } else { (2, 1) };
++            assert_eq!((xs[0].0, xs[0].1), (under, over), "at {x}: {xs:?}");
++            assert_eq!(to_svg(&sc).matches("<mask").count(), 1);
++        }
++        // Both lines hop by the crossing: a path down x = 130 that turns
++        // level at y = 80 (the level line crosses it in its corner's
++        // rounding, where no hop is drawn) and there steps over a plumb
++        // line at x = 152, which the level line steps over as well.
++        let turn: &[Pt] = &[(130.0, -100.0), (130.0, 80.0), (400.0, 80.0)];
++        let level: &[Pt] = &[(-600.0, 70.0), (600.0, 70.0)];
++        let (p1, p2): (&[Pt], &[Pt]) = (
++            &[(110.0, 0.0), (110.0, 200.0)],
++            &[(152.0, 0.0), (152.0, 200.0)],
++        );
++        let sc = drawn(&[level, turn, p1, p2]);
++        let hops = crate::hops::find(&sc);
++        assert_eq!((hops[0].len(), hops[1].len()), (2, 1), "{hops:?}");
++        assert!(crossings(&sc).is_empty(), "{:?}", crossings(&sc));
++        assert!(!to_svg(&sc).contains("<mask"));
++        // Without the turning path's own hop the gap is its.
++        let sc = drawn(&[level, turn, p1]);
++        let xs = crossings(&sc);
++        assert_eq!(xs.len(), 1, "{xs:?}");
++        assert_eq!((xs[0].0, xs[0].1), (1, 0), "{xs:?}");
++    }
++
++    /// B11 review r1 #4: a gap is not cut into a jog — a step of a few
++    /// px between two rounded corners, which the gap would take whole,
++    /// leaving the edge in two pieces (a generated state diagram's
++    /// `C0 --> S0 : back`, crossed on its 19 px step). The line crossing
++    /// it is cut instead.
++    #[test]
++    fn a_gap_is_not_cut_into_a_jog() {
++        // Down, a step to the right, down again; crossed mid-step by a
++        // long slanted line (no hop for that), drawn first. Left to the
++        // search, the shorter, later line — the stepped one — is cut.
++        let stepped = |step: f64| [(0.0, 0.0), (0.0, 100.0), (step, 100.0), (step, 200.0)];
++        let across = |x: f64| [(x - 40.0, -400.0), (x + 40.0, 600.0)];
++        for (step, jog) in [(19.0, true), (22.0, true), (80.0, false)] {
++            let sc = drawn(&[&across(step / 2.0), &stepped(step)]);
++            assert!(crate::hops::find(&sc).iter().all(Vec::is_empty));
++            let xs = crossings(&sc);
++            assert_eq!(xs.len(), 1, "step {step}: {xs:?}");
++            let under = usize::from(!jog);
++            assert_eq!((xs[0].0, xs[0].1), (under, 1 - under), "step {step}");
++        }
++        // What makes a jog: how far the stroke turns round the crossing.
++        let turn_at = |pts: &[Pt], p: Pt| {
++            let line = crate::scene::edge_painted_polyline(&drawn(&[pts]).edges[0]);
++            let mut acc = 0.0;
++            let starts: Vec<f64> = line
++                .windows(2)
++                .map(|w| {
++                    let at = acc;
++                    acc += dist(w[0], w[1]);
++                    at
++                })
++                .collect();
++            let (seg, _) = line
++                .windows(2)
++                .enumerate()
++                .map(|(i, w)| {
++                    let mid = ((w[0].0 + w[1].0) / 2.0, (w[0].1 + w[1].1) / 2.0);
++                    (i, dist(mid, p))
++                })
++                .min_by(|a, b| a.1.total_cmp(&b.1))
++                .unwrap();
++            let at = starts[seg] + dist(line[seg], line[seg + 1]) / 2.0;
++            turning(&line, &starts, seg, at)
++        };
++        assert!(turn_at(&stepped(19.0), (9.5, 100.0)) >= JOG_TURN);
++        // In the middle of a long step, on a straight leg, and in one
++        // corner's rounding: no jog.
++        assert!(turn_at(&stepped(80.0), (40.0, 100.0)) < 0.1);
++        assert!(turn_at(&stepped(80.0), (0.0, 50.0)) < 0.1);
++        let corner = turn_at(&stepped(80.0), (3.0, 97.0));
++        assert!(corner > 1.0 && corner < JOG_TURN, "{corner}");
++    }
++
+     /// Pairs of cut crossings on one line within [`CROSS_CLUSTER`] of
+     /// each other where that line goes under at one and over at the
+     /// other (report Q15: the line reads as broken), as (line, point).
+@@ -1353,8 +1600,14 @@ mod tests {
+     /// bundles' lines. B11 (report M15): 57 | 67 -> 2 | 2 — a level
+     /// leg steps over a plumb one on a hop and neither line is cut, so
+     /// what is left are the few crossings in a corner's rounding or
+-    /// next to a head (bench-75's).
+-    const OPPOSITE_MAX: (usize, usize) = (2, 2);
++    /// next to a head (bench-75's). B11 review r1 (#3): 2 | 2 -> 1 | 3,
++    /// as many in all — next to a hop the gap goes to the line that
++    /// does not hop there, whatever its role a few px on: in `route()`
++    /// bench-75's `svc5 -> logs` runs down across four level lines 7 to
++    /// 20 px apart (too close under one another to hop), over three of
++    /// them and under `svc3 -> cache`, which steps over the line beside
++    /// it.
++    const OPPOSITE_MAX: (usize, usize) = (1, 3);
+ 
+     /// Most fixture lines shorter than [`SHORT_LINE`] cut twice or more,
+     /// static and routed: 3 | 2 before short lines handed their extra
+@@ -1612,6 +1865,7 @@ mod tests {
+             hits.entry((a, b)).or_default().push(Hit {
+                 p: (sa, sb),
+                 at: [sa, sb],
++                over: [false, false],
+             });
+         }
+         hits
+diff --git a/src/comb.rs b/src/comb.rs
+index 31afb8e..7cf0cdf 100644
+--- a/src/comb.rs
++++ b/src/comb.rs
+@@ -34,7 +34,12 @@
+ //! A side's new comb is kept only when its edges cross fewer lines than
+ //! before and hit no more boxes, frame borders, title chips or labels,
+ //! nor run on top of or closer beside another edge ([`keeps`]): what the
+-//! router and the nudge spaced stays spaced.
++//! router and the nudge spaced stays spaced. Two stubs of the side
++//! itself are the exception: they stand as far apart as its ports,
++//! whatever order its teeth take them in, so a hub with more ends than
++//! its side holds a spacing clear apart (ten on one side of a small
++//! box) is combed like any other — its stubs side by side, as they
++//! were, instead of across each other.
+ //!
+ //! The edges stay separate strokes, each its own port and track: merged
+ //! onto one trunk, a fan's edges could not be told apart, picked or
+@@ -147,9 +152,10 @@ struct Comb {
+     turn: f64,
+     /// The depths its track may take: from the straight run its end
+     /// needs out to where the path runs on past the turn (less the run
+-    /// that leg needs). One depth, its own, when the track is pinned:
+-    /// it runs into the edge's far end (an L), or the path heads back
+-    /// towards the side past the turn.
++    /// that leg needs), and its own depth where that lies outside. One
++    /// depth, its own, when the track is pinned: it runs into the
++    /// edge's far end (an L), the path heads back towards the side past
++    /// the turn, or the two runs leave no room between them.
+     lo: f64,
+     hi: f64,
+ }
+@@ -234,8 +240,11 @@ fn comb_of(e: &SceneEdge, src: bool, c: Vec<Pt>) -> Option<Comb> {
+         let far = c.len() == 4 && glyph_at(e, !src);
+         c[3].1 - n0 - leg_need(far)
+     });
++    // (A track outside that room — a head's run cut short where the
++    // stages found no better — may still move back towards it: its own
++    // depth bounds the range on that side.)
+     let (lo, hi) = match room {
+-        Some(hi) if hi - lo > EPS && depth >= lo - EPS && depth <= hi + EPS => (lo, hi),
++        Some(hi) if hi - lo > EPS => (lo.min(depth), hi.max(depth)),
+         _ => (depth, depth),
+     };
+     Some(Comb {
+@@ -348,7 +357,7 @@ pub(crate) fn comb(sc: &mut Scene, cx: &Ctx, moved: &mut [bool]) {
+             if tried.iter().any(|p| same_plan(p, &plan)) {
+                 continue;
+             }
+-            if keeps(sc, &world, &plan, true) {
++            if keeps(sc, &world, &plan, &members, true) {
+                 apply(sc, &mut world, moved, &plan);
+                 combed = true;
+                 break;
+@@ -364,7 +373,7 @@ pub(crate) fn comb(sc: &mut Scene, cx: &Ctx, moved: &mut [bool]) {
+             teeth
+         };
+         if let Some(plan) = plan_even(sc, &teeth, fr) {
+-            if keeps(sc, &world, &plan, false) {
++            if keeps(sc, &world, &plan, &members, false) {
+                 apply(sc, &mut world, moved, &plan);
+             }
+         }
+@@ -859,8 +868,13 @@ impl World {
+ /// and other edges' labels, nor run on top of another edge, closer
+ /// beside one than the spacing clear, or along a frame's border for
+ /// longer than they did — what the quality yardstick counts as defects,
+-/// by its own clearances ([`crate::clearance`]).
+-fn keeps(sc: &Scene, w: &World, plan: &[Redraw], fewer: bool) -> bool {
++/// by its own clearances ([`crate::clearance`]). `fan` lists the ends
++/// of the side being combed (each end's edge, and whether it is the
++/// edge's start): two of its stubs side by side are as far apart as the
++/// ports stage put the side's ports, in whatever order the teeth take
++/// them, and are not held against the comb ([`stub_of`]) — unless they
++/// come to lie on top of each other.
++fn keeps(sc: &Scene, w: &World, plan: &[Redraw], fan: &[(usize, bool)], fewer: bool) -> bool {
+     // The changed edges as (edge, line now, bounds now).
+     let new: Vec<(usize, &[Pt], Rect)> = plan
+         .iter()
+@@ -899,7 +913,7 @@ fn keeps(sc: &Scene, w: &World, plan: &[Redraw], fewer: bool) -> bool {
+         return false;
+     }
+     // Boxes, frame borders, title chips and labels.
+-    let hits = |state: &[(usize, &[Pt], Rect)], after: bool| {
++    let hits = |state: &[(usize, &[Pt], Rect)]| {
+         let mut n = 0;
+         for &(i, line, bb) in state {
+             let own = w.ends[i];
+@@ -949,8 +963,13 @@ fn keeps(sc: &Scene, w: &World, plan: &[Redraw], fewer: bool) -> bool {
+                 }
+             }
+         }
+-        // Labels over lines: a changed line through any label, any line
+-        // through a changed edge's label (moved with its leg).
++        n
++    };
++    // Labels over lines: a changed line through any label, any line
++    // through a changed edge's label (moved with its leg) — how often
++    // each label is crossed, in edge order.
++    let labels = |state: &[(usize, &[Pt], Rect)], after: bool| -> Vec<usize> {
++        let mut out = Vec::new();
+         for (j, e) in sc.edges.iter().enumerate() {
+             let Some((_, c, lw)) = &e.label else {
+                 continue;
+@@ -963,6 +982,7 @@ fn keeps(sc: &Scene, w: &World, plan: &[Redraw], fewer: bool) -> bool {
+                     .filter(|s| seg_hits_rect(s[0], s[1], r))
+                     .count()
+             };
++            let mut n = 0;
+             if own.is_some() {
+                 for (i, l) in w.lines.iter().enumerate() {
+                     if i != j && w.drawn[i] {
+@@ -976,10 +996,22 @@ fn keeps(sc: &Scene, w: &World, plan: &[Redraw], fewer: bool) -> bool {
+                     }
+                 }
+             }
++            out.push(n);
+         }
+-        n
++        out
+     };
+-    if hits(&new, true) > hits(&old, false) {
++    // (A label some line crosses already is placed afresh by the label
++    // stage whatever the comb does — it looks again at every label a
++    // stroke crosses — so its crossings count as they were: a comb that
++    // undoes three crossings is not refused for one stroke more through
++    // a label that is about to move.)
++    let (lbl_was, lbl_now) = (labels(&old, false), labels(&new, true));
++    let lbl_now: usize = lbl_was
++        .iter()
++        .zip(&lbl_now)
++        .map(|(&was, &now)| if was > 0 { was } else { now })
++        .sum();
++    if hits(&new) + lbl_now > hits(&old) + lbl_was.iter().sum::<usize>() {
+         return false;
+     }
+     // Nor do the changed lines run beside another closer than the
+@@ -1008,9 +1040,22 @@ fn keeps(sc: &Scene, w: &World, plan: &[Redraw], fewer: bool) -> bool {
+                         .collect(),
+                     _ => Vec::new(),
+                 };
+-                let l = beside(a, b, gap, &zones).max(beside(b, a, gap, &zones));
++                // (Beside, not on top of each other: less what two
++                // stubs of the combed side run side by side. A fan whose
++                // ports stand closer than the spacing clear has them run
++                // so in any order, and for longer the better its teeth
++                // nest — nested, each stub runs the whole length of the
++                // shorter one beside it. Held against the comb, no such
++                // fan could be put in order.)
++                let stubs = match (stub_of(fan, i, a), stub_of(fan, j, b)) {
++                    (Some(sa), Some(sb)) if gap > EDGE_SPACING => {
++                        beside(&sa, &sb, gap, &zones).max(beside(&sb, &sa, gap, &zones))
++                    }
++                    _ => 0.0,
++                };
++                let l = beside(a, b, gap, &zones).max(beside(b, a, gap, &zones)) - stubs;
+                 n += usize::from(l > least);
+-                len += l;
++                len += l.max(0.0);
+             });
+             (n, len)
+         };
+@@ -1036,6 +1081,28 @@ fn keeps(sc: &Scene, w: &World, plan: &[Redraw], fewer: bool) -> bool {
+     along(&new) <= along(&old) + 1.0
+ }
+ 
++/// The stub of edge `i`'s `line` on the combed side `fan` (the side's
++/// ends, see [`keeps`]) — its first leg out of the side — if the edge
++/// ends there. (An edge with both ends on the side: its start's.)
++fn stub_of(fan: &[(usize, bool)], i: usize, line: &[Pt]) -> Option<[Pt; 2]> {
++    let &(_, src) = fan.iter().find(|m| m.0 == i)?;
++    let n = line.len();
++    if n < 2 {
++        return None;
++    }
++    let at = |k: usize| if src { line[k] } else { line[n - 1 - k] };
++    // As far as the line runs straight on from its end (a straight
++    // drop's line is its samples, all one leg).
++    let (p, q) = (at(0), at(1));
++    let len = (q.0 - p.0).hypot(q.1 - p.1).max(EPS);
++    let on = |r: Pt| {
++        ((r.0 - p.0) * (q.1 - p.1) - (r.1 - p.1) * (q.0 - p.0)).abs() < SIDE_SLACK * len
++            && (r.0 - q.0) * (q.0 - p.0) + (r.1 - q.1) * (q.1 - p.1) >= -EPS
++    };
++    let last = (2..n).take_while(|&k| on(at(k))).last().unwrap_or(1);
++    Some([p, at(last)])
++}
++
+ /// What a line through (or grazing) a box it does not end on weighs in
+ /// [`keeps`], and one cramped beside it, against one merely inside the
+ /// room the stages keep round a box.
+@@ -1161,7 +1228,7 @@ fn axis_leg(p: Pt, q: Pt) -> Option<(bool, f64, f64, f64)> {
+ }
+ 
+ /// The box of edge `e`'s label centred at `c`, `w` wide.
+-fn label_box(e: &SceneEdge, c: Pt, w: f64) -> Rect {
++pub(crate) fn label_box(e: &SceneEdge, c: Pt, w: f64) -> Rect {
+     let text = e.label.as_ref().map_or("", |l| l.0.as_str());
+     let lines = 1 + text.matches("<br").count() + text.matches('\n').count();
+     let h = crate::layout::LABEL_BOX_H / 2.0 + crate::layout::LINE_H * (lines - 1) as f64 / 2.0;
+@@ -1312,6 +1379,18 @@ mod tests {
+             &[(0.0, 0.0), (0.0, 40.0), (100.0, 40.0), (100.0, 28.0)],
+         );
+         assert!(back.comb.as_ref().is_some_and(Comb::pinned));
++        // A track beyond its room — past the turn the far leg has less
++        // than its end's run left — may still move back towards it: its
++        // own depth bounds the range (B11 review r1 #4; before, such a
++        // tooth was pinned and a fan round it combed by its ports alone).
++        let deep = tooth(
++            &sc,
++            0,
++            &[(0.0, 0.0), (0.0, 116.0), (100.0, 116.0), (100.0, 120.0)],
++        );
++        let c = deep.comb.as_ref().expect("a tooth");
++        assert!((c.lo - ROW_CLEAR).abs() < 1e-9 && (c.hi - 116.0).abs() < 1e-9);
++        assert!(!c.pinned());
+         // A straight drop, and a path that leaves along its side: no teeth.
+         assert!(tooth(&sc, 0, &[(0.0, 0.0), (0.0, 80.0)]).comb.is_none());
+         let along = [(0.0, 0.0), (60.0, 0.0), (60.0, 80.0)];
+@@ -1474,6 +1553,91 @@ mod tests {
+         }
+     }
+ 
++    /// B11 review r1 #6: a hub with more ends on a side than stand a
++    /// spacing clear apart (ten on `hub`'s bottom side, 10.9 px between
++    /// ports) is combed in `route()` too. Its stubs run side by side in
++    /// any order, the longer the better they nest; held against the comb,
++    /// every re-order of such a side was refused and the fan kept its
++    /// crossings (`hub --> d1` over `hub -->|yes| c4` and `hub -.-> d3`).
++    #[test]
++    fn a_crowded_side_is_combed_in_route() {
++        let src = "flowchart TD\n  hub[Hub service]\n  a1[Alpha] --> hub\n  a2[Beta] --> hub\n\
++                   hub --> c1[One]\n  hub -.-> c2[Two]\n  hub ==> c3[Three]\n\
++                   hub -->|yes| c4[Four]\n  hub --> c5[Five]\n  hub -->|no| c6[Six]\n\
++                   hub --> c7[Seven]\n  c1 --> d1[Deep one]\n  c2 --> d1\n\
++                   c7 --> d2[Deep two]\n  hub --> d2\n  hub --> d1\n\
++                   hub -.-> d3[Deep three]\n  c4 --> d3\n  c3 --> d4[Deep four]\n  hub ==> d4\n";
++        let g = parse(src).unwrap();
++        let sc = scene(&g);
++        let at: Vec<Pt> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
++        for (mode, s) in [("scene", &sc), ("route", &route(&g, &at))] {
++            let (x, ports) = fan(s, "hub", Side::Bottom);
++            let k = ports.len();
++            assert!(k >= 10, "{mode}: {k} ends");
++            let pitch = (ports[k - 1] - ports[0]) / (k - 1) as f64;
++            assert!(
++                pitch < CLEAR_GAP,
++                "{mode}: a crowded side, pitch {pitch:.1}"
++            );
++            assert_eq!(x, 0, "{mode}: crossings inside the fan");
++        }
++        // The stub of a fan's edge: its first leg out of the side, the
++        // whole of a straight drop (its line is the curve's samples).
++        let members = [(0, true), (1, false)];
++        let tooth = [(0.0, 0.0), (0.0, 40.0), (60.0, 40.0), (60.0, 90.0)];
++        assert_eq!(
++            stub_of(&members, 0, &tooth),
++            Some([(0.0, 0.0), (0.0, 40.0)])
++        );
++        let drop: Vec<Pt> = (0..=8).map(|k| (11.0, 90.0 - 10.0 * k as f64)).collect();
++        assert_eq!(
++            stub_of(&members, 1, &drop),
++            Some([(11.0, 10.0), (11.0, 90.0)])
++        );
++        assert_eq!(stub_of(&members, 2, &tooth), None);
++        // Two stubs of one side closer than the spacing clear run
++        // beside each other for the length of the shorter.
++        let (a, b) = (
++            stub_of(&members, 0, &tooth).unwrap(),
++            stub_of(&members, 1, &drop).unwrap(),
++        );
++        assert_eq!(beside(&a, &b, CLEAR_GAP, &[]), 30.0);
++    }
++
++    /// B11 review r1 #4 (a generated state diagram, bulk set 11002b70):
++    /// in `route()` the comb put `S0`'s bottom side in the order of its
++    /// turns by its ports alone — the track of `S0 --> C0` lay beyond
++    /// its room and was pinned — and `C0 --> S0 : back` crossed it
++    /// twice. A track may move back towards its room, the two tracks
++    /// change places and the fan has no crossing left. (A label a line
++    /// crosses already, here `back`'s, is no reason to refuse that: the
++    /// label stage places it afresh.)
++    #[test]
++    fn a_fan_with_a_track_beyond_its_room_is_combed() {
++        let src = "stateDiagram-v2\n[*] --> S0\nstate C0 {\n  [*] --> C0i0\n  C0i0 --> C0i1\n\
++                   note right of C0i0 : n791\n  note right of C0i0 : n480\n\
++                   note right of C0i1 : n615\n}\nS0 --> C0\nC0i1 --> S0 : x\nC0i1 --> S0 : x\n\
++                   C0 --> S0 : back\nnote right of C0 : m960\nnote right of C0 : m378\n";
++        let g = match crate::parser::parse_document(src).unwrap() {
++            crate::model::Document::State(g) => g,
++            _ => panic!("a state diagram"),
++        };
++        let sc = scene(&g);
++        let at: Vec<Pt> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
++        for (mode, s) in [("scene", &sc), ("route", &route(&g, &at))] {
++            let (x, ports) = fan(s, "S0", Side::Bottom);
++            assert_eq!(ports.len(), 4, "{mode}");
++            assert_eq!(x, 0, "{mode}: crossings inside the fan");
++            let m = crate::quality::measure(&g, s);
++            assert_eq!(
++                (m.overlap_pairs, m.edge_edge_x),
++                (0, 0),
++                "{mode}: {:?}",
++                m.details
++            );
++        }
++    }
++
+     #[test]
+     fn a_comb_is_judged_by_the_yardsticks_clearances() {
+         let r = (100.0, 100.0, 200.0, 150.0);
+diff --git a/src/hops.rs b/src/hops.rs
+index 778ff56..25a4041 100644
+--- a/src/hops.rs
++++ b/src/hops.rs
+@@ -11,19 +11,28 @@
+ //! leg hops, upwards**. Neighbouring hops of one leg closer than a
+ //! radius join into one bridge, flat on top, over the whole bundle they
+ //! cross. A crossing gets a hop only where both strokes run straight
+-//! through it: clear of each leg's rounded corners, of the arrowheads
+-//! and of the ends, with no other level line right above for the hop
+-//! to run into. Every other crossing — a curve's, one in a corner's
+-//! rounding or under a head — keeps the casing's gap.
++//! through it — clear of the level leg's rounded corners, of the
++//! arrowheads and of the ends, a little way past a corner of the line
++//! stepped over ([`HOP_OVER_CORNER`]) — and the hop's ink runs into
++//! nothing: no other level line right above, no node, label chip, frame
++//! border or title, no curve passing by ([`Legs::clear`]). Every other
++//! crossing — a curve's, one in a corner's rounding or under a head —
++//! keeps the casing's gap, which next to a hop is cut into the other
++//! line ([`crate::casing`]), so a line that steps over one crossing
++//! never ducks under the next.
+ //!
+ //! A hop is paint: [`crate::scene::to_svg`] strokes it and picking
+ //! ([`crate::scene::Scene::edge_at`]) covers it, but the scene's
+-//! geometry stays the plain path, which is what a host draws from.
++//! geometry stays the plain path, which is what a host draws from. The
++//! painter and a pick work the hops out from the same legs by the same
++//! rule ([`Legs::leg_hops`]), which reads them in one order however
++//! they are listed: pick == render.
+ 
+-use crate::router::{ortho_corners, CORNER_R};
++use crate::router::{ortho_corners_of, CORNER_R};
+ use crate::scene::{edge_drawn, edge_head_len, edge_stroke_width, Scene, SceneEdge};
+ 
+ type Pt = (f64, f64);
++type Rect = (f64, f64, f64, f64);
+ 
+ /// Radius (px) of a hop over a default stroke: the under-line keeps
+ /// 3 px of air either side between the two strokes, about the casing
+@@ -43,13 +52,30 @@ pub(crate) const HOP_JOIN: f64 = HOP_R;
+ /// Room (px) a hop keeps past a corner's rounding ([`CORNER_R`]) on its
+ /// own leg, so its arcs spring from the straight stretch.
+ const HOP_CORNER_AIR: f64 = 2.0;
++/// Least distance (px) of a hop from a corner of the line it steps
++/// over — of its line where the corner lies below it, of its crown
++/// where the corner lies above: from there on that line's stroke runs
++/// on its leg again (within a fraction of a px of it: the rounding
++/// takes [`CORNER_R`], most of its turn in the last third), so the hop
++/// sits over a straight stretch. Nearer the corner the crossing is one
++/// with the rounding's curve and keeps the casing's gap.
++pub(crate) const HOP_OVER_CORNER: f64 = CORNER_R - 2.0;
+ /// Room (px) a hop keeps from an arrowhead's base on its own leg.
+ const HOP_HEAD_AIR: f64 = 3.0;
+ /// Room (px) a hop keeps from a bare end of its own leg (the node's
+ /// border).
+ const HOP_END_AIR: f64 = 4.0;
+-/// Air (px) a hop's crown keeps under a level line running above it.
++/// Air (px) a hop's crown keeps under a level line running above it,
++/// and its ink from a node, a label chip, a frame's border or its
++/// title.
+ const HOP_ABOVE_AIR: f64 = 2.5;
++/// Farthest (px) the first or last leg of a path may lie off its axis
++/// for the rest of the path to take part in hops: an end the outline
++/// snap moved along its shape leaves that one leg tilted a few px
++/// (`orders --> pg[(Postgres)]`), and the stroke of the legs before it
++/// runs on their lines all the same (a steeper leg pulls the spline off
++/// the leg next to it).
++const END_TILT_MAX: f64 = 6.0;
+ /// Float tolerance (px).
+ const EPS: f64 = 1e-6;
+ 
+@@ -77,6 +103,15 @@ impl Hop {
+         let (lo, hi) = self.span();
+         (p.1 - self.y).abs() <= 1.0 && p.0 >= lo - 1.0 && p.0 <= hi + 1.0
+     }
++
++    /// How far (px) `p` lies from the hop: from the box its arcs take,
++    /// feet to crown.
++    pub(crate) fn gap(&self, p: Pt) -> f64 {
++        let (lo, hi) = self.span();
++        let dx = (lo - p.0).max(p.0 - hi).max(0.0);
++        let dy = (self.y - self.r - p.1).max(p.1 - self.y).max(0.0);
++        dx.hypot(dy)
++    }
+ }
+ 
+ /// One axis leg of an edge's path that takes part in hops.
+@@ -93,18 +128,32 @@ struct Leg {
+     /// over (empty when `ok_lo > ok_hi`).
+     ok_lo: f64,
+     ok_hi: f64,
++    /// Whether its low and its high end are ends of its edge's path —
++    /// a head or a node's border, which no hop is drawn across — rather
++    /// than corners.
++    ends: [bool; 2],
+     /// Its stroke's width.
+     width: f64,
+ }
+ 
+ /// The legs of a scene's edges that take part in hops, level and plumb,
+-/// each sorted by its line.
++/// and what a hop must keep clear of.
+ pub(crate) struct Legs {
+     level: Vec<Leg>,
+     plumb: Vec<Leg>,
+     edges: usize,
+     /// Each list is sorted by its line (see [`legs`], [`legs_for_pick`]).
+     sorted: bool,
++    /// The widest stroke of a level leg.
++    widest: f64,
++    /// What no hop's ink may touch: the node boxes, the label chips,
++    /// the frames' titles and — as boxes of no thickness — their
++    /// borders.
++    walls: Vec<Rect>,
++    /// And the strokes that are no legs, as (edge, from, to) along each:
++    /// a curve (an authored `curve:`, a self-loop, a state note's link)
++    /// or a tilted end leg passing through where a hop would stand.
++    strays: Vec<(usize, Pt, Pt)>,
+ }
+ 
+ /// Whether edge `e` may hop and be hopped over: one the flowchart
+@@ -115,11 +164,27 @@ pub(crate) fn hops_edge(e: &SceneEdge) -> bool {
+     edge_drawn(e) && e.from != e.to && e.paint_width.is_none() && e.meta.curve.is_none()
+ }
+ 
+-/// The corners of `e`'s path where it runs on the axes: a routed path's
+-/// ([`ortho_corners`]), or the two ends of a straight stroke.
+-fn corners_of(e: &SceneEdge) -> Option<Vec<Pt>> {
+-    if e.waypoints.len() >= 2 {
+-        return ortho_corners(e);
++/// The corners of `e`'s path where it runs on the axes, and whether the
++/// first and the last of them are the path's own ends: a routed path's
++/// ([`crate::router::ortho_corners`]) — less a first or last leg the
++/// outline snap tilted off its axis ([`END_TILT_MAX`]), whose corner
++/// then stands for no end — or the two ends of a straight stroke.
++fn corners_of(e: &SceneEdge) -> Option<(Vec<Pt>, [bool; 2])> {
++    let w = &e.waypoints;
++    let n = w.len();
++    if n >= 2 {
++        // How far a leg lies off the nearer axis.
++        let tilt = |k: usize| (w[k].0 - w[k + 1].0).abs().min((w[k].1 - w[k + 1].1).abs());
++        let (t0, t1) = (tilt(0), tilt(n - 2));
++        if t0 > END_TILT_MAX || t1 > END_TILT_MAX {
++            return None;
++        }
++        let ends = [t0 < EPS, t1 < EPS];
++        let (from, to) = (usize::from(!ends[0]), n - usize::from(!ends[1]));
++        if to < from + 2 {
++            return None;
++        }
++        return ortho_corners_of(&w[from..to]).map(|c| (c, ends));
+     }
+     let [a, c1, c2, b] = e.bezier;
+     let on = |k: usize| {
+@@ -132,7 +197,7 @@ fn corners_of(e: &SceneEdge) -> Option<Vec<Pt>> {
+                 .all(|&p| w(p) >= lo - EPS && w(p) <= hi + EPS)
+             && hi - lo > EPS
+     };
+-    (on(0) || on(1)).then(|| vec![a, b])
++    (on(0) || on(1)).then(|| (vec![a, b], [true, true]))
+ }
+ 
+ /// The legs of `sc` that take part in hops ([`Legs`]); none in a
+@@ -154,22 +219,39 @@ pub(crate) fn legs(sc: &Scene) -> Legs {
+ 
+ /// [`legs`] left in edge order: what one pick needs of them — the hops
+ /// of an edge or two ([`Legs::of`], which then looks through every leg)
+-/// — costs less than sorting them all.
++/// — costs less than sorting them all. The hops come out the same
++/// either way ([`Legs::leg_hops`]).
+ pub(crate) fn legs_for_pick(sc: &Scene) -> Legs {
+     let mut out = Legs {
+         level: Vec::new(),
+         plumb: Vec::new(),
+         edges: sc.edges.len(),
+         sorted: false,
++        widest: 0.0,
++        walls: Vec::new(),
++        strays: Vec::new(),
+     };
+     if sc.edges.len() > crate::casing::CASING_MAX_EDGES {
+         return out;
+     }
++    // The drawn edges that give no legs, and the tilted end legs of
++    // those that do: strays, sampled once the scene is known to hop.
++    let mut curves: Vec<usize> = Vec::new();
+     for (i, e) in sc.edges.iter().enumerate() {
+-        if !hops_edge(e) {
++        if !edge_drawn(e) {
+             continue;
+         }
+-        let Some(c) = corners_of(e) else { continue };
++        let Some((c, path_ends)) = Some(e).filter(|e| hops_edge(e)).and_then(corners_of) else {
++            curves.push(i);
++            continue;
++        };
++        let w = &e.waypoints;
++        if !path_ends[0] {
++            out.strays.push((i, w[0], w[1]));
++        }
++        if !path_ends[1] {
++            out.strays.push((i, w[w.len() - 2], w[w.len() - 1]));
++        }
+         let width = edge_stroke_width(e);
+         let glyph = [
+             e.ends.start_marker(e.kind).is_some(),
+@@ -184,13 +266,20 @@ pub(crate) fn legs_for_pick(sc: &Scene) -> Legs {
+             if !level && !plumb {
+                 continue;
+             }
++            // Whether an end of the leg is an end of the path.
++            let is_end = |at_start: bool| {
++                if at_start {
++                    k == 0 && path_ends[0]
++                } else {
++                    k + 1 == n - 1 && path_ends[1]
++                }
++            };
+             // What each end of the leg keeps clear: for its own hops'
+             // feet, and for the middle of a hop over it.
+             let clear = |at_start: bool| -> (f64, f64) {
+-                let end = if at_start { k == 0 } else { k + 1 == n - 1 };
+                 let g = glyph[usize::from(!at_start)];
+-                match (end, g) {
+-                    (false, _) => (CORNER_R + HOP_CORNER_AIR, CORNER_R + HOP_R),
++                match (is_end(at_start), g) {
++                    (false, _) => (CORNER_R + HOP_CORNER_AIR, HOP_OVER_CORNER),
+                     (true, true) => (head + HOP_HEAD_AIR, head + HOP_R + 1.0),
+                     (true, false) => (HOP_END_AIR, HOP_R + 2.0),
+                 }
+@@ -199,10 +288,10 @@ pub(crate) fn legs_for_pick(sc: &Scene) -> Legs {
+             let (a, b) = (v(p), v(q));
+             let (ca, cb) = (clear(true), clear(false));
+             // (Low end first.)
+-            let (lo, hi, c_lo, c_hi) = if a <= b {
+-                (a, b, ca, cb)
++            let (lo, hi, c_lo, c_hi, ends) = if a <= b {
++                (a, b, ca, cb, [is_end(true), is_end(false)])
+             } else {
+-                (b, a, cb, ca)
++                (b, a, cb, ca, [is_end(false), is_end(true)])
+             };
+             let own = usize::from(!level);
+             let pick = |c: (f64, f64)| if own == 0 { c.0 } else { c.1 };
+@@ -213,18 +302,52 @@ pub(crate) fn legs_for_pick(sc: &Scene) -> Legs {
+                 hi,
+                 ok_lo: lo + pick(c_lo),
+                 ok_hi: hi - pick(c_hi),
++                ends,
+                 width,
+             };
+             if level {
++                out.widest = out.widest.max(width);
+                 out.level.push(leg);
+             } else {
+                 out.plumb.push(leg);
+             }
+         }
+     }
++    if out.is_empty() {
++        return out;
++    }
++    for i in curves {
++        let line = crate::scene::edge_polyline(&sc.edges[i]);
++        out.strays.extend(line.windows(2).map(|q| (i, q[0], q[1])));
++    }
++    for n in &sc.nodes {
++        let (hw, hh) = (n.w / 2.0, n.h / 2.0);
++        out.walls.push((n.x - hw, n.y - hh, n.x + hw, n.y + hh));
++    }
++    for e in sc.edges.iter().filter(|e| edge_drawn(e)) {
++        if let Some((_, at, w)) = &e.label {
++            out.walls.push(crate::comb::label_box(e, *at, *w));
++        }
++    }
++    for (ci, c) in sc.clusters.iter().enumerate() {
++        let (x0, y0, x1, y1) = (c.x, c.y, c.x + c.w, c.y + c.h);
++        out.walls.extend([
++            (x0, y0, x1, y0),
++            (x0, y1, x1, y1),
++            (x0, y0, x0, y1),
++            (x1, y0, x1, y1),
++            crate::scene::title_head(&sc.clusters, ci, f64::INFINITY),
++        ]);
++    }
+     out
+ }
+ 
++/// The order an edge's hops are listed in: by line, then place (two
++/// level legs of one edge on one line never overlap).
++fn by_place(a: &Hop, b: &Hop) -> std::cmp::Ordering {
++    a.y.total_cmp(&b.y).then(a.x0.total_cmp(&b.x0))
++}
++
+ impl Legs {
+     /// Whether no edge of the scene hops.
+     pub(crate) fn is_empty(&self) -> bool {
+@@ -241,6 +364,9 @@ impl Legs {
+         for leg in &self.level {
+             out[leg.edge].extend(self.leg_hops(leg));
+         }
++        if !self.sorted {
++            out.iter_mut().for_each(|h| h.sort_by(by_place));
++        }
+         out
+     }
+ 
+@@ -249,17 +375,23 @@ impl Legs {
+         if self.is_empty() {
+             return Vec::new();
+         }
+-        self.level
++        let mut out: Vec<Hop> = self
++            .level
+             .iter()
+             .filter(|l| l.edge == i)
+             .flat_map(|l| self.leg_hops(l))
+-            .collect()
++            .collect();
++        if !self.sorted {
++            out.sort_by(by_place);
++        }
++        out
+     }
+ 
+-    /// The hops of one level leg (see the module docs).
++    /// The hops of one level leg (see the module docs). The crossings
++    /// are read in one order — by place, then radius — whichever order
++    /// the legs are listed in, so the painter's sorted legs and a pick's
++    /// unsorted ones give the same hops.
+     fn leg_hops(&self, leg: &Leg) -> Vec<Hop> {
+-        // The plumb legs crossing it, by where: (x, radius of a hop
+-        // there, or none where the crossing takes no hop).
+         let across = if self.sorted {
+             let from = self.plumb.partition_point(|v| v.at <= leg.lo + EPS);
+             let to = self.plumb.partition_point(|v| v.at < leg.hi - EPS);
+@@ -267,7 +399,14 @@ impl Legs {
+         } else {
+             &self.plumb[..]
+         };
+-        let mut xs: Vec<(f64, Option<f64>)> = Vec::new();
++        // The plumb legs crossing it: where a hop may stand, as (x, its
++        // radius there), and where none may be drawn at all — over a
++        // head, a bare end or a stroke too wide for one. (A crossing in
++        // a corner's rounding takes no hop of its own and bars none:
++        // two edges down one trunk, one of them turning off, are
++        // stepped over as the one line they are there.)
++        let mut xs: Vec<(f64, f64)> = Vec::new();
++        let mut barred: Vec<f64> = Vec::new();
+         for v in across {
+             if v.at <= leg.lo + EPS
+                 || v.at >= leg.hi - EPS
+@@ -278,25 +417,28 @@ impl Legs {
+                 continue;
+             }
+             let r = HOP_R.max((leg.width + v.width) / 2.0 + HOP_AIR);
+-            let hop = r <= HOP_R_MAX && leg.at >= v.ok_lo - EPS && leg.at <= v.ok_hi + EPS;
+-            xs.push((v.at, hop.then_some(r)));
+-        }
+-        if !self.sorted {
+-            xs.sort_by(|a, b| a.0.total_cmp(&b.0));
++            // (The hop stands on the low side of its line: past a
++            // corner there its crown, not its line, keeps the room.)
++            let crown = if v.ends[0] { 0.0 } else { r };
++            let (before, past) = (leg.at < v.ok_lo + crown - EPS, leg.at > v.ok_hi + EPS);
++            if r > HOP_R_MAX || (before && v.ends[0]) || (past && v.ends[1]) {
++                barred.push(v.at);
++            } else if !before && !past {
++                xs.push((v.at, r));
++            }
+         }
+-        // Neighbouring hops join into bridges; one whose feet find no
+-        // straight stretch gives up its outermost crossings until they
+-        // do.
++        xs.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.total_cmp(&b.1)));
++        let bars = |lo: f64, hi: f64| barred.iter().any(|&x| x >= lo - EPS && x <= hi + EPS);
++        xs.retain(|&(x, r)| !bars(x - r, x + r));
++        // Neighbouring hops join into bridges (none across a crossing
++        // that bars one); a bridge whose feet find no straight stretch
++        // gives up its outermost crossings until they do.
+         let mut out = Vec::new();
+         let mut k = 0;
+         while k < xs.len() {
+-            let Some(r) = xs[k].1 else {
+-                k += 1;
+-                continue;
+-            };
+-            let (mut end, mut r) = (k, r);
+-            while let Some(&(x, Some(rn))) = xs.get(end + 1) {
+-                if (x - rn) - (xs[end].0 + r.max(rn)) >= HOP_JOIN {
++            let (mut end, mut r) = (k, xs[k].1);
++            while let Some(&(x, rn)) = xs.get(end + 1) {
++                if (x - rn) - (xs[end].0 + r.max(rn)) >= HOP_JOIN || bars(xs[end].0, x) {
+                     break;
+                 }
+                 (end, r) = (end + 1, r.max(rn));
+@@ -316,7 +458,8 @@ impl Legs {
+                     r,
+                     over: b - a + 1,
+                 };
+-                if self.clear_above(leg, &hop) {
++                let (lo, hi) = hop.span();
++                if !bars(lo, hi) && self.clear(leg, &hop) {
+                     out.push(hop);
+                 }
+             }
+@@ -325,23 +468,38 @@ impl Legs {
+         out
+     }
+ 
+-    /// Whether no other level leg runs right above `hop`, where its
+-    /// crown would meet it.
+-    fn clear_above(&self, leg: &Leg, hop: &Hop) -> bool {
++    /// Whether `hop`'s ink runs into nothing: no other level leg right
++    /// above, where its crown would meet it, no wall and no stray
++    /// stroke ([`Legs`]) — a hop half under a label chip, with its
++    /// crown on a frame's border or with a curve through its arc reads
++    /// as neither a hop nor a line.
++    fn clear(&self, leg: &Leg, hop: &Hop) -> bool {
+         let (lo, hi) = hop.span();
+         let top = hop.y - hop.r - HOP_ABOVE_AIR;
+-        // (Any stroke a hop steps under is narrower than this.)
++        // (The legs that can reach it: no nearer than its own line,
++        // no further than the widest stroke carries.)
+         let above = if self.sorted {
+-            let from = self.level.partition_point(|l| l.at < top - 4.0 * HOP_R_MAX);
++            let reach = top - (self.widest + leg.width) / 2.0;
++            let from = self.level.partition_point(|l| l.at < reach);
+             let to = self.level.partition_point(|l| l.at < hop.y - EPS);
+             &self.level[from..to.max(from)]
+         } else {
+             &self.level[..]
+         };
+-        above.iter().all(|l| {
++        let free = above.iter().all(|l| {
+             let reach = top - (l.width + leg.width) / 2.0;
+             l.at >= hop.y - EPS || l.at < reach || l.hi <= lo || l.lo >= hi
+-        })
++        });
++        let (x0, x1) = (lo - HOP_ABOVE_AIR, hi + HOP_ABOVE_AIR);
++        let y0 = top - leg.width / 2.0;
++        free && !self
++            .walls
++            .iter()
++            .any(|w| w.0 <= x1 && w.2 >= x0 && w.1 <= hop.y && w.3 >= y0)
++            && !self
++                .strays
++                .iter()
++                .any(|&(e, a, b)| e != leg.edge && crate::scene::seg_aabb(a, b, x0, y0, x1, hop.y))
+     }
+ }
+ 
+@@ -368,9 +526,37 @@ mod tests {
+             e.bezier = [a, at(1.0 / 3.0), at(2.0 / 3.0), b];
+             e.waypoints.clear();
+         }
++        // (Far from the strokes: the nodes take no part.)
++        for n in &mut sc.nodes {
++            (n.x, n.y) = (-1000.0, -1000.0);
++        }
++        sc
++    }
++
++    /// A scene of routed paths: each edge drawn along its corners, as
++    /// the stages draw an orthogonal path ([`crate::router::smooth`]).
++    fn paths(corners: &[&[Pt]]) -> Scene {
++        let lines: Vec<(Pt, Pt)> = corners.iter().map(|c| (c[0], c[c.len() - 1])).collect();
++        let mut sc = strokes(&lines);
++        for (e, c) in sc.edges.iter_mut().zip(corners) {
++            if c.len() > 2 {
++                e.waypoints = crate::router::smooth(c, CORNER_R);
++            }
++        }
+         sc
+     }
+ 
++    /// The hops a pick works out ([`legs_for_pick`]) are the painter's
++    /// ([`legs`]), edge by edge.
++    fn assert_pick_is_paint(sc: &Scene, what: &str) -> usize {
++        let painted = find(sc);
++        let pick = legs_for_pick(sc);
++        for (i, hops) in painted.iter().enumerate() {
++            assert_eq!(&pick.of(i), hops, "{what}: edge {i}");
++        }
++        painted.iter().map(Vec::len).sum()
++    }
++
+     #[test]
+     fn the_level_stroke_hops_over_the_plumb_one() {
+         let sc = strokes(&[((0.0, 50.0), (100.0, 50.0)), ((40.0, 0.0), (40.0, 100.0))]);
+@@ -456,4 +642,233 @@ mod tests {
+             .collect();
+         assert!(find(&strokes(&lines)).iter().all(Vec::is_empty));
+     }
++    /// B11 review r1 #2: two plumb strokes on one line, one of which
++    /// bars a hop (its end is right there), read the same whichever
++    /// order the edges come in — the painter sorts the legs, a pick does
++    /// not — and the barred crossing takes no hop, nor does a bridge
++    /// reach across it.
++    #[test]
++    fn hops_do_not_depend_on_the_order_of_the_edges() {
++        let lines = [
++            ((100.0, 46.0), (100.0, 100.0)),
++            ((0.0, 50.0), (200.0, 50.0)),
++            ((90.0, 0.0), (90.0, 100.0)),
++            ((100.0, 0.0), (100.0, 100.0)),
++        ];
++        let orders: [[usize; 4]; 6] = [
++            [0, 1, 2, 3],
++            [3, 1, 2, 0],
++            [1, 0, 3, 2],
++            [2, 3, 0, 1],
++            [3, 2, 1, 0],
++            [1, 2, 3, 0],
++        ];
++        for order in orders {
++            let sc = strokes(&order.map(|k| lines[k]));
++            assert_eq!(assert_pick_is_paint(&sc, "tie"), 1, "{order:?}");
++            let level = order.iter().position(|&k| k == 1).unwrap();
++            // Over the stroke at 90 alone: the one at 100 ends 4 px
++            // above the line, and a hop there would sit on its end.
++            assert_eq!(
++                find(&sc)[level],
++                vec![Hop {
++                    y: 50.0,
++                    x0: 90.0,
++                    x1: 90.0,
++                    r: HOP_R,
++                    over: 1
++                }],
++                "{order:?}"
++            );
++        }
++        // With the short stroke clear of the line the two join into
++        // one bridge, again in any order.
++        let mut clear = lines;
++        clear[0] = ((100.0, 60.0), (100.0, 100.0));
++        for order in orders {
++            let sc = strokes(&order.map(|k| clear[k]));
++            assert_eq!(assert_pick_is_paint(&sc, "bridge"), 1, "{order:?}");
++            let level = order.iter().position(|&k| k == 1).unwrap();
++            assert_eq!(find(&sc)[level][0].span(), (85.0, 105.0), "{order:?}");
++        }
++    }
++
++    /// The painter's hops are a pick's on every fixture, as laid out, as
++    /// `route()` draws it and under a drag (`route_partial`): one rule,
++    /// read in one order (B11 review r1 #1, #2).
++    #[test]
++    fn a_pick_finds_the_painted_hops_on_every_fixture() {
++        use crate::model::Document;
++        let root = env!("CARGO_MANIFEST_DIR");
++        let mut files: Vec<std::path::PathBuf> = ["tests/fixtures/quality", "examples"]
++            .iter()
++            .flat_map(|d| std::fs::read_dir(format!("{root}/{d}")).unwrap())
++            .map(|f| f.unwrap().path())
++            .filter(|p| p.extension().is_some_and(|x| x == "mmd"))
++            .collect();
++        files.sort();
++        let (mut scenes, mut hops) = (0, 0);
++        for f in &files {
++            let src = std::fs::read_to_string(f).unwrap();
++            let g = match crate::parser::parse_document(&src) {
++                Ok(Document::Flowchart(g) | Document::State(g)) => g,
++                _ => continue,
++            };
++            let st = scene(&g);
++            let base: Vec<Pt> = st.nodes.iter().map(|n| (n.x, n.y)).collect();
++            let name = f.file_name().unwrap().to_string_lossy().to_string();
++            hops += assert_pick_is_paint(&st, &name);
++            hops += assert_pick_is_paint(&crate::scene::route(&g, &base), &name);
++            scenes += 2;
++            // The busiest node dragged: a nudge, and far across the
++            // drawing (where edges come to lie on one another).
++            let mut deg = vec![0usize; g.nodes.len()];
++            for e in &g.edges {
++                deg[e.from] += 1;
++                deg[e.to] += 1;
++            }
++            let Some(v) = (0..deg.len()).max_by_key(|&v| (deg[v], std::cmp::Reverse(v))) else {
++                continue;
++            };
++            for d in [(37.0, 23.0), (180.0, 140.0)] {
++                let mut c = base.clone();
++                c[v] = (c[v].0 + d.0, c[v].1 + d.1);
++                let part = crate::scene::route_partial(&g, &c, &st, &base);
++                hops += assert_pick_is_paint(&part, &name);
++                scenes += 1;
++            }
++        }
++        assert!(scenes >= 40 && hops > 500, "{scenes} scenes, {hops} hops");
++    }
++
++    /// A line is stepped over from [`HOP_OVER_CORNER`] past its corner
++    /// on, where its stroke is back on its leg; in the rounding itself
++    /// the crossing keeps the casing's gap. Two edges down one trunk,
++    /// one turning off right there, are stepped over as one line.
++    #[test]
++    fn a_line_is_stepped_over_just_past_its_corner() {
++        // A path down x = 100 that turns right at y = 100.
++        let turn: &[Pt] = &[(100.0, 0.0), (100.0, 100.0), (300.0, 100.0)];
++        for (y, hop) in [
++            (100.0 - HOP_OVER_CORNER, true),
++            (100.0 - HOP_OVER_CORNER + 2.0, false),
++            (40.0, true),
++        ] {
++            let level: &[Pt] = &[(0.0, y), (200.0, y)];
++            let sc = paths(&[level, turn]);
++            assert_eq!(find(&sc)[0].len(), usize::from(hop), "level at {y}");
++            assert_pick_is_paint(&sc, "corner");
++            // Mirrored, the corner above the line: the hop's crown
++            // keeps that room, the line a radius more.
++            let up: &[Pt] = &[(100.0, 200.0), (100.0, 100.0), (300.0, 100.0)];
++            let (below, hop) = (200.0 - y, hop && y < 100.0 - HOP_OVER_CORNER - HOP_R + EPS);
++            let level: &[Pt] = &[(0.0, below), (200.0, below)];
++            let sc = paths(&[level, up]);
++            assert_eq!(find(&sc)[0].len(), usize::from(hop), "level at {below}");
++            let level: &[Pt] = &[(0.0, y), (200.0, y)];
++            // A second edge straight down the same trunk is stepped
++            // over wherever the line crosses it; the one turning off
++            // bars nothing.
++            let trunk: &[Pt] = &[(100.0, 0.0), (100.0, 200.0)];
++            for sc in [paths(&[level, turn, trunk]), paths(&[trunk, level, turn])] {
++                let hops: Vec<Hop> = find(&sc).into_iter().flatten().collect();
++                assert_eq!(hops.len(), 1, "level at {y}: {hops:?}");
++                assert_eq!((hops[0].x0, hops[0].x1), (100.0, 100.0));
++                assert_pick_is_paint(&sc, "trunk");
++            }
++        }
++    }
++
++    /// B11 review r1 #3: an end the outline snap moved leaves its leg
++    /// tilted a few px; the rest of the path hops and is hopped over all
++    /// the same (before, such an edge took part in no hop and every
++    /// crossing with it was a gap). A leg tilted further takes its whole
++    /// path out, as an edge off the axes always was.
++    #[test]
++    fn a_path_with_a_tilted_end_leg_still_takes_part() {
++        let level: &[Pt] = &[(0.0, 50.0), (200.0, 50.0)];
++        let turn: &[Pt] = &[(100.0, 0.0), (100.0, 100.0), (300.0, 100.0)];
++        for (tilt, hops) in [(0.0, 1), (1.5, 1), (END_TILT_MAX + 2.0, 0)] {
++            let mut sc = paths(&[level, turn]);
++            sc.edges[1].waypoints.last_mut().unwrap().1 += tilt;
++            assert_eq!(find(&sc)[0].len(), hops, "tilt {tilt}");
++            assert_pick_is_paint(&sc, "tilt");
++        }
++        // The tilted leg's own crossings take no hop: it is no leg on
++        // the axes, and neither is the short stretch before it.
++        let down: &[Pt] = &[(200.0, 60.0), (200.0, 200.0)];
++        let mut sc = paths(&[level, turn, down]);
++        sc.edges[1].waypoints.last_mut().unwrap().1 += 1.5;
++        let hops = find(&sc);
++        assert_eq!((hops[0].len(), hops[1].len()), (1, 0), "{hops:?}");
++    }
++
++    /// A stroke that is no leg — a curve, a slanted line — passing
++    /// through where a hop would stand bars it (two generated state
++    /// diagrams: a note's link ran through the hop of the edge beside
++    /// it).
++    #[test]
++    fn a_hop_keeps_clear_of_a_curve_passing_by() {
++        let level = ((0.0, 50.0), (200.0, 50.0));
++        let plumb = ((100.0, 0.0), (100.0, 100.0));
++        // A slanted stroke through the hop's arc, and one well beside it.
++        for (x, hop) in [(96.0, false), (60.0, true)] {
++            let slanted = ((x - 20.0, 0.0), (x + 20.0, 100.0));
++            let sc = strokes(&[level, plumb, slanted]);
++            assert_eq!(find(&sc)[0].len(), usize::from(hop), "slanted at {x}");
++            assert_pick_is_paint(&sc, "stray");
++        }
++    }
++
++    /// B11 review r1 #5: a hop is drawn only where its ink runs into
++    /// nothing — no label chip (its own included), no frame border or
++    /// title, no node; such a crossing keeps the casing's gap.
++    #[test]
++    fn a_hop_keeps_clear_of_chips_borders_and_nodes() {
++        let lines = [((0.0, 50.0), (200.0, 50.0)), ((100.0, 0.0), (100.0, 100.0))];
++        let clear = strokes(&lines);
++        assert_eq!(find(&clear)[0].len(), 1);
++        // A label chip over the crossing, or reaching its foot.
++        for (x, hop) in [(100.0, false), (125.0, false), (140.0, true)] {
++            let mut sc = strokes(&lines);
++            sc.edges[0].label = Some(("audit".to_string(), (x, 50.0), 40.0));
++            assert_eq!(find(&sc)[0].len(), usize::from(hop), "chip at {x}");
++            assert_pick_is_paint(&sc, "chip");
++        }
++        // A node whose border the crown would touch.
++        for (y, hop) in [(30.0, false), (20.0, true)] {
++            let mut sc = strokes(&lines);
++            let n = &mut sc.nodes[0];
++            (n.x, n.y, n.w, n.h) = (100.0, y, 60.0, 30.0);
++            assert_eq!(find(&sc)[0].len(), usize::from(hop), "node at {y}");
++        }
++        // A frame: its border just above the line (the crown would lie
++        // on it), or crossing the line under the hop.
++        let framed = |x: f64, y: f64| {
++            let src = "flowchart TD\nsubgraph F\na0 --- b0\nend\na1 --- b1";
++            let mut sc = scene(&parse(src).unwrap());
++            for (e, &(a, b)) in sc.edges.iter_mut().zip(&lines) {
++                let at = |t: f64| (a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t);
++                e.bezier = [a, at(1.0 / 3.0), at(2.0 / 3.0), b];
++                e.waypoints.clear();
++            }
++            for n in &mut sc.nodes {
++                (n.x, n.y) = (-1000.0, -1000.0);
++            }
++            let c = &mut sc.clusters[0];
++            (c.x, c.y, c.w, c.h) = (x, y, 400.0, 300.0);
++            sc
++        };
++        // (The frame's bottom border at y - 300 + 300.)
++        for (x, y, hop) in [
++            (-100.0, -255.5, false), // bottom border 5.5 px above the line
++            (-100.0, -270.0, true),  // 20 px above: clear
++            (97.0, 20.0, false),     // left border under the hop
++            (120.0, 60.0, true),     // the frame beside and below
++        ] {
++            let sc = framed(x, y);
++            assert_eq!(find(&sc)[0].len(), usize::from(hop), "frame at {x}, {y}");
++            assert_pick_is_paint(&sc, "frame");
++        }
++    }
+ }
+diff --git a/src/quality.rs b/src/quality.rs
+index b9a818a..724953f 100644
+--- a/src/quality.rs
++++ b/src/quality.rs
+@@ -1528,6 +1528,8 @@ pub fn measure(g: &Graph, sc: &Scene) -> Metrics {
+         for (j, me) in edges.iter().enumerate() {
+             if j != i && me.pts.windows(2).any(|s| r.hits_seg(s[0], s[1])) {
+                 m.lbl_edge += 1;
++                m.details
++                    .push(format!("{owner} lbl_edge {}->{}", me.e.from, me.e.to));
+             }
+             if me.e.ends.end_marker(me.e.kind).is_some() {
+                 let n = me.pts.len();
+diff --git a/src/router.rs b/src/router.rs
+index 952ac38..a6a5981 100644
+--- a/src/router.rs
++++ b/src/router.rs
+@@ -4081,17 +4081,22 @@ fn straight_between_ports(
+ /// The corner list of an edge drawn as an orthogonal path (every leg of
+ /// its waypoints axis-aligned, its ports' included), else `None`.
+ pub(crate) fn ortho_corners(e: &crate::scene::SceneEdge) -> Option<Vec<Pt>> {
++    ortho_corners_of(&e.waypoints)
++}
++
++/// [`ortho_corners`] of the waypoints `pts` (a path, or the stretch of
++/// one that runs on the axes).
++pub(crate) fn ortho_corners_of(pts: &[Pt]) -> Option<Vec<Pt>> {
+     // (Every leg on an axis before the copy: most paths that are not
+     // fail on their first leg.)
+-    if e.waypoints.len() < 2
+-        || !e
+-            .waypoints
++    if pts.len() < 2
++        || !pts
+             .windows(2)
+             .all(|q| (q[0].0 - q[1].0).abs() < EPS || (q[0].1 - q[1].1).abs() < EPS)
+     {
+         return None;
+     }
+-    let c = collapse_from(&e.waypoints);
++    let c = collapse_from(pts);
+     let aligned = c
+         .windows(2)
+         .all(|q| (q[0].0 - q[1].0).abs() < EPS || (q[0].1 - q[1].1).abs() < EPS);
+diff --git a/src/scene.rs b/src/scene.rs
+index f64ae5f..f1df6c4 100644
+--- a/src/scene.rs
++++ b/src/scene.rs
+@@ -530,12 +530,26 @@ impl PickTarget for PickRect {
+     }
+ }
+ 
++/// How far (px) off its axis a leg may lie for [`HopPick`]'s quick
++/// tests to take it for a level or plumb run: more loosely than
++/// [`crate::hops`] takes its legs (to a float's noise — a routed leg
++/// from `y = 203.00000000000003` to `y = 203.0` is level there, and
++/// hops), so a test never rules out a hop the painter draws.
++const HOP_PICK_AXIS: f64 = 1e-3;
++/// Slack (px) on the reach of [`HopPick`]'s quick tests, which only
++/// rule out where no hop can be: the stretch of path a hop leaves out
++/// lies up to [`HOP_ON_LINE`] off the hop's own line (just past a
++/// corner's rounding), so a target that far beyond the hop's reach may
++/// still be on that stretch, which is not painted.
++const HOP_PICK_SLACK: f64 = HOP_ON_LINE + 0.5;
++
+ /// Picking's view of the crossing hops `to_svg` paints (report M15,
+ /// [`crate::hops`]): a hop's arc lies up to its radius off the edge's
+ /// own path, so a pointer on it is on the stroke without being on the
+ /// path. The hops are worked out at most once per pick, and only when
+ /// the target comes within a hop's reach of an edge that may hop without
+-/// touching its path.
++/// touching its path — by the painter's own rule from the same legs
++/// ([`crate::hops::Legs::of`]), so a pick answers the hops as painted.
+ struct HopPick<'a> {
+     sc: &'a Scene,
+     /// The scene draws hops at all (see [`crate::hops::legs`]).
+@@ -565,10 +579,10 @@ impl<'a> HopPick<'a> {
+         // A hop reaches its radius past the line it crosses; the lines
+         // under one bridge stand no further apart than two radii and
+         // the gap they join over.
+-        let dx = reach + 2.0 * HOP_R_MAX + HOP_JOIN;
+-        let dy = reach + HOP_R_MAX;
++        let dx = reach + 2.0 * HOP_R_MAX + HOP_JOIN + HOP_PICK_SLACK;
++        let dy = reach + HOP_R_MAX + HOP_PICK_SLACK;
+         let run = |a: (f64, f64), b: (f64, f64)| {
+-            a.0 == b.0
++            (a.0 - b.0).abs() < HOP_PICK_AXIS
+                 && a.0 >= x0 - dx
+                 && a.0 <= x1 + dx
+                 && a.1.min(b.1) <= y1 + dy
+@@ -611,12 +625,13 @@ impl<'a> HopPick<'a> {
+         // of this edge.
+         let r = crate::hops::HOP_R_MAX;
+         let (x0, y0, x1, y1) = target.bounds();
++        let reach_s = reach + HOP_PICK_SLACK;
+         let level = |a: (f64, f64), b: (f64, f64)| {
+-            a.1 == b.1
+-                && y0 <= a.1 + reach
+-                && y1 >= a.1 - r - reach
+-                && x0 <= a.0.max(b.0) + reach
+-                && x1 >= a.0.min(b.0) - reach
++            (a.1 - b.1).abs() < HOP_PICK_AXIS
++                && y0 <= a.1 + reach_s
++                && y1 >= a.1 - r - reach_s
++                && x0 <= a.0.max(b.0) + reach_s
++                && x1 >= a.0.min(b.0) - reach_s
+         };
+         let beside = if e.waypoints.len() >= 2 {
+             e.waypoints.windows(2).any(|w| level(w[0], w[1]))
+@@ -632,7 +647,7 @@ impl<'a> HopPick<'a> {
+         let hops = legs.of(i);
+         let near = hops.iter().any(|h| {
+             let (lo, hi) = h.span();
+-            target.box_gap(lo, h.y - h.r, hi, h.y) <= reach
++            target.box_gap(lo, h.y - h.r, hi, h.y) <= reach_s
+         });
+         if !near {
+             return d;
+@@ -11277,10 +11292,9 @@ mod tests {
+         // whose painted stroke covers the same point (a shared trunk, a
+         // crossing). A middle routed waypoint or a bezier midpoint is NOT
+         // such a point: the spline through the waypoints cuts corners.
+-        const TOL: f64 = 0.0;
+-        // The SVG writes coordinates to 0.1, so the curve parsed back out
+-        // of it sits up to ~0.07 off the one edge_at measures.
+-        const SVG_PRECISION: f64 = 0.1;
++        // A flowchart or state fixture is walked as laid out, as
++        // `route()` draws it and under a drag (`route_partial`), where
++        // edges come to lie on one another (B11 review r1 #2).
+         let root = env!("CARGO_MANIFEST_DIR");
+         let mut files: Vec<std::path::PathBuf> = ["tests/fixtures/quality", "examples"]
+             .iter()
+@@ -11289,120 +11303,176 @@ mod tests {
+             .filter(|p| p.extension().is_some_and(|x| x == "mmd"))
+             .collect();
+         files.sort();
++        // Undo to_svg's margin shift to get back to scene units.
++        let shift_of = |s: &Scene| {
++            let mut bb = Bbox::new();
++            grow_canvas(&mut bb, &s.nodes, &s.edges, &s.clusters);
++            let (minx, _, miny, _) = bb.finish();
++            (MARGIN - minx, MARGIN - miny)
++        };
+         let (mut graphs, mut probes, mut hopped) = (0, 0, 0);
+         for f in &files {
+             let src = std::fs::read_to_string(f).unwrap();
++            let name = f.file_name().unwrap().to_string_lossy().to_string();
+             use crate::model::Document;
+-            let (s, svg, (tx, ty)) = match crate::parser::parse_document(&src) {
+-                Ok(Document::Flowchart(g) | Document::State(g)) => {
+-                    let s = scene(&g);
+-                    let svg = to_svg(&s);
+-                    // Undo to_svg's margin shift to get back to scene units.
+-                    let mut bb = Bbox::new();
+-                    grow_canvas(&mut bb, &s.nodes, &s.edges, &s.clusters);
+-                    let (minx, _, miny, _) = bb.finish();
+-                    (s, svg, (MARGIN - minx, MARGIN - miny))
+-                }
+-                // ER and class scenes pick through this same edge_at, and
+-                // their painters stroke edge_path_d in scene units.
+-                Ok(Document::Er(d)) => {
+-                    let es = crate::er::scene(&d);
+-                    let svg = crate::er::to_svg(&es);
+-                    (es.scene, svg, (0.0, 0.0))
+-                }
+-                Ok(Document::Class(d)) => {
+-                    let cs = crate::class::scene(&d);
+-                    let svg = crate::class::to_svg(&cs);
+-                    (cs.scene, svg, (0.0, 0.0))
+-                }
+-                _ => continue,
+-            };
+-            graphs += 1;
+-            // The hops the flowchart painter draws at crossings (none in
+-            // an ER or class scene): painted, so picked.
+-            let hops = crate::hops::find(&s);
+-            hopped += hops.iter().flatten().count();
+-            let curves: Vec<Option<Vec<(f64, f64)>>> = s
+-                .edges
+-                .iter()
+-                .zip(&hops)
+-                .map(|(e, hops)| {
+-                    edge_drawn(e).then(|| {
+-                        // The stroke as painted, cut short under an
+-                        // arrowhead; the head inks that stretch, so the
+-                        // whole curve is what a pick must cover.
+-                        let shift = |p: (f64, f64)| (p.0 + tx, p.1 + ty);
+-                        let painted = painted_path_hops(e, &painted_edge(e), shift, hops).0;
+-                        assert!(
+-                            svg.contains(&format!("<path d=\"{painted}\"")),
+-                            "{f:?}: {painted} not painted"
+-                        );
+-                        let (start, segs) = drawn_segs(e, shift);
+-                        let hops: Vec<crate::hops::Hop> = hops
+-                            .iter()
+-                            .map(|h| crate::hops::Hop {
+-                                y: h.y + ty,
+-                                x0: h.x0 + tx,
+-                                x1: h.x1 + tx,
+-                                ..*h
++            let scenes: Vec<(String, Scene, String, (f64, f64))> =
++                match crate::parser::parse_document(&src) {
++                    Ok(Document::Flowchart(g) | Document::State(g)) => {
++                        let s = scene(&g);
++                        let base: Vec<(f64, f64)> = s.nodes.iter().map(|n| (n.x, n.y)).collect();
++                        let mut all = vec![(name.clone(), s.clone())];
++                        all.push((format!("{name} route()"), route(&g, &base)));
++                        // The busiest node, dragged across the drawing.
++                        let mut deg = vec![0usize; g.nodes.len()];
++                        for e in &g.edges {
++                            deg[e.from] += 1;
++                            deg[e.to] += 1;
++                        }
++                        if let Some(v) =
++                            (0..deg.len()).max_by_key(|&v| (deg[v], std::cmp::Reverse(v)))
++                        {
++                            let mut c = base.clone();
++                            c[v] = (c[v].0 + 180.0, c[v].1 + 140.0);
++                            let part = route_partial(&g, &c, &s, &base);
++                            all.push((format!("{name} route_partial()"), part));
++                        }
++                        all.into_iter()
++                            .map(|(what, s)| {
++                                let (svg, t) = (to_svg(&s), shift_of(&s));
++                                (what, s, svg, t)
+                             })
+-                            .collect();
+-                        let d = hopped_d(start, &segs, &hops);
+-                        assert_eq!(hops.is_empty(), !d.contains(" A "), "{f:?}: {d}");
+-                        path_d_points(&d, 2.0)
+-                            .into_iter()
+-                            .map(|p| (p.0 - tx, p.1 - ty))
+                             .collect()
+-                    })
+-                })
+-                .collect();
+-            let covers = |j: usize, p: (f64, f64)| {
+-                let c = curves[j].as_ref().expect("picked edge is painted");
+-                let d = c
+-                    .windows(2)
+-                    .map(|w| point_seg_dist(p.0, p.1, w[0], w[1]))
+-                    .fold(f64::INFINITY, f64::min);
+-                d - edge_stroke_width(&s.edges[j]) / 2.0
+-            };
+-            let in_chip = |p: (f64, f64)| {
+-                s.edges.iter().any(|e| {
+-                    e.label.as_ref().is_some_and(|(text, m, w)| {
+-                        let lines = 1 + text.matches("<br").count() + text.matches('\n').count();
+-                        (p.0 - m.0).abs() <= w / 2.0 + 2.0
+-                            && (p.1 - m.1).abs()
+-                                <= LABEL_BOX_H / 2.0 + LINE_H * (lines - 1) as f64 + 2.0
+-                    })
+-                })
+-            };
+-            for (i, c) in curves.iter().enumerate() {
+-                let Some(c) = c else { continue };
+-                for &p in c {
+-                    if s.node_at(p.0, p.1).is_some() || in_chip(p) {
+-                        continue;
+                     }
+-                    probes += 1;
+-                    let got = s.edge_at(p.0, p.1, TOL);
+-                    // How far outside a painted stroke the pick lands.
+-                    let off = match got {
+-                        Some(j) if j == i => 0.0,
+-                        Some(j) => covers(j, p),
+-                        None => covers(i, p),
+-                    };
+-                    assert!(
+-                        got.is_some() && off <= SVG_PRECISION,
+-                        "{f:?}: edge {i} ({} -> {}) at {p:?} picked {got:?}, {off:.3} off its stroke",
+-                        s.edges[i].from,
+-                        s.edges[i].to
+-                    );
+-                }
++                    // ER and class scenes pick through this same edge_at, and
++                    // their painters stroke edge_path_d in scene units.
++                    Ok(Document::Er(d)) => {
++                        let es = crate::er::scene(&d);
++                        let svg = crate::er::to_svg(&es);
++                        vec![(name, es.scene, svg, (0.0, 0.0))]
++                    }
++                    Ok(Document::Class(d)) => {
++                        let cs = crate::class::scene(&d);
++                        let svg = crate::class::to_svg(&cs);
++                        vec![(name, cs.scene, svg, (0.0, 0.0))]
++                    }
++                    _ => continue,
++                };
++            graphs += 1;
++            for (what, s, svg, t) in &scenes {
++                let (p, h) = assert_picks_match_paint(what, s, svg, *t);
++                probes += p;
++                hopped += h;
+             }
+         }
+         assert!(
+-            graphs >= 15 && probes > 1000 && hopped > 100,
++            graphs >= 15 && probes > 3000 && hopped > 300,
+             "{graphs} graphs, {probes} probes, {hopped} hops"
+         );
+     }
+ 
++    /// pick == render on one scene `s` painted as `svg`, its drawing
++    /// shifted by `(tx, ty)` there: every point of every painted edge
++    /// stroke — hops included — outside the nodes and the label chips
++    /// picks that edge at no tolerance, or another whose painted stroke
++    /// covers the point. Returns how many points it probed and how many
++    /// hops the scene paints.
++    fn assert_picks_match_paint(
++        what: &str,
++        s: &Scene,
++        svg: &str,
++        (tx, ty): (f64, f64),
++    ) -> (usize, usize) {
++        const TOL: f64 = 0.0;
++        // The SVG writes coordinates to 0.1, so the curve parsed back out
++        // of it sits up to ~0.07 off the one edge_at measures.
++        const SVG_PRECISION: f64 = 0.1;
++        // The hops the flowchart painter draws at crossings (none in
++        // an ER or class scene): painted, so picked.
++        let hops = crate::hops::find(s);
++        let hopped = hops.iter().flatten().count();
++        let curves: Vec<Option<Vec<(f64, f64)>>> = s
++            .edges
++            .iter()
++            .zip(&hops)
++            .map(|(e, hops)| {
++                edge_drawn(e).then(|| {
++                    // The stroke as painted, cut short under an
++                    // arrowhead; the head inks that stretch, so the
++                    // whole curve is what a pick must cover.
++                    let shift = |p: (f64, f64)| (p.0 + tx, p.1 + ty);
++                    let painted = painted_path_hops(e, &painted_edge(e), shift, hops).0;
++                    assert!(
++                        svg.contains(&format!("<path d=\"{painted}\"")),
++                        "{what}: {painted} not painted"
++                    );
++                    let (start, segs) = drawn_segs(e, shift);
++                    let hops: Vec<crate::hops::Hop> = hops
++                        .iter()
++                        .map(|h| crate::hops::Hop {
++                            y: h.y + ty,
++                            x0: h.x0 + tx,
++                            x1: h.x1 + tx,
++                            ..*h
++                        })
++                        .collect();
++                    let d = hopped_d(start, &segs, &hops);
++                    assert_eq!(hops.is_empty(), !d.contains(" A "), "{what}: {d}");
++                    assert_eq!(
++                        painted.matches(" A ").count(),
++                        d.matches(" A ").count(),
++                        "{what}: the stroke cut under its heads hops as the whole one"
++                    );
++                    path_d_points(&d, 2.0)
++                        .into_iter()
++                        .map(|p| (p.0 - tx, p.1 - ty))
++                        .collect()
++                })
++            })
++            .collect();
++        let covers = |j: usize, p: (f64, f64)| {
++            let c = curves[j].as_ref().expect("picked edge is painted");
++            let d = c
++                .windows(2)
++                .map(|w| point_seg_dist(p.0, p.1, w[0], w[1]))
++                .fold(f64::INFINITY, f64::min);
++            d - edge_stroke_width(&s.edges[j]) / 2.0
++        };
++        let in_chip = |p: (f64, f64)| {
++            s.edges.iter().any(|e| {
++                e.label.as_ref().is_some_and(|(text, m, w)| {
++                    let lines = 1 + text.matches("<br").count() + text.matches('\n').count();
++                    (p.0 - m.0).abs() <= w / 2.0 + 2.0
++                        && (p.1 - m.1).abs()
++                            <= LABEL_BOX_H / 2.0 + LINE_H * (lines - 1) as f64 + 2.0
++                })
++            })
++        };
++        let mut probes = 0;
++        for (i, c) in curves.iter().enumerate() {
++            let Some(c) = c else { continue };
++            for &p in c {
++                if s.node_at(p.0, p.1).is_some() || in_chip(p) {
++                    continue;
++                }
++                probes += 1;
++                let got = s.edge_at(p.0, p.1, TOL);
++                // How far outside a painted stroke the pick lands.
++                let off = match got {
++                    Some(j) if j == i => 0.0,
++                    Some(j) => covers(j, p),
++                    None => covers(i, p),
++                };
++                assert!(
++                    got.is_some() && off <= SVG_PRECISION,
++                    "{what}: edge {i} ({} -> {}) at {p:?} picked {got:?}, {off:.3} off its stroke",
++                    s.edges[i].from,
++                    s.edges[i].to
++                );
++            }
++        }
++        (probes, hopped)
++    }
++
+     /// One straight stroke of [`strokes`]: `(from, to, arrow)`.
+     type Stroked<'a> = ((f64, f64), (f64, f64), &'a str);
+ 
+@@ -11556,6 +11626,69 @@ mod tests {
+         assert_eq!(crate::casing::crossings(&sc).len(), 1);
+     }
+ 
++    /// B11 review r1 #1, #2: a pick answers the hops as painted where
++    /// its quick tests used to rule them out or its legs came in another
++    /// order than the painter's — a routed leg level to a float's noise
++    /// (`y = 203.00000000000003` to `y = 203.0`: the painter drew its
++    /// hop, a pick on the arc found nothing and one on the line under it
++    /// found the edge), and two plumb strokes on one line, one of them
++    /// ending by the level stroke (painted one bridge or two hops by the
++    /// order of the edges, picked the other way).
++    #[test]
++    fn picking_follows_the_hops_through_float_noise_and_ties() {
++        use crate::hops::HOP_R;
++        let shift_of = |s: &Scene| {
++            let mut bb = Bbox::new();
++            grow_canvas(&mut bb, &s.nodes, &s.edges, &s.clusters);
++            let (minx, _, miny, _) = bb.finish();
++            (MARGIN - minx, MARGIN - miny)
++        };
++        let up = HOP_R * std::f64::consts::FRAC_1_SQRT_2;
++        let mut sc = strokes(&[
++            ((0.0, 203.0), (300.0, 203.0), "-->"),
++            ((120.0, 100.0), (120.0, 300.0), "-->"),
++        ]);
++        let (a, b) = ((0.0, 203.00000000000003), (300.0, 203.0));
++        sc.edges[0].waypoints = vec![a, b];
++        sc.edges[0].bezier = [a, a, b, b];
++        let svg = to_svg(&sc);
++        assert_eq!(svg.matches(" A 5.0 5.0 0 0 1 ").count(), 2, "{svg}");
++        assert_eq!(sc.edge_at(120.0 - up, 203.0 - up, 0.0), Some(0));
++        assert_eq!(sc.edge_at(120.0 + up, 203.0 - up, 0.3), Some(0));
++        assert_eq!(sc.edge_at(122.5, 203.0, 0.0), None, "under the hop");
++        assert_eq!(sc.edge_at(120.0, 203.0, 0.0), Some(1));
++        let crown = sc.hits_in_rect(119.0, 197.5, 121.0, 198.5);
++        assert_eq!(crown, vec![Hit::Edge(0), Hit::Edge(1)]);
++        let (probes, hops) = assert_picks_match_paint("noise", &sc, &svg, shift_of(&sc));
++        assert!(probes > 100 && hops == 1);
++
++        // The tie, in several orders of its edges: the level stroke
++        // steps over the stroke at x = 90 alone (the one ending 4 px
++        // above the line at x = 100 bars a hop there), and every point
++        // of the painted strokes picks as painted.
++        let lines: [Stroked; 4] = [
++            ((100.0, 46.0), (100.0, 100.0), "---"),
++            ((0.0, 50.0), (200.0, 50.0), "---"),
++            ((90.0, 0.0), (90.0, 100.0), "---"),
++            ((100.0, 0.0), (100.0, 100.0), "---"),
++        ];
++        for order in [[0, 1, 2, 3], [3, 1, 2, 0], [1, 0, 3, 2], [2, 3, 0, 1]] {
++            let sc = strokes(&order.map(|k| lines[k]));
++            let level = order.iter().position(|&k| k == 1).unwrap();
++            let svg = to_svg(&sc);
++            assert_eq!(svg.matches(" A ").count(), 2, "{order:?}: {svg}");
++            assert_eq!(
++                sc.edge_at(90.0 - up, 50.0 - up, 0.0),
++                Some(level),
++                "{order:?}"
++            );
++            assert_eq!(sc.edge_at(92.0, 50.0, 0.0), None, "{order:?}: under it");
++            assert_eq!(sc.edge_at(97.0, 50.0, 0.0), Some(level), "{order:?}");
++            assert_eq!(sc.edge_at(97.0, 45.0, 0.5), None, "{order:?}: no bridge");
++            assert_picks_match_paint("tie", &sc, &svg, shift_of(&sc));
++        }
++    }
++
+     #[test]
+     fn scene_and_render_are_consistent() {
+         let g = parse("flowchart LR\nA --> B{X}\nB -->|y| C").unwrap();
+diff --git a/tests/quality.rs b/tests/quality.rs
+index f3533a9..3211dbc 100644
+--- a/tests/quality.rs
++++ b/tests/quality.rs
+@@ -296,8 +296,13 @@ fn every_fixture_has_a_ceiling() {
+ /// flow, and hub `n12`'s fan steps a track pitch apart in one channel,
+ /// so four of dense-lr's fan labels (and `n25 -> n38`'s) sit over a
+ /// neighbouring step where no spot along their short runs is clear;
+-/// routed stays 4 (dense-lr 2 -> 3, dense-td 2 -> 1).
+-const LBL_EDGE_MAX: (usize, usize) = (6, 4);
++/// routed stays 4 (dense-lr 2 -> 3, dense-td 2 -> 1). B11 review r1
++/// (#6) 4 -> 5 routed, the same trade in `route()`: hub `n12`'s
++/// over-full right side (its ports 8 px apart) is combed there too —
++/// its fan crossed itself twice, `n12 -> n30`'s stub over two tracks —
++/// and, nested, the label of `n12 -> n26` rides its step a track pitch
++/// from `n12 -> n27`'s for the whole of its run (dense-lr 3 -> 4).
++const LBL_EDGE_MAX: (usize, usize) = (6, 5);
+ 
+ /// Most hard label hits (node, label, chip or arrowhead) over all
+ /// fixtures, per mode (static, routed). None: a spot covering an
+@@ -419,8 +424,12 @@ const DASH_EDGES_MAX: (usize, usize) = (0, 0);
+ /// §2.10): 9 | 12 -> 2 | 3 — where a level leg crosses a plumb one it
+ /// steps over on a hop and neither stroke is cut (351 | 406 of the
+ /// fixtures' 410 | 478 crossings); a gap is left only to the crossings
+-/// in a corner's rounding or next to a head.
+-const XGAP_MAX: (usize, usize) = (2, 3);
++/// in a corner's rounding or next to a head. B11 review r1 (#3): 2 | 2
++/// — a line is stepped over from just past its corner on, and an edge
++/// whose end leg the outline snap tilted takes part (366 | 422 of the
++/// 409 | 471 crossings are hops); the gap next to a hop is cut into the
++/// line that does not hop there.
++const XGAP_MAX: (usize, usize) = (2, 2);
+ 
+ /// Crossing gaps are spread so that edges stay whole lines (G1).
+ #[test]
+@@ -755,24 +764,35 @@ fn channels_keep_edges_apart_and_off_chips() {
+ /// 11 608 px along `n12`'s fan).
+ /// `xhops` is no defect and has no row: the crossings drawn as hops
+ /// (351 | 406 of the 410 | 478), see `XGAP_MAX`.
++///
++/// B11 review r1 (#4, #6): a side whose ports stand closer than the
++/// spacing clear is combed too (its stubs run side by side in any
++/// order and are no longer held against the comb), and a track beyond
++/// its room may move back towards it. Lowered: fan_x 14 | 25 -> 13 | 18
++/// (dense-lr's hub `n12` 2 -> 0 in `route()`, bench-75's `ext`, `lb`,
++/// `metrics` and `svc1` sides), x_drawn 410 | 478 -> 409 | 471, band_len
++/// 74 260 | 71 550 -> 73 420 | 71 330, lat_backtrack routed 440 -> 430.
++/// Raised: band_pairs routed 140 -> 142 — two more pairs of `n12`'s
++/// nested teeth run a track pitch apart where they crossed (dense-lr
++/// 25 -> 27).
+ const DEFECT_BASELINE: [(&str, f64, f64); 18] = [
+     ("end_tilt", 0.0, 0.0),
+     ("end_tilt_max", 0.3, 0.6),
+     ("end_gaps", 0.0, 0.0),
+     ("end_gap_max", 0.1, 0.1),
+     ("lat_wiggles", 15.0, 5.0),
+-    ("lat_backtrack", 1_870.0, 440.0),
++    ("lat_backtrack", 1_870.0, 430.0),
+     ("own_frame_x", 0.0, 0.0),
+     ("own_frame_len", 0.0, 0.0),
+-    ("band_pairs", 130.0, 140.0),
+-    ("band_len", 74_260.0, 71_550.0),
++    ("band_pairs", 130.0, 142.0),
++    ("band_len", 73_420.0, 71_330.0),
+     ("idiom_scubic", 0.0, 0.0),
+     ("idiom_spline", 0.0, 0.0),
+     ("idiom_bow", 0.0, 0.0),
+-    ("x_drawn", 410.0, 478.0),
++    ("x_drawn", 409.0, 471.0),
+     ("end_kink", 0.0, 0.0),
+     ("ink_out", 0.0, 0.0),
+-    ("fan_x", 14.0, 25.0),
++    ("fan_x", 13.0, 18.0),
+     ("fan_uneven", 1.0, 2.0),
+ ];
+ 

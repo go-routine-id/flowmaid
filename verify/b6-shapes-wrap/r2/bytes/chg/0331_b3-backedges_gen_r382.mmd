@@ -1,0 +1,24 @@
+flowchart LR
+    N0[Load done]
+    N1{Load}
+    N2([Archive parse])
+    N3((Load check))
+    N4[Done]
+    N5([Load])
+    N6(Retry)
+    N7{Check}
+    N8(Retry queue)
+    N0 --> N1
+    N0 --> N2
+    N0 -->|ok| N3
+    N2 -->|fail| N4
+    N2 --> N5
+    N4 --> N6
+    N6 --> N7
+    N7 --> N8
+    N5 --> N6
+    N6 --> N7
+    N0 --> N5
+    N3 -->|back| N1
+    N8 -.->|again| N2
+    N8 ==> N6

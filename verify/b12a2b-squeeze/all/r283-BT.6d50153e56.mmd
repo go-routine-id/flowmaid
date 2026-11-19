@@ -1,0 +1,11 @@
+flowchart BT
+    subgraph G[MMMM WWWW QQQQ]
+        m0[db]
+        m1[charge]
+    end
+    s0[src0] --> m0
+    s0 --> G
+    s1[src1] --> G
+    s1 --> m0
+    m1 --> z[end]
+    G --> z2[after]

@@ -1,0 +1,5 @@
+classDiagram
+    A-B "0..*" ...  B
+    B "0..*"--|>`a--b` :x
+    C-D  --> "many" Co : uses
+    Foo "0..*" ..  "many" C-D

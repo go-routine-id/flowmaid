@@ -1,0 +1,132 @@
+r1-nodir-iso.mmd: n 5 e 2 sub 2 bars 0 | partial worst 0.38 ms route worst 0.30 ms | frame mismatch 0 | spline dev 2.33 | picks 1464 miss 0 | bar changes 0 | bad 0
+  NOTE[r2-state-nodir-lr.mmd] round-trip scene differs
+r2-state-nodir-lr.mmd: n 6 e 3 sub 2 bars 0 | partial worst 0.30 ms route worst 0.29 ms | frame mismatch 0 | spline dev 2.33 | picks 2190 miss 0 | bar changes 0 | bad 0
+r3-member-own.mmd: n 4 e 2 sub 2 bars 0 | partial worst 0.31 ms route worst 0.25 ms | frame mismatch 0 | spline dev 2.33 | picks 1176 miss 0 | bar changes 0 | bad 0
+  NOTE[r4-state-linkin.mmd] round-trip scene differs
+r4-state-linkin.mmd: n 6 e 4 sub 2 bars 0 | partial worst 0.32 ms route worst 0.23 ms | frame mismatch 18 | spline dev 3.13 | picks 2628 miss 0 | bar changes 0 | bad 0
+r5-edge-to-nested.mmd: n 5 e 2 sub 2 bars 0 | partial worst 0.15 ms route worst 0.17 ms | frame mismatch 0 | spline dev 2.33 | picks 1464 miss 0 | bar changes 0 | bad 0
+  FAIL[partial B 250,0] edge 3 B->C not picked at (621.7001312403249, 235.2894552857304)
+  FAIL[partial B 250,0] hit_test at (621.7001312403249, 235.2894552857304) on edge 3: Some(Cluster(0))
+  FAIL[partial B 250,0] edge 3 B->C not picked at (615.9876221620225, 234.58160352167187)
+  FAIL[partial B 250,0] hit_test at (615.9876221620225, 234.58160352167187) on edge 3: Some(Cluster(0))
+  FAIL[route B 250,0] edge 3 B->C not picked at (621.7001312403249, 235.2894552857304)
+  FAIL[route B 250,0] hit_test at (621.7001312403249, 235.2894552857304) on edge 3: Some(Cluster(0))
+  FAIL[route B 250,0] edge 3 B->C not picked at (615.9876221620225, 234.58160352167187)
+  FAIL[route B 250,0] hit_test at (615.9876221620225, 234.58160352167187) on edge 3: Some(Cluster(0))
+x1-hub-labels-back.mmd: n 8 e 9 sub 3 bars 0 | partial worst 0.94 ms route worst 1.10 ms | frame mismatch 0 | spline dev 3.08 | picks 6984 miss 4 | bar changes 0 | bad 8
+x2-nested-in-plain.mmd: n 7 e 3 sub 3 bars 0 | partial worst 0.19 ms route worst 0.20 ms | frame mismatch 0 | spline dev 2.33 | picks 3060 miss 0 | bar changes 0 | bad 0
+  FAIL[partial b1 0,40] edge 2 b1->b2 not picked at (294.49125000000004, 425.35)
+  FAIL[partial b1 0,40] hit_test at (294.49125000000004, 425.35) on edge 2: Some(Cluster(1))
+  FAIL[partial b1 0,40] edge 2 b1->b2 not picked at (268.42875, 397.85)
+  FAIL[partial b1 0,40] hit_test at (268.42875, 397.85) on edge 2: Some(Cluster(1))
+  FAIL[route b1 0,40] edge 2 b1->b2 not picked at (294.49125000000004, 425.35)
+  FAIL[route b1 0,40] hit_test at (294.49125000000004, 425.35) on edge 2: Some(Cluster(1))
+  FAIL[route b1 0,40] edge 2 b1->b2 not picked at (268.42875, 397.85)
+  FAIL[route b1 0,40] hit_test at (268.42875, 397.85) on edge 2: Some(Cluster(1))
+  FAIL[partial b1 140,-90] edge 2 b1->b2 not picked at (394.89750000000004, 315.6625)
+  FAIL[partial b1 140,-90] hit_test at (394.89750000000004, 315.6625) on edge 2: Some(Cluster(1))
+  FAIL[partial b1 140,-90] edge 2 b1->b2 not picked at (308.02250000000004, 377.5375)
+  FAIL[partial b1 140,-90] hit_test at (308.02250000000004, 377.5375) on edge 2: Some(Cluster(1))
+  FAIL[route b1 140,-90] edge 2 b1->b2 not picked at (394.89750000000004, 315.6625)
+  FAIL[route b1 140,-90] hit_test at (394.89750000000004, 315.6625) on edge 2: Some(Cluster(1))
+  FAIL[route b1 140,-90] edge 2 b1->b2 not picked at (308.02250000000004, 377.5375)
+  FAIL[route b1 140,-90] hit_test at (308.02250000000004, 377.5375) on edge 2: Some(Cluster(1))
+  FAIL[partial-on-route b1] edge 2 b1->b2 not picked at (405.65531250000004, 307.225)
+  FAIL[partial-on-route b1] hit_test at (405.65531250000004, 307.225) on edge 2: Some(Cluster(1))
+  FAIL[partial-on-route b1] edge 2 b1->b2 not picked at (312.26468750000004, 375.975)
+  FAIL[partial-on-route b1] hit_test at (312.26468750000004, 375.975) on edge 2: Some(Cluster(1))
+  FAIL[partial b1 0,220] edge 2 b1->b2 not picked at (294.49125000000004, 577.225)
+  FAIL[partial b1 0,220] hit_test at (294.49125000000004, 577.225) on edge 2: Some(Cluster(1))
+  FAIL[partial b1 0,220] edge 2 b1->b2 not picked at (268.42875, 425.975)
+  FAIL[partial b1 0,220] hit_test at (268.42875, 425.975) on edge 2: Some(Cluster(1))
+  FAIL[route b1 0,220] edge 2 b1->b2 not picked at (294.49125000000004, 577.225)
+  FAIL[route b1 0,220] hit_test at (294.49125000000004, 577.225) on edge 2: Some(Cluster(1))
+  FAIL[route b1 0,220] edge 2 b1->b2 not picked at (268.42875, 425.975)
+  FAIL[route b1 0,220] hit_test at (268.42875, 425.975) on edge 2: Some(Cluster(1))
+  FAIL[partial-on-route b1] edge 2 b1->b2 not picked at (305.24906250000004, 568.7875)
+  FAIL[partial-on-route b1] hit_test at (305.24906250000004, 568.7875) on edge 2: Some(Cluster(1))
+  FAIL[partial-on-route b1] edge 2 b1->b2 not picked at (272.6709375, 424.4125)
+  FAIL[partial-on-route b1] hit_test at (272.6709375, 424.4125) on edge 2: Some(Cluster(1))
+  FAIL[partial b2 0,40] edge 2 b1->b2 not picked at (294.49125000000004, 397.85)
+  FAIL[partial b2 0,40] hit_test at (294.49125000000004, 397.85) on edge 2: Some(Cluster(1))
+  FAIL[partial b2 0,40] edge 2 b1->b2 not picked at (268.42875, 425.35)
+  FAIL[partial b2 0,40] hit_test at (268.42875, 425.35) on edge 2: Some(Cluster(1))
+  FAIL[route b2 0,40] edge 2 b1->b2 not picked at (294.49125000000004, 397.85)
+  FAIL[route b2 0,40] hit_test at (294.49125000000004, 397.85) on edge 2: Some(Cluster(1))
+  FAIL[route b2 0,40] edge 2 b1->b2 not picked at (268.42875, 425.35)
+  FAIL[route b2 0,40] hit_test at (268.42875, 425.35) on edge 2: Some(Cluster(1))
+  FAIL[partial b2 -60,35] edge 2 b1->b2 not picked at (277.52250000000004, 397.06875)
+  FAIL[partial b2 -60,35] hit_test at (277.52250000000004, 397.06875) on edge 2: Some(Cluster(1))
+  FAIL[partial b2 -60,35] edge 2 b1->b2 not picked at (225.39749999999998, 421.13125)
+  FAIL[partial b2 -60,35] hit_test at (225.39749999999998, 421.13125) on edge 2: Some(Cluster(1))
+  FAIL[route b2 -60,35] edge 2 b1->b2 not picked at (277.52250000000004, 397.06875)
+  FAIL[route b2 -60,35] hit_test at (277.52250000000004, 397.06875) on edge 2: Some(Cluster(1))
+  FAIL[route b2 -60,35] edge 2 b1->b2 not picked at (225.39749999999998, 421.13125)
+  FAIL[route b2 -60,35] hit_test at (225.39749999999998, 421.13125) on edge 2: Some(Cluster(1))
+  FAIL[partial b2 0,220] edge 2 b1->b2 not picked at (294.49125000000004, 425.975)
+  FAIL[partial b2 0,220] hit_test at (294.49125000000004, 425.975) on edge 2: Some(Cluster(1))
+  FAIL[partial b2 0,220] edge 2 b1->b2 not picked at (268.42875, 577.225)
+  FAIL[partial b2 0,220] hit_test at (268.42875, 577.225) on edge 2: Some(Cluster(1))
+  FAIL[route b2 0,220] edge 2 b1->b2 not picked at (294.49125000000004, 425.975)
+  FAIL[route b2 0,220] hit_test at (294.49125000000004, 425.975) on edge 2: Some(Cluster(1))
+  FAIL[route b2 0,220] edge 2 b1->b2 not picked at (268.42875, 577.225)
+  FAIL[route b2 0,220] hit_test at (268.42875, 577.225) on edge 2: Some(Cluster(1))
+  FAIL[partial-on-route b2] edge 2 b1->b2 not picked at (298.10062500000004, 424.4125)
+  FAIL[partial-on-route b2] hit_test at (298.10062500000004, 424.4125) on edge 2: Some(Cluster(1))
+  FAIL[partial-on-route b2] edge 2 b1->b2 not picked at (279.819375, 568.7875)
+  FAIL[partial-on-route b2] hit_test at (279.819375, 568.7875) on edge 2: Some(Cluster(1))
+x3-sibling-blocks.mmd: n 8 e 4 sub 3 bars 0 | partial worst 0.45 ms route worst 0.38 ms | frame mismatch 0 | spline dev 2.33 | picks 4074 miss 30 | bar changes 0 | bad 60
+  NOTE[x4-state-rich.mmd] round-trip scene differs
+x4-state-rich.mmd: n 16 e 14 sub 4 bars 2 | partial worst 1.44 ms route worst 1.43 ms | frame mismatch 0 | spline dev 2.52 | picks 20844 miss 0 | bar changes 0 | bad 0
+x5-bt-rl.mmd: n 9 e 7 sub 3 bars 0 | partial worst 0.64 ms route worst 0.46 ms | frame mismatch 0 | spline dev 2.33 | picks 6540 miss 0 | bar changes 0 | bad 0
+  NOTE[x6-nested-blocks-state.mmd] round-trip scene differs
+x6-nested-blocks-state.mmd: n 12 e 7 sub 4 bars 0 | partial worst 0.44 ms route worst 0.42 ms | frame mismatch 0 | spline dev 2.33 | picks 9570 miss 0 | bar changes 0 | bad 0
+  NOTE[x7-fork-to-block.mmd] round-trip scene differs
+x7-fork-to-block.mmd: n 9 e 7 sub 2 bars 2 | partial worst 0.84 ms route worst 0.88 ms | frame mismatch 0 | spline dev 2.33 | picks 5886 miss 0 | bar changes 0 | bad 0
+  NOTE[x8-lr-state-tb-block-fork.mmd] round-trip scene differs
+x8-lr-state-tb-block-fork.mmd: n 10 e 8 sub 2 bars 2 | partial worst 0.40 ms route worst 0.54 ms | frame mismatch 0 | spline dev 2.33 | picks 7260 miss 0 | bar changes 0 | bad 0
+  FAIL[partial-on-route T] edge 5 s->T not picked at (329.29609374999995, 216.59375)
+  FAIL[partial-on-route T] hit_test at (329.29609374999995, 216.59375) on edge 5: Some(Cluster(0))
+x9-order.mmd: n 6 e 4 sub 2 bars 0 | partial worst 0.17 ms route worst 0.16 ms | frame mismatch 0 | spline dev 2.33 | picks 2628 miss 1 | bar changes 0 | bad 2
+e1-unlinked-lr.mmd: n 4 e 0 sub 1 bars 0 | partial worst 0.03 ms route worst 0.01 ms | frame mismatch 0 | spline dev 2.33 | picks 294 miss 0 | bar changes 0 | bad 0
+e2-unlinked-tb.mmd: n 4 e 0 sub 1 bars 0 | partial worst 0.09 ms route worst 0.05 ms | frame mismatch 0 | spline dev 2.22 | picks 294 miss 0 | bar changes 0 | bad 0
+e3-rl.mmd: n 4 e 2 sub 1 bars 0 | partial worst 0.12 ms route worst 0.08 ms | frame mismatch 0 | spline dev 2.33 | picks 882 miss 0 | bar changes 0 | bad 0
+  NOTE[s1_twins4.mmd] round-trip scene differs
+s1_twins4.mmd: n 6 e 8 sub 0 bars 0 | partial worst 2.52 ms route worst 2.54 ms | frame mismatch 0 | spline dev 2.97 | picks 3504 miss 0 | bar changes 0 | bad 0
+  NOTE[s2_twins3_lr_long.mmd] round-trip scene differs
+s2_twins3_lr_long.mmd: n 5 e 7 sub 0 bars 0 | partial worst 1.94 ms route worst 1.90 ms | frame mismatch 0 | spline dev 2.33 | picks 2562 miss 0 | bar changes 0 | bad 0
+  NOTE[s3_wide_lr4.mmd] round-trip scene differs
+  FAIL[partial A 0,40] edge 2 picked as 3 at (339.3880427521711, 129.85)
+  FAIL[route A 0,40] edge 2 picked as 3 at (348.88985686793706, 129.85)
+  FAIL[partial A -60,35] edge 2 picked as 3 at (324.2686936936937, 129.2102782468185)
+s3_wide_lr4.mmd: n 8 e 10 sub 0 bars 0 | partial worst 0.89 ms route worst 1.11 ms | frame mismatch 0 | spline dev 2.33 | picks 5820 miss 3 | bar changes 0 | bad 3
+  NOTE[s4_bars_two_blocks.mmd] round-trip scene differs
+s4_bars_two_blocks.mmd: n 12 e 9 sub 4 bars 2 | partial worst 0.84 ms route worst 1.16 ms | frame mismatch 0 | spline dev 2.33 | picks 11310 miss 0 | bar changes 0 | bad 0
+  NOTE[s5_bar_nested_block.mmd] round-trip scene differs
+s5_bar_nested_block.mmd: n 10 e 6 sub 4 bars 2 | partial worst 0.82 ms route worst 0.87 ms | frame mismatch 0 | spline dev 2.33 | picks 7260 miss 0 | bar changes 0 | bad 0
+  NOTE[s6_bar_plain_and_block.mmd] round-trip scene differs
+s6_bar_plain_and_block.mmd: n 10 e 9 sub 2 bars 2 | partial worst 0.48 ms route worst 0.57 ms | frame mismatch 0 | spline dev 2.33 | picks 7986 miss 0 | bar changes 0 | bad 0
+  FAIL to_mermaid not a fixed point
+  NOTE[f1_flow_block_bar.mmd] round-trip scene differs
+f1_flow_block_bar.mmd: n 8 e 6 sub 2 bars 2 | partial worst 0.70 ms route worst 2.36 ms | frame mismatch 0 | spline dev 2.33 | picks 4656 miss 0 | bar changes 0 | bad 1
+  NOTE[choice1.mmd] round-trip scene differs
+choice1.mmd: n 6 e 5 sub 0 bars 0 | partial worst 0.92 ms route worst 0.73 ms | frame mismatch 0 | spline dev 2.33 | picks 2190 miss 0 | bar changes 0 | bad 0
+  NOTE[choice3.mmd] round-trip scene differs
+choice3.mmd: n 7 e 6 sub 0 bars 0 | partial worst 1.43 ms route worst 1.36 ms | frame mismatch 0 | spline dev 2.33 | picks 3060 miss 0 | bar changes 0 | bad 0
+  NOTE[twins2.mmd] round-trip scene differs
+twins2.mmd: n 4 e 4 sub 0 bars 0 | partial worst 0.85 ms route worst 0.71 ms | frame mismatch 0 | spline dev 2.33 | picks 1176 miss 0 | bar changes 0 | bad 0
+  NOTE[twins3.mmd] round-trip scene differs
+twins3.mmd: n 4 e 5 sub 0 bars 0 | partial worst 0.85 ms route worst 0.98 ms | frame mismatch 0 | spline dev 2.79 | picks 1470 miss 0 | bar changes 0 | bad 0
+  NOTE[twins_bt.mmd] round-trip scene differs
+twins_bt.mmd: n 5 e 5 sub 0 bars 0 | partial worst 0.33 ms route worst 0.43 ms | frame mismatch 0 | spline dev 2.33 | picks 1830 miss 0 | bar changes 0 | bad 0
+  NOTE[twins_lr.mmd] round-trip scene differs
+twins_lr.mmd: n 5 e 5 sub 0 bars 0 | partial worst 0.54 ms route worst 0.63 ms | frame mismatch 0 | spline dev 2.33 | picks 1830 miss 0 | bar changes 0 | bad 0
+  NOTE[twins_mix.mmd] round-trip scene differs
+twins_mix.mmd: n 6 e 6 sub 0 bars 0 | partial worst 0.70 ms route worst 0.68 ms | frame mismatch 0 | spline dev 2.33 | picks 2628 miss 0 | bar changes 0 | bad 0
+  NOTE[wide4.mmd] round-trip scene differs
+wide4.mmd: n 7 e 6 sub 0 bars 0 | partial worst 1.90 ms route worst 1.69 ms | frame mismatch 0 | spline dev 2.33 | picks 3060 miss 0 | bar changes 0 | bad 0
+  NOTE[wide_lr.mmd] round-trip scene differs
+wide_lr.mmd: n 6 e 5 sub 0 bars 0 | partial worst 1.16 ms route worst 1.11 ms | frame mismatch 0 | spline dev 2.33 | picks 2190 miss 0 | bar changes 0 | bad 0
+  NOTE[state.mmd] round-trip scene differs
+state.mmd: n 15 e 14 sub 2 bars 2 | partial worst 2.63 ms route worst 3.00 ms | frame mismatch 0 | spline dev 2.68 | picks 17376 miss 0 | bar changes 0 | bad 0
+TOTAL BAD 74

@@ -1,0 +1,11 @@
+stateDiagram-v2
+  [*] --> Waiting
+  state "Waiting for the customer to confirm the order details" as Waiting
+  state "Processing the payment with the external provider" as Paying
+  state check <<choice>>
+  Waiting --> Paying : confirmed by the customer in the app
+  Paying --> check
+  check --> Done : approved
+  check --> Waiting : declined, ask the customer to try another card
+  state "Order completed and the receipt has been emailed" as Done
+  Done --> [*]

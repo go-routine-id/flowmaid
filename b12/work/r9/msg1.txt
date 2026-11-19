@@ -1,0 +1,44 @@
+fix(blocks): a free pin on top of a member's exit takes the gap past it; the hub test is strict again (B12 fix round 6 #2; B12.11 free pins, spec 2.8)
+
+Behind the block layout only; the default build draws exactly what it drew
+(`everything_renders_as_before_with_blocks_off`, guard green).
+
+The regression of 7d21d12: in a block layout `ports::title_row_side` moves
+dense-td's `n36` exit (the turned `n36 -> n16`) out of `g8`'s chip, to the
+first place past it. `n45 -> g8`'s free pin was already there, 5 px away:
+`free_pins` saw the gap between the chip and the exit closed and left the
+pin where it stood, so the pin's arrowhead ran 24 px beside the exit's
+stroke (static min_edge_gap 12.51 -> 4.99, below GAP_FLOORS' 12.1; one
+overlap pair; the same pair in five of the six edge-line shuffles).
+
+- `ports::pin_past`: a pin that `pin_place` leaves where it is although it
+  stands closer than two strokes keep apart (`EDGE_SPACING`) to the column
+  of a member's end on a side facing the pin's takes the start of the gap
+  beyond that column, when the gap has room (spec 2.8: a pin keeps a
+  port's spacing from the member-entry columns, the corners and the chip).
+  Its channel crosses that column's leg once instead of running on it.
+  A pin merely closer than a port's spacing keeps its place
+  (blocks/nested-cases: 13 px, where moving cost a crossing); a note
+  card's link keeps its pin (B12.14), and a stub from a frame to its own
+  member is no column.
+- The gap beyond is read with such an edge crossing the side at its end's
+  column alone: the builder's slanted first leg (dense-td `n11 -> n39`,
+  50 px off) says nothing of where the ortho stage draws it. `pin_place`
+  reads the side as before.
+
+Suite-on, static, against the last commit: dense-td min_edge_gap 4.99 ->
+12.50, overlap pairs 1 -> 0, defects 1 -> 0, drawn crossings 48 -> 49 (the
+pin's channel over the exit's leg; must 74.6); the six edge-line shuffles
+the same (s1, s3-s6 overlap 1 -> 0, crossings +1; s2 unchanged); every other
+repository fixture unchanged. Bulk state/flowchart corpus with blocks on:
+no file gains a hard zero; five lose an overlap pair, one a crossing.
+
+Tests: `ports::tests::a_free_pin_on_top_of_a_members_exit_takes_the_gap_past_it`,
+`blockcheck::a_free_pin_keeps_off_a_members_exit_past_the_chip`.
+`blockcheck::a_hubs_fan_keeps_its_order_through_the_bands` asserts
+`overlap_pairs == 0` again: 7d21d12 relaxed it to `<= 1` (its message said
+no gate changed; it was this package's own test, relaxed for the
+regression this commit removes). No snapshot or gate changes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

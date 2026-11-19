@@ -1,0 +1,18 @@
+stateDiagram-v2
+  [*] --> f
+  state f <<fork>>
+  f --> Outer
+  f --> Q
+  state Outer {
+    x --> Inner
+    state Inner {
+      direction LR
+      a --> b
+      b --> c
+      c --> d
+    }
+  }
+  state j <<join>>
+  Outer --> j
+  Q --> j
+  j --> [*]

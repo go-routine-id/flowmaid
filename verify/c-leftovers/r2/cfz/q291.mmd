@@ -1,0 +1,24 @@
+classDiagram
+direction BT
+A ..> B
+A -- C
+A "1" -- "*" D
+A *-- E
+A ..> F
+E --|> G
+D "1" ..|> "*" H
+C ..> A
+G --> A
+F ..> F : f0
+F o-- F : f1
+F o-- F : f2
+F ..> F : f3
+F *-- F : f4
+A --> A
+A "1" --> "*" A : a1
+A --> A
+A ..> A : a3
+A --> A : a4
+A ..> A : a5
+A "1" --> "*" A : a6
+A o-- A

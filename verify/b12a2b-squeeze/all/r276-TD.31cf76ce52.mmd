@@ -1,0 +1,17 @@
+flowchart TD
+    subgraph G[WWW Mammoth Wombat Overview]
+        m0[charge]
+        m1[w]
+    end
+    s0[src0] -- "lbl7" --> G
+    s0 -- "lbl1" --> m1
+    s1[src1] --> G
+    s1 --> G
+    s2[src2] --> G
+    s2 --> G
+    s3[src3] -- "lbl2" --> G
+    s3 --> G
+    s4[src4] --> G
+    s4 --> m1
+    m1 --> z[end]
+    G --> z2[after]

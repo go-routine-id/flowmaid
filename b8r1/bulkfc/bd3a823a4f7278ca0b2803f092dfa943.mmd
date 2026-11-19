@@ -1,0 +1,23 @@
+flowchart LR
+    N0(Queue)
+    N1(Store emit)
+    N2[Fetch archive]
+    N3{Done}
+    N4{Notify report}
+    N5([Store validate])
+    N6((Parse))
+    N7([Notify])
+    N8(Load)
+    N9(Check)
+    N0 --> N1
+    N0 --> N2
+    N2 --> N3
+    N3 --> N4
+    N3 --> N5
+    N4 -->|next| N6
+    N4 --> N7
+    N6 --> N8
+    N6 --> N9
+    N0 --> N7
+    N9 --> N1
+    N9 -->|back| N5

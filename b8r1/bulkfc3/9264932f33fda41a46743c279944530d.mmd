@@ -1,0 +1,14 @@
+flowchart RL
+    N0([Check])
+    N1{Store load}
+    N2((Parse store))
+    N3{Archive}
+    N4{Retry}
+    N5((Check validate))
+    N0 --> N1
+    N0 -->|no| N2
+    N1 -->|fail| N3
+    N2 -->|ok| N4
+    N3 --> N5
+    N0 --> N1
+    N1 ==>|retry| N0

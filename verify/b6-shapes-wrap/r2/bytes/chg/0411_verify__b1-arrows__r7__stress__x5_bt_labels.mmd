@@ -1,0 +1,12 @@
+flowchart BT
+  s((Start)) -->|go| p{Check}
+  p -->|yes| q[/Handle/]
+  p -->|no| r[[Reject]]
+  q --> t([End])
+  r --> t
+  s --> t
+  linkStyle default interpolate stepBefore
+  linkStyle 0 stroke-width:15px
+  linkStyle 1 stroke-width:25px,stroke-dasharray:8 4
+  linkStyle 3 stroke-width:35px
+  linkStyle 5 stroke-width:12px

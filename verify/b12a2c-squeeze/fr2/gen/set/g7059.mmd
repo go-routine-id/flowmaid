@@ -1,0 +1,46 @@
+flowchart LR
+  n1["audit"]
+  n2["db auth search<br/>merge"]
+  subgraph B0["Ops"]
+    n3["search"]
+    subgraph B0s0["Ingest 0"]
+      n4["db"]
+      n5["cache"]
+      n6["auth audit auth"]
+    end
+  end
+  subgraph B1["Fulfilment desk"]
+    n7["api split merge<br/>pack"]
+    n8["cache"]
+  end
+  subgraph B2["Analytics"]
+    n9["split"]
+    n10["worker"]
+  end
+  subgraph B3["Data tier"]
+    n11["split"]
+    n12["auth"]
+    n13["split<br/>cache"]
+  end
+  n14["store"]
+  n15["notify"]
+  n3 --> n8
+  n9 -->|auth| n12
+  n11 -.->|mail| n2
+  n5 ==> n1
+  n14 -.-> n9
+  n10 --> n14
+  n5 --> n10
+  n8 --> n4
+  n6 --> n13
+  n1 --> n3
+  n5 -.-> n13
+  n4 --> n14
+  n9 --> n11
+  n10 --> n12
+  n14 -->|pack| n7
+  n14 ==> n2
+  n5 --> n4
+  n7 ==> n1
+  n3 --> n7
+  n7 -.-> n14

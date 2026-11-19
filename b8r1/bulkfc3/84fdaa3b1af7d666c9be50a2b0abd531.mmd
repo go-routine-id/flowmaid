@@ -1,0 +1,14 @@
+flowchart TD
+  A{Valid input?} -->|valid| B[Accept]
+  A -->|invalid| C[Reject]
+  A -->|unknown| D[Hold]
+  B -->|ok| E[Store]
+  C -->|ok| E
+  D -->|retry later| A
+  E -->|done| F[End]
+  E -->|failed again| G[Alert]
+  subgraph X [Fan in]
+    P1 -->|a| Q
+    P2 -->|bb| Q
+    P3 -->|ccc| Q
+  end

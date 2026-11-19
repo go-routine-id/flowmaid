@@ -1,0 +1,16 @@
+flowchart LR
+    h[hub] --> i1
+    h --> i2
+    h --> i3
+    h --> o2
+    subgraph OUT["The outer block with a fairly long title"]
+        subgraph INN["Inner block whose title is much wider than its members"]
+            i1[a]
+            i2[b]
+            i3[c]
+        end
+        o2[d]
+    end
+    i1 --> z[sink]
+    i3 --> z
+    o2 -->|back| h

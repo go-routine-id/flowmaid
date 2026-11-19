@@ -1,0 +1,41 @@
+flowchart TD
+  s0["auth db"]
+  s1["queue queue"]
+  subgraph g0["user ship zone"]
+    m0["queue user search"]
+    m1["queue order report"]
+    m2["log"]
+    m3["queue"]
+    m0 --> m1
+    m2 --> m3
+  end
+  subgraph g1["log cart zone"]
+    m4["user metric report"]
+    m5["report order web"]
+    m6["user ship"]
+    m7["pay report"]
+    m8["queue"]
+    m4 --> m5
+    m4 --> m6
+    m5 --> m7
+    m4 --> m8
+  end
+  subgraph g2["index zone"]
+    m9["ship"]
+    m10["web store"]
+    m11["user search"]
+    m12["report cache ship"]
+    m9 --> m10
+    m10 --> m12
+  end
+  subgraph g3["user zone"]
+    m13["order db ship"]
+    m14["api search pay"]
+    m13 --> m14
+  end
+  s0 --> m0
+  s1 --> g1
+  s0 --> g2
+  s1 --> m13
+  m8 --> m11
+  m13 --> m9

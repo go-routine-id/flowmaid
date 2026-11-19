@@ -1,0 +1,203 @@
+diff --git a/src/layout.rs b/src/layout.rs
+index 01a253d..47efff1 100644
+--- a/src/layout.rs
++++ b/src/layout.rs
+@@ -5025,6 +5079,7 @@ fn place(
+     // downstream, so the frames opening and closing next to it along
+     // the flow keep their gap ([`f1_flow_short`]; the layer lines read
+     // the frames' reach).
++    let mut flow_short: Vec<f64> = Vec::new();
+     if let (Some(_), Some(nc), true) = (block_paths, node_cluster, horizontal) {
+         let gap_l = g.rank_gap.unwrap_or(GAP_L);
+         let short = f1_flow_short(g, nc, n, &layers, &alayer, &alsize, &cluster_span, gap_l);
+@@ -5041,6 +5096,7 @@ fn place(
+                 }
+             }
+         }
++        flow_short = short;
+     }
+ 
+     // A block layout's jog room (B12 F2): what each frame grows on its
+@@ -5863,10 +5919,25 @@ fn place(
+     }
+     let total_b = (maxb - minb) + 2.0 * MARGIN;
+ 
++    // B12 X4: sibling frames of a band start (and end) level.
++    let lpos = match (block_paths, node_cluster) {
++        (Some(_), Some(nc)) => level_sibling_frames(
++            g,
++            nc,
++            &alayer,
++            &alsize,
++            &lcoord,
++            &cluster_span,
++            &header,
++            &title_jog,
++            &flow_short,
++        ),
++        _ => (0..n).map(|v| lcoord[alayer[v]]).collect(),
++    };
+     let nodes = (0..n)
+         .map(|v| Placed {
+             b: bpos[v],
+-            l: lcoord[alayer[v]],
++            l: lpos[v],
+             bsize: absize[v],
+             lsize: alsize[v],
+             layer: alayer[v],
+@@ -5959,6 +6030,155 @@ const TITLE_FIT_PASSES: usize = 2;
+ /// already: float noise of the breadth placement.
+ const TITLE_FIT_EPS: f64 = 0.5;
+ 
++/// B12 X4: the nodes' positions along the flow in a block layout. A
++/// node is centred on its layer line, with one exception that levels
++/// sibling frames: on a layer that is the first row of two or more
++/// sibling blocks (one parent, so one band), the first-row members of
++/// each block (at any depth) move upstream, as one group per block,
++/// until the block's frame leading edge coincides with the earliest of
++/// them. A frame's leading edge is its first-row members' upstream
++/// edges less, per frame from that block inwards that opens on the
++/// layer, what the scene's frame reaches past them there: [`FRAME_PAD`],
++/// in TD the title strip and the jog room ([`title_jogs`]), in LR / RL
++/// half the title length the layout reserves ([`f1_flow_short`]). The
++/// same holds downstream on a layer that is the last row of two or more
++/// sibling blocks that do not share their first row (a source block
++/// ends on its band's last layer). Deeper sibling groups are levelled
++/// first; an outer block's group then moves its levelled inner frames
++/// as one. The shift is a layout coordinate, not a frame rule: frames
++/// stay functions of their own members, so `route()` at the scene's
++/// centres draws them the same. It needs no extra room: the earliest
++/// leading edge is one the layer lines already reserve (`reach_of`).
++/// Without it, sibling frames of a band whose first rows differ in
++/// height started apart and read as interleaved (the public fixture's
++/// build pipeline beside the shared services: `sib_stagger`).
++#[allow(clippy::too_many_arguments)] // internal: one bundle of layered-graph state
++fn level_sibling_frames(
++    g: &Graph,
++    nc: &[Vec<usize>],
++    alayer: &[usize],
++    alsize: &[f64],
++    lcoord: &[f64],
++    cluster_span: &BTreeMap<usize, (usize, usize)>,
++    header: &[f64],
++    title_jog: &[f64],
++    flow_short: &[f64],
++) -> Vec<f64> {
++    let n = g.nodes.len();
++    let mut lpos: Vec<f64> = (0..n).map(|v| lcoord[alayer[v]]).collect();
++    let strip_lo = matches!(g.direction, Direction::TD);
++    let strip_hi = matches!(g.direction, Direction::BT);
++    // What frame `c` reaches past a member on its first (`hi` false)
++    // or last row.
++    let grow = |c: usize, hi: bool| -> f64 {
++        let strip = if hi { strip_hi } else { strip_lo };
++        FRAME_PAD
++            + flow_short.get(c).copied().unwrap_or(0.0) / 2.0
++            + if strip {
++                header[c] + title_jog.get(c).copied().unwrap_or(0.0)
++            } else {
++                0.0
++            }
++    };
++    // The members of block `c` on row `li` and its leading (`hi` false)
++    // or trailing edge along the flow from them.
++    let row_of = |c: usize, li: usize| -> Vec<usize> {
++        (0..n)
++            .filter(|&v| alayer[v] == li && nc[v].contains(&c))
++            .collect()
++    };
++    let edge = |c: usize, li: usize, hi: bool, lpos: &[f64]| -> Option<f64> {
++        let mut out: Option<f64> = None;
++        for v in row_of(c, li) {
++            let at = nc[v].iter().position(|&x| x == c).unwrap_or(0);
++            let mut reach = 0.0;
++            for &c2 in &nc[v][at..] {
++                if let Some(&(lo, hi_l)) = cluster_span.get(&c2) {
++                    if (if hi { hi_l } else { lo }) == li {
++                        reach += grow(c2, hi);
++                    }
++                }
++            }
++            let e = if hi {
++                lpos[v] + alsize[v] / 2.0 + reach
++            } else {
++                lpos[v] - alsize[v] / 2.0 - reach
++            };
++            out = Some(out.map_or(e, |o: f64| if hi { o.max(e) } else { o.min(e) }));
++        }
++        out
++    };
++    let depth = |c: usize| {
++        let mut d = 0usize;
++        let mut p = g.subgraphs[c].parent;
++        while let Some(q) = p {
++            d += 1;
++            p = g.subgraphs[q].parent;
++        }
++        d
++    };
++    let mut moved = vec![false; n];
++    for hi in [false, true] {
++        // Sibling blocks by (parent, row), deepest parents first.
++        let mut groups: BTreeMap<(usize, Option<usize>, usize), Vec<usize>> = BTreeMap::new();
++        for (&c, &(lo, hi_l)) in cluster_span {
++            groups
++                .entry((
++                    usize::MAX - depth(c),
++                    g.subgraphs[c].parent,
++                    if hi { hi_l } else { lo },
++                ))
++                .or_default()
++                .push(c);
++        }
++        for ((_, _, li), blocks) in groups {
++            let blocks: Vec<usize> = if hi {
++                // Downstream: only blocks that do not share their first
++                // row with a sibling.
++                blocks
++                    .iter()
++                    .copied()
++                    .filter(|&c| {
++                        let first = cluster_span[&c].0;
++                        !blocks
++                            .iter()
++                            .any(|&d| d != c && cluster_span[&d].0 == first)
++                    })
++                    .collect()
++            } else {
++                blocks
++            };
++            if blocks.len() < 2 {
++                continue;
++            }
++            let edges: Vec<(usize, f64)> = blocks
++                .iter()
++                .filter_map(|&c| edge(c, li, hi, &lpos).map(|e| (c, e)))
++                .collect();
++            let target = edges.iter().map(|e| e.1).fold(
++                if hi { f64::NEG_INFINITY } else { f64::INFINITY },
++                |a, b| if hi { a.max(b) } else { a.min(b) },
++            );
++            for (c, e) in edges {
++                let d = target - e;
++                if d.abs() < ALIGN_EPS {
++                    continue;
++                }
++                let row = row_of(c, li);
++                // A one-row block levelled on its first row keeps it.
++                if hi && row.iter().any(|&v| moved[v]) {
++                    continue;
++                }
++                for v in row {
++                    lpos[v] += d;
++                    moved[v] = true;
++                }
++            }
++        }
++    }
++    lpos
++}
++
+ /// Each block's F1 frame across the flow at these breadths (TD / BT;
+ /// `scene::frame_boxes` in layout coordinates, without the jog room,
+ /// which grows the frame along the flow): its direct members' boxes

@@ -1,0 +1,32 @@
+{"tool":"structdump","flowmaid":"0.38.0","kind":"flowchart","direction":"TD",
+"nodes":[
+ {"id":"x","label":"x","shape":"Rect","sub":null},
+ {"id":"y","label":"y","shape":"Rect","sub":null},
+ {"id":"a","label":"a","shape":"Rect","sub":0},
+ {"id":"n1","label":"n1","shape":"Rect","sub":1},
+ {"id":"n2","label":"n2","shape":"Rect","sub":1},
+ {"id":"b","label":"b","shape":"Rect","sub":0}],
+"subgraphs":[
+ {"id":"S","title":"Service","parent":null,"direction":null,"nodes":[2,5]},
+ {"id":"N","title":"Inner","parent":0,"direction":null,"nodes":[3,4]}],
+"edges":[
+ {"from":{"n":0},"to":{"n":1},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":3},"to":{"n":4},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":2},"to":{"n":5},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"s":0},"to":{"s":0},"label":null,"kind":"Arrow","drawn":true}],
+"scene":{"width":240.000,"height":483.000,
+ "nodes":[
+  {"id":"x","x":28.000,"y":68.000,"w":54.000,"h":38.000},
+  {"id":"y","x":28.000,"y":166.000,"w":54.000,"h":38.000},
+  {"id":"a","x":130.000,"y":68.000,"w":54.000,"h":38.000},
+  {"id":"n1","x":130.000,"y":290.000,"w":54.000,"h":38.000},
+  {"id":"n2","x":130.000,"y":388.000,"w":54.000,"h":38.000},
+  {"id":"b","x":130.000,"y":166.000,"w":54.000,"h":38.000}],
+ "clusters":[
+  {"id":"S","x":102.000,"y":28.000,"w":110.000,"h":426.000,"depth":0},
+  {"id":"N","x":116.000,"y":250.000,"w":82.000,"h":190.000,"depth":1}],
+ "edges":[
+  {"from":"x","to":"y","routed":false,"label":null,"points":[[55.000,106.000],[55.000,136.000],[55.000,136.000],[55.000,166.000]]},
+  {"from":"n1","to":"n2","routed":false,"label":null,"points":[[157.000,328.000],[157.000,358.000],[157.000,358.000],[157.000,388.000]]},
+  {"from":"a","to":"b","routed":false,"label":null,"points":[[157.000,106.000],[157.000,136.000],[157.000,136.000],[157.000,166.000]]},
+  {"from":"S","to":"S","routed":false,"label":null,"points":[[157.000,454.000],[157.000,454.000],[157.000,454.000],[157.000,454.000]]}]}}

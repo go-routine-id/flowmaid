@@ -1,0 +1,35 @@
+fix(blocks): the step between a whole block's pin and its channel takes a track of its gap (B12.6 fix round 3 #2; B12.9 G2 in part)
+
+An edge to or from a whole block is cut back to that block's frame, and
+its end there is a pin within the frame's side. Its channel runs beside
+whatever broader block stands next along the flow, so the edge steps
+across between pin and channel in the gap at that border. The layout did
+not see that step: inside the cut block the stand-in's chain runs on
+under its channel, undrawn, so the gap kept no track for it. Two stacked
+blocks then stood a frame gap (18 px) apart, and the steps of the lower
+block's two turned edges were drawn a few px inside the border of the
+block above, which holds neither end of them (the verifier's
+y2-turned-blocks: xframe_runs 0 at the start, 3 as blocks; 2 left to
+right).
+
+In a block layout the tracks of a gap (`place`, `track_need`) now count
+that step from the pin's place (the channel's column kept within the
+block's members, as `scene::cut_to_frames` keeps it), and the pair
+across the cut border no longer counts the undrawn run. Behind the
+switch: `frame_cut` is read only with `block_paths`.
+
+- New fixture tests/fixtures/blocks/turned-blocks.mmd (the verifier's
+  reproduction; nothing of the local inputs), with its row in
+  identity.tsv (recorded with the switch off; its SVG is byte-identical
+  to the start binary's) and in BLOCK_CEILINGS (the start's values:
+  x_drawn 4 | 5 -> the larger of that and 1.1 x + 2).
+- New test the_steps_of_a_whole_blocks_turned_edges_stay_in_their_gap:
+  the DRAWN edges in all four directions (out of the upstream side,
+  never inside the block between, never back into their own block), the
+  room between the two frames, and edge_frame_pairs 0 static.
+
+No snapshot or gate changes. Local acceptance inputs: crossings, bands
+and breadths unchanged.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

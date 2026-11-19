@@ -1,0 +1,14 @@
+flowchart TD
+    subgraph G[MMMM WWWW QQQQ]
+        m0[charge]
+        m1[ledger]
+        m2[auth service]
+        m0 --> m1
+    end
+    s0[src0] --> G
+    s0 --> m0
+    s1[src1] -- "lbl6" --> G
+    s1 -- "lbl6" --> m2
+    s2[src2] --> G
+    s3[src3] -- "lbl6" --> m1
+    s3 --> G

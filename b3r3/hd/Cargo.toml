@@ -1,0 +1,6 @@
+[package]
+name = "hd"
+version = "0.1.0"
+edition = "2021"
+[dependencies]
+flowmaid = { path = "/home/user/flowmaid" }

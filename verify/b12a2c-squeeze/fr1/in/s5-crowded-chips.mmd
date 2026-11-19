@@ -1,0 +1,15 @@
+flowchart TD
+  subgraph Front [Frontend tier]
+    f1[Web] --> f2[Mobile]
+    f2 --> f3[Admin console]
+  end
+  subgraph Back [Backend tier]
+    b1[API] --> b2[Workers]
+    b2 --> b3[Database]
+  end
+  f1 -->|rest calls over https| b1
+  f2 -->|push notifications| b2
+  f3 -->|admin operations| b3
+  f1 -->|websocket events| b2
+  f3 -->|reports export| b1
+  f2 -->|analytics beacons| b3

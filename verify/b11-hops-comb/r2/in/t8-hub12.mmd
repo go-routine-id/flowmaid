@@ -1,0 +1,18 @@
+flowchart TD
+  r1 --> hub[Central dispatcher]
+  r2 --> hub
+  r3 --> hub
+  hub --> x1 & x2 & x3 & x4 & x5 & x6
+  hub -->|deep| y1
+  hub -->|deeper| y2
+  hub -.->|deepest| z1
+  x1 --> y1
+  x6 --> y2
+  x2 --> y1
+  x5 --> y2
+  y1 --> z1
+  y2 --> z1
+  x3 --> z1
+  hub ==> z2
+  x4 --> z2
+  y1 --> z2

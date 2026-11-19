@@ -1,0 +1,7 @@
+architecture-beta
+    group g(server)[Services]
+    service a(server)[Alpha] in g
+    service b(database)[Beta] in g
+    service c(disk)[Gamma] in g
+    a:R -[publishes order events to]-> L:b
+    a:B -[reads configuration]-> T:c

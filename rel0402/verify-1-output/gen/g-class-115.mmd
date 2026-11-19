@@ -1,0 +1,51 @@
+classDiagram
+direction TB
+C21 "1" --> "*" C0
+C1 <--> C22
+C12 *-- C5
+C20 -- C17
+C18 *-- C19 : Long label here
+C25 o-- C0
+C15 <--> C5
+C10 "1" ..> "*" C7
+C7 "1" -- "*" C23 : gamma
+C18 --> C14 : 日本語
+C13 "1" -- "*" C0 : Customer Order
+C14 --> C22 : alpha
+C11 ..> C16
+C9 <|-- C26
+C4 -- C3
+C18 ..|> C12
+note for C7 "<b>bold</b>"
+class C0 {
+  +int id
+  +name() String
+}
+class C1 {
+  +int id
+  +name() String
+}
+class C5 {
+  +int id
+  +name() String
+}
+class C14 {
+  +int id
+  +name() String
+}
+class C15 {
+  +int id
+  +name() String
+}
+class C18 {
+  +int id
+  +name() String
+}
+class C21 {
+  +int id
+  +name() String
+}
+class C23 {
+  +int id
+  +name() String
+}

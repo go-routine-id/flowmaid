@@ -1,0 +1,27 @@
+flowchart RL
+  subgraph F0 [Frame 0]
+    n3{{Node 3}}
+  end
+  subgraph F1 [Frame 1]
+    direction TB
+  end
+  subgraph F2 [Frame 2]
+    n2>Node 2]
+    n8[Node 8]
+  end
+  n9 --x n11
+  n10 --- F0
+  n13 x--x F1
+  n14 --> n2
+  n13 -.->|dot| n5
+  n8 ==> n11
+  n7 -->|lbl| n8
+  n7 -.-> n0
+  n1 --- n5
+  n6 <-.-> n8
+  n11 <-.-> n1
+  n7 --> n5
+  n11 -.-> n6
+  n3 <-.-> n13
+  n5 <==> n5
+  n2 --- n14

@@ -1,0 +1,16 @@
+flowchart RL
+  start --> W
+  subgraph W[Work]
+    load --> check
+    check --> fix
+    fix --> ship
+    subgraph R[Retry]
+      plan --> run
+      run --> report
+      run --> verify
+      verify --> gate{gate}
+      gate -->|redo| run
+      gate -->|restart| plan
+    end
+    check --> R
+  end

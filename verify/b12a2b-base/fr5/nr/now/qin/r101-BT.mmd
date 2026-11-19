@@ -1,0 +1,19 @@
+flowchart BT
+    subgraph O[Payments]
+        subgraph G[Data ingestion workers]
+            m0[queue]
+            m1[db]
+            m2[auth service]
+        end
+        k[k]
+    end
+    m0 --> k
+    m1 --> k
+    m2 --> k
+    s0[src0] --> G
+    s1[src1] --> m1
+    s2[src2] --> G
+    s3[src3] --> G
+    s4[src4] --> O
+    s4 -- "lbl5" --> m2
+    m2 --> z[end]

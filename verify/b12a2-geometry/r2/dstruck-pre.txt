@@ -1,0 +1,14 @@
+bench-75-BT.svg	data zone	dist=-1
+blocks-overview-BT.svg	Edge and shared services	dist=0.4
+blocks-overview-actors-reversed-BT.svg	Edge and shared services	dist=0.4
+blocks-overview-bt-BT.svg	Edge and shared services	dist=0.4
+blocks-overview-edges-reversed-BT.svg	Edge and shared services	dist=0.4
+blocks-overview-edges-rotated-BT.svg	Edge and shared services	dist=0.4
+blocks-overview-lr-BT.svg	Edge and shared services	dist=0.4
+blocks-overview-rl-BT.svg	Edge and shared services	dist=0.4
+blocks-overview-subgraphs-reversed-BT.svg	Edge and shared services	dist=0.4
+dense-td-BT.svg	veniam sed	dist=-1
+dense-td-RL.svg	consectetur nostrud lorem	dist=-1
+dense-td-TD.svg	lorem labore	dist=-1
+dense-td-TD.svg	consectetur nostrud lorem	dist=-1
+lr-BT.svg	Edge and shared services with a long tit	dist=-1

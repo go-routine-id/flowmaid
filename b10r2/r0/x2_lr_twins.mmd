@@ -1,0 +1,13 @@
+flowchart LR
+    U[User] -->|login| G{Gate}
+    G -->|ok| S[Session]
+    G -->|denied| U
+    S -->|refresh| S2[Token]
+    S2 -->|expired| G
+    S <-->|sync| C[(Cache)]
+    S -->|read| C
+    C -.->|miss| D[(DB)]
+    S --> D
+    U --> D
+    D -->|audit| L[Log]
+    G --> L

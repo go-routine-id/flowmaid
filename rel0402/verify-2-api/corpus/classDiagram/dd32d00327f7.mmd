@@ -1,0 +1,18 @@
+classDiagram
+direction RL
+A --> B
+B "1" o-- "*" C
+B ..> D : has many of
+C "1" <|-- "*" E : x
+A o-- E
+B o-- B : b0
+B --> B
+D --> D : d0
+D ..> D
+D --> D : d2
+C o-- C
+class E {
+ +int id
+ +run() void
+ +stop()
+}

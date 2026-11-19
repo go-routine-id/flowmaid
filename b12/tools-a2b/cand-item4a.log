@@ -1,0 +1,18 @@
+run-checks.sh 2026-11-17T18:30:58Z: outdir /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/tools-a2b/cand-item4a, mode tree /home/user/flowmaid, only local,gates,dirs; 8 GB free on /
+build.sh: Finished `release` profile [optimized] target(s) in 1.12s; binaries in /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/tools-a2b/cand-item4a/bin
+  build.sh 139 s (exit 0)
+  build: src=/home/user/flowmaid
+  build: commit=4d374f8f735a2d452fe185cdfa52523e2abe21d3
+  build: dirty_files=1
+  build: rustflags=--cfg flowmaid_blocks
+  build: rustc=rustc 1.97.0 (2d8144b78 2026-07-07)
+  build: built=2026-11-17T18:33:17Z
+rejudge.sh cand-item4a: 95 static SVGs (0 missing), 95 routed | live judge --due A2 87 must-fail, --due A1 0, routed 37
+  fmrun.sh 13 s (exit 0)
+trun.sh: 14 failing; FAILED. 1185 passed; 8 failed; 5 ignored; 0 measured; 0 filtered out; finished in 26.28s; quality: FAILED. 9 passed; 6 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.32s
+  trun.sh 30 s (exit 0)
+qrun.sh: dirs 332 copies x static/routed
+qrun.sh: dirsx 32 copies x static/routed
+  qrun.sh 13 s (exit 0)
+run-checks.sh: done in 195 s (exit 0). Compare with: /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/tools-a2b/compare.sh <baseline-outdir> /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/tools-a2b/cand-item4a
+removed:  /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/tools-a2b/scratch/target-tree-26192

@@ -1,0 +1,25 @@
+flowchart BT
+    subgraph G0[Edge 0]
+        g0m0[g0m0]
+        g0m1[g0m1]
+    end
+    subgraph G1[Order processing 1]
+        subgraph H1[inner 1]
+            g1m0[g1m0]
+            g1m1[g1m1]
+        end
+    end
+    subgraph G2[Payments 2]
+        g2m0[g2m0]
+        g2m1[g2m1]
+        g2m2[g2m2]
+        g2m3[g2m3]
+    end
+    g2m3 --> g1m0
+    o0 --> g2m3
+    g0m0 --> g2m2
+    g2m1 --> G2
+    g2m3 --> g0m1
+    g2m3 --> g2m1
+    g2m3 --> g0m0
+    g2m3 -.-> g0m0

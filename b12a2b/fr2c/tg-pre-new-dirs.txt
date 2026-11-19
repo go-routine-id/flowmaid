@@ -1,0 +1,15 @@
+blocks.blocks-overview-BT.svg	Edge and shared services	A 1.45 CDN → GATE: cache miss	B 1.45 CDN → GATE: cache miss
+blocks.blocks-overview-actors-reversed-BT.svg	Edge and shared services	A 1.45 CDN → GATE: cache miss	B 1.45 CDN → GATE: cache miss
+blocks.blocks-overview-bt-BT.svg	Edge and shared services	A 1.45 CDN → GATE: cache miss	B 1.45 CDN → GATE: cache miss
+blocks.blocks-overview-edges-reversed-BT.svg	Edge and shared services	A 1.45 CDN → GATE: cache miss	B 1.45 CDN → GATE: cache miss
+blocks.blocks-overview-edges-rotated-BT.svg	Edge and shared services	A 1.45 CDN → GATE: cache miss	B 1.45 CDN → GATE: cache miss
+blocks.blocks-overview-lr-BT.svg	Edge and shared services	A 1.45 CDN → GATE: cache miss	B 1.45 CDN → GATE: cache miss
+blocks.blocks-overview-rl-BT.svg	Edge and shared services	A 1.45 CDN → GATE: cache miss	B 1.45 CDN → GATE: cache miss
+blocks.blocks-overview-subgraphs-reversed-BT.svg	Edge and shared services	A 1.45 CDN → GATE: cache miss	B 1.45 CDN → GATE: cache miss
+blocks.lr-BT.svg	Edge and shared services with a long title	A 0.00 cart → PAGER: page	B 0.00 cart → PAGER: page
+quality.bench-75-BT.svg	data zone	A 0.00 objects → logs	B 0.00 objects → logs
+quality.dense-td-BT.svg	aliqua magna tempor	A 3.85 n11 → n37: nostrud	B 3.85 n11 → n37: nostrud
+quality.dense-td-BT.svg	veniam sed	A 0.00 n20 → n37: laboris ullamco adipiscing	B 0.00 n20 → n37: laboris ullamco adipiscing
+quality.dense-td-RL.svg	consectetur nostrud lorem	A 0.00 n16 → n44: sed dolor aliqua	B 0.00 n16 → n44: sed dolor aliqua
+quality.dense-td-TD.svg	lorem labore	A 0.00 n16 → n44: sed dolor aliqua	B 0.00 n16 → n44: sed dolor aliqua
+quality.dense-td-TD.svg	consectetur nostrud lorem	A 0.00 n16 → n43: do labore	B 0.00 n16 → n43: do labore

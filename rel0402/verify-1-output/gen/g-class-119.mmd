@@ -1,0 +1,49 @@
+classDiagram
+direction RL
+C6 "1" -- "*" C2 : x
+C9 o-- C5
+C7 -- C7
+C9 <|-- C4
+C2 <--> C9
+C1 *-- C1
+C8 "1" <|-- "*" C7 : Long label here
+C6 ..> C9
+C0 ..|> C3
+C1 ..|> C1 : Customer Order
+C8 ..|> C9
+C0 *-- C8 : a&b
+C0 <|-- C4 : gamma
+C5 *-- C0 : x
+C1 -- C5
+C0 --> C6
+C0 "1" --> "*" C2
+C4 ..|> C7
+C5 "1" *-- "*" C0
+C2 ..|> C6 : a&b
+C9 --> C1 : alpha
+C0 ..|> C8
+C3 --> C7
+C3 <|-- C4
+C5 <|-- C5
+C2 o-- C9 : <b>bold</b>
+C9 ..> C8
+C3 <|-- C6
+C4 "1" <--> "*" C5 : x
+note for C5 "beta"
+note for C5 "alpha"
+class C1 {
+  +int id
+  +name() String
+}
+class C3 {
+  +int id
+  +name() String
+}
+class C4 {
+  +int id
+  +name() String
+}
+class C5 {
+  +int id
+  +name() String
+}

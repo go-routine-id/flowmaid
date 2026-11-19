@@ -1,0 +1,83 @@
+{
+ "mind": {
+  "pts": 209746,
+  "agree": 177279,
+  "text": 32268,
+  "mism": {
+   "BG vs Node(N)": 64,
+   "BG vs Link(N)": 80,
+   "Link(N) vs Node(N)": 4,
+   "Link(N) vs Link(N)": 10,
+   "Node(N) vs Link(N)": 10,
+   "Node(N) vs None": 25,
+   "Link(N) vs None": 6
+  },
+  "ex": [
+   "g-mind-000 (1376.5,408.5) browser=BG rust=Node(10)",
+   "g-mind-000 (1276.5,1104.5) browser=BG rust=Link(71)",
+   "g-mind-000 (1064.5,2060.5) browser=BG rust=Node(79)",
+   "g-mind-000 (1360.5,372.5) browser=BG rust=Node(10)",
+   "g-mind-000 (1252.5,1032.5) browser=Link(73) rust=Node(0)",
+   "g-mind-000 (916.5,1856.5) browser=BG rust=Link(79)",
+   "g-mind-000 (1396.5,432.5) browser=BG rust=Node(11)",
+   "g-mind-000 (1904.5,540.5) browser=BG rust=Node(27)",
+   "g-mind-000 (856.5,1592.5) browser=BG rust=Node(85)",
+   "g-mind-000 (2000.5,1540.5) browser=BG rust=Link(56)",
+   "g-mind-000 (1296.5,420.5) browser=BG rust=Node(3)",
+   "g-mind-000 (1940.5,1616.5) browser=BG rust=Link(60)"
+  ]
+ },
+ "pie": {
+  "pts": 81511,
+  "agree": 72897,
+  "text": 7918,
+  "mism": {
+   "BG vs Legend(N)": 685,
+   "BG vs Slice(N)": 1,
+   "SLICE|#NaNcdN vs None": 1,
+   "SLICE|#NaNe vs None": 1,
+   "BG vs Label { label: N, slice: N }": 5,
+   "SLICE|#NaNc vs None": 2,
+   "SLICE|#NbNdcN vs None": 1
+  },
+  "ex": [
+   "g-pie-000 (400.5,128.5) browser=BG rust=Legend(0)|#5b6dc0|false",
+   "g-pie-000 (400.5,132.5) browser=BG rust=Legend(0)|#5b6dc0|false",
+   "g-pie-000 (400.5,136.5) browser=BG rust=Legend(0)|#5b6dc0|false",
+   "g-pie-000 (400.5,140.5) browser=BG rust=Legend(0)|#5b6dc0|false",
+   "g-pie-000 (328.5,144.5) browser=BG rust=Legend(0)|#5b6dc0|false",
+   "g-pie-000 (332.5,144.5) browser=BG rust=Legend(0)|#5b6dc0|false",
+   "g-pie-000 (336.5,144.5) browser=BG rust=Legend(0)|#5b6dc0|false",
+   "g-pie-000 (340.5,144.5) browser=BG rust=Legend(0)|#5b6dc0|false",
+   "g-pie-000 (344.5,144.5) browser=BG rust=Legend(0)|#5b6dc0|false",
+   "g-pie-000 (348.5,144.5) browser=BG rust=Legend(0)|#5b6dc0|false",
+   "g-pie-000 (352.5,144.5) browser=BG rust=Legend(0)|#5b6dc0|false",
+   "g-pie-000 (356.5,144.5) browser=BG rust=Legend(0)|#5b6dc0|false"
+  ]
+ },
+ "sankey": {
+  "pts": 120541,
+  "agree": 114445,
+  "text": 6045,
+  "mism": {
+   "Link(N) vs Link(N)": 14,
+   "BG vs Link(N)": 18,
+   "Link(N) vs None": 14,
+   "Node(N) vs None": 5
+  },
+  "ex": [
+   "g-sankey-000 (108.5,68.5) browser=Link(7) rust=Link(6)",
+   "g-sankey-000 (184.5,112.5) browser=Link(7) rust=Link(10)",
+   "g-sankey-000 (260.5,136.5) browser=Link(5) rust=Link(10)",
+   "g-sankey-000 (44.5,288.5) browser=Link(15) rust=Link(17)",
+   "g-sankey-000 (264.5,296.5) browser=Link(20) rust=Link(18)",
+   "g-sankey-001 (256.5,36.5) browser=BG rust=Link(0)",
+   "g-sankey-001 (184.5,116.5) browser=Link(8) rust=Link(3)",
+   "g-sankey-001 (52.5,176.5) browser=BG rust=Link(3)",
+   "g-sankey-001 (152.5,376.5) browser=BG rust=Link(10)",
+   "g-sankey-001 (516.5,316.5) browser=Link(10) rust=None",
+   "g-sankey-001 (392.5,328.5) browser=Link(10) rust=None",
+   "g-sankey-002 (256.5,124.5) browser=Link(1) rust=Link(17)"
+  ]
+ }
+}

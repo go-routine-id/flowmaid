@@ -1,0 +1,19 @@
+flowchart TD
+    A[Ingest] --> B[Parse]
+    B --> C[Validate]
+    C --> D[Enrich]
+    D --> E[Store]
+    E --> F[Index]
+    A -->|raw copy| E
+    A -.->|audit trail| F
+    B ==> F
+    A --> D
+    subgraph core [Core pipeline]
+      C
+      D
+    end
+    X[Monitor] --> C
+    X --> F
+    X -->|alerts| A
+    Y[(Archive)] --> F
+    B --> Y

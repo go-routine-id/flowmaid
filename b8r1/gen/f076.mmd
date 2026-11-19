@@ -1,0 +1,55 @@
+flowchart TD
+  n0["do ipsum<br/>elit do do labore"]
+  subgraph g0["dolor eiusmod elit eiusmod veniam"]
+    direction LR
+    n1("eiusmod veniam<br/>lorem dolor laboris incididunt<br/>sit elit")
+    n2["nostrud sit aliqua<br/>lorem<br/>adipiscing"]
+    n3("ullamco ullamco<br/>labore veniam ut consectetur")
+    n4["incididunt adipiscing labore nostrud<br/>ut amet veniam<br/>ullamco nostrud"]
+    n5["ullamco"]
+  end
+  subgraph g1["dolor aliqua incididunt incididunt sit amet veniam"]
+    n6["ipsum ullamco<br/>labore nostrud dolor<br/>ipsum"]
+    n7[("sit sit ut<br/>dolor<br/>ut incididunt magna")]
+    n8("ipsum do incididunt<br/>elit")
+    n9[("magna adipiscing")]
+  end
+  subgraph g2["consectetur aliqua do aliqua lorem adipiscing veniam ut magna aliqua adipiscing"]
+    direction LR
+    n10("sit sit consectetur elit<br/>adipiscing aliqua veniam<br/>sed labore aliqua ullamco")
+    n11(["sed consectetur labore magna"])
+    n12[("amet lorem<br/>magna<br/>ut")]
+    n13[("incididunt<br/>sed<br/>ullamco tempor")]
+    n14(["dolor ipsum"])
+    n15(["amet magna ut"])
+    n10 --> n11
+  end
+  subgraph g3["sed aliqua amet"]
+    direction TB
+    n16(["elit do nostrud<br/>labore<br/>amet magna"])
+    n17("amet sit")
+    n18[("laboris consectetur laboris<br/>do labore incididunt<br/>ut tempor eiusmod")]
+    n19[("dolor laboris ut<br/>amet sed ut<br/>ipsum")]
+    n20["dolor"]
+    n21["consectetur<br/>ut<br/>elit veniam ut"]
+  end
+  subgraph g4["amet ullamco magna ullamco amet"]
+    direction TB
+    n22[("ipsum eiusmod eiusmod<br/>elit aliqua ullamco<br/>ullamco veniam")]
+    n23(["do<br/>laboris aliqua<br/>consectetur eiusmod"])
+    n24["elit ullamco<br/>incididunt<br/>magna dolor ullamco ut"]
+    n25("elit dolor aliqua<br/>eiusmod eiusmod aliqua<br/>veniam eiusmod do ullamco")
+    n26("tempor veniam elit do")
+  end
+  n27(["magna nostrud"])
+  n28(["elit<br/>eiusmod"])
+  n29(["nostrud ut"])
+  n0 --> g0
+  n0 --> g1
+  n0 ==> g2
+  n0 --> g3
+  n0 --> g4
+  n0 --> n27
+  n0 --> n28
+  n0 --> n29
+  n22 --> n5

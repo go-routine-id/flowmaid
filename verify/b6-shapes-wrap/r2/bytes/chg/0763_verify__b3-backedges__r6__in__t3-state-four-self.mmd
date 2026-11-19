@@ -1,0 +1,9 @@
+stateDiagram-v2
+  [*] --> Idle
+  Idle --> Busy : start
+  Busy --> Busy : tick
+  Busy --> Busy : progress update
+  Busy --> Busy : heartbeat
+  Busy --> Busy : retry
+  Busy --> Idle : done
+  Idle --> [*]

@@ -1,0 +1,15 @@
+file	frames	partial_worst	partial_mean	route_worst	route_mean
+advanced	168	1.67	0.66	2.00	0.89
+back-edge	72	0.63	0.14	0.65	0.17
+bench-75	252	7.69	3.38	17.79	9.99
+demo	72	0.72	0.15	0.97	0.18
+dense-lr	624	5.64	1.98	8.73	4.51
+dense-td	552	7.56	2.42	12.48	6.89
+fanout-frames	264	2.99	0.45	2.92	0.62
+fanout	108	1.58	0.45	1.57	0.51
+long-labels	60	0.83	0.15	0.77	0.18
+lr	84	0.79	0.18	0.84	0.21
+shapes	132	0.63	0.15	0.51	0.14
+stress	48	1.41	0.40	1.75	0.43
+subgraph	96	0.83	0.16	0.60	0.16
+wide-labels	72	2.08	0.81	2.69	1.32

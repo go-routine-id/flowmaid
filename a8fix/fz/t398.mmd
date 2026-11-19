@@ -1,0 +1,22 @@
+architecture-beta
+group g0(cloud)[Observability]
+group g1(disk)[Data]
+group g2(cloud)[Observability] in g0
+service s0(cloud)[Service 0] in g2
+service s1(database)[Service 1] in g2
+service s2(disk)[Service 2]
+service s3(database)[Service 3]
+service s4(internet)[Service 4] in g2
+service s5(database)[Service 5] in g0
+service s6(server)[Service 6]
+s2:T --> B:s6
+s3:B -- T:s4
+s1:L -- R:s2
+s1:T --> B:s0
+s5:L -- R:s6
+s5:B --> L:s0
+s5:L --> R:s2
+s6:L --> B:s0
+s3:T --> R:s5
+s4:L --> R:s6
+s4:R --> L:s2

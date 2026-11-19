@@ -1,0 +1,18 @@
+flowchart LR
+    N0(Fetch notify)
+    N1([Fetch])
+    N2([Validate archive])
+    N3(Queue)
+    N4{Parse}
+    N5{Done queue}
+    N6{Archive parse}
+    N0 --> N1
+    N1 -->|next| N2
+    N0 --> N3
+    N2 -->|next| N4
+    N2 --> N5
+    N5 -->|yes| N6
+    N4 --> N5
+    N6 ==> N2
+    N4 --> N1
+    N3 -.->|back| N2

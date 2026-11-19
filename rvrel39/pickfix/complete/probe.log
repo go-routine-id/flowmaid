@@ -1,0 +1,75 @@
+
+running 8 tests
+test pickfix_probe::p1_real_architecture_crossing ... edge 0 x->a1 kind Open wp 2 pts Some((230.0, 59.0))..Some((174.0, 59.0))
+edge 1 a1->a2 kind Open wp 2 pts Some((99.0, 94.0))..Some((99.0, 150.0))
+edge 2 a2->l kind Open wp 2 pts Some((99.0, 220.0))..Some((99.0, 276.0))
+edge 3 x->c1 kind Open wp 2 pts Some((380.0, 59.0))..Some((436.0, 59.0))
+edge 4 c1->c2 kind Open wp 2 pts Some((511.0, 94.0))..Some((511.0, 150.0))
+edge 5 c2->r kind Open wp 2 pts Some((511.0, 220.0))..Some((511.0, 276.0))
+edge 6 l->b kind Open wp 9 pts Some((99.0, 346.0))..Some((230.0, 437.0))
+edge 7 r->t kind Open wp 23 pts Some((511.0, 276.0))..Some((380.0, 185.0))
+edge 8 l->r kind Open wp 2 pts Some((174.0, 311.0))..Some((436.0, 311.0))
+edge 9 t->b kind Open wp 2 pts Some((305.0, 220.0))..Some((305.0, 402.0))
+crossing: level edge 8, plumb edge 9 at (305, 311)
+FIXED : hops 0, arc pick None, crossing pick Some(9), arc marquee []
+MUTANT hops: [(8, [Hop { y: 311.0, x0: 305.0, x1: 305.0, r: 5.0, over: 1 }])]
+MUTANT: hops 1, arc pick Some(8), crossing pick Some(9), arc marquee [Edge(8)]
+generic to_svg arcs: fixed 0, mutant 2; svg differ: true
+edge 0 x->a1 kind Open wp 2 pts Some((230.0, 59.0))..Some((174.0, 59.0))
+edge 1 a1->a2 kind Open wp 2 pts Some((99.0, 94.0))..Some((99.0, 150.0))
+edge 2 a2->l kind Open wp 2 pts Some((99.0, 220.0))..Some((99.0, 276.0))
+edge 3 x->c1 kind Open wp 2 pts Some((380.0, 59.0))..Some((436.0, 59.0))
+edge 4 c1->c2 kind Open wp 2 pts Some((511.0, 94.0))..Some((511.0, 150.0))
+edge 5 c2->r kind Open wp 2 pts Some((511.0, 220.0))..Some((511.0, 276.0))
+edge 6 l->b kind Open wp 9 pts Some((99.0, 346.0))..Some((230.0, 437.0))
+edge 7 r->t kind Open wp 23 pts Some((511.0, 276.0))..Some((380.0, 185.0))
+edge 8 l->r kind Arrow wp 2 pts Some((174.0, 311.0))..Some((436.0, 311.0))
+edge 9 t->b kind Arrow wp 2 pts Some((305.0, 220.0))..Some((305.0, 402.0))
+crossing: level edge 8, plumb edge 9 at (305, 311)
+FIXED : hops 0, arc pick None, crossing pick Some(9), arc marquee []
+MUTANT hops: [(8, [Hop { y: 311.0, x0: 305.0, x1: 305.0, r: 5.0, over: 1 }])]
+MUTANT: hops 1, arc pick Some(8), crossing pick Some(9), arc marquee [Edge(8)]
+generic to_svg arcs: fixed 0, mutant 2; svg differ: true
+ok
+test pickfix_probe::p2_pick_equals_plain_strokes_round_the_crossing ... checked 14161 points, skipped 480 on a stroke's rim, 0 disagree
+points whose pick the fix changes: 722
+ok
+test pickfix_probe::p3_class_and_er_take_no_hops ... class.mmd: 8 edges, 0 level-over-plumb crossings, 0 hops
+class.mmd routed: 8 edges, 0 level-over-plumb crossings, 0 hops
+dense class: 15 edges, 9 level-over-plumb crossings, 0 hops
+dense class routed: 15 edges, 7 level-over-plumb crossings, 0 hops
+er.mmd: 1 edges, 0 level-over-plumb crossings, 0 hops
+er.mmd routed: 1 edges, 0 level-over-plumb crossings, 0 hops
+dense er: 12 edges, 0 level-over-plumb crossings, 0 hops
+dense er routed: 12 edges, 1 level-over-plumb crossings, 0 hops
+ok
+test pickfix_probe::p4_gitgraph_real_drawings ... example: 9 edges (5 straight, 9 hops_edge), hops without the fix: 0
+busy: 14 edges (7 straight, 14 hops_edge), hops without the fix: 0
+example TB: 9 edges (5 straight, 9 hops_edge), hops without the fix: 0
+busy TB: 14 edges (7 straight, 14 hops_edge), hops without the fix: 0
+example BT: 9 edges (5 straight, 9 hops_edge), hops without the fix: 0
+busy BT: 14 edges (7 straight, 14 hops_edge), hops without the fix: 0
+ok
+test pickfix_probe::p5_architecture_other_drawings ... arch #0: 5 edges, hops without the fix: 0
+arch #1: 10 edges, hops without the fix: 1
+arch #2: 10 edges, hops without the fix: 1
+ok
+test pickfix_probe::p6_flowchart_paths_stay_hopping ... advanced: hops static 0, routed 0
+subgraph: hops static 0, routed 0
+state: hops static 0, routed 0
+stress: hops static 0, routed 0
+bench-75: hops static 205, routed 239
+compound: hops static 0, routed 0
+ok
+test pickfix_probe::p7_gitgraph_test_probe_radius ... stroke widths: 5 5
+mutant 0: hops []; pick at radius 5: None; at radius 8: None; marquee at radius 8: []
+mutant 3: hops [Hop { y: 362.0, x0: 500.74285714285713, x1: 500.74285714285713, r: 8.0, over: 1 }]; pick at radius 5: None; at radius 8: Some(0); marquee at radius 8: [Edge(0)]
+test's own pick probe (radius 5) differs with/without the fix: false
+a probe at the real radius (8) differs: true
+ok
+test pickfix_probe::p8_architecture_test_pick_probe ... mutant 0: arc pick None, marquee [], at crossing Some(1)
+mutant 3: arc pick Some(0), marquee [Edge(0)], at crossing Some(1)
+ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 1093 filtered out; finished in 2.33s
+

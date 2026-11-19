@@ -1,0 +1,20 @@
+gitGraph
+    commit
+    branch develop
+    commit
+    branch feature
+    commit
+    checkout develop
+    commit
+    branch hotfix
+    commit
+    checkout feature
+    commit
+    checkout main
+    merge hotfix
+    checkout develop
+    merge feature
+    commit
+    checkout main
+    merge develop tag: "v2.0"
+    commit

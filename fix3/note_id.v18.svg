@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="268" height="344" viewBox="0 0 268 344" font-family="Helvetica, Arial, sans-serif" font-size="14" role="img" aria-label="State diagram">
+<title>State diagram</title>
+<rect width="268" height="344" fill="#ffffff"/>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 1 L 9 5 L 0 9 z" fill="#44507a"/></marker></defs>
+<path d="M 128.9 42.0 C 128.9 72.0, 128.9 72.0, 128.9 102.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>start → X</title></path>
+<path d="M 113.9 140.0 C 113.9 170.0, 86.4 170.0, 86.4 200.0" fill="none" stroke="#44507a" stroke-width="1.7" stroke-dasharray="5 4"><title>X → note</title></path>
+<path d="M 143.9 140.0 C 143.9 170.0, 171.4 170.0, 171.4 200.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>X → __note_2</title></path>
+<path d="M 194.2 238.0 C 194.2 268.0, 194.2 268.0, 194.2 298.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>__note_2 → end</title></path>
+<g><title>start</title>
+<circle cx="128.9" cy="35.0" r="7.0" fill="#44507a" stroke="#44507a" stroke-width="1.6"/>
+<text x="128.9" y="35.0" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<g><title>X</title>
+<rect x="101.9" y="102.0" width="54.0" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="128.9" y="121.0" dy="0.33em" text-anchor="middle" fill="#232840">X</text>
+</g>
+<g><title>a note</title>
+<rect x="28.0" y="200.0" width="71.0" height="38.0" rx="3.0" fill="#fff8c5" stroke="#9c8a2c" stroke-width="1.6"/>
+<text x="63.5" y="219.0" dy="0.33em" text-anchor="middle" fill="#232840">a note</text>
+</g>
+<g><title>__note_2</title>
+<rect x="149.0" y="200.0" width="90.5" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="194.2" y="219.0" dy="0.33em" text-anchor="middle" fill="#232840">__note_2</text>
+</g>
+<g><title>end</title>
+<circle cx="194.2" cy="307.0" r="9.0" fill="#ffffff" stroke="#44507a" stroke-width="1.6"/>
+<circle cx="194.2" cy="307.0" r="5.0" fill="#44507a" stroke="#44507a" stroke-width="1.6"/>
+<text x="194.2" y="307.0" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+</svg>

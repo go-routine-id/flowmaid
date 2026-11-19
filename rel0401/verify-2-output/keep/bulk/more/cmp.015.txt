@@ -1,0 +1,44 @@
+d1.p MISMATCH 1
+d1.p TRANSLATION 354
+d1.r MISMATCH 2
+d1.r TRANSLATION 378
+d4 same 3
+d4.p TRANSLATION 353
+d4.r MISMATCH 2
+d4.r TRANSLATION 377
+d6 same 712
+d6.p TRANSLATION 8
+d6.r TRANSLATION 15
+d9.p MISMATCH 2
+d9.p TRANSLATION 353
+d9.r MISMATCH 5
+d9.r TRANSLATION 375
+r0 TRANSLATION 8
+r0 same 372
+render same 382
+scene same 380
+== MISMATCH: 12
+   /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b11-hops-comb/bulkfc0x/49562cdc646e419a8877a785fc18ed8a.mmd d9.r {'ox': -40.0, 'oy': -25.0, 'bvb': [0.0, 0.0], 'verdict': 'MISMATCH'}
+       ('skel', 48, '<path d="M # # L # # L # # L # # L # # L # #" fill="none" stroke="##a" stroke-width="#" marker-end="url(#circle-end)">', '<path d="M # # L # # L # # C # #, # #, # # L # # L # #" fill="none" stroke="##a" stroke-width="#" marker-end="url(#circle-end)">')
+   /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b11-hops-comb/bulkfc0x/49562cdc646e419a8877a785fc18ed8a.mmd d9.p {'ox': -40.0, 'oy': -25.0, 'bvb': [0.0, 0.0], 'verdict': 'MISMATCH'}
+       ('skel', 48, '<path d="M # # L # # L # # L # # L # # L # #" fill="none" stroke="##a" stroke-width="#" marker-end="url(#circle-end)">', '<path d="M # # L # # L # # C # #, # #, # # L # # L # #" fill="none" stroke="##a" stroke-width="#" marker-end="url(#circle-end)">')
+   /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b11-hops-comb/bulkfc0x/d3e7fc25d6289e0b5cfbf620f15a7096.mmd d1.r {'ox': -115.0, 'oy': -96.5, 'bvb': [0.0, 0.0], 'verdict': 'MISMATCH'}
+       ('skel', 15, '<marker id="arrow-start-t#-s#" viewBox="# # # #" refX="#" refY="#" markerUnits="userSpaceOnUse" markerWidth="#" markerHeight="#" orient="auto">', '<marker id="arrow-start-t#-s#_#" viewBox="# # # #" refX="#" refY="#" markerUnits="userSpaceOnUse" markerWidth="#" markerHeight="#" orient="auto">')
+       ('skel', 18, '<marker id="arrow-t#-s#" viewBox="# # # #" refX="#" refY="#" markerUnits="userSpaceOnUse" markerWidth="#" markerHeight="#" orient="auto">', '<marker id="arrow-t#-s#_#" viewBox="# # # #" refX="#" refY="#" markerUnits="userSpaceOnUse" markerWidth="#" markerHeight="#" orient="auto">')
+       ('skel', 71, '<path d="M # # L # #" fill="none" stroke="##a" stroke-width="#" stroke-dasharray="# #" marker-start="url(#arrow-start-t#-s#)" marker-end="url(#arrow-t#-s#)">', '<path d="M # # L # #" fill="none" stroke="##a" stroke-width="#" stroke-dasharray="# #" marker-start="url(#arrow-start-t#-s#_#)" marker-end="url(#arrow-t#-s#_#)"')
+   /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b11-hops-comb/bulkfc0x/d3e7fc25d6289e0b5cfbf620f15a7096.mmd d1.p {'ox': -115.0, 'oy': -96.5, 'bvb': [0.0, 0.0], 'verdict': 'MISMATCH'}
+       ('skel', 15, '<marker id="arrow-start-t#-s#" viewBox="# # # #" refX="#" refY="#" markerUnits="userSpaceOnUse" markerWidth="#" markerHeight="#" orient="auto">', '<marker id="arrow-start-t#-s#_#" viewBox="# # # #" refX="#" refY="#" markerUnits="userSpaceOnUse" markerWidth="#" markerHeight="#" orient="auto">')
+       ('skel', 18, '<marker id="arrow-t#-s#" viewBox="# # # #" refX="#" refY="#" markerUnits="userSpaceOnUse" markerWidth="#" markerHeight="#" orient="auto">', '<marker id="arrow-t#-s#_#" viewBox="# # # #" refX="#" refY="#" markerUnits="userSpaceOnUse" markerWidth="#" markerHeight="#" orient="auto">')
+       ('skel', 71, '<path d="M # # L # #" fill="none" stroke="##a" stroke-width="#" stroke-dasharray="# #" marker-start="url(#arrow-start-t#-s#)" marker-end="url(#arrow-t#-s#)">', '<path d="M # # L # #" fill="none" stroke="##a" stroke-width="#" stroke-dasharray="# #" marker-start="url(#arrow-start-t#-s#_#)" marker-end="url(#arrow-t#-s#_#)"')
+   /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b11-hops-comb/bulkfc0x/e6f9fbbf09fb28e5cd8e897c0109ee3a.mmd d9.r {'ox': -40.0, 'oy': -25.0, 'bvb': [0.0, 0.0], 'verdict': 'MISMATCH'}
+       ('skel', 35, '<path d="M # # C # #, # #, # # C # #, # #, # # C # #, # #, # #" fill="none" stroke="#c#" stroke-width="#" marker-start="url(#arrow-start-t#-s#_#__c#)" marker-en', '<path d="M # # C # #, # #, # # C # #, # #, # # C # #, # #, # # L # #" fill="none" stroke="#c#" stroke-width="#" marker-start="url(#arrow-start-t#-s#_#__c#)" mar')
+   /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b11-hops-comb/bulkfc0x/e6f9fbbf09fb28e5cd8e897c0109ee3a.mmd d9.p {'ox': -40.0, 'oy': -25.0, 'bvb': [0.0, 0.0], 'verdict': 'MISMATCH'}
+       ('skel', 35, '<path d="M # # C # #, # #, # # C # #, # #, # # C # #, # #, # #" fill="none" stroke="#c#" stroke-width="#" marker-start="url(#arrow-start-t#-s#_#__c#)" marker-en', '<path d="M # # C # #, # #, # # C # #, # #, # # C # #, # #, # # L # #" fill="none" stroke="#c#" stroke-width="#" marker-start="url(#arrow-start-t#-s#_#__c#)" mar')
+   /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/small-class-names/cases/c13.mmd d4.r {'ox': -150.0, 'oy': 0.0, 'bvb': [0.0, 0.0], 'verdict': 'MISMATCH'}
+       ('num', 42, '<text x="#" y="#" dy="#em" text-anchor="middle" fill="##" font-size="#">', 'x', 90.7, -40.7, -150.0)
+   /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/small-class-names/cases/c13.mmd d9.r {'ox': -40.0, 'oy': -25.0, 'bvb': [0.0, 0.0], 'verdict': 'MISMATCH'}
+       ('num', 42, '<text x="#" y="#" dy="#em" text-anchor="middle" fill="##" font-size="#">', 'x', 66.7, 45.3, -40.0)
+   /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/small-class-names/cases/c14.mmd d4.r {'ox': -150.0, 'oy': 0.0, 'bvb': [0.0, 0.0], 'verdict': 'MISMATCH'}
+       ('num', 42, '<text x="#" y="#" dy="#em" text-anchor="middle" fill="##" font-size="#">', 'x', 90.7, -40.7, -150.0)
+   /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/small-class-names/cases/c14.mmd d9.r {'ox': -40.0, 'oy': -25.0, 'bvb': [0.0, 0.0], 'verdict': 'MISMATCH'}
+       ('num', 42, '<text x="#" y="#" dy="#em" text-anchor="middle" fill="##" font-size="#">', 'x', 66.7, 45.3, -40.0)

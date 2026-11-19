@@ -1,0 +1,1 @@
+stale2: 182 graphs, bar diffs 0, drags where partial(stale) svg != route svg 1931

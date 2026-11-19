@@ -1,0 +1,12 @@
+flowchart BT
+  start([start]) --> a1
+  subgraph K0[Intake]
+    a1[receive] --> a2[parse]
+  end
+  subgraph K1[Processing stage]
+    b1[validate] --> b2[store]
+    b1 --> b3[notify]
+  end
+  a2 --> b1
+  b1 -->|retry| a2
+  b2 --> done([done])

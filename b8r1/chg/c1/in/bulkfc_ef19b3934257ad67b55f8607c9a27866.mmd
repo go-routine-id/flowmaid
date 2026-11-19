@@ -1,0 +1,26 @@
+flowchart LR
+  subgraph L0 [Level zero]
+    a0[a0] --> b0[b0]
+    subgraph L1 [Level one]
+      a1 --> b1
+      subgraph L2 [Level two]
+        a2 --> b2
+        subgraph L3 [Level three]
+          a3 --> b3
+          subgraph L4 [Level four]
+            a4 --> b4
+            subgraph L5 [Level five]
+              a5 --> b5
+            end
+          end
+        end
+      end
+    end
+  end
+  subgraph S [Sibling]
+    s1 --> s2
+  end
+  b0 --> a5
+  b5 --> s1
+  s2 --> a1
+  b3 -.-> a0

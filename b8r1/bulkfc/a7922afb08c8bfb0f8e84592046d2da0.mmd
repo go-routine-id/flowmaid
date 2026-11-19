@@ -1,0 +1,13 @@
+flowchart RL
+    N0(Archive)
+    N1[Store check]
+    N2(Archive)
+    N3{Done archive}
+    N4(Notify)
+    N0 --> N1
+    N1 -->|no| N2
+    N2 -->|next| N3
+    N1 --> N4
+    N3 --> N4
+    N2 --> N1
+    N4 --> N1

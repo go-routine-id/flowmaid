@@ -1,0 +1,512 @@
+diff --git a/src/edgepass.rs b/src/edgepass.rs
+index ce9d0ad..69fb35a 100644
+--- a/src/edgepass.rs
++++ b/src/edgepass.rs
+@@ -428,34 +428,60 @@ pub(crate) fn finish_blocks(g: &Graph, sc: &mut Scene, blocks: Option<&[Vec<usiz
+     stages(g, sc, cx, Mode::Static);
+ }
+ 
++
++fn dbgw(tag: &str, sc: &Scene) {
++    if std::env::var_os("FMDBGE").is_none() { return; }
++    let want = std::env::var("FMDBGE").unwrap();
++    let wants: Vec<&str> = want.split(',').collect();
++    for e in &sc.edges { let nm = format!("{}->{}", e.from, e.to); if want == "*" || wants.contains(&nm.as_str()) {
++        let w: Vec<String> = e.waypoints.iter().map(|p| format!("({:.1},{:.1})", p.0, p.1)).collect();
++        eprintln!("{} [{}] bez=({:.1},{:.1})..({:.1},{:.1}) n={} {}", nm, tag, e.bezier[0].0, e.bezier[0].1, e.bezier[3].0, e.bezier[3].1, w.len(), w.join(" "));
++    } }
++}
+ /// The edge stages over `sc` with its context built.
+ fn stages(g: &Graph, sc: &mut Scene, mut cx: Ctx, mode: Mode) {
+     let mut moved = vec![false; sc.edges.len()];
++    if std::env::var_os("FMDBGN").is_some() {
++        for n in &sc.nodes { eprintln!("NODE {} x={:.1} y={:.1} w={:.1} h={:.1} box=({:.1},{:.1})-({:.1},{:.1})", n.id, n.x, n.y, n.w, n.h, n.x-n.w/2.0, n.y-n.h/2.0, n.x+n.w/2.0, n.y+n.h/2.0); }
++        for (ci, c) in sc.clusters.iter().enumerate() { let r = crate::labels::chip_rect(&sc.clusters, ci, f64::INFINITY); eprintln!("CLUSTER {} '{}' box=({:.1},{:.1})-({:.1},{:.1}) chip=({:.1},{:.1})-({:.1},{:.1})", c.id, c.title.replace('\n', " / "), c.x, c.y, c.x+c.w, c.y+c.h, r.0, r.1, r.2, r.3); }
++    }
++    dbgw("in", sc);
+     crate::ports::assign(g, sc, &cx, mode, &mut moved);
++    dbgw("crate::ports::assign", sc);
+     // Every edge on the axes, its corners rounded (report §2.1): from the
+     // ends the ports stage settled, before the router judges them.
+     crate::ortho::orthogonalize(g, sc, &mut cx, mode);
++    dbgw("crate::ortho::orthogonalize", sc);
+     crate::router::repair(g, sc, &cx, mode, &mut moved);
++    dbgw("crate::router::repair", sc);
+     // A rerouted end may have switched to another side of its node and
+     // landed on a port another edge already holds: space those groups
+     // again. Groups the router left alone are already spaced and stay
+     // byte-identical.
+     crate::ports::respace(g, sc, &cx, mode, &mut moved);
++    dbgw("crate::ports::respace", sc);
+     // After the ports are spaced again, so the channel nudge sees (and
+     // keeps) the final ends; in the static scene it ends by putting each
+     // side's ends in the order their paths now head (G9).
+     crate::router::nudge(g, sc, &cx, mode, &mut moved);
++    dbgw("crate::router::nudge", sc);
+     // Then two unrelated edges the nudge (or the builder) left side by
+     // side under the spacing get one moved clear, where that costs
+     // nothing else (G4).
+     crate::router::spread_close(g, sc, &cx, mode, &mut moved);
++    dbgw("crate::router::spread_close", sc);
+     // Then a fan's teeth nest: the ports, the tracks and the turns of
+     // each side's ends in one order (report B4, see [`crate::comb`]).
+     crate::comb::comb(sc, &cx, &mut moved);
++    dbgw("crate::comb::comb", sc);
+     glyph_stubs(sc, &cx, &mut moved);
++    dbgw("glyph_stubs", sc);
+     straight_cubics(sc, &cx);
++    dbgw("straight_cubics", sc);
+     square_s_cubics(sc, &cx);
++    dbgw("square_s_cubics", sc);
+     snap_ends(sc, &cx);
++    dbgw("snap_ends", sc);
+     // A corner a moved end left far from its rounding point turns as a
+     // rounded corner again (see `ports::reround`). An edge a drag keeps
+     // ([`Ctx::fixed`]) keeps its geometry, whoever drew it (a fold's
+@@ -463,6 +489,7 @@ fn stages(g: &Graph, sc: &mut Scene, mut cx: Ctx, mode: Mode) {
+     for (i, e) in sc.edges.iter_mut().enumerate() {
+         if cx.drawn.get(i).copied().unwrap_or(false) && !cx.fixed.get(i).copied().unwrap_or(false) {
+             crate::ports::reround(e);
++
+         }
+     }
+     let budget = match mode {
+@@ -470,9 +497,11 @@ fn stages(g: &Graph, sc: &mut Scene, mut cx: Ctx, mode: Mode) {
+         Mode::Routed => crate::labels::LABEL_ROUTE_WORK,
+     };
+     crate::labels::relabel(g, sc, &cx, &moved, budget);
++    dbgw("crate::labels::relabel", sc);
+     // A scene whose painter strokes its own width (ER, class) is drawn
+     // on its canvas as-is; a flowchart's is fitted like its SVG.
+     refit(sc, mode, g.edge_paint_width.is_none());
++    dbgw("refit", sc);
+ }
+ 
+ /// A path the stages drew as one straight leg (two waypoints on an
+diff --git a/src/layout.rs b/src/layout.rs
+index 01a253d..cde1052 100644
+--- a/src/layout.rs
++++ b/src/layout.rs
+@@ -5019,6 +5019,118 @@ fn place(
+             }
+             bpos = breadth(&layers, &room);
+         }
++        // E4 (experiment): an inner run left under its block's title chip
++        // (X2.5) moves past the chip into room that already exists before
++        // the next unit of the title row, with the run's other dummies
++        // inside the block, when nothing stands between on their layers.
++        if std::env::var_os("FMX4").is_some() {
++            let under = runs_under_titles(
++                g,
++                &TitleRows {
++                    nc,
++                    apath: &apath,
++                    alayer: &alayer,
++                    absize: &absize,
++                    bpos: &bpos,
++                    border: &border_side,
++                    preds: &preds,
++                    succs: &succs,
++                    edge_chain: &edge_chain,
++                    cluster_span: &cluster_span,
++                    n,
++                },
++            );
++            let dbg = std::env::var_os("FMDBGX").is_some();
++            let mut under = under;
++            under.sort_by(|a, b| bpos[a.0].total_cmp(&bpos[b.0]));
++            let under_set: Vec<usize> = under.iter().map(|u| u.0).collect();
++            let mut shifted: std::collections::BTreeMap<(usize, u64), usize> = Default::default();
++            for &(d, chip_hi) in &under {
++                let l = alayer[d];
++                let lv = &layers[l];
++                let Some(i) = lv.iter().position(|&w| w == d) else { continue };
++                let key = (l, chip_hi.to_bits());
++                let j = *shifted.get(&key).unwrap_or(&0);
++                let mut need = chip_hi + crate::router::CORNER_R + j as f64 * crate::ortho::TRACK_PITCH;
++                // The chip as it will stand once the run has moved (a run
++                // that set the frame's wall takes the frame and its chip
++                // along): iterate to a fixed point.
++                {
++                    let c = *apath[d].last().unwrap();
++                    let old = bpos[d];
++                    let chain = edge_chain.iter().find(|ch| ch.contains(&d)).cloned().unwrap_or_default();
++                    let run: Vec<usize> = chain
++                        .iter()
++                        .copied()
++                        .filter(|&x| apath[x].contains(&c) && (bpos[x] - old).abs() < 0.5)
++                        .collect();
++                    for _ in 0..4 {
++                        let mut trial = bpos.clone();
++                        for &x in &run {
++                            trial[x] = need;
++                        }
++                        let t = TitleRows {
++                            nc,
++                            apath: &apath,
++                            alayer: &alayer,
++                            absize: &absize,
++                            bpos: &trial,
++                            border: &border_side,
++                            preds: &preds,
++                            succs: &succs,
++                            edge_chain: &edge_chain,
++                            cluster_span: &cluster_span,
++                            n,
++                        };
++                        let Some(ch) = title_chip(g, &t, c, true) else { break };
++                        let n2 = ch.hi + crate::router::CORNER_R + j as f64 * crate::ortho::TRACK_PITCH;
++                        if (n2 - need).abs() < 0.5 {
++                            break;
++                        }
++                        need = n2;
++                    }
++                }
++                // The next unit to the right that is not itself a run under a chip.
++                let next = lv[i + 1..].iter().copied().find(|w| !under_set.contains(w));
++                let Some(r) = next else {
++                    if dbg { eprintln!("X25 d={} at {:.1} need {:.1}: no unit right", d, bpos[d], need); }
++                    continue;
++                };
++                let left_r = bpos[r] - absize[r] / 2.0;
++                let runs_between = lv[i + 1..].iter().take_while(|&&w| w != r).count();
++                let room = left_r - need - (runs_between as f64 + 1.0) * crate::ortho::TRACK_PITCH - GAP_B / 2.0;
++                if room < 0.0 {
++                    if dbg { eprintln!("X25 d={} at {:.1} need {:.1}: no room (next {} at {:.1})", d, bpos[d], need, r, left_r); }
++                    continue;
++                }
++                // The run: this chain's dummies at d's column on layers inside the block.
++                let Some(chain) = edge_chain.iter().find(|c| c.contains(&d)) else { continue };
++                let c = *apath[d].last().unwrap();
++                let old = bpos[d];
++                let run: Vec<usize> = chain
++                    .iter()
++                    .copied()
++                    .filter(|&x| apath[x].contains(&c) && (bpos[x] - old).abs() < 0.5)
++                    .collect();
++                let clear = run.iter().all(|&x| {
++                    layers[alayer[x]].iter().all(|&w| {
++                        w == x || under_set.contains(&w) || {
++                            let (a, b) = (bpos[w] - absize[w] / 2.0, bpos[w] + absize[w] / 2.0);
++                            b < old.min(need) - GAP_B / 4.0 || a > old.max(need) + GAP_B / 4.0
++                        }
++                    })
++                });
++                if !clear {
++                    if dbg { eprintln!("X25 d={} at {:.1} need {:.1}: blocked below", d, old, need); }
++                    continue;
++                }
++                for &x in &run {
++                    bpos[x] = need;
++                }
++                if dbg { eprintln!("X25 d={} moved {:.1} -> {:.1} ({} dummies)", d, old, need, run.len()); }
++                shifted.insert(key, j + 1);
++            }
++        }
+     }
+     // The same in LR / RL, where the title runs along the flow: a frame
+     // is at least as long as its title, grown equally upstream and
+@@ -6015,10 +6127,12 @@ fn f1_breadths(
+         // displaced entries: as broad as their columns past the chip,
+         // grown on the chip's far side (`scene::frame_boxes`).
+         let k = cols.get(i).copied().unwrap_or(0);
+-        let more = if short > 0.0 {
++        let x7 = std::env::var_os("FMX7").is_some();
++        let more = if short > 0.0 && std::env::var_os("FMX6").is_none() && !x7 {
+             0.0
+         } else {
+-            (crate::scene::title_column_width(title, k) - (hi - lo)).max(0.0)
++            let cut = if x7 && short > 0.0 && k > 0 { crate::router::CORNER_R } else { 0.0 };
++            (crate::scene::title_column_width(title, k) - cut - (hi - lo)).max(0.0)
+         };
+         hi += more;
+         let short = short + more;
+@@ -6249,6 +6363,11 @@ fn title_room(g: &Graph, t: &TitleRows, layers: &[Vec<usize>]) -> Vec<(usize, f6
+ /// the chip covers the whole side. The entries past it are displaced
+ /// ([`title_jogs`]).
+ pub(crate) fn title_cap((m0, m1): (f64, f64), (lo, hi): (f64, f64)) -> usize {
++    let (m0, m1) = if std::env::var_os("FMX3").is_some() {
++        (m0 + crate::ports::PORT_INSET, m1 - crate::ports::PORT_INSET)
++    } else {
++        (m0, m1)
++    };
+     let free = (m1 - hi).max(lo - m0);
+     if free < 0.0 {
+         0
+@@ -6296,11 +6415,19 @@ struct TitleRows<'a> {
+ /// run into its port. Without displaced crossings a frame keeps its
+ /// height.
+ fn title_jogs(g: &Graph, t: &TitleRows) -> Vec<f64> {
++    let x7 = std::env::var_os("FMX7").is_some();
++    let f1 = if x7 { f1_breadths(g, t.n, t.bpos, t.absize, &[]) } else { Vec::new() };
+     title_counts(g, t)
+         .into_iter()
+-        .map(|k| match k {
++        .enumerate()
++        .map(|(c, k)| match k {
+             0 => 0.0,
+-            k => crate::ortho::ROW_CLEAR + (k - 1) as f64 * crate::ortho::TRACK_PITCH,
++            k => crate::ortho::ROW_CLEAR + (k - 1) as f64 * crate::ortho::TRACK_PITCH
++                + if x7 && f1.get(c).copied().flatten().is_some_and(|f| f.2 > 0.0) {
++                    crate::router::CORNER_R
++                } else {
++                    0.0
++                },
+         })
+         .collect()
+ }
+@@ -6406,9 +6533,12 @@ fn title_entries(g: &Graph, t: &TitleRows) -> (Vec<usize>, Vec<Displaced>) {
+             if border.is_empty() || m1 <= chip_lo || m0 >= chip_hi {
+                 continue;
+             }
+-            let over = border
+-                .len()
+-                .saturating_sub(title_cap((m0, m1), (chip_lo, chip_hi)));
++            let cap = title_cap((m0, m1), (chip_lo, chip_hi));
++            let over = if std::env::var_os("FMX3").is_some() && border.len() > cap {
++                border.len()
++            } else {
++                border.len().saturating_sub(cap)
++            };
+             k += over;
+             // The free stretch holds the entries nearest it: those on the
+             // chip's side of the member are displaced.
+@@ -9787,6 +9917,10 @@ mod tests {
+         for id in ["g2", "g4"] {
+             assert!(frame(id).y > first_row, "{id} not wrapped below g1");
+         }
++        if std::env::var_os("FMDBGW").is_some() {
++            eprintln!("HUBROW {} x {}", sc.width, sc.height);
++            for c in &sc.clusters { eprintln!("HUBROW frame {} x {:.1} w {:.1} y {:.1} h {:.1}", c.id, c.x, c.w, c.y, c.h); }
++        }
+         assert!(sc.width < 2.0 * sc.height, "{} x {}", sc.width, sc.height);
+     }
+ 
+diff --git a/src/ortho.rs b/src/ortho.rs
+index 6fc1dad..072ffda 100644
+--- a/src/ortho.rs
++++ b/src/ortho.rs
+@@ -1415,6 +1415,9 @@ impl TitleSides {
+                 else {
+                     return false;
+                 };
++                if std::env::var_os("FMX3").is_some() {
++                    return true;
++                }
+                 let r = flow_rect(dir, end_rect(sc, EndRef::Node(v)));
+                 r.0 >= c0 && r.1 <= c1
+             };
+@@ -1446,7 +1449,12 @@ impl TitleSides {
+             // the side's other crossings; the first a corner's rounding
+             // past the chip's clearance, so the turn onto the track under
+             // the chip stays out of the chip's ring.
+-            let mut next = c1 + crate::router::CORNER_R;
++            let mut next = c1
++                + if std::env::var_os("FMX7").is_some() && sc.clusters[k].bold_title {
++                    0.0
++                } else {
++                    crate::router::CORNER_R
++                };
+             for &(b, i) in &v {
+                 let mut col = next;
+                 while let Some(&o) = taken.iter().find(|&&o| (o - col).abs() < TRACK_PITCH) {
+diff --git a/src/ports.rs b/src/ports.rs
+index babf59e..9834d0f 100644
+--- a/src/ports.rs
++++ b/src/ports.rs
+@@ -773,9 +773,13 @@ fn capacity(len: f64) -> usize {
+ /// Both modes run the same rule.
+ pub(crate) fn assign(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mut [bool]) {
+     place_ports(g, sc, cx, mode, moved, true, true, None);
++    let dbg = |tag: &str, sc: &Scene| if std::env::var_os("FMDBGP").is_some() { for e in &sc.edges { if e.to.len() <= 4 && (e.from == "REG" || e.from == "OPS") { let p = e.waypoints.last().copied().unwrap_or(e.bezier[3]); eprintln!("PINSTAGE {} {}->{} end ({:.2},{:.2})", tag, e.from, e.to, p.0, p.1); } } };
++    dbg("place_ports", sc);
+     if cx.blocks {
+         free_pins(sc, cx, moved);
++        dbg("free_pins", sc);
+         order_pins(sc, cx, moved);
++        dbg("order_pins", sc);
+     }
+ }
+ 
+@@ -1076,6 +1080,9 @@ fn free_pins(sc: &mut Scene, cx: &Ctx, moved: &mut [bool]) {
+                     .then(|| pin_past(at, (lo, hi), &exact, &columns, chip))
+                     .flatten()
+             };
++            if std::env::var_os("FMDBGP").is_some() {
++                eprintln!("PIN {}->{} at {:.2} lo/hi {:.1}/{:.1} chip {:?} taken {:?} cols {:?} place {:?} past {:?}", sc.edges[i].from, sc.edges[i].to, at, lo, hi, chip, taken, columns, pin_place(at, (lo, hi), &taken, chip, from_low), past());
++            }
+             let Some(t) = pin_place(at, (lo, hi), &taken, chip, from_low).or_else(past) else {
+                 continue;
+             };
+@@ -1319,8 +1326,13 @@ fn place_ports(
+                 .collect(),
+             _ => Vec::new(),
+         };
++        let clear = if cx.blocks && std::env::var_os("FMX1").is_some() {
++            crate::ortho::CHIP_CLEAR
++        } else {
++            CHIP_SEP
++        };
+         let (lo, hi, shaded) = match prof.straight() {
+-            Some(n) => unshaded(&heads, &deep, side, n, (lo, hi), ports.len()),
++            Some(n) => unshaded(&heads, &deep, side, n, (lo, hi), ports.len(), clear),
+             None => (lo, hi, false),
+         };
+         let shaded = shaded && ports.iter().any(|p| p.want < lo || p.want > hi);
+@@ -2077,8 +2089,10 @@ fn unshaded(
+     n: f64,
+     (lo, hi): (f64, f64),
+     k: usize,
++    clear: f64,
+ ) -> (f64, f64, bool) {
+     let sgn = out_sign(side);
++    let mut deep_shade: Option<(f64, f64)> = None;
+     let (a, b) = if sgn > 0.0 {
+         (n, n + CHIP_SHADE)
+     } else {
+@@ -2092,10 +2106,15 @@ fn unshaded(
+         if !deep.get(ci).copied().unwrap_or(false) && (n1 + CHIP_SEP <= a || n0 - CHIP_SEP >= b) {
+             continue;
+         }
+-        let (c0, c1) = (t0 - CHIP_SEP, t1 + CHIP_SEP);
++        let (c0, c1) = (t0 - clear, t1 + clear);
+         if c1 <= lo || c0 >= hi {
+             continue;
+         }
++        if deep.get(ci).copied().unwrap_or(false) {
++            // (Strictly inside the chip's interval as `ortho` widens it,
++            // so every end there is displaced.)
++            deep_shade = Some((lo.max(t0 - CHIP_SEP), hi.min(t1 + CHIP_SEP)));
++        }
+         shaded = true;
+         free = free
+             .into_iter()
+@@ -2110,6 +2129,12 @@ fn unshaded(
+         .max_by(|x, y| (x.1 - x.0).total_cmp(&(y.1 - y.0)))
+     {
+         Some((p, q)) if shaded => (p, q, true),
++        // E3 (experiment): a title-row side whose free stretch cannot hold
++        // its ends puts them all under the chip, to be displaced together.
++        None if std::env::var_os("FMX3").is_some() && deep_shade.is_some_and(|(p, q)| q >= p) => {
++            let (p, q) = deep_shade.unwrap();
++            (p, q, true)
++        }
+         _ => (lo, hi, false),
+     }
+ }
+@@ -2871,14 +2896,14 @@ mod tests {
+         // Chip header over x 0..100, ending 10 px above a top side
+         // spanning x 50..250.
+         let heads = [(0.0, 0.0, 100.0, 20.0)];
+-        let (lo, hi, shaded) = unshaded(&heads, &[], Side::Top, 30.0, (58.0, 242.0), 2);
++        let (lo, hi, shaded) = unshaded(&heads, &[], Side::Top, 30.0, (58.0, 242.0), 2, CHIP_SEP);
+         assert!(shaded);
+         assert!(lo >= 100.0 + CHIP_SEP && hi == 242.0, "{lo} {hi}");
+         // Far below the chip: no shade.
+-        let (lo, hi, shaded) = unshaded(&heads, &[], Side::Top, 300.0, (58.0, 242.0), 2);
++        let (lo, hi, shaded) = unshaded(&heads, &[], Side::Top, 300.0, (58.0, 242.0), 2, CHIP_SEP);
+         assert!(!shaded && lo == 58.0 && hi == 242.0);
+         // No room past the chip for the ends: the side stays whole.
+-        let (lo, hi, _) = unshaded(&heads, &[], Side::Top, 30.0, (58.0, 110.0), 2);
++        let (lo, hi, _) = unshaded(&heads, &[], Side::Top, 30.0, (58.0, 110.0), 2, CHIP_SEP);
+         assert!(lo == 58.0 && hi == 110.0);
+     }
+ 
+diff --git a/src/router.rs b/src/router.rs
+index 675f769..84ef237 100644
+--- a/src/router.rs
++++ b/src/router.rs
+@@ -5352,6 +5352,42 @@ pub(crate) fn repair(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
+             }
+         }
+     }
++    if std::env::var_os("FMDBGR").is_some() {
++        for &(class, i) in &bad {
++            let e = &sc.edges[i];
++            let info = infos[i].as_ref().expect("filtered");
++            let mut hit = Vec::new();
++            for (f, &c) in w.chips.iter().enumerate() {
++                let own = [info.ends.0, info.ends.1].contains(&EndRef::Frame(f));
++                let gr = grow(c, if own { NODE_CLEARANCE } else { w.chip_reach });
++                if polys[i].windows(2).any(|s| !off_box(s[0], s[1], gr) && clip(s[0], s[1], gr).is_some()) {
++                    hit.push(format!("{}@({:.1},{:.1})-({:.1},{:.1})", sc.clusters[f].id, c.0, c.1, c.2, c.3));
++                }
++            }
++            eprintln!("REPAIR bad class={} {}->{} alone={:?} crossed={} chips={:?}", class, e.from, e.to, alone[i], crossed(i), hit);
++            if class == 1 {
++                let simple = simplify(&polys[i]);
++                for (fi, r) in w.frames.iter().enumerate() {
++                    let h = side_run(*r, &simple, &[]);
++                    if h > 0.0 { eprintln!("  HUGRUN frame {} {:.1}", sc.clusters[fi].id, h); }
++                }
++                for (vi, n) in w.nodes.iter().enumerate() {
++                    let h = side_run(n.0, &simple, &[]);
++                    if h > 0.0 { eprintln!("  HUGRUN node {} {:.1} box=({:.1},{:.1},{:.1},{:.1})", vi, h, n.0.0, n.0.1, n.0.2, n.0.3); }
++                }
++                for (fi, r) in w.frames.iter().enumerate() {
++                    for s2 in polys[i].windows(2) {
++                        if (s2[0].0 - s2[1].0).abs() < 1e-9 {
++                            for line in [r.0, r.2] {
++                                let d = (s2[0].0 - line).abs();
++                                if d < 12.5 { eprintln!("  HUG? frame {} x-line {:.9} seg x {:.9} d={:.12}", sc.clusters[fi].id, line, s2[0].0, d); }
++                            }
++                        }
++                    }
++                }
++            }
++        }
++    }
+     if bad.is_empty() {
+         return;
+     }
+diff --git a/src/scene.rs b/src/scene.rs
+index d3ee1af..2690390 100644
+--- a/src/scene.rs
++++ b/src/scene.rs
+@@ -4483,9 +4483,14 @@ fn scene_clustered(
+                     let inside =
+                         home || path.contains(&si) && !cut.iter().any(|c| path.contains(c));
+                     let (wb, wl) = if horizontal { (wy, wx) } else { (wx, wy) };
++                    let pad = if block_paths.is_some() && std::env::var_os("FMX2").is_some() {
++                        LANE_PAD + 0.5
++                    } else {
++                        LANE_PAD
++                    };
+                     if inside && wl >= l0 && wl <= l1 {
+-                        b0 = b0.min(wb - LANE_PAD);
+-                        b1 = b1.max(wb + LANE_PAD);
++                        b0 = b0.min(wb - pad);
++                        b1 = b1.max(wb + pad);
+                     }
+                 }
+             }
+@@ -6653,8 +6658,13 @@ fn frame_boxes(
+         // the members under it keep the places F2 counted them at. (A
+         // frame grown to its title is not grown for them: its title
+         // row's entries still go round, see `title_column_width`.)
+-        let cols = if title_fit && !bound[i] {
+-            title_column_width(&g.subgraphs[i].title, jog_entries(jog))
++        let x7b = std::env::var_os("FMX7").is_some() && bound[i];
++        let x6 = std::env::var_os("FMX6").is_some() || x7b;
++        let k7 = jog_entries(if x7b && jog > 0.0 { jog - crate::router::CORNER_R } else { jog });
++        let cols = if title_fit && (!bound[i] || x6) {
++            (title_column_width(&g.subgraphs[i].title, k7)
++                - if x7b && k7 > 0 && jog > 0.0 { crate::router::CORNER_R } else { 0.0 })
++            .max(0.0)
+         } else {
+             0.0
+         };
+@@ -6898,7 +6908,12 @@ fn route_title_jogs(g: &Graph, nodes: &[SceneNode], f1: &[RawBox], bound: &[bool
+             }
+         }
+         if k > 0 {
+-            jog[c] = crate::ortho::ROW_CLEAR + (k - 1) as f64 * crate::ortho::TRACK_PITCH;
++            jog[c] = crate::ortho::ROW_CLEAR + (k - 1) as f64 * crate::ortho::TRACK_PITCH
++                + if std::env::var_os("FMX7").is_some() && bound.get(c).copied().unwrap_or(false) {
++                    crate::router::CORNER_R
++                } else {
++                    0.0
++                };
+         }
+     }
+     jog

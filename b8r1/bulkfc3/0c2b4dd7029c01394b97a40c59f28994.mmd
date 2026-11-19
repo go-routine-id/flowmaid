@@ -1,0 +1,10 @@
+flowchart RL
+  A[Ingest] --> B[Parse]
+  B --> B
+  B --> C[Check]
+  B --> D[Warn]
+  C --> E[Emit]
+  D --> E
+  E --> E
+  E -->|again| B
+  E ==>|restart| A

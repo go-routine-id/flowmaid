@@ -1,0 +1,319 @@
+   Q routed alerts->dash band job3->logs 112px
+   Q routed alerts->dash end_kink end on dash 41.2deg
+   Q routed alerts->dash overlap job3->logs 44px
+   Q routed alerts->dash overlap objects->logs 36px
+   Q routed alerts->dash tight job3->logs 56px
+   Q routed alerts->gw hug app 29px
+   Q routed alerts->gw touch gw->logs 2.5px
+   Q routed dash->ext border ops right 60px
+   Q routed dash->ext end_kink end on ext 48.4deg
+   Q routed dash->ext end_tilt end on ext 128.4deg
+   Q routed dash->ext hug ops 101px
+   Q routed dash->ext lat_wiggle 4.3
+   Q routed dash->user band gw->logs 1056px
+   Q routed db->metrics lat_wiggle 115.0
+   Q routed db->svc2 end_kink end on svc2 83.6deg
+   Q routed gw->lb end_kink end on lb 57.4deg
+   Q routed gw->svc1 end_cross alerts->gw at (228,530)
+   Q routed gw->svc1 end_cross gw->svc4 at (228,530)
+   Q routed gw->svc1 tight lb->svc1 60px
+   Q routed gw->svc2 band gw->svc3 112px
+   Q routed gw->svc2 band lb->svc2 204px
+   Q routed gw->svc2 band svc3->queue 136px
+   Q routed gw->svc2 end_cross gw->svc6 at (227,562)
+   Q routed gw->svc3 end_kink end on svc3 21.0deg
+   Q routed gw->svc3 end_tilt end on svc3 21.0deg
+   Q routed gw->svc3 overlap gw->svc6 50px
+   Q routed gw->svc3 tight gw->logs 30px
+   Q routed gw->svc3 tight gw->svc6 80px
+   Q routed gw->svc4 lat_wiggle 152.0
+   Q routed gw->svc4 tight alerts->gw 26px
+   Q routed gw->svc4 tight gw->logs 98px
+   Q routed gw->svc4 touch alerts->gw 0.6px
+   Q routed gw->svc5 lat_wiggle 14.5
+   Q routed gw->svc6 band lb->metrics 106px
+   Q routed gw->svc6 end_kink end on svc6 20.6deg
+   Q routed gw->svc6 hug app 30px
+   Q routed gw->svc6 hug edge 43px
+   Q routed gw->svc6 lat_wiggle 5.8
+   Q routed job1->db band job2->db 454px
+   Q routed job1->db band job3->db 528px
+   Q routed job1->db tight job2->db 68px
+   Q routed job1->db tight job3->db 112px
+   Q routed job1->ext band job3->ext 400px
+   Q routed job1->ext end_cross job3->ext at (1643,1139)
+   Q routed job1->ext end_cross user->ext at (1638,1136)
+   Q routed job1->ext end_kink end on ext 63.2deg
+   Q routed job1->ext end_tilt end on ext 128.4deg
+   Q routed job1->ext lat_wiggle 5.5
+   Q routed job1->ext tight job3->ext 146px
+   Q routed job2->db band job3->db 456px
+   Q routed job2->db tight db->metrics 32px
+   Q routed job2->objects end_kink end on objects 82.2deg
+   Q routed job2->objects hug jobs 26px
+   Q routed job3->db band job1->svc1 500px
+   Q routed job3->ext end_kink end on ext 116.6deg
+   Q routed job3->ext end_tilt end on ext 116.6deg
+   Q routed job3->ext lat_wiggle 5.3
+   Q routed lb->metrics lat_wiggle 261.5
+   Q routed lb->svc1 end_cross lb->svc2 at (330,640)
+   Q routed lb->svc1 end_cross lb->svc2 at (339,640)
+   Q routed lb->svc1 end_kink end on svc1 23.4deg
+   Q routed lb->svc1 hug app 25px
+   Q routed lb->svc1 hug edge 25px
+   Q routed lb->svc1 lat_wiggle 6.0
+   Q routed lb->svc1 touch lb->svc2 0.0px
+   Q routed lb->svc3 border app left 43px
+   Q routed lb->svc4 band lb->svc6 220px
+   Q routed lb->svc4 overlap svc6->queue 36px
+   Q routed lb->svc4 tight svc6->queue 26px
+   Q routed lb->svc5 end_cross lb->metrics at (342,669)
+   Q routed logs->dash end_kink end on dash 50.5deg
+   Q routed metrics->alerts end_kink end on alerts 14.6deg
+   Q routed objects->logs band job3->logs 372px
+   Q routed queue->job1 border jobs left 41px
+   Q routed queue->job1 end_kink end on job1 68.9deg
+   Q routed queue->job1 hug jobs 46px
+   Q routed queue->job2 border jobs left 57px
+   Q routed queue->job2 hug jobs 32px
+   Q routed queue->metrics end_tilt end on metrics 73.5deg
+   Q routed svc1->cache band db->svc2 128px
+   Q routed svc1->cache band svc2->db 172px
+   Q routed svc1->cache band svc3->cache 104px
+   Q routed svc1->cache band svc5->cache 410px
+   Q routed svc1->cache band svc5->queue 112px
+   Q routed svc1->cache band svc6->cache 214px
+   Q routed svc1->cache end_kink end on cache 34.8deg
+   Q routed svc1->cache overlap db->svc2 38px
+   Q routed svc1->cache overlap svc2->db 52px
+   Q routed svc1->cache overlap svc5->queue 22px
+   Q routed svc1->cache tight db->svc2 44px
+   Q routed svc1->cache tight svc2->db 72px
+   Q routed svc1->cache tight svc5->queue 50px
+   Q routed svc1->cache touch svc3->objects 1.5px
+   Q routed svc1->db band job1->svc1 576px
+   Q routed svc1->db band svc3->db 534px
+   Q routed svc1->db band svc5->db 328px
+   Q routed svc1->db overlap job1->svc1 120px
+   Q routed svc1->db tight job1->svc1 682px
+   Q routed svc1->logs band gw->logs 196px
+   Q routed svc1->logs band svc1->metrics 278px
+   Q routed svc1->logs band svc2->logs 180px
+   Q routed svc1->logs band svc3->logs 362px
+   Q routed svc1->logs band svc5->logs 210px
+   Q routed svc1->logs band svc6->logs 168px
+   Q routed svc1->logs hug app 32px
+   Q routed svc1->logs tight gw->logs 106px
+   Q routed svc1->logs tight svc1->metrics 158px
+   Q routed svc1->logs tight svc3->logs 154px
+   Q routed svc1->metrics end_cross svc2->metrics at (1109,652)
+   Q routed svc1->metrics end_cross svc2->metrics at (1122,652)
+   Q routed svc1->metrics end_kink end on metrics 116.6deg
+   Q routed svc1->metrics end_tilt end on metrics 116.6deg
+   Q routed svc1->metrics lat_wiggle 6.3
+   Q routed svc1->metrics touch svc2->metrics 0.0px
+   Q routed svc1->objects band svc1->metrics 272px
+   Q routed svc1->objects band svc3->objects 104px
+   Q routed svc1->objects border app right 62px
+   Q routed svc1->objects end_cross svc5->objects at (1247,1090)
+   Q routed svc1->objects hug app 45px
+   Q routed svc1->objects touch svc6->ext 0.0px
+   Q routed svc1->queue band svc2->cache 136px
+   Q routed svc1->queue overlap svc2->cache 40px
+   Q routed svc1->queue tight svc2->cache 50px
+   Q routed svc2->cache edge_gap svc3->queue 6.6px
+   Q routed svc2->db band svc5->cache 130px
+   Q routed svc2->db overlap svc5->cache 42px
+   Q routed svc2->db overlap svc6->cache 42px
+   Q routed svc2->db tight svc5->cache 52px
+   Q routed svc2->db tight svc6->cache 46px
+   Q routed svc2->logs band svc2->metrics 154px
+   Q routed svc2->logs band svc3->logs 406px
+   Q routed svc2->logs band svc5->logs 352px
+   Q routed svc2->logs band svc6->logs 240px
+   Q routed svc2->logs overlap svc5->logs 378px
+   Q routed svc2->logs overlap svc6->logs 216px
+   Q routed svc2->logs tight svc2->metrics 84px
+   Q routed svc2->logs tight svc3->logs 162px
+   Q routed svc2->logs tight svc5->logs 580px
+   Q routed svc2->logs tight svc6->logs 202px
+   Q routed svc2->metrics tight svc3->metrics 40px
+   Q routed svc2->queue band cache->svc4 146px
+   Q routed svc2->queue band svc4->cache 136px
+   Q routed svc2->queue end_kink end on queue 54.0deg
+   Q routed svc2->queue end_tilt end on queue 86.7deg
+   Q routed svc2->queue overlap cache->svc4 52px
+   Q routed svc2->queue overlap svc4->cache 42px
+   Q routed svc2->queue tight cache->svc4 72px
+   Q routed svc2->queue tight svc4->cache 52px
+   Q routed svc3->cache band db->svc2 116px
+   Q routed svc3->cache edge_chip data
+   Q routed svc3->cache tight db->svc2 52px
+   Q routed svc3->cache touch svc3->queue 2.9px
+   Q routed svc3->db band job1->svc1 530px
+   Q routed svc3->db border data left 140px
+   Q routed svc3->db hug data 132px
+   Q routed svc3->db overlap svc5->db 326px
+   Q routed svc3->db tight svc3->cache 90px
+   Q routed svc3->db tight svc5->db 292px
+   Q routed svc3->logs band gw->logs 134px
+   Q routed svc3->logs band svc3->metrics 270px
+   Q routed svc3->logs band svc5->logs 372px
+   Q routed svc3->logs band svc6->logs 262px
+   Q routed svc3->logs tight svc3->metrics 76px
+   Q routed svc3->logs tight svc5->logs 206px
+   Q routed svc3->logs tight svc6->logs 148px
+   Q routed svc3->objects tight svc3->metrics 48px
+   Q routed svc3->queue band svc3->objects 294px
+   Q routed svc3->queue edge_gap svc1->objects 6.6px
+   Q routed svc3->queue tight svc3->objects 48px
+   Q routed svc4->cache end_kink end on cache 82.7deg
+   Q routed svc4->logs overlap svc6->ext 36px
+   Q routed svc4->logs tight svc6->ext 42px
+   Q routed svc4->metrics end_cross db->metrics at (1122,680)
+   Q routed svc4->metrics end_kink end on metrics 116.6deg
+   Q routed svc4->metrics end_tilt end on metrics 116.6deg
+   Q routed svc4->metrics lat_wiggle 6.3
+   Q routed svc4->queue edge_gap svc1->objects 8.0px
+   Q routed svc4->queue end_tilt end on queue 73.5deg
+   Q routed svc5->cache band svc6->cache 536px
+   Q routed svc5->cache end_kink end on cache 13.9deg
+   Q routed svc5->cache tight svc6->cache 380px
+   Q routed svc5->db band job1->svc1 326px
+   Q routed svc5->db edge_chip data
+   Q routed svc5->logs band svc5->ext 236px
+   Q routed svc5->logs band svc6->logs 358px
+   Q routed svc5->logs end_kink end on logs 93.5deg
+   Q routed svc5->logs end_tilt end on logs 93.5deg
+   Q routed svc5->logs lat_wiggle 4.6
+   Q routed svc5->logs overlap svc6->logs 182px
+   Q routed svc5->logs tight svc5->ext 136px
+   Q routed svc5->logs tight svc6->logs 268px
+   Q routed svc5->objects band svc5->ext 110px
+   Q routed svc5->objects tight svc5->ext 28px
+   Q routed svc5->queue band svc5->objects 124px
+   Q routed svc5->queue band svc6->queue 294px
+   Q routed svc5->queue tight svc5->objects 54px
+   Q routed svc6->cache edge_gap db->metrics 2.5px
+   Q routed svc6->cache touch db->metrics 2.5px
+   Q routed svc6->db band svc6->queue 426px
+   Q routed svc6->ext band svc5->ext 176px
+   Q routed svc6->ext end_cross user->ext at (1624,1122)
+   Q routed svc6->logs band svc6->ext 214px
+   Q routed svc6->logs end_kink end on logs 93.4deg
+   Q routed svc6->logs end_tilt end on logs 93.4deg
+   Q routed svc6->logs lat_wiggle 4.6
+   Q routed user->ext hug data 186px
+   Q routed user->gw end_kink end on gw 20.8deg
+   Q routed user->gw overlap user->lb 24px
+   Q routed user->gw tight user->lb 72px
+   Q static alerts->dash end_cross metrics->dash at (1513,272)
+   Q static alerts->dash end_kink end on dash 76.8deg
+   Q static alerts->dash end_tilt end on dash 76.8deg
+   Q static alerts->gw edge_frame app
+   Q static dash->user band svc5->ext 178px
+   Q static db->metrics lat_wiggle 136.5
+   Q static db->svc2 end_kink end on svc2 84.6deg
+   Q static gw->lb band gw->svc6 110px
+   Q static gw->lb end_kink end on lb 67.2deg
+   Q static gw->logs lat_wiggle 110.0
+   Q static gw->svc2 band alerts->gw 180px
+   Q static gw->svc2 end_kink end on svc2 67.7deg
+   Q static gw->svc2 end_tilt end on svc2 67.7deg
+   Q static gw->svc2 lat_wiggle 129.5
+   Q static gw->svc4 band gw->svc6 204px
+   Q static gw->svc4 end_kink end on svc4 17.0deg
+   Q static gw->svc4 end_tilt end on svc4 17.0deg
+   Q static gw->svc5 end_kink end on svc5 47.2deg
+   Q static gw->svc5 end_tilt end on svc5 47.2deg
+   Q static job1->db band job2->db 408px
+   Q static job1->db band job3->db 490px
+   Q static job1->ext band svc6->ext 130px
+   Q static job2->db band db->metrics 112px
+   Q static job2->ext lat_wiggle 125.0
+   Q static job3->db band job1->svc1 544px
+   Q static job3->ext band job3->logs 216px
+   Q static lb->metrics edge_frame app
+   Q static lb->metrics hug ops 26px
+   Q static lb->metrics lat_wiggle 35.0
+   Q static lb->svc1 border edge right 46px
+   Q static lb->svc1 end_kink end on svc1 63.4deg
+   Q static lb->svc1 hug edge 57px
+   Q static lb->svc2 band svc5->logs 194px
+   Q static lb->svc2 tight svc2->db 38px
+   Q static lb->svc3 end_kink end on svc3 65.4deg
+   Q static lb->svc4 band svc2->db 134px
+   Q static lb->svc4 band svc5->objects 150px
+   Q static lb->svc4 hug svc5 58px
+   Q static lb->svc5 end_kink end on svc5 14.9deg
+   Q static lb->svc6 end_kink end on svc6 69.6deg
+   Q static logs->dash end_kink end on dash 45.3deg
+   Q static objects->logs band job3->logs 872px
+   Q static queue->metrics end_tilt end on metrics 75.1deg
+   Q static queue->metrics overlap lb->metrics 30px
+   Q static queue->metrics tight lb->metrics 30px
+   Q static svc1->cache band svc3->cache 696px
+   Q static svc1->cache band svc3->queue 372px
+   Q static svc1->db band job1->svc1 622px
+   Q static svc1->db band svc3->db 334px
+   Q static svc1->db band svc5->db 334px
+   Q static svc1->db tight svc1->objects 42px
+   Q static svc1->db tight svc3->db 104px
+   Q static svc1->logs band svc3->logs 316px
+   Q static svc1->logs band svc6->logs 686px
+   Q static svc1->logs tight svc6->logs 686px
+   Q static svc1->metrics band alerts->gw 724px
+   Q static svc1->objects band svc1->metrics 554px
+   Q static svc1->objects band svc3->objects 130px
+   Q static svc1->objects band svc6->ext 286px
+   Q static svc1->objects tight lb->metrics 66px
+   Q static svc1->objects tight svc1->metrics 548px
+   Q static svc1->queue band svc4->queue 578px
+   Q static svc1->queue lat_wiggle 93.5
+   Q static svc2->cache end_tilt end on cache 75.1deg
+   Q static svc2->db band db->svc2 234px
+   Q static svc2->logs band gw->logs 286px
+   Q static svc2->logs lat_wiggle 71.5
+   Q static svc2->queue band svc2->metrics 344px
+   Q static svc2->queue band svc3->queue 194px
+   Q static svc2->queue band svc4->metrics 184px
+   Q static svc2->queue tight svc2->metrics 338px
+   Q static svc3->cache band svc3->metrics 314px
+   Q static svc3->cache band svc3->objects 274px
+   Q static svc3->db band job1->svc1 414px
+   Q static svc3->db band svc5->db 248px
+   Q static svc3->db border data left 120px
+   Q static svc3->db end_kink end on db 84.4deg
+   Q static svc3->db hug data 141px
+   Q static svc3->db overlap job1->svc1 190px
+   Q static svc3->db overlap svc5->db 196px
+   Q static svc3->db tight job1->svc1 324px
+   Q static svc3->db tight svc5->db 316px
+   Q static svc3->logs lat_wiggle 41.5
+   Q static svc3->objects tight svc3->metrics 38px
+   Q static svc3->queue end_cross svc3->logs at (453,513)
+   Q static svc3->queue lat_wiggle 14.5
+   Q static svc4->cache end_kink end on cache 81.1deg
+   Q static svc4->logs band metrics->dash 390px
+   Q static svc5->cache band svc5->objects 190px
+   Q static svc5->db band job1->svc1 472px
+   Q static svc5->db tight job1->svc1 472px
+   Q static svc5->db tight svc5->ext 36px
+   Q static svc5->ext band lb->metrics 318px
+   Q static svc5->objects band svc4->logs 338px
+   Q static svc5->queue band db->svc2 148px
+   Q static svc5->queue band lb->metrics 160px
+   Q static svc5->queue band svc5->ext 104px
+   Q static svc5->queue band svc6->queue 366px
+   Q static svc5->queue tight svc5->ext 104px
+   Q static svc6->cache band svc6->queue 494px
+   Q static svc6->db band svc6->cache 420px
+   Q static svc6->ext band lb->metrics 410px
+   Q static svc6->ext end_kink end on ext 50.5deg
+   Q static svc6->ext lat_wiggle 34.5
+   Q static user->ext lat_wiggle 805.6
+   Q static user->gw border edge left 52px
+   Q static user->gw end_kink end on gw 74.2deg
+   Q static user->gw hug edge 57px
+   Q static user->lb end_kink end on lb 48.4deg
+   Q static user->lb end_tilt end on lb 48.4deg

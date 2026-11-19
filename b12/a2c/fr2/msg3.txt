@@ -1,0 +1,33 @@
+feat(blocks): X4 levels the sibling frames of a band drawn LR / RL too (b12a2c-squeeze fix round 2, item 4: X4's LR / RL half)
+
+B12 X4 starts the top-level sibling frames of a band level along the
+flow; 22dac44 built it for TD / BT only, because in LR / RL the shift
+took one more crossing on dense-lr and moved two lines of
+notes/spread-bottom 4 px nearer. With the rules of 630096c (a block its
+own links take room from stays on its layer lines) both of those blocks
+are held, so the LR / RL half now changes no repository drawing: in
+LR / RL a frame reaches along the flow its pad and half its title-length
+growth (B12 F2, `f1_flow_short`) on each flow side, its title strip lying
+on a lateral side (`level_sibling_frames` takes the growth; the trailing
+edge's title strip is read in BT only, where it was read in every
+direction but TD before, which only TD / BT reached).
+
+A band whose blocks are not held is levelled: two blocks drawn LR, one
+with a narrow first and a wide last member, one with a wide first and a
+narrow last member, started 120 px apart and read as interleaved; they
+start level now and the drawing is 68 px narrower.
+
+dense-lr keeps its `sib_stagger` (its two staggered pairs are a top-level
+pair held by both of 630096c's rules, a link into a later row and one
+node feeding both first rows, and a nested pair, which X4 does not level).
+
+Test: blockcheck::sibling_frames_of_a_band_start_level_left_to_right_too
+(LR and RL: frames level, the moved frame its members and pad, `route()`
+at the scene's centres draws the same frames; fails without the change).
+
+Checks against the previous commit: every cell, gate message and
+direction copy unchanged, as are the verifier's generated sets. Default
+build byte-identical. No snapshot or gate changed. Guard green.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

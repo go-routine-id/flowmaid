@@ -1,0 +1,26 @@
+flowchart LR
+  n1["db auth mail"]
+  subgraph B0["Edge services"]
+    n2["ship"]
+    n3["ingest"]
+  end
+  subgraph B1["Ops"]
+    n4["index<br/>billing"]
+    n5["split mail audit"]
+    n6["pack"]
+    n7["billing api ingest"]
+  end
+  subgraph B2["Core"]
+    n8["audit search db<br/>notify"]
+  end
+  n9["worker<br/>ship"]
+  n9 --> n4
+  n7 -.-> n2
+  n6 --> n2
+  n6 --> n7
+  n2 -->|report| n4
+  n8 --> n5
+  n1 -.-> n8
+  n3 --> n8
+  n8 -.-> n4
+  n3 --> n2

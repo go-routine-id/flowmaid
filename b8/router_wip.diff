@@ -1,0 +1,165 @@
+diff --git a/src/router.rs b/src/router.rs
+index 94092a3..2ce2847 100644
+--- a/src/router.rs
++++ b/src/router.rs
+@@ -394,6 +394,17 @@ fn sample_count(l: f64) -> usize {
+ 
+ /// The part of segment `a`–`b` inside the closed rect `r`
+ /// (Liang-Barsky), or `None` when it misses.
++/// Whether segment `ab` lies wholly outside `r` by its bounding box
++/// (with a hair of margin): [`clip`] would find nothing, so a caller may
++/// skip it without the divisions.
++fn off_box(a: Pt, b: Pt, r: R) -> bool {
++    const HAIR: f64 = 1e-6;
++    a.0.max(b.0) < r.0 - HAIR
++        || a.0.min(b.0) > r.2 + HAIR
++        || a.1.max(b.1) < r.1 - HAIR
++        || a.1.min(b.1) > r.3 + HAIR
++}
++
+ fn clip(a: Pt, b: Pt, r: R) -> Option<(Pt, Pt)> {
+     let (dx, dy) = (b.0 - a.0, b.1 - a.1);
+     let (mut t0, mut t1) = (0.0f64, 1.0f64);
+@@ -631,13 +642,21 @@ impl Accepted {
+     /// Live segments of edges other than `me` whose cells meet `r`,
+     /// each once, in id order.
+     fn near(&mut self, r: R, me: usize) -> Vec<u32> {
++        let mut out = Vec::new();
++        self.near_into(r, me, &mut out);
++        out
++    }
++
++    /// [`Accepted::near`] into `out` (cleared first), so a caller asking
++    /// once per segment reuses one buffer.
++    fn near_into(&mut self, r: R, me: usize, out: &mut Vec<u32>) {
++        out.clear();
+         self.gen = self.gen.wrapping_add(1);
+         if self.gen == 0 {
+             self.seen.iter_mut().for_each(|s| *s = 0);
+             self.gen = 1;
+         }
+         let (xr, yr) = self.cell_range(r);
+-        let mut out = Vec::new();
+         for y in yr {
+             for x in xr.clone() {
+                 let cell = &self.cells[y * self.nx + x];
+@@ -651,7 +670,6 @@ impl Accepted {
+             }
+         }
+         out.sort_unstable();
+-        out
+     }
+ }
+ 
+@@ -825,6 +843,9 @@ impl World {
+             self.look(pts.len());
+             // Done once it is through the node: only the class counts.
+             'node: for w in pts.windows(2) {
++                if off_box(w[0], w[1], near) {
++                    continue;
++                }
+                 let Some((a, b)) = clip(w[0], w[1], near) else {
+                     continue;
+                 };
+@@ -853,8 +874,9 @@ impl World {
+             self.look(pts.len());
+             let inner = grow(r, -FRAME_INSET);
+             let enters = pts.windows(2).any(|w| {
+-                clip(w[0], w[1], inner)
+-                    .is_some_and(|(a, b)| inside(inner, ((a.0 + b.0) / 2.0, (a.1 + b.1) / 2.0)))
++                !off_box(w[0], w[1], inner)
++                    && clip(w[0], w[1], inner)
++                        .is_some_and(|(a, b)| inside(inner, ((a.0 + b.0) / 2.0, (a.1 + b.1) / 2.0)))
+             });
+             if enters {
+                 s.frame += 1;
+@@ -882,7 +904,11 @@ impl World {
+         for (f, &c) in self.chips.iter().enumerate() {
+             let own = [info.ends.0, info.ends.1].contains(&EndRef::Frame(f));
+             let g = grow(c, if own { NODE_CLEARANCE } else { self.chip_reach });
+-            if overlaps(grow(bb, EPS), g) && pts.windows(2).any(|w| clip(w[0], w[1], g).is_some()) {
++            if overlaps(grow(bb, EPS), g)
++                && pts
++                    .windows(2)
++                    .any(|w| !off_box(w[0], w[1], g) && clip(w[0], w[1], g).is_some())
++            {
+                 s.chip += 1;
+             }
+         }
+@@ -893,8 +919,9 @@ impl World {
+             }
+             self.look(pts.len());
+             let under = pts.windows(2).any(|w| {
+-                clip(w[0], w[1], r)
+-                    .is_some_and(|(a, b)| inside(r, ((a.0 + b.0) / 2.0, (a.1 + b.1) / 2.0)))
++                !off_box(w[0], w[1], r)
++                    && clip(w[0], w[1], r)
++                        .is_some_and(|(a, b)| inside(r, ((a.0 + b.0) / 2.0, (a.1 + b.1) / 2.0)))
+             });
+             s.label += usize::from(under);
+         }
+@@ -990,8 +1017,9 @@ impl World {
+         // Crossings, merged per accepted edge, from the same nearby
+         // segments (a superset of those its box meets).
+         let mut hits: Vec<(usize, Pt)> = Vec::new();
++        let mut ids: Vec<u32> = Vec::new();
+         for w in pts.windows(2) {
+-            let mut ids = acc.near(grow(bounds(w), reach), me);
++            acc.near_into(grow(bounds(w), reach), me, &mut ids);
+             self.look(ids.len());
+             for &id in ids.iter().filter(|_| full) {
+                 let (j, a, b, _) = acc.segs[id as usize];
+@@ -1419,10 +1447,13 @@ fn detour(
+     }
+     // Does a leg along y (`vert`) at `c` from `lo` to `hi` run within an
+     // edge separation of one of them for over MIN_OVERLAP_RUN?
++    // Split by orientation once: the test runs for every lattice leg.
++    let (legs_v, legs_h): (Vec<_>, Vec<_>) = legs.iter().partition(|l| l.0);
+     let crowded = |vert: bool, c: f64, lo: f64, hi: f64| {
+         let (lo, hi) = (lo.min(hi), lo.max(hi));
+-        legs.iter().any(|&(v, lc, l0, l1, sep)| {
+-            v == vert && (lc - c).abs() < sep - EPS && hi.min(l1) - lo.max(l0) > MIN_OVERLAP_RUN
++        let same = if vert { &legs_v } else { &legs_h };
++        same.iter().any(|&&(_, lc, l0, l1, sep)| {
++            (lc - c).abs() < sep - EPS && hi.min(l1) - lo.max(l0) > MIN_OVERLAP_RUN
+         })
+     };
+     let xs = lanes(xs, (o.0, o.2), &ex);
+@@ -4850,6 +4881,9 @@ pub(crate) fn repair(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
+             }
+         }
+     }
++    if std::env::var_os("FMDBG_REPAIR").is_some() {
++        eprintln!("REPAIR mode={:?} bad={} hard={}", mode == Mode::Static, bad.len(), bad.iter().filter(|b| b.0 == 0).count());
++    }
+     if bad.is_empty() {
+         return;
+     }
+@@ -4915,6 +4949,7 @@ pub(crate) fn repair(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
+         }
+         let info = infos[i].as_ref().expect("filtered");
+         let base0 = alone[i];
++        if std::env::var_os("FMDBG_REPAIR").is_some() { eprintln!("BAD {i} {}->{} node={} frame={} chip={} static={}", g.nodes.get(sc.edges[i].from.len()).map(|_| sc.edges[i].from.as_str()).unwrap_or(""), sc.edges[i].to, base0.node, base0.frame, base0.chip, mode == Mode::Static); }
+         // Against the accepted edges too (a pending original is in the
+         // index already; a soft edge is scored without itself). Scored
+         // up front only when the narrow-channel rule may apply (its
+@@ -5010,6 +5045,7 @@ pub(crate) fn repair(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
+                 continue; // a backtrack would add a wiggle (G8)
+             }
+             if work.left == 0 {
++                if std::env::var_os("FMDBG_REPAIR").is_some() { eprintln!("BUDGET HIT at edge {i}"); }
+                 break; // the detour below still runs
+             }
+             let e = &sc.edges[i];
+@@ -5022,7 +5058,10 @@ pub(crate) fn repair(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
+                 work: &mut work,
+                 sc: &mut scratch,
+             };
+-            let Some(corners) = route_edge(&mut env, info, i, e, t) else {
++            let before_w = env.work.left;
++            let got = route_edge(&mut env, info, i, e, t);
++            if std::env::var_os("FMDBG_REPAIR").is_some() { eprintln!("EDGE {i} spent {} left {}", before_w - work.left, work.left); }
++            let Some(corners) = got else {
+                 continue;
+             };
+             n_found += 1;

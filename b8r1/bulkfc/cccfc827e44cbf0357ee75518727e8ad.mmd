@@ -1,0 +1,33 @@
+flowchart LR
+  subgraph F0 [Frame 0]
+    n6[/Node 6/]
+    n5(Node 5 with a longer label)
+  end
+  n4 -->|lbl| n2
+  n10 --o F0
+  n9 ==> n7
+  n3 o--o n5
+  n7 o--o F0
+  n8 <-.-> n13
+  n1 --x n0
+  n13 --o n13
+  n13 -->|lbl| n2
+  n7 x--x F0
+  n1 -->|lbl| n8
+  n5 <--> F0
+  n6 --x F0
+  n0 ==> n3
+  n12 --- n11
+  n9 -.->|dot| n8
+  n2 <==> n8
+  n8 -->|lbl| n1
+  n0 <-.-> n7
+  n5 -.-> n8
+  n1 -.->|dot| F0
+  n7 <==> n8
+  n6 --o n7
+  n5 --- n9
+  n10 ==> F0
+  n8 -.-> n0
+  n9 --o n12
+  n4 <-.-> n5

@@ -1,0 +1,1379 @@
+diff --git a/src/blockcheck.rs b/src/blockcheck.rs
+index 5d99455..f7d027c 100644
+--- a/src/blockcheck.rs
++++ b/src/blockcheck.rs
+@@ -3210,3 +3210,60 @@ fn a_label_keeps_off_the_blocks_that_hold_one_end_of_its_edge() {
+         }
+     }
+ }
++
++#[test]
++fn a_block_is_squeezed_to_its_content() {
++    // X2: a block whose Brandes-Köpf breadth is wider than its members
++    // need is squeezed to its least breadth. The public fixture's frames
++    // were up to 25 times the area of their members (the observability
++    // block spread across the drawing beside the alert rules' pin); the
++    // must of its row is mermaid's 6.64 + 20 %, in every permutation and
++    // in BT.
++    for name in [
++        "blocks/blocks-overview",
++        "blocks/blocks-overview-bt",
++        "blocks/blocks-overview-edges-reversed",
++        "blocks/blocks-overview-edges-rotated",
++        "blocks/blocks-overview-actors-reversed",
++        "blocks/blocks-overview-subgraphs-reversed",
++    ] {
++        let g = fixture(name);
++        let sc = block_scene(&g);
++        let q = crate::quality::measure(&g, &sc);
++        assert!(q.compact_max <= 7.97, "{name}: compact_max {}", q.compact_max);
++        assert_eq!((q.frame_overlap, q.node_frame), (0, 0), "{name}");
++    }
++}
++
++#[test]
++fn a_spine_inside_a_block_is_straight() {
++    // X2.4: a spine (two members each other's only inner link in that
++    // direction) is one rigid column through the squeeze: the build
++    // pipeline's three steps stand in one column, and no spine of the
++    // fixtures the spec names is drawn bent.
++    let g = fixture("blocks/blocks-overview");
++    let sc = block_scene(&g);
++    let xs: Vec<f64> = ["REPO", "BUILD", "REG"]
++        .iter()
++        .map(|id| {
++            let b = node_box(&sc, id);
++            (b.0 + b.2) / 2.0
++        })
++        .collect();
++    assert!(
++        (xs[0] - xs[1]).abs() < 0.5 && (xs[1] - xs[2]).abs() < 0.5,
++        "{xs:?}"
++    );
++    for name in [
++        "blocks/blocks-overview",
++        "blocks/hub5",
++        "notes/spread-face",
++        "notes/nested-composite",
++        "notes/fork-twins",
++    ] {
++        let g = fixture(name);
++        let sc = block_scene(&g);
++        let q = crate::quality::measure(&g, &sc);
++        assert_eq!(q.spine_off, 0, "{name}");
++    }
++}
+diff --git a/src/layout.rs b/src/layout.rs
+index 01a253d..47efff1 100644
+--- a/src/layout.rs
++++ b/src/layout.rs
+@@ -4834,6 +4834,60 @@ fn place(
+                 &mut bpos,
+             );
+         }
++        // A block layout: each block fixed on its own, deepest first, and
++        // then as one rigid unit of its parent level (B12 X2, X3). In TD /
++        // BT only, for now: in LR / RL a one-row block packed to its least
++        // breadth gives up every column its members shared with the far
++        // ends of their fans, and the edge stages do not yet keep such a
++        // fan's ends in order through the bands (bench-75: 4 -> 17 fan
++        // crossings, the gap floor 15.3 -> 12.5); LR / RL blocks keep
++        // Brandes-Köpf's breadths until the node-side end order of the
++        // fans is built.
++        if let (true, Some(_), false, Some(nc)) = (clustered, block_paths, horizontal, node_cluster) {
++            // X2.2: a block with displaced title-side entries at
++            // Brandes-Köpf's breadths keeps a frame its members make
++            // broader than its title, which holds their columns past the
++            // chip (`f1_breadths`); the squeeze must not pack it under
++            // its title.
++            let cols0: Vec<usize> = title_counts(
++                    g,
++                    &TitleRows {
++                        nc,
++                        apath: &apath,
++                        alayer: &alayer,
++                        absize: &absize,
++                        bpos: &bpos,
++                        border: &border_side,
++                        preds: &preds,
++                        succs: &succs,
++                        edge_chain: &edge_chain,
++                        cluster_span: &cluster_span,
++                        n,
++                    },
++                );
++            let title_least: Vec<f64> = (0..g.subgraphs.len())
++                .map(|c| {
++                    if cols0.get(c).copied().unwrap_or(0) > 0 {
++                        crate::scene::title_fit_width(&g.subgraphs[c].title)
++                    } else {
++                        0.0
++                    }
++                })
++                .collect();
++            block_compact(
++                n,
++                layers,
++                preds_c,
++                succs_c,
++                &alayer,
++                bsep,
++                &apath,
++                &border_side,
++                None,
++                &title_least,
++                &mut bpos,
++            );
++        }
+         // ... then slides inside its layer's free room towards the breadth
+         // centre of everything drawn (D4); the order stays, so no crossing
+         // appears.
+@@ -5025,6 +5079,7 @@ fn place(
+     // downstream, so the frames opening and closing next to it along
+     // the flow keep their gap ([`f1_flow_short`]; the layer lines read
+     // the frames' reach).
++    let mut flow_short: Vec<f64> = Vec::new();
+     if let (Some(_), Some(nc), true) = (block_paths, node_cluster, horizontal) {
+         let gap_l = g.rank_gap.unwrap_or(GAP_L);
+         let short = f1_flow_short(g, nc, n, &layers, &alayer, &alsize, &cluster_span, gap_l);
+@@ -5041,6 +5096,7 @@ fn place(
+                 }
+             }
+         }
++        flow_short = short;
+     }
+ 
+     // A block layout's jog room (B12 F2): what each frame grows on its
+@@ -5863,10 +5919,25 @@ fn place(
+     }
+     let total_b = (maxb - minb) + 2.0 * MARGIN;
+ 
++    // B12 X4: sibling frames of a band start (and end) level.
++    let lpos = match (block_paths, node_cluster) {
++        (Some(_), Some(nc)) => level_sibling_frames(
++            g,
++            nc,
++            &alayer,
++            &alsize,
++            &lcoord,
++            &cluster_span,
++            &header,
++            &title_jog,
++            &flow_short,
++        ),
++        _ => (0..n).map(|v| lcoord[alayer[v]]).collect(),
++    };
+     let nodes = (0..n)
+         .map(|v| Placed {
+             b: bpos[v],
+-            l: lcoord[alayer[v]],
++            l: lpos[v],
+             bsize: absize[v],
+             lsize: alsize[v],
+             layer: alayer[v],
+@@ -5959,6 +6030,155 @@ const TITLE_FIT_PASSES: usize = 2;
+ /// already: float noise of the breadth placement.
+ const TITLE_FIT_EPS: f64 = 0.5;
+ 
++/// B12 X4: the nodes' positions along the flow in a block layout. A
++/// node is centred on its layer line, with one exception that levels
++/// sibling frames: on a layer that is the first row of two or more
++/// sibling blocks (one parent, so one band), the first-row members of
++/// each block (at any depth) move upstream, as one group per block,
++/// until the block's frame leading edge coincides with the earliest of
++/// them. A frame's leading edge is its first-row members' upstream
++/// edges less, per frame from that block inwards that opens on the
++/// layer, what the scene's frame reaches past them there: [`FRAME_PAD`],
++/// in TD the title strip and the jog room ([`title_jogs`]), in LR / RL
++/// half the title length the layout reserves ([`f1_flow_short`]). The
++/// same holds downstream on a layer that is the last row of two or more
++/// sibling blocks that do not share their first row (a source block
++/// ends on its band's last layer). Deeper sibling groups are levelled
++/// first; an outer block's group then moves its levelled inner frames
++/// as one. The shift is a layout coordinate, not a frame rule: frames
++/// stay functions of their own members, so `route()` at the scene's
++/// centres draws them the same. It needs no extra room: the earliest
++/// leading edge is one the layer lines already reserve (`reach_of`).
++/// Without it, sibling frames of a band whose first rows differ in
++/// height started apart and read as interleaved (the public fixture's
++/// build pipeline beside the shared services: `sib_stagger`).
++#[allow(clippy::too_many_arguments)] // internal: one bundle of layered-graph state
++fn level_sibling_frames(
++    g: &Graph,
++    nc: &[Vec<usize>],
++    alayer: &[usize],
++    alsize: &[f64],
++    lcoord: &[f64],
++    cluster_span: &BTreeMap<usize, (usize, usize)>,
++    header: &[f64],
++    title_jog: &[f64],
++    flow_short: &[f64],
++) -> Vec<f64> {
++    let n = g.nodes.len();
++    let mut lpos: Vec<f64> = (0..n).map(|v| lcoord[alayer[v]]).collect();
++    let strip_lo = matches!(g.direction, Direction::TD);
++    let strip_hi = matches!(g.direction, Direction::BT);
++    // What frame `c` reaches past a member on its first (`hi` false)
++    // or last row.
++    let grow = |c: usize, hi: bool| -> f64 {
++        let strip = if hi { strip_hi } else { strip_lo };
++        FRAME_PAD
++            + flow_short.get(c).copied().unwrap_or(0.0) / 2.0
++            + if strip {
++                header[c] + title_jog.get(c).copied().unwrap_or(0.0)
++            } else {
++                0.0
++            }
++    };
++    // The members of block `c` on row `li` and its leading (`hi` false)
++    // or trailing edge along the flow from them.
++    let row_of = |c: usize, li: usize| -> Vec<usize> {
++        (0..n)
++            .filter(|&v| alayer[v] == li && nc[v].contains(&c))
++            .collect()
++    };
++    let edge = |c: usize, li: usize, hi: bool, lpos: &[f64]| -> Option<f64> {
++        let mut out: Option<f64> = None;
++        for v in row_of(c, li) {
++            let at = nc[v].iter().position(|&x| x == c).unwrap_or(0);
++            let mut reach = 0.0;
++            for &c2 in &nc[v][at..] {
++                if let Some(&(lo, hi_l)) = cluster_span.get(&c2) {
++                    if (if hi { hi_l } else { lo }) == li {
++                        reach += grow(c2, hi);
++                    }
++                }
++            }
++            let e = if hi {
++                lpos[v] + alsize[v] / 2.0 + reach
++            } else {
++                lpos[v] - alsize[v] / 2.0 - reach
++            };
++            out = Some(out.map_or(e, |o: f64| if hi { o.max(e) } else { o.min(e) }));
++        }
++        out
++    };
++    let depth = |c: usize| {
++        let mut d = 0usize;
++        let mut p = g.subgraphs[c].parent;
++        while let Some(q) = p {
++            d += 1;
++            p = g.subgraphs[q].parent;
++        }
++        d
++    };
++    let mut moved = vec![false; n];
++    for hi in [false, true] {
++        // Sibling blocks by (parent, row), deepest parents first.
++        let mut groups: BTreeMap<(usize, Option<usize>, usize), Vec<usize>> = BTreeMap::new();
++        for (&c, &(lo, hi_l)) in cluster_span {
++            groups
++                .entry((
++                    usize::MAX - depth(c),
++                    g.subgraphs[c].parent,
++                    if hi { hi_l } else { lo },
++                ))
++                .or_default()
++                .push(c);
++        }
++        for ((_, _, li), blocks) in groups {
++            let blocks: Vec<usize> = if hi {
++                // Downstream: only blocks that do not share their first
++                // row with a sibling.
++                blocks
++                    .iter()
++                    .copied()
++                    .filter(|&c| {
++                        let first = cluster_span[&c].0;
++                        !blocks
++                            .iter()
++                            .any(|&d| d != c && cluster_span[&d].0 == first)
++                    })
++                    .collect()
++            } else {
++                blocks
++            };
++            if blocks.len() < 2 {
++                continue;
++            }
++            let edges: Vec<(usize, f64)> = blocks
++                .iter()
++                .filter_map(|&c| edge(c, li, hi, &lpos).map(|e| (c, e)))
++                .collect();
++            let target = edges.iter().map(|e| e.1).fold(
++                if hi { f64::NEG_INFINITY } else { f64::INFINITY },
++                |a, b| if hi { a.max(b) } else { a.min(b) },
++            );
++            for (c, e) in edges {
++                let d = target - e;
++                if d.abs() < ALIGN_EPS {
++                    continue;
++                }
++                let row = row_of(c, li);
++                // A one-row block levelled on its first row keeps it.
++                if hi && row.iter().any(|&v| moved[v]) {
++                    continue;
++                }
++                for v in row {
++                    lpos[v] += d;
++                    moved[v] = true;
++                }
++            }
++        }
++    }
++    lpos
++}
++
+ /// Each block's F1 frame across the flow at these breadths (TD / BT;
+ /// `scene::frame_boxes` in layout coordinates, without the jog room,
+ /// which grows the frame along the flow): its direct members' boxes
+@@ -9250,6 +9470,574 @@ fn compact_breadth(
+     }
+ }
+ 
++/// How much broader (px) than its tightest packing a level of a block
++/// layout may stand and keep Brandes-Köpf's columns (B12 X2.3): float
++/// noise and a wall's rounding, not a column that lies apart.
++const BLOCK_SLACK: f64 = 4.0;
++
++/// Room (px) a run of a squeezed level of a block layout keeps beside
++/// each neighbour on top of [`pair_sep`] (B12 X2): one comfortable
++/// clearance ([`crate::clearance::CLEAR_GAP`]). Brandes-Köpf rarely
++/// packs a channel against its neighbours; the squeeze packs every
++/// column of a level as tight as its order allows, and runs packed at
++/// the bare [`EDGE_GAP`] left the edge stages no room for the ports,
++/// steps and tracks they lay beside them: the router rerouted the
++/// channels across their hub's fan (dense-td drew 78 crossings, 15 of
++/// them inside one fan, where it draws 44 with this room).
++const RUN_ROOM: f64 = crate::clearance::CLEAR_GAP;
++
++/// One level of a block layout as [`block_compact`] squeezes it: the
++/// level's own items (nodes, runs), its child blocks as rigid units,
++/// and, below the root, the block's two walls.
++struct LevelUnits {
++    /// Per unit: its members (augmented nodes).
++    members: Vec<Vec<usize>>,
++    /// The level's entries per layer, in layer order.
++    rows: Vec<Vec<usize>>,
++    /// The two walls' units (below the root): pinned at the level's
++    /// two ends.
++    walls: Option<(usize, usize)>,
++}
++
++/// B12 X2 and X3: the breadths of a block layout, fixed one level at a
++/// time, deepest first, up to the root.
++///
++/// A level's units are its own nodes and runs (each its own unit), its
++/// child blocks (already fixed: rigid units that move as a whole) and,
++/// below the root, the block's two walls. When the breadth
++/// Brandes-Köpf gave the level lies within [`BLOCK_SLACK`] of the least
++/// breadth its order allows (the longest path over the left-of relation
++/// with [`pair_sep`] distances, title room included: the walls carry
++/// it), its columns stay. Otherwise the level is squeezed to that
++/// breadth, seeded by Brandes-Köpf: every *spine* (two units on
++/// adjacent layers that are each other's only link inside the level in
++/// that direction; at a parent level a border link between two real
++/// nodes, X3) becomes one rigid column when that keeps the least
++/// breadth and the order and lays no two of the merged members over
++/// each other on a layer (two sibling blocks joined by a border spine
++/// may share layers); each unit's Brandes-Köpf offset is clamped
++/// into its feasible interval for that breadth, left to right so the
++/// order holds; then [`COMPACT_SWEEPS`] Gauss-Seidel sweeps move each
++/// unit to the weighted median of its links inside the level (1 / 2 / 8
++/// as [`compact_breadth`]), between its neighbours. A child block's
++/// links are its members' links to the rest of the level, so a block as
++/// a whole is pulled toward its border links. A fixed block keeps its
++/// centre where its parent placed it until the parent's own pass moves
++/// it. A level whose order the walls cannot hold (a unit split on a
++/// layer) keeps its positions.
++///
++/// Chain dummies of different cluster paths are no spine (X1: a chain
++/// bends where it crosses a border, in a gap).
++#[allow(clippy::too_many_arguments)] // internal: one bundle of layered-graph state
++fn block_compact(
++    n: usize,
++    layers: &[Vec<usize>],
++    preds: &[Vec<usize>],
++    succs: &[Vec<usize>],
++    alayer: &[usize],
++    absize: &[f64],
++    apath: &[Vec<usize>],
++    border: &[u8],
++    header_b: Option<&[f64]>,
++    title_least: &[f64],
++    bpos: &mut [f64],
++) {
++    let na = bpos.len();
++    if na == 0 {
++        return;
++    }
++    // Levels: every block (by its walls' path), deepest first, then the
++    // root.
++    let mut spans: BTreeMap<Vec<usize>, (usize, usize)> = BTreeMap::new();
++    for v in 0..na {
++        if border[v] != 0 {
++            let e = spans
++                .entry(apath[v].clone())
++                .or_insert((alayer[v], alayer[v]));
++            e.0 = e.0.min(alayer[v]);
++            e.1 = e.1.max(alayer[v]);
++        }
++    }
++    let mut levels: Vec<(Vec<usize>, usize, usize)> =
++        spans.into_iter().map(|(p, (lo, hi))| (p, lo, hi)).collect();
++    levels.sort_by(|a, b| b.0.len().cmp(&a.0.len()).then(a.0.cmp(&b.0)));
++    levels.push((Vec::new(), 0, layers.len().saturating_sub(1)));
++    let mut unit_of = vec![usize::MAX; na];
++    let mut off = vec![0.0f64; na];
++    let sep = |u: usize, v: usize| {
++        let run = |x: usize| x >= n && border[x] == 0;
++        pair_sep(u, v, n, absize, Some(apath), Some(border), header_b)
++            + if run(u) || run(v) { RUN_ROOM } else { 0.0 }
++    };
++    for (path, lo, hi) in levels {
++        let k = path.len();
++        let Some(lv) = level_units(&path, lo, hi, layers, apath, border, &mut unit_of) else {
++            continue;
++        };
++        for (u, ms) in lv.members.iter().enumerate() {
++            let anchor = ms[0];
++            for &m in ms {
++                off[m] = bpos[m] - bpos[anchor];
++                unit_of[m] = u;
++            }
++        }
++        // Each member's unit before any spine is merged.
++        let orig = unit_of.clone();
++        let in_level = |w: usize| apath[w].starts_with(&path);
++        // Links inside the level between two units: (member, other end,
++        // weight).
++        // A chain's segment across a border is no spine (X1): it bends
++        // there, in the gap, so it pulls a block as a border link does,
++        // not with the weight that keeps a run straight. (With 8, the
++        // bounce of the hub fixture's email block, a back edge leaving
++        // the block, outweighed the block's two forward links and took
++        // it out from under the delivery block: the hub's edge into it
++        // then ran down the far side and back, out of target order.)
++        let weight = |u: usize, v: usize| match (u < n, v < n) {
++            (true, true) => 1.0,
++            (false, false) if apath[u] != apath[v] => COMPACT_MIXED_WEIGHT,
++            (false, false) => COMPACT_DUMMY_WEIGHT,
++            _ => COMPACT_MIXED_WEIGHT,
++        };
++        let links = |m: usize, unit_of: &[usize]| -> Vec<(usize, f64)> {
++            if border[m] != 0 {
++                return Vec::new();
++            }
++            let mut out: Vec<(usize, f64)> = Vec::new();
++            for &w in preds[m].iter().chain(&succs[m]) {
++                if border[w] == 0
++                    && alayer[w].abs_diff(alayer[m]) == 1
++                    && in_level(w)
++                    && unit_of[w] != unit_of[m]
++                {
++                    out.push((w, weight(m, w)));
++                }
++            }
++            out
++        };
++        let packed0 = pack_units(&lv, &unit_of, &orig, &off, absize, &sep);
++        let Some((_, w_min)) = packed0.as_ref().map(|p| (p.0.clone(), p.2)) else {
++            clear_units(&lv, &mut unit_of);
++            continue;
++        };
++        // The breadth Brandes-Köpf gave the level.
++        let (mut bk_lo, mut bk_hi) = (f64::INFINITY, f64::NEG_INFINITY);
++        for row in &lv.rows {
++            for &v in row {
++                bk_lo = bk_lo.min(bpos[v] - absize[v] / 2.0);
++                bk_hi = bk_hi.max(bpos[v] + absize[v] / 2.0);
++            }
++        }
++        if bk_hi - bk_lo <= w_min + BLOCK_SLACK {
++            clear_units(&lv, &mut unit_of);
++            continue;
++        }
++        // Spines: (member, other end) on adjacent layers, each the
++        // other's only link inside the level in that direction.
++        let only = |m: usize, down: bool, unit_of: &[usize]| -> Option<usize> {
++            let mut it = links(m, unit_of)
++                .into_iter()
++                .map(|(w, _)| w)
++                .filter(|&w| (alayer[w] > alayer[m]) == down);
++            let w = it.next()?;
++            it.all(|x| x == w).then_some(w)
++        };
++        let mut spines: Vec<(u8, usize, usize)> = Vec::new();
++        for (u, ms) in lv.members.iter().enumerate() {
++            if lv.walls.is_some_and(|(a, b)| u == a || u == b) {
++                continue;
++            }
++            for &m in ms {
++                let Some(w) = only(m, true, &unit_of) else {
++                    continue;
++                };
++                if only(w, false, &unit_of) != Some(m) {
++                    continue;
++                }
++                let direct = |x: usize| apath[x].len() == k;
++                let class = match (m < n, w < n) {
++                    // A run's own column (X1: never across a border).
++                    (false, false) if direct(m) && direct(w) && apath[m] == apath[w] => 0,
++                    (false, false) => continue,
++                    // A run meeting its node, inside the level.
++                    (true, false) | (false, true) if direct(m) && direct(w) => 1,
++                    (true, false) | (false, true) => continue,
++                    // Two nodes: a spine, or a border spine (X3).
++                    (true, true) => 2,
++                };
++                spines.push((class, m, w));
++            }
++        }
++        spines.sort_by_key(|&(c, m, w)| (c, alayer[m], m, w));
++        // All at once first; one at a time, each kept only if it keeps
++        // the order and the least breadth, when that fails.
++        let save = (lv_clone(&lv), unit_of.clone(), off.clone());
++        let mut lv = lv;
++        for &(_, m, w) in &spines {
++            merge_units(&mut lv, &mut unit_of, &mut off, m, w);
++        }
++        let mut packed = pack_units(&lv, &unit_of, &orig, &off, absize, &sep)
++            .filter(|p| p.2 <= w_min + TITLE_FIT_EPS);
++        if packed.is_none() {
++            (lv, unit_of, off) = (save.0, save.1, save.2);
++            packed = packed0;
++            for &(_, m, w) in &spines {
++                if unit_of[m] == unit_of[w] {
++                    continue;
++                }
++                let keep = (lv_clone(&lv), unit_of.clone(), off.clone());
++                merge_units(&mut lv, &mut unit_of, &mut off, m, w);
++                match pack_units(&lv, &unit_of, &orig, &off, absize, &sep) {
++                    Some(p) if p.2 <= w_min + TITLE_FIT_EPS => packed = Some(p),
++                    _ => (lv, unit_of, off) = (keep.0, keep.1, keep.2),
++                }
++            }
++        }
++        let Some((left, right, w, topo, edges)) = packed else {
++            clear_units(&lv, &mut unit_of);
++            continue;
++        };
++        let nu = lv.members.len();
++        // Seed: Brandes-Köpf's offset from the level's left, clamped into
++        // the unit's feasible interval, then left to right so the order
++        // holds.
++        let anchor_x = |u: usize| lv.members[u].first().map_or(0.0, |&m| bpos[m] - off[m]);
++        let base = match lv.walls {
++            Some((wl, _)) => anchor_x(wl),
++            None => bk_lo,
++        };
++        let mut x: Vec<f64> = (0..nu)
++            .map(|u| (anchor_x(u) - base).max(left[u]).min(right[u]))
++            .collect();
++        let mut into: Vec<Vec<(usize, f64)>> = vec![Vec::new(); nu];
++        let mut outof: Vec<Vec<(usize, f64)>> = vec![Vec::new(); nu];
++        for &(a, b, s) in &edges {
++            outof[a].push((b, s));
++            into[b].push((a, s));
++        }
++        for &u in &topo {
++            for &(p, s) in &into[u] {
++                x[u] = x[u].max(x[p] + s);
++            }
++        }
++        if let Some((wl, wr)) = lv.walls {
++            x[wl] = 0.0;
++            x[wr] = w;
++        }
++        let ulinks: Vec<Vec<(usize, usize, f64)>> = lv
++            .members
++            .iter()
++            .map(|ms| {
++                ms.iter()
++                    .flat_map(|&m| {
++                        links(m, &unit_of)
++                            .into_iter()
++                            .map(move |(o, wt)| (m, o, wt))
++                    })
++                    .collect()
++            })
++            .collect();
++        let head = |u: usize| {
++            lv.members[u]
++                .iter()
++                .map(|&m| absize[m] / 2.0 - off[m])
++                .fold(f64::NEG_INFINITY, f64::max)
++        };
++        let tail = |u: usize| {
++            lv.members[u]
++                .iter()
++                .map(|&m| off[m] + absize[m] / 2.0)
++                .fold(f64::NEG_INFINITY, f64::max)
++        };
++        let (heads, tails): (Vec<f64>, Vec<f64>) = (0..nu).map(|u| (head(u), tail(u))).unzip();
++        // A block keeps its centre where Brandes-Köpf put it (its
++        // parent's pass moves it); the root keeps its left.
++        let shift = match lv.walls {
++            Some((wl, wr)) => (anchor_x(wl) + anchor_x(wr)) / 2.0 - w / 2.0,
++            None => bk_lo,
++        };
++        for round in 0..COMPACT_SWEEPS {
++            let order: Vec<usize> = if round % 2 == 0 {
++                topo.clone()
++            } else {
++                topo.iter().rev().copied().collect()
++            };
++            for u in order {
++                if lv.walls.is_some_and(|(a, b)| u == a || u == b) {
++                    continue;
++                }
++                let mut lo = heads[u];
++                for &(p, s) in &into[u] {
++                    lo = lo.max(x[p] + s);
++                }
++                let mut hi = w - tails[u];
++                for &(s2, s) in &outof[u] {
++                    hi = hi.min(x[s2] - s);
++                }
++                if lo > hi || ulinks[u].is_empty() {
++                    continue;
++                }
++                let mut pull: Vec<(f64, f64)> = ulinks[u]
++                    .iter()
++                    .map(|&(m, o, wt)| (x[unit_of[o]] + off[o] - off[m], wt))
++                    .collect();
++                let want = weighted_median(&mut pull);
++                if want.is_finite() {
++                    x[u] = want.max(lo).min(hi);
++                }
++            }
++        }
++        // X2.2: a block whose title side takes displaced entries and
++        // whose members Brandes-Köpf spread broader than its title keeps
++        // those breadths when the squeeze would pack its members under
++        // the title: the frame would grow to its title instead, and a
++        // title-bound frame holds no column past its chip for them (the
++        // public `blocks/lr` drawn BT: `pager` under the chip, its two
++        // entries went round through the lateral walls and crossed).
++        let least = path.last().and_then(|&c| title_least.get(c)).copied().unwrap_or(0.0);
++        if least > 0.0 {
++            let span = |at: &dyn Fn(usize) -> f64| {
++                let (mut lo, mut hi) = (f64::INFINITY, f64::NEG_INFINITY);
++                for ms in &lv.members {
++                    for &m in ms.iter().filter(|&&m| m < n) {
++                        lo = lo.min(at(m) - absize[m] / 2.0);
++                        hi = hi.max(at(m) + absize[m] / 2.0);
++                    }
++                }
++                hi - lo + 2.0 * FRAME_PAD
++            };
++            let before = span(&|m| bpos[m]);
++            let after = span(&|m| x[unit_of[m]] + off[m] + shift);
++            if before >= least - TITLE_FIT_EPS && after < least - TITLE_FIT_EPS {
++                clear_units(&lv, &mut unit_of);
++                continue;
++            }
++        }
++        for (u, ms) in lv.members.iter().enumerate() {
++            for &m in ms {
++                bpos[m] = x[u] + off[m] + shift;
++            }
++        }
++        clear_units(&lv, &mut unit_of);
++    }
++}
++
++/// The units of one level of a block layout ([`block_compact`]): path
++/// `path`, layers `lo..=hi`. `unit_of` is left marked with each
++/// member's unit. `None` for an empty level.
++#[allow(clippy::too_many_arguments)] // internal: one bundle of layered-graph state
++fn level_units(
++    path: &[usize],
++    lo: usize,
++    hi: usize,
++    layers: &[Vec<usize>],
++    apath: &[Vec<usize>],
++    border: &[u8],
++    unit_of: &mut [usize],
++) -> Option<LevelUnits> {
++    let k = path.len();
++    let mut members: Vec<Vec<usize>> = Vec::new();
++    let mut child: BTreeMap<usize, usize> = BTreeMap::new();
++    let (mut wl, mut wr) = (None, None);
++    let mut rows: Vec<Vec<usize>> = Vec::with_capacity(hi + 1 - lo);
++    for lay in &layers[lo..=hi.min(layers.len().saturating_sub(1))] {
++        let mut row = Vec::new();
++        for &v in lay {
++            if !apath[v].starts_with(path) {
++                continue;
++            }
++            let u = if apath[v].len() > k {
++                *child.entry(apath[v][k]).or_insert_with(|| {
++                    members.push(Vec::new());
++                    members.len() - 1
++                })
++            } else if k > 0 && border[v] == 1 {
++                *wl.get_or_insert_with(|| {
++                    members.push(Vec::new());
++                    members.len() - 1
++                })
++            } else if k > 0 && border[v] == 2 {
++                *wr.get_or_insert_with(|| {
++                    members.push(Vec::new());
++                    members.len() - 1
++                })
++            } else {
++                members.push(Vec::new());
++                members.len() - 1
++            };
++            members[u].push(v);
++            unit_of[v] = u;
++            row.push(v);
++        }
++        rows.push(row);
++    }
++    if members.is_empty() {
++        return None;
++    }
++    let walls = match (k > 0, wl, wr) {
++        (true, Some(a), Some(b)) => Some((a, b)),
++        (true, _, _) => {
++            clear_units(
++                &LevelUnits {
++                    members,
++                    rows,
++                    walls: None,
++                },
++                unit_of,
++            );
++            return None;
++        }
++        _ => None,
++    };
++    Some(LevelUnits {
++        members,
++        rows,
++        walls,
++    })
++}
++
++fn lv_clone(lv: &LevelUnits) -> LevelUnits {
++    LevelUnits {
++        members: lv.members.clone(),
++        rows: lv.rows.clone(),
++        walls: lv.walls,
++    }
++}
++
++fn clear_units(lv: &LevelUnits, unit_of: &mut [usize]) {
++    for ms in &lv.members {
++        for &m in ms {
++            unit_of[m] = usize::MAX;
++        }
++    }
++}
++
++/// Merge the unit of `w` into the unit of `m` so that `w` stands in
++/// `m`'s column (a spine of [`block_compact`]).
++fn merge_units(lv: &mut LevelUnits, unit_of: &mut [usize], off: &mut [f64], m: usize, w: usize) {
++    let (a, b) = (unit_of[m], unit_of[w]);
++    if a == b
++        || lv
++            .walls
++            .is_some_and(|(l, r)| [l, r].contains(&a) || [l, r].contains(&b))
++    {
++        return;
++    }
++    let delta = off[m] - off[w];
++    let moved = std::mem::take(&mut lv.members[b]);
++    for &x in &moved {
++        off[x] += delta;
++        unit_of[x] = a;
++    }
++    lv.members[a].extend(moved);
++}
++
++/// A packing of a level's units ([`block_compact`]): per unit its least
++/// and greatest position for the least breadth, that breadth, the units
++/// in topological order of the left-of relation, and the relation's
++/// edges `(left, right, least distance)`. `None` when the relation has
++/// a cycle (a unit split on a layer).
++type Packing = (
++    Vec<f64>,
++    Vec<f64>,
++    f64,
++    Vec<usize>,
++    Vec<(usize, usize, f64)>,
++);
++
++fn pack_units(
++    lv: &LevelUnits,
++    unit_of: &[usize],
++    orig: &[usize],
++    off: &[f64],
++    absize: &[f64],
++    sep: &dyn Fn(usize, usize) -> f64,
++) -> Option<Packing> {
++    let nu = lv.members.len();
++    let live: Vec<bool> = lv.members.iter().map(|m| !m.is_empty()).collect();
++    let mut edges: Vec<(usize, usize, f64)> = Vec::new();
++    for row in &lv.rows {
++        for p in row.windows(2) {
++            let (a, b) = (unit_of[p[0]], unit_of[p[1]]);
++            if a != b {
++                edges.push((a, b, sep(p[0], p[1]) + off[p[0]] - off[p[1]]));
++            } else if orig[p[0]] != orig[p[1]]
++                && off[p[1]] - off[p[0]] < sep(p[0], p[1]) - TITLE_FIT_EPS
++            {
++                // Two neighbours that a merged spine made one rigid unit
++                // and that would then overlap: the merge is infeasible.
++                return None;
++            }
++        }
++    }
++    let mut indeg = vec![0usize; nu];
++    let mut outof: Vec<Vec<(usize, f64)>> = vec![Vec::new(); nu];
++    for &(a, b, s) in &edges {
++        outof[a].push((b, s));
++        indeg[b] += 1;
++    }
++    let ext = |u: usize, f: &dyn Fn(usize) -> f64| {
++        lv.members[u]
++            .iter()
++            .map(|&m| f(m))
++            .fold(f64::NEG_INFINITY, f64::max)
++    };
++    let mut left: Vec<f64> = (0..nu)
++        .map(|u| {
++            if live[u] {
++                ext(u, &|m| absize[m] / 2.0 - off[m])
++            } else {
++                0.0
++            }
++        })
++        .collect();
++    if let Some((wl, _)) = lv.walls {
++        left[wl] = 0.0;
++    }
++    let mut queue: Vec<usize> = (0..nu).filter(|&u| live[u] && indeg[u] == 0).collect();
++    queue.reverse();
++    let mut topo: Vec<usize> = Vec::with_capacity(nu);
++    while let Some(u) = queue.pop() {
++        topo.push(u);
++        for &(b, s) in &outof[u] {
++            left[b] = left[b].max(left[u] + s);
++            indeg[b] -= 1;
++            if indeg[b] == 0 {
++                queue.push(b);
++            }
++        }
++    }
++    if topo.len() != live.iter().filter(|&&l| l).count() {
++        return None;
++    }
++    let tails: Vec<f64> = (0..nu)
++        .map(|u| {
++            if live[u] {
++                ext(u, &|m| off[m] + absize[m] / 2.0)
++            } else {
++                0.0
++            }
++        })
++        .collect();
++    let w = match lv.walls {
++        Some((_, wr)) => left[wr],
++        None => topo
++            .iter()
++            .map(|&u| left[u] + tails[u])
++            .fold(0.0f64, f64::max),
++    };
++    let mut right: Vec<f64> = (0..nu).map(|u| w - tails[u]).collect();
++    if let Some((_, wr)) = lv.walls {
++        right[wr] = w;
++    }
++    for &u in topo.iter().rev() {
++        for &(b, s) in &outof[u] {
++            right[u] = right[u].min(right[b] - s);
++        }
++    }
++    Some((left, right, w, topo, edges))
++}
++
+ /// The point that halves the total weight of `(position, weight)`
+ /// pairs (the lower one on an exact tie, the mean of the two middle
+ /// positions when the halves balance).
+diff --git a/src/scene.rs b/src/scene.rs
+index 9a6de83..dd78342 100644
+--- a/src/scene.rs
++++ b/src/scene.rs
+@@ -21,7 +21,7 @@ use crate::model::{
+ };
+ use crate::style::{Palette, Theme, ThemeVars};
+ use std::borrow::Cow;
+-use std::collections::HashMap;
++use std::collections::{BTreeMap, HashMap};
+ 
+ // Edge-label placement lives in `labels`; these keep the call sites
+ // (and the tests) here compiling unchanged.
+@@ -5551,7 +5551,71 @@ fn route_built(
+     // Back-edges run in their lanes, or across the gap with nothing
+     // between their ends, by the static layout's rule ([`route_backs`]).
+     let flow_at: Vec<Placed> = placed.iter().map(|p| flow_placed(g.direction, p)).collect();
+-    let backs = route_backs(g, &flow_at);
++    let mut backs = route_backs(g, &flow_at);
++    // B12 R3: in a block layout drawn TD or BT an edge between two units
++    // of the top level runs in its corridor past the units between
++    // ([`corridors`]), also against the flow (E3: never a lane), unless
++    // its units stand too close along the flow for one.
++    let corridor: Vec<Option<Corridor>> = if blocks && vertical {
++        let mut units: Vec<(f64, f64, f64, f64)> = Vec::new();
++        let mut sub_unit: Vec<Option<usize>> = vec![None; g.subgraphs.len()];
++        for (si, s) in g.subgraphs.iter().enumerate() {
++            if let (None, Some(b)) = (s.parent, raw_boxes.get(si).copied().flatten()) {
++                sub_unit[si] = Some(units.len());
++                units.push(b);
++            }
++        }
++        let node_unit: Vec<Option<usize>> = (0..g.nodes.len())
++            .map(|v| match top_of(v) {
++                Some(s) => sub_unit[s],
++                None => {
++                    units.push(box_of(v));
++                    Some(units.len() - 1)
++                }
++            })
++            .collect();
++        let mut which: Vec<usize> = Vec::new();
++        let mut list: Vec<CorridorEdge> = Vec::new();
++        for (ei, e) in g.edges.iter().enumerate() {
++            if e.from == e.to
++                || matches!(e.kind, EdgeKind::Invisible)
++                || top_of(e.from) == top_of(e.to)
++                || card(e.from)
++                || card(e.to)
++            {
++                continue;
++            }
++            let (Some(su), Some(tu)) = (node_unit[e.from], node_unit[e.to]) else {
++                continue;
++            };
++            which.push(ei);
++            list.push(CorridorEdge {
++                a: (centers[e.from], sizes[e.from]),
++                b: (centers[e.to], sizes[e.to]),
++                units: (su, tu),
++            });
++        }
++        let mut out: Vec<Option<Corridor>> = vec![None; g.edges.len()];
++        let dbg = std::env::var("FMDBG_CORR").is_ok();
++        for (ei, c) in which.into_iter().zip(corridors(&list, &units)) {
++            if std::env::var("FMX_NOE3").is_ok() && backs[ei] != Back::No {
++                continue;
++            }
++            if std::env::var("FMX_NOE1").is_ok() && backs[ei] == Back::No {
++                continue;
++            }
++            if dbg {
++                eprintln!("CORR {} -> {}: {:?}", g.nodes[g.edges[ei].from].id, g.nodes[g.edges[ei].to].id, c);
++            }
++            if c != Corridor::Fallback {
++                backs[ei] = Back::No;
++                out[ei] = Some(c);
++            }
++        }
++        out
++    } else {
++        vec![None; g.edges.len()]
++    };
+     let frames = if g.subgraphs.is_empty() || !backs.iter().any(|b| matches!(b, Back::Lane(_))) {
+         Vec::new()
+     } else {
+@@ -5669,7 +5733,11 @@ fn route_built(
+                 }
+             }
+         };
+-        let wps = if e.from != e.to && back == Back::No && top_of(e.from) != top_of(e.to) {
++        let wps = if let Some(Corridor::Path(p)) = corridor[ei].as_ref().filter(|_| elbow.is_none()) {
++            // Parallel edges between one pair share the corridor: each
++            // runs `off` across the flow from it, as in a channel.
++            p.iter().map(|&(x, y)| (x + off, y)).collect()
++        } else if e.from != e.to && back == Back::No && top_of(e.from) != top_of(e.to) {
+             // Parallel edges between one pair get the same channel: each
+             // runs `off` across the flow from it, so they never coincide.
+             cross_cluster_route(
+@@ -5690,6 +5758,17 @@ fn route_built(
+         let label = e.label.as_ref().map(|l| {
+             let mid = if wps.is_empty() {
+                 cubic_mid(pts[0], pts[1], pts[2], pts[3])
++            } else if matches!(corridor[ei], Some(Corridor::Path(_))) {
++                // A corridor's label on its longest leg (R8), not on a
++                // corner.
++                let w = wps
++                    .windows(2)
++                    .max_by(|a, b| {
++                        let len = |q: &[(f64, f64)]| (q[0].0 - q[1].0).hypot(q[0].1 - q[1].1);
++                        len(a).total_cmp(&len(b))
++                    })
++                    .expect("a corridor has legs");
++                ((w[0].0 + w[1].0) / 2.0, (w[0].1 + w[1].1) / 2.0)
+             } else {
+                 wps[wps.len() / 2]
+             };
+@@ -10043,6 +10122,357 @@ fn cross_cluster_route(
+     }
+ }
+ 
++/// A corridor edge of [`corridors`] (B12 R3): one of `g.edges` whose ends
++/// lie in two different units of the drawing's top level (a top-level
++/// block, or a node outside every block), with its source's and its
++/// target's centre and size and the indices of the two units in the
++/// unit list.
++pub(crate) struct CorridorEdge {
++    /// The source's centre and size.
++    pub a: ((f64, f64), (f64, f64)),
++    /// The target's centre and size.
++    pub b: ((f64, f64), (f64, f64)),
++    /// The source's and the target's unit (indices into the units).
++    pub units: (usize, usize),
++}
++
++/// What [`corridors`] gives an edge.
++#[derive(Clone, Debug, PartialEq)]
++pub(crate) enum Corridor {
++    /// The two units do not stand one after the other along the flow
++    /// with room for a step out and a step in: drawn as before.
++    Fallback,
++    /// Nothing between the two units stands in the way of a path that
++    /// steps once (today's channel, [`cross_cluster_route`]).
++    Channel,
++    /// The bare corners (on the axes, final coordinates) of a path past
++    /// the units that stand between: one breadth per band.
++    Path(Vec<(f64, f64)>),
++}
++
++/// One band of a corridor plan: the leg the path takes past it.
++struct Leg {
++    /// The band's extent along the flow (edge-local coordinates).
++    l: (f64, f64),
++    /// The leg's breadth before slots are dealt.
++    at: f64,
++    /// 0: the leg keeps the breadth it came with; -1 / +1: it shifted
++    /// to the low / high side, to the free gap whose near edge is
++    /// `edge`.
++    side: i8,
++    /// The near edge of the gap the leg shifted to (its slot 0).
++    edge: f64,
++    /// The far edge of that gap: no slot lies past it.
++    far: f64,
++}
++
++/// A corridor's plan before slots are dealt.
++struct Plan {
++    /// +1 when the target lies below the source on the screen, -1 above:
++    /// edge-local flow coordinate `l = s * y`.
++    s: f64,
++    /// The source's port, the target's (edge-local).
++    p0: (f64, f64),
++    p3: (f64, f64),
++    /// Where the path may turn between two bands (edge-local, along the
++    /// flow): one per gap, before the first band to after the last.
++    turns: Vec<f64>,
++    legs: Vec<Leg>,
++    /// The units between (edge-local `(b0, b1, l0, l1)`): what the path
++    /// must miss.
++    obstacles: Vec<(f64, f64, f64, f64)>,
++}
++
++/// Whether the path `pts` (edge-local corners) runs into one of
++/// `obstacles` (edge-local boxes): a leg along the flow nearer than
++/// [`LANE_PAD`] to a box's side, a leg across it nearer than a corner's
++/// half rounding to its end.
++fn corridor_hits(pts: &[(f64, f64)], obstacles: &[(f64, f64, f64, f64)]) -> bool {
++    const EPS: f64 = 1e-6;
++    let pad_l = crate::router::CORNER_R / 2.0;
++    pts.windows(2).any(|w| {
++        let (p, q) = (w[0], w[1]);
++        obstacles.iter().any(|o| {
++            if (p.0 - q.0).abs() < EPS {
++                let (a, b) = (p.1.min(q.1), p.1.max(q.1));
++                p.0 > o.0 - LANE_PAD + EPS && p.0 < o.1 + LANE_PAD - EPS && b > o.2 && a < o.3
++            } else {
++                let (a, b) = (p.0.min(q.0), p.0.max(q.0));
++                p.1 > o.2 - pad_l && p.1 < o.3 + pad_l && b > o.0 && a < o.1
++            }
++        })
++    })
++}
++
++/// B12 R3, in [`route`] and [`route_partial`] of a block layout drawn TD
++/// or BT: each cross-unit edge's corridor past the units of the top
++/// level that stand between its two end units along the flow.
++///
++/// For an edge whose end units (`S`, `T`) stand one after the other with
++/// room for a step out and a step in ([`cross_cluster_route`]'s test),
++/// its obstacles are the other units (`units`, every top-level frame and
++/// every node outside the frames) whose extent along the flow meets the
++/// open interval between `S` and `T`. They group into *bands*: maximal
++/// runs that overlap along the flow. When the source's column can run
++/// down to some gap between two bands and the target's column on from
++/// there, nothing is in the way of today's channel, which steps once
++/// ([`Corridor::Channel`]). Otherwise the path takes one breadth per
++/// band: the breadth it comes with where that lies in a free gap of the
++/// band ([`LANE_PAD`] clear of every obstacle), else the free gap nearest
++/// it (R5; the lower breadth on a tie), at that gap's near edge, and it
++/// turns in the gaps between the bands, at their middles. The edges that
++/// shift into one gap of one band from one side take *slots* there, a
++/// [`crate::ortho::TRACK_PITCH`] apart from the near edge, in the order
++/// of the breadth their path takes next (the next band's, or the
++/// target's column): the one heading furthest that way lies furthest
++/// that way, so a hub's edges down one corridor nest instead of
++/// crossing (by edge index alone they would follow the order of the
++/// statements). Ties keep edge order. A path that would have to turn in
++/// a gap shorter than two corner roundings keeps today's drawing
++/// ([`Corridor::Fallback`]).
++///
++/// The same rule draws an edge against the flow (E3: its target unit
++/// upstream of its source unit), mirrored: out of the source's upstream
++/// side, in through the target's downstream side, never in a lane. Only
++/// the units' boxes as they stand are read, so a drag moves a corridor
++/// continuously within one choice of gaps (R5).
++pub(crate) fn corridors(edges: &[CorridorEdge], units: &[(f64, f64, f64, f64)]) -> Vec<Corridor> {
++    let mut plans: Vec<Option<Plan>> = Vec::with_capacity(edges.len());
++    let mut out: Vec<Corridor> = Vec::with_capacity(edges.len());
++    for e in edges {
++        match corridor_plan(e, units) {
++            Ok(p) => {
++                plans.push(Some(p));
++                out.push(Corridor::Fallback);
++            }
++            Err(c) => {
++                plans.push(None);
++                out.push(c);
++            }
++        }
++    }
++    // Slots: the legs that shifted into one gap of one band from one
++    // side, in the order of the breadth each path takes next.
++    let next_of = |p: &Plan, k: usize| -> f64 { p.legs.get(k + 1).map_or(p.p3.0, |l| l.at) };
++    let key = |p: &Plan, k: usize| -> (i64, i64, i64, i64, i8) {
++        let r = |x: f64| (x * 100.0).round() as i64;
++        let l = &p.legs[k];
++        let (l0, l1) = (p.s * l.l.0, p.s * l.l.1);
++        (r(l0.min(l1)), r(l0.max(l1)), r(l.edge), r(l.far), l.side)
++    };
++    let mut groups: BTreeMap<(i64, i64, i64, i64, i8), Vec<(f64, usize, usize)>> = BTreeMap::new();
++    for (i, p) in plans.iter().enumerate() {
++        let Some(p) = p else { continue };
++        for (k, l) in p.legs.iter().enumerate() {
++            if l.side != 0 {
++                groups
++                    .entry(key(p, k))
++                    .or_default()
++                    .push((next_of(p, k), i, k));
++            }
++        }
++    }
++    let pitch = crate::ortho::TRACK_PITCH;
++    let mut slot_at: BTreeMap<(usize, usize), f64> = BTreeMap::new();
++    for ((_, _, _, _, side), mut legs) in groups {
++        let side = f64::from(side);
++        // Slot 0 at the near edge; the next one a pitch further in.
++        legs.sort_by(|a, b| (side * a.0).total_cmp(&(side * b.0)).then(a.1.cmp(&b.1)));
++        for (slot, &(_, i, k)) in legs.iter().enumerate() {
++            let l = &plans[i].as_ref().expect("planned").legs[k];
++            let at = l.edge + side * slot as f64 * pitch;
++            // Never past the gap's far edge: the last slots share it.
++            let at = if side > 0.0 { at.min(l.far) } else { at.max(l.far) };
++            slot_at.insert((i, k), at);
++        }
++    }
++    for (i, p) in plans.iter().enumerate() {
++        let Some(p) = p else { continue };
++        let breadth: Vec<f64> = (0..p.legs.len())
++            .map(|k| slot_at.get(&(i, k)).copied().unwrap_or(p.legs[k].at))
++            .collect();
++        let path = |breadth: &[f64]| -> Vec<(f64, f64)> {
++            let mut pts: Vec<(f64, f64)> = vec![p.p0];
++            let mut at = p.p0.0;
++            let wanted = breadth.iter().copied().chain(std::iter::once(p.p3.0));
++            for (k, b) in wanted.enumerate() {
++                if (b - at).abs() > 1e-9 {
++                    pts.push((at, p.turns[k]));
++                    pts.push((b, p.turns[k]));
++                    at = b;
++                }
++            }
++            pts.push(p.p3);
++            pts
++        };
++        // A slot that brings a turn onto a unit falls back to the gap's
++        // near edge; a path that still runs into one is no corridor.
++        let mut pts = path(&breadth);
++        if corridor_hits(&pts, &p.obstacles) {
++            pts = path(&p.legs.iter().map(|l| l.at).collect::<Vec<_>>());
++        }
++        if corridor_hits(&pts, &p.obstacles) {
++            continue;
++        }
++        out[i] = Corridor::Path(pts.into_iter().map(|(b, l)| (b, p.s * l)).collect());
++    }
++    out
++}
++
++/// The plan of one corridor edge before slots ([`corridors`]), or what
++/// the edge keeps instead.
++fn corridor_plan(e: &CorridorEdge, units: &[(f64, f64, f64, f64)]) -> Result<Plan, Corridor> {
++    const GAP: f64 = 16.0;
++    let ((ac, asz), (bc, bsz)) = (e.a, e.b);
++    let (Some(&sb), Some(&tb)) = (units.get(e.units.0), units.get(e.units.1)) else {
++        return Err(Corridor::Fallback);
++    };
++    // Edge-local flow: `l = s * y` grows from the source to the target.
++    let s = if sb.1 + sb.3 + 2.0 * GAP <= tb.1 {
++        1.0
++    } else if tb.1 + tb.3 + 2.0 * GAP <= sb.1 {
++        -1.0
++    } else {
++        return Err(Corridor::Fallback);
++    };
++    let span = |r: &(f64, f64, f64, f64)| {
++        let (a, b) = (s * r.1, s * (r.1 + r.3));
++        (r.0, r.0 + r.2, a.min(b), a.max(b))
++    };
++    let (sr, tr) = (span(&sb), span(&tb));
++    let (s_out, t_in) = (sr.3, tr.2);
++    let mut obstacles: Vec<(f64, f64, f64, f64)> = units
++        .iter()
++        .enumerate()
++        .filter(|&(u, _)| u != e.units.0 && u != e.units.1)
++        .map(|(_, r)| span(r))
++        .filter(|r| r.3 > s_out + 1e-9 && r.2 < t_in - 1e-9 && r.0.is_finite() && r.1.is_finite())
++        .collect();
++    if obstacles.is_empty() {
++        return Err(Corridor::Channel);
++    }
++    obstacles.sort_by(|a, b| a.2.total_cmp(&b.2).then(a.0.total_cmp(&b.0)));
++    // Bands: maximal runs of obstacles that overlap along the flow.
++    let mut bands: Vec<((f64, f64), Vec<(f64, f64)>)> = Vec::new();
++    for &o in &obstacles {
++        match bands.last_mut() {
++            Some((l, bs)) if o.2 < l.1 => {
++                l.1 = l.1.max(o.3);
++                bs.push((o.0, o.1));
++            }
++            _ => bands.push(((o.2, o.3), vec![(o.0, o.1)])),
++        }
++    }
++    // Each band's free gaps across the flow, `LANE_PAD` clear of its
++    // obstacles: the complement of their padded breadths.
++    let free: Vec<Vec<(f64, f64)>> = bands
++        .iter()
++        .map(|(_, bs)| {
++            let mut bs: Vec<(f64, f64)> = bs.iter().map(|&(a, b)| (a - LANE_PAD, b + LANE_PAD)).collect();
++            bs.sort_by(|a, b| a.0.total_cmp(&b.0));
++            let mut out = Vec::new();
++            let mut lo = f64::NEG_INFINITY;
++            for (a, b) in bs {
++                if a > lo {
++                    out.push((lo, a));
++                }
++                lo = lo.max(b);
++            }
++            out.push((lo, f64::INFINITY));
++            out
++        })
++        .collect();
++    let clear = |k: usize, x: f64| free[k].iter().any(|&(a, b)| a <= x && x <= b);
++    let a = (ac.0, s * ac.1 + asz.1 / 2.0);
++    let b = (bc.0, s * bc.1 - bsz.1 / 2.0);
++    // Where the path may turn: the middle of each gap between two bands,
++    // before the first and after the last.
++    let n = bands.len();
++    let gaps: Vec<(f64, f64)> = (0..=n)
++        .map(|k| {
++            let lo = if k == 0 { s_out } else { bands[k - 1].0 .1 };
++            let hi = if k == n { t_in } else { bands[k].0 .0 };
++            (lo, hi)
++        })
++        .collect();
++    // A gap two corner roundings long takes its turns at its middle. A
++    // shorter one (a unit beside an end unit reaching past its border)
++    // takes them a step out of the source's unit, or a step before the
++    // target's, as today's channel does, where that misses every unit.
++    let roomy = |k: usize| gaps[k].1 - gaps[k].0 >= 2.0 * crate::router::CORNER_R;
++    let turns: Vec<f64> = (0..=n)
++        .map(|k| match k {
++            _ if roomy(k) => (gaps[k].0 + gaps[k].1) / 2.0,
++            0 => s_out + GAP,
++            _ if k == n => t_in - GAP,
++            _ => (gaps[k].0 + gaps[k].1) / 2.0,
++        })
++        .collect();
++    if turns.windows(2).any(|w| w[0] > w[1]) {
++        return Err(Corridor::Fallback);
++    }
++    // One step in a gap clears every band: today's channel.
++    let step = |k: usize| [a, (a.0, turns[k]), (b.0, turns[k]), b];
++    if let Some(k) = (0..=n).find(|&k| !corridor_hits(&step(k), &obstacles)) {
++        if std::env::var("FMX_PATHZ").is_ok() {
++            let pts: Vec<(f64, f64)> = if (a.0 - b.0).abs() < 1e-9 { vec![a, b] } else { step(k).to_vec() };
++            return Err(Corridor::Path(pts.into_iter().map(|(x, l)| (x, s * l)).collect()));
++        }
++        return Err(Corridor::Channel);
++    }
++    let mut legs: Vec<Leg> = Vec::with_capacity(n);
++    let mut at = a.0;
++    for (k, ((l0, l1), _)) in bands.iter().enumerate() {
++        let leg = if clear(k, at) {
++            Leg {
++                l: (*l0, *l1),
++                at,
++                side: 0,
++                edge: at,
++                far: at,
++            }
++        } else {
++            // The free gap nearest the breadth the path comes with: its
++            // near edge (the lower one on a tie).
++            let mut best: Option<(f64, f64, f64, i8)> = None;
++            for &(lo, hi) in &free[k] {
++                let (edge, far, side) = if hi < at { (hi, lo, -1) } else { (lo, hi, 1) };
++                if !edge.is_finite() {
++                    continue;
++                }
++                let d = (edge - at).abs();
++                let better = match best {
++                    None => true,
++                    Some((bd, be, _, _)) => d < bd - 1e-9 || ((d - bd).abs() <= 1e-9 && edge < be),
++                };
++                if better {
++                    best = Some((d, edge, far, side));
++                }
++            }
++            let Some((_, edge, far, side)) = best else {
++                return Err(Corridor::Fallback);
++            };
++            Leg {
++                l: (*l0, *l1),
++                at: edge,
++                side,
++                edge,
++                far,
++            }
++        };
++        at = leg.at;
++        legs.push(leg);
++    }
++    Ok(Plan {
++        s,
++        p0: a,
++        p3: b,
++        turns,
++        legs,
++        obstacles,
++    })
++}
++
+ /// Smallest border gap along the flow (px) for which two boxes count as
+ /// ranked one after the other; closer than that they sit side by side.
+ pub(crate) const FLOW_MIN_GAP: f64 = 12.0;

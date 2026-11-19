@@ -1,0 +1,51 @@
+flowchart RL
+  n1["audit"]
+  subgraph B0["Data tier"]
+    n2["audit<br/>queue"]
+    n3["cache"]
+    subgraph B0s0["Data tier 0"]
+      n4["auth"]
+      n5["queue<br/>billing"]
+      n6["audit"]
+    end
+    subgraph B0s1["Edge services 1"]
+      n7["notify parse ingest<br/>notify"]
+      n8["mail"]
+    end
+  end
+  subgraph B1["Platform"]
+    n9["audit"]
+    n10["ingest"]
+    n11["split split parse"]
+  end
+  subgraph B2["Storefront"]
+    n12["store"]
+    n13["store<br/>pack"]
+    subgraph B2s0["Edge services 0"]
+      n14["parse"]
+    end
+    subgraph B2s1["Core 1"]
+      n15["merge"]
+    end
+  end
+  n16["db"]
+  n12 --> n13
+  n13 -->|pack| n5
+  n10 --> n9
+  n12 --> n3
+  n16 -->|ingest| n4
+  n11 -.-> n9
+  n16 --> n11
+  n3 --> n14
+  n1 -.-> n7
+  n3 ==> n7
+  n8 --> n5
+  n14 ==> n4
+  n3 ==> n6
+  n3 -.-> B2s0
+  n4 --> n10
+  n14 -.-> n15
+  n5 -.->|split| n13
+  n3 --> n10
+  n1 -->|ingest| n8
+  n5 --> n11

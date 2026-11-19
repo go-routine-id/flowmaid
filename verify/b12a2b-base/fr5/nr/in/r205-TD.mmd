@@ -1,0 +1,10 @@
+flowchart TD
+    subgraph G[Shipping and returns desk]
+        m0[ledger]
+        m1[w]
+        m0 --> m1
+    end
+    s0[src0] --> G
+    s0 --> m0
+    s1[src1] --> m0
+    s1 --> G

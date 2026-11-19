@@ -1,0 +1,58 @@
+fix(route): a routed drawing that does not reach past the top-left margin is written as before (#76)
+
+be51245 kept a routed flowchart or state drawing's coordinates
+whenever it started off its margin either way. A drawing that starts
+further in than the margin therefore got a positive viewBox origin and
+new bytes: an undragged route() at the laid-out centres of 21 of 119
+corpus inputs, or a drag of the leftmost node inward. The patch must
+keep route() and route_partial() output byte for byte as before unless
+the drawing overflows the top-left. Now to_svg (view_shift) keeps the
+coordinates only on an axis where the drawing reaches past the margin
+by as much as the SVG shows. On any other axis it moves the drawing
+onto the margin of a 0 viewBox, as it always did. Class and ER never
+moved an inward drawing and are unchanged.
+
+This also finishes the wip commit bfdc118. compound::join now builds a
+block layout's routed canvas from each part's origin and far edge, and
+its test passes. The docs (Scene::origin, route, to_svg, the class
+and ER to_svg), the CHANGELOG entry (shorter now) and the README line
+describe the rule.
+
+Corpus, origin/dev against this commit. The verifier's probe ran on
+two sets: main (examples, tests/fixtures and the cmp corpus, 141
+inputs, all drags) and bulk (4704 inputs, lite drags).
+- Static render and scene() are byte-identical: 266 + 9074 SVGs.
+- Every routed SVG whose viewBox starts at 0 0 is byte-identical: 726
+  + 10865.
+- Every routed SVG that changed reaches past the top-left: 1325 +
+  7026. In each, the viewBox origin equals Scene::origin on the
+  overflowing axis, every node is where it was given, and picks at the
+  node centres are as before.
+- None has a positive viewBox origin.
+
+On the 158-input before-render (1692 SVGs), 818 routed SVGs are the
+same. The 570 that changed are all translations by the viewBox
+origin, except 4 class cardinality moves. Inward drags (leftmost node
++30 px) are byte-identical in 132 of 142 route and 134 of 136
+route_partial outputs; the others have edges reaching past the margin.
+
+tests/fixtures/identity.tsv: re-recorded. 108 of its 116 rows are
+again origin/dev's. The 8 that differ each reach past the top-left:
+- route at the static centres: blocks/p12-state (-7.6),
+  p14-empty-and-self (-10.2), ratio2x4, ratio3, ratio4 and ratio4mask
+  (-15 each), notes/near-drag (y -2.6);
+- route_partial: blocks/turned-blocks (-30.2).
+No static hash moves.
+
+Tests:
+- drag_past_top_left_keeps_every_position checks each axis. An
+  overflowing axis keeps its coordinates and the viewBox starts at the
+  overflow; on the other axis the drawing is moved as before, and a
+  pick at the drawn centre, mapped back, picks the node.
+- routed_offset_under_print_precision_is_written_as_before also checks
+  that the inward axis is moved as before.
+- drag_inside_keeps_the_origin adds a drawing moved 40/25 px inward,
+  byte-identical to a non-routed scene's SVG.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

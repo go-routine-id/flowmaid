@@ -1,0 +1,20 @@
+flowchart RL
+    subgraph O[Shipping and returns desk]
+        subgraph G[Édition générale des données]
+            m0[ledger]
+            m1[w]
+            m2[auth service]
+        end
+        k[k]
+    end
+    m0 --> k
+    m1 --> k
+    s0[src0] --> O
+    s0 --> m1
+    s1[src1] --> m2
+    s2[src2] --> m0
+    s2 --> G
+    s3[src3] --> G
+    s3 --> O
+    s4[src4] --> G
+    s4 --> m1

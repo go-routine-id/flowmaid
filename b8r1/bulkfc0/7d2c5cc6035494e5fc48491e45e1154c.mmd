@@ -1,0 +1,14 @@
+flowchart TD
+    S([Start]) --> A[Load config]
+    A --> B{Valid?}
+    B -->|yes| C[(Cache)]
+    B -->|no| E[/Report error/]
+    C --> D{{Transform}}
+    D --> F[Write output]
+    D --> G[Audit log]
+    F --> H((Done))
+    E -->|retry after a long and detailed backoff| A
+    G -->|re-audit| D
+    F -->|checksum mismatch| B
+    H -.->|restart| S
+    G --> G

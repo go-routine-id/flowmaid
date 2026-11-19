@@ -1,0 +1,59 @@
+flowchart LR
+  n1["cache"]
+  n2["notify"]
+  n3["store ship search"]
+  subgraph B0["Back office and finance"]
+    n4["ship"]
+    n5["store"]
+    n6["index<br/>cache"]
+    n7["search<br/>ship"]
+  end
+  subgraph B1["Back office and finance"]
+    n8["pack"]
+    n9["queue"]
+    n10["index"]
+    subgraph B1s0["Back office and finance 0"]
+      n11["queue<br/>pack"]
+    end
+    subgraph B1s1["Core 1"]
+      n12["search"]
+    end
+  end
+  subgraph B2["Platform"]
+    n13["ship"]
+    n14["db"]
+    n15["pack"]
+    n16["notify"]
+  end
+  subgraph B3["Core"]
+    n17["index db audit<br/>merge"]
+    subgraph B3s0["Data tier 0"]
+      n18["queue"]
+    end
+    subgraph B3s1["Edge services 1"]
+      n19["queue"]
+      n20["search"]
+    end
+  end
+  n21["store split merge"]
+  n22["notify"]
+  n15 -->|queue| n19
+  n21 --> n5
+  n3 ==> n5
+  n11 --> n3
+  n19 --> n20
+  n12 -->|mail| n18
+  n19 --> n11
+  n22 ==> n18
+  n19 -.->|pack| n2
+  n18 ==> n7
+  n20 --> n10
+  n6 --> n13
+  n21 --> n18
+  n11 ==> n18
+  n6 ==>|mail| n12
+  n8 -.-> n19
+  n7 --> n6
+  n5 -.-> n18
+  n5 -->|merge| n11
+  n10 ==> n16

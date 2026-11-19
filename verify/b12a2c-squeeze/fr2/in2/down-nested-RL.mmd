@@ -1,0 +1,15 @@
+flowchart RL
+  s[Start] --> a1
+  t[Second start] --> m[Prep] --> b2
+  subgraph P[Outer]
+    subgraph A[First block]
+      a1[a one] --> a2[a two] --> a3[a three]
+    end
+    subgraph B[Second block]
+      b2[b two] --> b3["b tall<br/>last<br/>member"]
+    end
+    k[outer tail]
+  end
+  a3 --> e1[Sink A]
+  b3 --> e2[Sink B]
+  a2 -.-> k

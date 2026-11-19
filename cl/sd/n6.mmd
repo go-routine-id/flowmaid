@@ -1,0 +1,12 @@
+stateDiagram-v2
+  direction LR
+  [*] --> P
+  state P {
+    a --> b
+    state In {
+      p --> q
+      note right of q : deep
+    }
+    b --> In
+  }
+  P --> Q

@@ -1,0 +1,13 @@
+sequenceDiagram
+    participant A
+    participant B
+    A->>+A: self work
+    loop outer loop section
+        A->>B: x
+        opt inner opt condition
+            loop innermost
+                B->>A: y
+            end
+        end
+    end
+    A-->>-B: z

@@ -1,0 +1,30 @@
+diff --git a/src/ortho.rs b/src/ortho.rs
+index 6fc1dad..3c1623d 100644
+--- a/src/ortho.rs
++++ b/src/ortho.rs
+@@ -1361,6 +1361,10 @@ struct TitleSides {
+     cols: std::collections::BTreeMap<(usize, usize), f64>,
+ }
+ 
++/// Float noise (px) a track's distance from a taken column may fall
++/// short of [`TRACK_PITCH`] and still count as a pitch apart.
++const PITCH_EPS: f64 = 1e-6;
++
+ impl TitleSides {
+     fn of(sc: &Scene, cx: &Ctx, dir: Direction, frames: &[Rect]) -> TitleSides {
+         let mut out = TitleSides {
+@@ -1449,7 +1453,13 @@ impl TitleSides {
+             let mut next = c1 + crate::router::CORNER_R;
+             for &(b, i) in &v {
+                 let mut col = next;
+-                while let Some(&o) = taken.iter().find(|&&o| (o - col).abs() < TRACK_PITCH) {
++                // (A hair under the pitch: `col` set to `o + TRACK_PITCH`
++                // can lie a rounding under the pitch from `o` again, and
++                // the search then found `o` for ever.)
++                while let Some(&o) = taken
++                    .iter()
++                    .find(|&&o| (o - col).abs() < TRACK_PITCH - PITCH_EPS)
++                {
+                     col = o + TRACK_PITCH;
+                 }
+                 if col > f1 - crate::scene::LANE_PAD {

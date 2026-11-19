@@ -1,0 +1,120 @@
+advance_swimlane	ERR line 1: expected a node id, found: '# Advance swimlane text DSL showcase: nested lanes, per-node/per-edge'
+advance_terminals	ERR line 1: expected a node id, found: '# Terminals: edges attach to sub-elements and named anchors, not only'
+advanced	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+architecture	ERR not a flowchart
+class	ERR not a flowchart
+demo	bm=0	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+er	ERR not a flowchart
+fanout	bm=0	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+gitgraph	ERR not a flowchart
+journey	ERR not a flowchart
+long-labels	bm=0	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+lr	bm=0	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+mindmap	ERR not a flowchart
+pie	ERR not a flowchart
+sankey	ERR not a flowchart
+sequence	ERR not a flowchart
+shapes	bm=0	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+state	bm=0	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+stress	bm=0	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+subgraph	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+timeline	ERR not a flowchart
+b9-inside	bm=1	S: lat=1 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=3 x=2 tcut=0 fan=0 def=0
+b9-inside2	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=2 x=0 tcut=0 fan=0 def=0
+blocks-overview-actors-reversed	bm=1	S: lat=3 x=6 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=2 x=11 tcut=0 fan=0 def=1
+blocks-overview-bt	bm=1	S: lat=3 x=7 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=6 x=10 tcut=0 fan=0 def=0
+blocks-overview-edges-reversed	bm=1	S: lat=3 x=6 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=2 x=11 tcut=0 fan=0 def=1
+blocks-overview-edges-rotated	bm=1	S: lat=3 x=6 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=2 x=11 tcut=0 fan=0 def=1
+blocks-overview-lr	bm=1	S: lat=0 x=6 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=2 x=16 tcut=0 fan=2 def=0
+blocks-overview-rl	bm=1	S: lat=0 x=6 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=2 x=16 tcut=0 fan=2 def=0
+blocks-overview-subgraphs-reversed	bm=1	S: lat=3 x=6 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=2 x=11 tcut=0 fan=0 def=1
+blocks-overview	bm=1	S: lat=3 x=6 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=2 x=11 tcut=0 fan=0 def=1
+cycle2-tie-swapped	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+cycle2-tie	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+cycle2	bm=1	S: lat=2 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=3 x=0 tcut=0 fan=0 def=0
+empty-target	bm=0	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+hub5	bm=1	S: lat=3 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=2 x=0 tcut=0 fan=0 def=0
+interleave	bm=1	S: lat=1 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=1 x=0 tcut=0 fan=0 def=0
+iso-lane-lr	bm=0	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+iso-lane	bm=0	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+iso-nest	bm=0	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+iso-state	bm=0	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+l5loop	bm=1	S: lat=1 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=2 x=0 tcut=0 fan=0 def=0
+lane-beside	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=4
+lr	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=1 x=0 tcut=0 fan=0 def=0
+nested-cases	bm=1	S: lat=0 x=1 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=2 x=3 tcut=0 fan=0 def=0
+nested-chain	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=2 x=0 tcut=0 fan=0 def=0
+nested-self-only	bm=0	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+nested	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=1 tcut=0 fan=0 def=0
+note-edge-row	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=1 x=0 tcut=0 fan=0 def=0
+own-centre	bm=0	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=2	R: lat=0 x=0 tcut=0 fan=0 def=2
+p01-iso	bm=0	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+p02-iso-dir	bm=0	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+p03-ext-dir	bm=1	S: lat=1 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=1 fan=0 def=0
+p04-to-cluster	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+p05-siblings	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+p06-block-cycle	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+p07-nested	bm=1	S: lat=2 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=2 x=0 tcut=0 fan=0 def=0
+p08-chain3	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+p09-disconnected	bm=0	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+p10-mixed-rank	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+p11-lr	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+p12-state	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+p13-inner-dir-ext	bm=0	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+p14-empty-and-self	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+ratio2	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+ratio2x4	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+ratio3	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+ratio4	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+ratio4mask	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+reqresp	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+reqresp22	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=1 x=1 tcut=0 fan=0 def=0
+self-member	bm=1	S: lat=0 x=1 tcut=0 fan=0 lblchip=0 lbledge=0 def=2	R: lat=0 x=0 tcut=0 fan=0 def=2
+selfsub-nested	bm=0	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+state-note	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+sub-nested-self	bm=1	S: lat=1 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=2	R: lat=1 x=0 tcut=0 fan=0 def=2
+swim-cycle	bm=1	S: lat=6 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=6 x=0 tcut=0 fan=0 def=0
+swim-nested	bm=1	S: lat=1 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+swimlane-nested	bm=1	S: lat=7 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=6 x=0 tcut=0 fan=0 def=0
+swimlane	bm=1	S: lat=8 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=8 x=0 tcut=0 fan=0 def=0
+t1-nest-own	bm=0	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+t2-self-nested	bm=0	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+t2b-self-nested-order	bm=0	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+t9-frames-8px	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=3 x=0 tcut=0 fan=0 def=0
+t9b-frames-8px-lr	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+t9c-frames-8px-two-way	bm=1	S: lat=4 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=6 x=0 tcut=0 fan=0 def=0
+title-entry	bm=1	S: lat=2 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+title-hidden	bm=1	S: lat=1 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=1 x=0 tcut=0 fan=0 def=0
+turned-blocks	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=1 x=0 tcut=0 fan=0 def=0
+wide-stroke	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+fork-twins	bm=1	S: lat=0 x=6 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=1 x=10 tcut=0 fan=1 def=3
+near-drag	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+nested-composite	bm=1	S: lat=0 x=1 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=5 tcut=0 fan=0 def=0
+routed-around	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=2 x=0 tcut=0 fan=0 def=0
+spread-bottom	bm=1	S: lat=1 x=1 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=3 tcut=0 fan=2 def=0
+spread-face	bm=1	S: lat=0 x=1 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=2 x=4 tcut=0 fan=1 def=0
+straight-link	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+wide-frames	bm=1	S: lat=0 x=2 tcut=0 fan=1 lblchip=0 lbledge=0 def=1	R: lat=0 x=3 tcut=0 fan=3 def=3
+back-edge	bm=0	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+bench-75	bm=1	S: lat=2 x=204 tcut=0 fan=4 lblchip=0 lbledge=0 def=0	R: lat=15 x=243 tcut=0 fan=24 def=15
+dense-lr	bm=1	S: lat=5 x=17 tcut=0 fan=0 lblchip=0 lbledge=0 def=2	R: lat=10 x=30 tcut=0 fan=7 def=1
+dense-td	bm=1	S: lat=6 x=49 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=20 x=113 tcut=0 fan=36 def=21
+fanout-frames	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+wide-labels	bm=0	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=1 tcut=0 fan=1 def=0
+s1-wide-titles-td-BT	bm=1	S: lat=5 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=6 x=3 tcut=1 fan=0 def=0
+s1-wide-titles-td-LR	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+s1-wide-titles-td-RL	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+s1-wide-titles-td	bm=1	S: lat=4 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=3 x=3 tcut=1 fan=0 def=0
+s2-lr-long-titles-BT	bm=1	S: lat=4 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=2 x=0 tcut=2 fan=0 def=0
+s2-lr-long-titles-RL	bm=1	S: lat=1 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+s2-lr-long-titles-TD	bm=1	S: lat=5 x=1 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=2 x=1 tcut=1 fan=0 def=0
+s2-lr-long-titles	bm=1	S: lat=1 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=1 fan=0 def=0
+s3-nested-linked-BT	bm=1	S: lat=5 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=7 x=0 tcut=0 fan=0 def=0
+s3-nested-linked-LR	bm=1	S: lat=2 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+s3-nested-linked-RL	bm=1	S: lat=2 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+s3-nested-linked	bm=1	S: lat=4 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=5 x=0 tcut=0 fan=0 def=0
+s4-nested-wide-title-BT	bm=1	S: lat=1 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=2 x=0 tcut=0 fan=0 def=0
+s4-nested-wide-title-LR	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+s4-nested-wide-title-RL	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+s4-nested-wide-title	bm=1	S: lat=1 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=4 x=0 tcut=0 fan=0 def=0
+s5-state-long	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=1 fan=0 def=0

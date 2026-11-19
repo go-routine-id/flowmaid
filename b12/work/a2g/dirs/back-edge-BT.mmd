@@ -1,0 +1,9 @@
+%% A loop back from a branch to an earlier step (back-edge through a diamond).
+flowchart BT
+    A([Start]) --> B[Read input]
+    B --> C{Valid?}
+    C -->|yes| D[Process]
+    C -->|no| E[Show error]
+    E --> B
+    D ==> F((Done))
+

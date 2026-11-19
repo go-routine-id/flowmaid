@@ -1,0 +1,38 @@
+examples.advanced-BT	0	0	0.1
+examples.advanced-LR	0	0	0.0
+examples.advanced-RL	0	0	0.0
+examples.advanced-TD	0	0	0.1
+examples.demo-BT	0	0	0.0
+examples.demo-LR	1	1	15.9
+    #2>#3 | yes   434    43.6   35.8  20  122.3 | 15.9
+examples.demo-RL	1	1	16.0
+    #2>#3 | yes   335.3  43.6   35.8  20  122.3 | 16.0
+examples.demo-TD	0	0	0.0
+examples.fanout-BT	0	0	0.1
+examples.fanout-LR	0	0	0.0
+examples.fanout-RL	0	0	0.0
+examples.fanout-TD	0	0	0.1
+examples.long-labels-BT	0	0	0.0
+examples.long-labels-LR	0	0	0.0
+examples.long-labels-RL	0	0	0.0
+examples.long-labels-TD	0	0	0.0
+examples.lr-BT	0	0	0.0
+examples.lr-LR	0	0	0.0
+examples.lr-RL	0	0	0.0
+examples.lr-TD	0	0	0.0
+examples.shapes-BT	0	0	0.0
+examples.shapes-LR	0	0	0.0
+examples.shapes-RL	0	0	0.0
+examples.shapes-TD	0	0	0.0
+examples.stress-BT	1	1	17.1
+    #0>#1 | parallel  173.4  336.6  60.1  20  66.5 | 17.1
+examples.stress-LR	1	1	19.0
+    #2>#3 | yes       523.4  99.5   35.8  20  86.0 | 19.0
+examples.stress-RL	1	1	19.1
+    #2>#3 | yes       105.7  99.5   35.8  20  86.0 | 19.1
+examples.stress-TD	1	1	17.1
+    #0>#1 | parallel  173.4  102    60.1  20  66.5 | 17.1
+examples.subgraph-BT	0	0	0.0
+examples.subgraph-LR	0	0	0.0
+examples.subgraph-RL	0	0	0.0
+examples.subgraph-TD	0	0	0.0

@@ -1,0 +1,12 @@
+architecture-beta
+    group g0(disk)[Edge]
+    group g1(monitoring)[Backend Services]
+    service s0(disk)[Service 0] in g0
+    service s1(internet)[Service 1] in g0
+    service s2(disk)[Service 2] in g0
+    service s3(internet)[Service 3] in g1
+    service s4(cloud)[Service 4]
+    s0:L -- R:s2
+    s3:B -- T:s2
+    s2:B -- T:s3
+    s2:L --> R:s3

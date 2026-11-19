@@ -1,0 +1,19 @@
+flowchart TD
+    subgraph O[Shipping and returns desk]
+        subgraph G[Payments]
+            m0[queue]
+            m1[x wide member node]
+            m2[queue]
+        end
+        k[k]
+    end
+    m0 --> k
+    s0[src0] --> m2
+    s0 --> G
+    s1[src1] -- "lbl4" --> G
+    s2[src2] -- "lbl7" --> m1
+    s2 --> m0
+    s3[src3] -- "lbl3" --> m2
+    s3 -- "lbl5" --> O
+    m2 --> z[end]
+    G --> z2[after]

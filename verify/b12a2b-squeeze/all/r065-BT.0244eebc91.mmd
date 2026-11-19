@@ -1,0 +1,13 @@
+flowchart BT
+    subgraph G[Core]
+        m0[ledger]
+        m1[ledger]
+        m0 --> m1
+    end
+    s0[src0] --> m1
+    s0 -- "lbl7" --> G
+    s1[src1] -- "lbl7" --> m1
+    s1 --> G
+    s2[src2] --> G
+    s2 --> m1
+    G --> z2[after]

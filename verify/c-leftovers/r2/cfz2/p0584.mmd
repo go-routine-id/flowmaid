@@ -1,0 +1,13 @@
+classDiagram
+direction TB
+A -- B
+A ..> C
+A ..> D : has many of
+C ..|> E
+A ..> E
+C <|-- A
+B --> B
+B --> B : b1
+B *-- B : b2
+B ..> B : b3
+B --> B : b4

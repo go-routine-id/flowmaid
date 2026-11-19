@@ -1,0 +1,8 @@
+stateDiagram-v2
+    state c <<choice>>
+    [*] --> A
+    A --> c
+    c --> B : yes
+    c --> C : no
+    note right of c : decide here
+    note left of c : and here

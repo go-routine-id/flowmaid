@@ -1,0 +1,18 @@
+stateDiagram-v2
+  [*] --> Idle
+  Idle --> Fetch : go
+  Idle --> Parse
+  Idle --> Check
+  Idle --> Emit
+  Idle --> Done
+  state Work {
+    Fetch --> Parse : ok
+    Parse --> Check
+    Check --> Emit : pass
+    Check --> Fetch : retry
+  }
+  Emit --> Done
+  Fetch --> Done : abort
+  Parse --> Done : abort
+  Done --> [*]
+  Done --> Idle : again

@@ -1,0 +1,53 @@
+flowchart BT
+  n1["mail"]
+  n2["index"]
+  subgraph B0["Back office and finance"]
+    n3["billing"]
+    n4["mail"]
+    n5["queue merge index<br/>ship"]
+    n6["search"]
+    subgraph B0s0["Edge services 0"]
+      n7["mail"]
+      n8["billing"]
+    end
+    subgraph B0s1["Analytics 1"]
+      n9["audit report billing"]
+      n10["ship<br/>split"]
+      n11["cache"]
+    end
+  end
+  subgraph B1["Storefront"]
+    n12["billing split queue"]
+    n13["split"]
+    n14["api"]
+    n15["auth"]
+  end
+  subgraph B2["Core"]
+    n16["worker"]
+  end
+  subgraph B3["Data tier"]
+    n17["worker"]
+    n18["billing"]
+    n19["billing"]
+    n20["worker"]
+  end
+  n21["worker"]
+  n19 ==> n3
+  n3 -.-> n17
+  n6 -->|mail| n17
+  n13 -->|index| n16
+  n7 -->|report| n3
+  n2 --> n21
+  n10 -->|store| n18
+  n7 --> n16
+  n12 --> n21
+  n4 --> n11
+  n14 -->|search| n16
+  n14 ==> n11
+  n11 ==> n14
+  n6 -->|ship| n3
+  n3 ==> n10
+  n14 --> n6
+  n7 ==> n12
+  n4 -.-> n19
+  n3 -.-> n5

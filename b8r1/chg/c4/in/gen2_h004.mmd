@@ -1,0 +1,26 @@
+flowchart TD
+  s0["billing"]
+  subgraph g0["api queue trace zone"]
+    direction TB
+    m0["auth"]
+  end
+  subgraph g1["queue zone"]
+    direction LR
+    m1["auth cache"]
+    m2["cache ship"]
+    m3["api report log"]
+    m4["index"]
+    m2 --> m4
+  end
+  subgraph g2["api db zone"]
+    m5["order pay"]
+    m6["index"]
+    m7["queue db"]
+    m8["db db"]
+    m5 --> m6
+    m6 --> m8
+  end
+  s0 --> m0
+  s0 --> g1
+  s0 --> m5
+  m4 --> m0

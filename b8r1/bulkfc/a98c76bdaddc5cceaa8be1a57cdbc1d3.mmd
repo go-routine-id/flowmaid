@@ -1,0 +1,15 @@
+flowchart BT
+    N0([Load archive])
+    N1([Fetch])
+    N2{Parse emit}
+    N3([Check])
+    N4([Archive])
+    N5(Emit)
+    N0 --> N1
+    N1 -->|next| N2
+    N2 -->|yes| N3
+    N2 --> N4
+    N4 --> N5
+    N5 --> N0
+    N1 ==>|again| N0
+    N4 --> N1

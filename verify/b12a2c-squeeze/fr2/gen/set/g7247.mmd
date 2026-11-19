@@ -1,0 +1,18 @@
+flowchart RL
+  n1["report"]
+  subgraph B0["Storefront"]
+    n2["parse"]
+    n3["store"]
+  end
+  subgraph B1["Data tier"]
+    n4["audit"]
+    n5["ingest"]
+  end
+  n6["queue<br/>db"]
+  n2 -->|audit| n6
+  n4 ==> n2
+  n6 -->|db| n5
+  n3 -->|store| n1
+  n4 -->|parse| n5
+  n3 -->|split| n6
+  n5 --> n1

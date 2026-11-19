@@ -1,0 +1,14 @@
+flowchart TD
+    N0{Check}
+    N1{Load fetch}
+    N2(Fetch)
+    N3([Check parse])
+    N4{Check load}
+    N5(Store notify)
+    N0 --> N1
+    N0 --> N2
+    N1 --> N3
+    N3 --> N4
+    N3 -->|next| N5
+    N3 --> N5
+    N2 -->|back| N1

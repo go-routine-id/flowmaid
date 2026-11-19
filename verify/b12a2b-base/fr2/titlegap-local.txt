@@ -1,0 +1,8 @@
+blocks-overview-actors-reversed.svg	Order processing	pre 11.96 REG → ORD: deploy	head 1.97 CART → QUEUE: place order
+blocks-overview-bt.svg	Edge and shared services	pre 1.45 CDN → GATE: cache miss	head 1.45 CDN → GATE: cache miss
+blocks-overview-edges-reversed.svg	Order processing	pre 11.96 REG → ORD: deploy	head 1.97 CART → QUEUE: place order
+blocks-overview-edges-rotated.svg	Order processing	pre 11.96 REG → ORD: deploy	head 1.97 CART → QUEUE: place order
+blocks-overview-subgraphs-reversed.svg	Order processing	pre 11.96 REG → ORD: deploy	head 1.97 CART → QUEUE: place order
+blocks-overview.svg	Order processing	pre 11.96 REG → ORD: deploy	head 1.97 CART → QUEUE: place order
+dense-td.svg	lorem labore	pre 0.00 n16 → n44: sed dolor aliqua	head 0.00 n16 → n44: sed dolor aliqua
+dense-td.svg	consectetur nostrud lorem	pre 0.00 n16 → n43: do labore	head 0.00 n16 → n43: do labore

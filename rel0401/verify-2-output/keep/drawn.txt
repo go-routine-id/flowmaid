@@ -1,0 +1,164 @@
+('ch2', 'drawn==scene') 136
+('ch3', 'drawn==scene') 114
+('ch3', 'svg!=scene (no overflow)') 22
+('d1.p', 'drawn==scene') 136
+('d1.r', 'drawn==scene') 136
+('d1.s', 'drawn==scene') 136
+('d10.p', 'drawn==scene') 49
+('d10.p', 'svg!=scene (overflow other axis)') 24
+('d10.p', 'svg!=scene (overflow other axis) dragged-not-at-caller') 63
+('d10.r', 'drawn==scene') 44
+('d10.r', 'svg!=scene (overflow other axis)') 24
+('d10.r', 'svg!=scene (overflow other axis) dragged-not-at-caller') 68
+('d11.p', 'drawn==scene') 135
+('d11.p', 'svg!=scene (no overflow) dragged-not-at-caller') 1
+('d11.r', 'drawn==scene') 118
+('d11.r', 'svg!=scene (no overflow) dragged-not-at-caller') 18
+('d12.p', 'drawn==scene') 136
+('d12.r', 'drawn==scene') 131
+('d12.r', 'svg!=scene (overflow other axis)') 1
+('d12.r', 'svg!=scene (overflow other axis) dragged-not-at-caller') 4
+('d2.p', 'drawn==scene') 135
+('d2.p', 'svg!=scene (overflow other axis) dragged-not-at-caller') 1
+('d2.r', 'drawn==scene') 130
+('d2.r', 'svg!=scene (overflow other axis) dragged-not-at-caller') 6
+('d3.p', 'drawn==scene') 125
+('d3.p', 'svg!=scene (overflow other axis)') 1
+('d3.p', 'svg!=scene (overflow other axis) dragged-not-at-caller') 10
+('d3.r', 'drawn==scene') 118
+('d3.r', 'svg!=scene (overflow other axis)') 1
+('d3.r', 'svg!=scene (overflow other axis) dragged-not-at-caller') 17
+('d4.p', 'drawn==scene') 135
+('d4.p', 'svg!=scene (no overflow)') 1
+('d4.r', 'drawn==scene') 130
+('d4.r', 'svg!=scene (no overflow)') 1
+('d4.r', 'svg!=scene (overflow other axis)') 1
+('d4.r', 'svg!=scene (overflow other axis) dragged-not-at-caller') 4
+('d5.p', 'drawn==scene') 130
+('d5.p', 'svg!=scene (overflow other axis) dragged-not-at-caller') 6
+('d5.r', 'drawn==scene') 118
+('d5.r', 'svg!=scene (overflow other axis)') 7
+('d5.r', 'svg!=scene (overflow other axis) dragged-not-at-caller') 11
+('d6.p', 'drawn==scene') 110
+('d6.p', 'svg!=scene (no overflow)') 2
+('d6.p', 'svg!=scene (no overflow) dragged-not-at-caller') 24
+('d6.r', 'drawn==scene') 92
+('d6.r', 'svg!=scene (no overflow)') 2
+('d6.r', 'svg!=scene (no overflow) dragged-not-at-caller') 42
+('d7.p', 'drawn==scene') 58
+('d7.p', 'svg!=scene (no overflow)') 14
+('d7.p', 'svg!=scene (no overflow) dragged-not-at-caller') 64
+('d7.r', 'drawn==scene') 49
+('d7.r', 'svg!=scene (no overflow)') 18
+('d7.r', 'svg!=scene (no overflow) dragged-not-at-caller') 68
+('d7.r', 'svg!=scene (overflow other axis) dragged-not-at-caller') 1
+('d8.p', 'svg!=scene (no overflow) dragged-not-at-caller') 135
+('d8.p', 'svg!=scene (overflow other axis) dragged-not-at-caller') 1
+('d8.r', 'svg!=scene (no overflow) dragged-not-at-caller') 135
+('d8.r', 'svg!=scene (overflow other axis) dragged-not-at-caller') 1
+('d9.p', 'drawn==scene') 126
+('d9.p', 'svg!=scene (overflow other axis) dragged-not-at-caller') 10
+('d9.r', 'drawn==scene') 126
+('d9.r', 'svg!=scene (overflow other axis) dragged-not-at-caller') 10
+('r0', 'drawn==scene') 113
+('r0', 'svg!=scene (no overflow)') 23
+('rp0', 'drawn==scene') 136
+('rs', 'drawn==scene') 113
+('rs', 'svg!=scene (no overflow)') 23
+== svg!=scene (no overflow) dragged-not-at-caller 487
+    ('advanced.mmd', 'd7.r', -21.0, 0.0, [0.0, 0.0], [9])
+    ('advanced.mmd', 'd7.p', -21.0, 0.0, [0.0, 0.0], [9])
+    ('advanced.mmd', 'd8.r', -40.0, -25.0, [0.0, 0.0], [0, 1, 2])
+    ('advanced.mmd', 'd8.p', -40.0, -25.0, [0.0, 0.0], [0, 1, 2])
+    ('demo.mmd', 'd6.r', -25.0, 0.0, [0.0, 0.0], [3])
+    ('demo.mmd', 'd6.p', -25.0, 0.0, [0.0, 0.0], [3])
+    ('demo.mmd', 'd7.r', -28.6, 0.0, [0.0, 0.0], [3])
+    ('demo.mmd', 'd7.p', -28.6, 0.0, [0.0, 0.0], [3])
+    ('demo.mmd', 'd8.r', -40.0, -25.0, [0.0, 0.0], [0, 1, 2])
+    ('demo.mmd', 'd8.p', -40.0, -25.0, [0.0, 0.0], [0, 1, 2])
+    ('fanout.mmd', 'd7.p', -30.0, 0.0, [0.0, 0.0], [1])
+    ('fanout.mmd', 'd8.r', -40.0, -25.0, [0.0, 0.0], [0, 1, 2])
+== svg!=scene (overflow other axis) 59
+    ('advanced.mmd', 'd10.r', 0.0, -60.0, [-181.9, 0.0], [0])
+    ('advanced.mmd', 'd10.p', 0.0, -60.0, [-181.9, 0.0], [0])
+    ('long-labels.mmd', 'd10.r', 0.0, -60.0, [-208.5, 0.0], [0])
+    ('long-labels.mmd', 'd10.p', 0.0, -60.0, [-208.5, 0.0], [0])
+    ('state.mmd', 'd10.r', 0.0, -60.0, [-115.0, 0.0], [0])
+    ('state.mmd', 'd10.p', 0.0, -60.0, [-115.0, 0.0], [0])
+    ('blocks-overview-edges-reversed.mmd', 'd10.r', 0.0, -8.5, [-179.4, 0.0], [0])
+    ('blocks-overview-edges-reversed.mmd', 'd10.p', 0.0, -8.5, [-179.4, 0.0], [0])
+    ('blocks-overview-edges-rotated.mmd', 'd10.r', 0.0, -8.5, [-179.4, 0.0], [0])
+    ('blocks-overview-edges-rotated.mmd', 'd10.p', 0.0, -8.5, [-179.4, 0.0], [0])
+    ('blocks-overview-lr.mmd', 'd4.r', 0.0, -33.5, [-148.0, 0.0], [0])
+    ('blocks-overview-lr.mmd', 'd12.r', 0.0, -33.5, [-104.4, 0.0], [0])
+== svg!=scene (overflow other axis) dragged-not-at-caller 213
+    ('demo.mmd', 'd10.r', 0.0, -60.0, [-145.0, 0.0], [0])
+    ('demo.mmd', 'd10.p', 0.0, -60.0, [-145.0, 0.0], [0])
+    ('fanout.mmd', 'd10.r', 0.0, -60.0, [-157.5, 0.0], [0])
+    ('fanout.mmd', 'd10.p', 0.0, -60.0, [-157.5, 0.0], [0])
+    ('lr.mmd', 'd10.r', 0.0, -44.0, [-153.8, 0.0], [5])
+    ('lr.mmd', 'd10.p', 0.0, -44.0, [-153.8, 0.0], [5])
+    ('stress.mmd', 'd3.r', -50.3, 0.0, [0.0, -105.3], [2])
+    ('stress.mmd', 'd3.p', -50.3, 0.0, [0.0, -105.3], [2])
+    ('stress.mmd', 'd10.r', 0.0, -60.0, [-146.4, 0.0], [0])
+    ('stress.mmd', 'd10.p', 0.0, -60.0, [-146.4, 0.0], [0])
+    ('subgraph.mmd', 'd10.r', 0.0, -60.0, [-142.0, 0.0], [0])
+    ('subgraph.mmd', 'd10.p', 0.0, -60.0, [-142.0, 0.0], [0])
+== svg!=scene (no overflow) 106
+    ('state.mmd', 'd7.r', -22.8, 0.0, [0.0, 0.0], [2])
+    ('state.mmd', 'd7.p', -22.8, 0.0, [0.0, 0.0], [2])
+    ('blocks-overview-edges-reversed.mmd', 'd7.r', -15.0, 0.0, [0.0, 0.0], [3])
+    ('blocks-overview-edges-reversed.mmd', 'd7.p', -15.0, 0.0, [0.0, 0.0], [3])
+    ('blocks-overview-lr.mmd', 'r0', 0.0, -33.5, [0.0, 0.0], [])
+    ('blocks-overview-lr.mmd', 'rs', 0.0, -33.5, [0.0, 0.0], [])
+    ('blocks-overview-lr.mmd', 'd7.r', 0.0, -33.5, [0.0, 0.0], [0])
+    ('blocks-overview-lr.mmd', 'ch3', 0.0, -33.5, [0.0, 0.0], [])
+    ('blocks-overview-rl.mmd', 'r0', 0.0, -33.5, [0.0, 0.0], [])
+    ('blocks-overview-rl.mmd', 'rs', 0.0, -33.5, [0.0, 0.0], [])
+    ('blocks-overview-rl.mmd', 'ch3', 0.0, -33.5, [0.0, 0.0], [])
+    ('blocks-overview-subgraphs-reversed.mmd', 'r0', -7.1, 0.0, [0.0, 0.0], [])
+
+== pick at drawn centre of the dragged node (outside own box => wrong pick)
+('d1', 'ok') 366
+('d10', 'MISS') 131
+('d10', 'ok') 75
+('d12', 'MISS') 4
+('d12', 'ok') 214
+('d2', 'MISS') 7
+('d2', 'ok') 237
+('d3', 'MISS') 7
+('d3', 'inside-but-off') 20
+('d3', 'ok') 217
+('d4', 'MISS') 4
+('d4', 'ok') 214
+('d5', 'MISS') 1
+('d5', 'inside-but-off') 16
+('d5', 'ok') 189
+('d9', 'MISS') 180
+('d9', 'inside-but-off') 130
+('d9', 'ok') 2022
+    ('demo.mmd', 'd10.r', 'Start', [0.0, -60.0], (74.0, 38.0))
+    ('demo.mmd', 'd10.p', 'Start', [0.0, -60.0], (74.0, 38.0))
+    ('fanout.mmd', 'd10.r', 'Dispatcher', [0.1, -60.0], (98.9, 38.0))
+    ('fanout.mmd', 'd10.p', 'Dispatcher', [0.1, -60.0], (98.9, 38.0))
+    ('lr.mmd', 'd10.r', 'Database', [-0.0, -44.0], (91.6, 38.0))
+    ('lr.mmd', 'd10.p', 'Database', [-0.0, -44.0], (91.6, 38.0))
+    ('stress.mmd', 'd10.r', 'Source', [-0.0, -60.0], (76.8, 38.0))
+    ('stress.mmd', 'd10.p', 'Source', [-0.0, -60.0], (76.8, 38.0))
+    ('subgraph.mmd', 'd10.r', 'Client', [0.0, -60.0], (68.0, 38.0))
+    ('subgraph.mmd', 'd10.p', 'Client', [0.0, -60.0], (68.0, 38.0))
+    ('b9-inside.mmd', 'd10.r', 'request', [0.0, -60.0], (78.8, 38.0))
+    ('b9-inside.mmd', 'd10.p', 'request', [0.0, -60.0], (78.8, 38.0))
+    ('b9-inside2.mmd', 'd10.r', 'request', [0.0, -60.0], (78.8, 38.0))
+    ('b9-inside2.mmd', 'd10.p', 'request', [0.0, -60.0], (78.8, 38.0))
+    ('blocks-overview-lr.mmd', 'd2.r', 'cart service', [0.0, -33.6], (104.0, 38.0))
+    ('blocks-overview-lr.mmd', 'd2.p', 'cart service', [0.0, -33.6], (104.0, 38.0))
+    ('blocks-overview-lr.mmd', 'd10.r', 'orders database', [0.0, -68.0], (133.4, 54.0))
+    ('blocks-overview-lr.mmd', 'd10.p', 'orders database', [0.0, -43.0], (133.4, 54.0))
+    ('blocks-overview-rl.mmd', 'd4.r', 'Mail relay', [0.0, -33.4], (92.9, 38.0))
+    ('blocks-overview-rl.mmd', 'd2.r', 'cart service', [0.0, -33.6], (104.0, 38.0))
+    ('blocks-overview-rl.mmd', 'd10.r', 'orders database', [0.0, -68.0], (133.4, 54.0))
+    ('blocks-overview-rl.mmd', 'd12.r', 'Mail relay', [0.0, -33.4], (92.9, 38.0))
+    ('blocks-overview.mmd', 'd9.r', 'Mail relay', [-59.4, 0.0], (92.9, 38.0))
+    ('blocks-overview.mmd', 'd9.r', 'On-call pager', [-59.3, 0.0], (115.6, 38.0))
+    ('blocks-overview.mmd', 'd9.r', 'build and test', [-59.4, 0.0], (116.0, 38.0))

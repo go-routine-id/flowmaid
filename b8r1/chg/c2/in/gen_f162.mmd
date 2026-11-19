@@ -1,0 +1,61 @@
+flowchart LR
+  n0["aliqua adipiscing<br/>magna ullamco do labore<br/>lorem consectetur sit ut"]
+  subgraph g0["labore laboris"]
+    n1["labore ipsum lorem adipiscing"]
+    n2(["ullamco<br/>labore<br/>elit veniam sed"])
+    n3(["sed incididunt<br/>ullamco tempor"])
+  end
+  subgraph g1["lorem sed nostrud lorem laboris"]
+    direction LR
+    n4("adipiscing elit laboris magna<br/>incididunt ut sed")
+    n5[("labore consectetur sit<br/>laboris consectetur consectetur dolor<br/>veniam")]
+    n6[("eiusmod labore<br/>aliqua nostrud")]
+    n7(["labore laboris ut<br/>ipsum ut labore amet<br/>ullamco"])
+    n8(["sed sit elit aliqua"])
+  end
+  subgraph g2["lorem tempor consectetur magna"]
+    n9[("ut nostrud do<br/>lorem magna")]
+    n10("veniam veniam amet adipiscing")
+    n11(["consectetur<br/>eiusmod eiusmod tempor eiusmod"])
+    n12[("aliqua ullamco do<br/>magna veniam amet ullamco")]
+    n13("incididunt incididunt aliqua magna<br/>magna aliqua laboris<br/>amet")
+  end
+  subgraph g3["lorem ullamco consectetur lorem elit amet"]
+    direction TB
+    n14[("labore adipiscing laboris laboris<br/>consectetur ullamco eiusmod tempor<br/>consectetur elit incididunt")]
+    n15(["incididunt sed<br/>sit magna do<br/>tempor"])
+    n16[("labore elit do")]
+    n14 --> n15
+  end
+  subgraph g4["elit adipiscing labore"]
+    direction TB
+    n17(["ipsum sed<br/>ut lorem nostrud tempor"])
+    n18["ipsum labore incididunt<br/>laboris adipiscing tempor consectetur"]
+  end
+  subgraph g5["veniam ipsum lorem sed aliqua adipiscing elit"]
+    direction TB
+    n19(["elit magna<br/>ipsum dolor magna labore<br/>adipiscing"])
+    n20["ullamco nostrud"]
+    n19 --> n20
+  end
+  subgraph g6["consectetur consectetur"]
+    direction LR
+    n21("veniam ullamco")
+    n22[("do nostrud ipsum ipsum<br/>magna sed<br/>elit")]
+    n23("lorem aliqua tempor")
+    n24("consectetur")
+  end
+  n25(["nostrud do<br/>do<br/>incididunt"])
+  n26(["do<br/>incididunt aliqua"])
+  n27(["adipiscing sit amet magna<br/>sed<br/>dolor incididunt"])
+  n0 ==> g0
+  n0 ==> n5
+  n0 ==> g2
+  n0 --> g3
+  n0 -.-> n17
+  n0 --> g5
+  n0 -.-> n24
+  n0 --> n25
+  n0 --> n26
+  n0 --> n27
+  n21 --> n3

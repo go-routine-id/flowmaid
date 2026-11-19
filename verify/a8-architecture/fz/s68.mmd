@@ -1,0 +1,10 @@
+architecture-beta
+    group g0(database)[Edge]
+    service s0(internet)[Service 0] in g0
+    service s1(monitoring)[Service 1] in g0
+    service s2(database)[Service 2] in g0
+    service s3(cloud)[Service 3] in g0
+    s1:B --> T:s2
+    s1:B -- T:s3
+    s1:R --> L:s2
+    s3:L --> T:s1

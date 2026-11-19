@@ -1,0 +1,125 @@
+b11-TD	static	s1->q1 ortho
+b11-TD	static	s4->q2 ortho
+b11-TD	static	s4->q1 ortho
+b11-TD	static	q1->q3 ortho
+b11-TD	static	q2->q3 ortho
+b11-TD	static	s2->G ortho
+b11-TD	static	s1->q1 band s4->q1 150px
+b11-TD	static	s4->q1 tight s2->G 26px
+b11-TD	static	s4->q1 overlap s2->G 18px
+b11-TD	static	s4->q1 edge_gap s2->G 3.4px
+b11-TD	static	s1->q1 lat_wiggle 148.0
+b11-TD	static	s4->q2 lateral_x G R
+b11-TD	static	s2->G side_ends s2
+b11-TD	routed	s1->q1 ortho
+b11-TD	routed	s4->q2 ortho
+b11-TD	routed	s4->q1 ortho
+b11-TD	routed	q1->q3 ortho
+b11-TD	routed	q2->q3 ortho
+b11-TD	routed	q3->m ortho
+b11-TD	routed	s2->G ortho
+b11-TD	routed	s4->q2 band s4->q1 196px
+b11-TD	routed	s1->q1 lateral_x G L
+b11-TD	routed	s4->q2 lateral_x G R
+b11-TD	routed	s4->q1 lateral_x G R
+b9-TD	static	s1->q1 ortho
+b9-TD	static	s4->q2 ortho
+b9-TD	static	s4->q1 ortho
+b9-TD	static	q1->q3 ortho
+b9-TD	static	q2->q3 ortho
+b9-TD	static	s2->G ortho
+b9-TD	static	s1->q1 band s4->q1 150px
+b9-TD	static	s4->q1 tight s2->G 26px
+b9-TD	static	s4->q1 overlap s2->G 18px
+b9-TD	static	s4->q1 edge_gap s2->G 3.4px
+b9-TD	static	s1->q1 lat_wiggle 149.0
+b9-TD	static	s4->q2 lateral_x G R
+b9-TD	static	s2->G side_ends s2
+b9-TD	routed	s1->q1 ortho
+b9-TD	routed	s4->q2 ortho
+b9-TD	routed	s4->q1 ortho
+b9-TD	routed	q1->q3 ortho
+b9-TD	routed	q2->q3 ortho
+b9-TD	routed	q3->m ortho
+b9-TD	routed	s2->G ortho
+b9-TD	routed	s4->q2 band s4->q1 196px
+b9-TD	routed	s1->q1 lateral_x G L
+b9-TD	routed	s4->q2 lateral_x G R
+b9-TD	routed	s4->q1 lateral_x G R
+n070-TD	static	a0->b0 ortho
+n070-TD	static	a1->b0 ortho
+n070-TD	static	a1->b1 ortho
+n070-TD	static	q->b0 ortho
+n070-TD	static	q->B ortho
+n070-TD	static	a1->b1 band q->b0 114px
+n070-TD	static	a1->b1 tight q->b0 72px
+n070-TD	static	a1->b1 tight q->B 58px
+n070-TD	static	q->b0 tight q->B 52px
+n070-TD	static	q->b0 overlap q->B 46px
+n070-TD	static	q->b0 lat_wiggle 54.5
+n070-TD	static	a0->b0 lateral_x B L
+n070-TD	static	a1->b0 lateral_x B L
+n070-TD	static	a1->b0 side_ends b0
+n070-TD	static	p->B pin_corner B
+n070-TD	routed	a0->b0 ortho
+n070-TD	routed	a1->b0 ortho
+n070-TD	routed	a1->b1 hug A 226px
+n070-TD	routed	a1->b1 ortho
+n070-TD	routed	q->b0 ortho
+n070-TD	routed	q->B ortho
+n070-TD	routed	a1->b1 band q->b0 108px
+n070-TD	routed	q->b0 band p->B 124px
+n070-TD	routed	q->b0 lat_wiggle 37.5
+n070-TD	routed	a0->b0 lateral_x B L
+n070-TD	routed	a1->b0 lateral_x B L
+n070-TD	routed	a1->b0 side_ends b0
+n070-TD	routed	q->b0 side_ends q
+n070-TD	routed	p->B pin_corner B
+nested-n-TD	static	a->x ortho
+nested-n-TD	static	d->y ortho
+nested-n-TD	static	y->k ortho
+nested-n-TD	static	b->I ortho
+nested-n-TD	static	c->O ortho
+nested-n-TD	static	b->I tight c->O 54px
+nested-n-TD	static	b->I overlap c->O 38px
+nested-n-TD	static	b->I edge_gap c->O 5.9px
+nested-n-TD	static	a->x lateral_x O L
+nested-n-TD	static	a->x lateral_x I L
+nested-n-TD	static	d->y spine_off
+nested-n-TD	routed	a->x ortho
+nested-n-TD	routed	d->y hug O 33px
+nested-n-TD	routed	d->y ortho
+nested-n-TD	routed	y->k ortho
+nested-n-TD	routed	k->z ortho
+nested-n-TD	routed	b->I ortho
+nested-n-TD	routed	a->x lateral_x O L
+nested-n-TD	routed	a->x lateral_x I L
+nested-n-TD	routed	a->x side_ends x
+nested-n-TD	routed	d->y spine_off
+twin-n-TD	static	a1->b1 ortho
+twin-n-TD	static	a1->b2 ortho
+twin-n-TD	static	p->a2 ortho
+twin-n-TD	static	q->b1 ortho
+twin-n-TD	static	p->A ortho
+twin-n-TD	static	q->B ortho
+twin-n-TD	static	p->a2 band p->A 104px
+twin-n-TD	static	a1->b1 lat_wiggle 41.0
+twin-n-TD	static	q->b1 lat_wiggle 24.5
+twin-n-TD	static	a1->b1 lateral_x A L
+twin-n-TD	static	a1->b1 lateral_x B L
+twin-n-TD	static	a1->b1 side_ends a1
+twin-n-TD	static	a1->b1 side_ends b1
+twin-n-TD	static	q->b1 lateral_x B L
+twin-n-TD	routed	a1->b1 ortho
+twin-n-TD	routed	a1->b2 hug A 62px
+twin-n-TD	routed	a1->b2 ortho
+twin-n-TD	routed	p->a2 ortho
+twin-n-TD	routed	q->b1 edge_chip B
+twin-n-TD	routed	q->b1 ortho
+twin-n-TD	routed	p->A ortho
+twin-n-TD	routed	q->B ortho
+twin-n-TD	routed	q->b1 band q->B 152px
+twin-n-TD	routed	a1->b1 lat_wiggle 29.5
+twin-n-TD	routed	q->b1 lat_wiggle 24.0
+twin-n-TD	routed	a1->b1 lateral_x B L
+twin-n-TD	routed	a1->b1 side_ends b1

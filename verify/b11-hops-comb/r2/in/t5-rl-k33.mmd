@@ -1,0 +1,9 @@
+flowchart RL
+  u1([User one]) --> s1[Svc 1] & s2[Svc 2] & s3[Svc 3]
+  u2([User two]) --> s1 & s2 & s3
+  u3([User three]) --> s1 & s2 & s3
+  s1 --> d1[(D1)] & d2[(D2)]
+  s2 --> d1 & d2
+  s3 --> d1 & d2
+  u1 -- direct --> d2
+  u3 -- direct --> d1

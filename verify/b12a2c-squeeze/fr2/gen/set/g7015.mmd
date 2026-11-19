@@ -1,0 +1,57 @@
+flowchart TD
+  n1["notify"]
+  subgraph B0["Edge services"]
+    n2["worker<br/>api"]
+    n3["ship"]
+    n4["mail"]
+    subgraph B0s0["Back office and finance 0"]
+      n5["split audit store"]
+      n6["db mail worker"]
+    end
+    subgraph B0s1["Ops 1"]
+      n7["merge"]
+      n8["parse"]
+      n9["split audit cache<br/>worker"]
+    end
+  end
+  subgraph B1["Back office and finance"]
+    n10["search"]
+    n11["ship"]
+    n12["api db audit"]
+  end
+  subgraph B2["Core"]
+    n13["pack"]
+    n14["auth"]
+    n15["merge ship auth"]
+  end
+  subgraph B3["Ops"]
+    n16["search api search"]
+    n17["merge<br/>mail"]
+  end
+  n18["audit<br/>audit"]
+  n19["audit merge api"]
+  n1 --> B0s0
+  n1 --> n10
+  n12 --> n10
+  n13 --> n7
+  n5 ==> n6
+  n15 -->|billing| n2
+  n4 -.-> n15
+  n8 ==> n3
+  n14 --> n11
+  n5 -->|report| n11
+  n9 --> n7
+  n15 -.-> n12
+  n10 ==> n3
+  n14 -.-> n16
+  n9 --> n14
+  n4 -->|index| B0s0
+  n17 ==>|parse| n2
+  n15 -.-> n17
+  n5 --> n12
+  n16 --> n2
+  n9 --> n15
+  n3 -.-> n8
+  n3 -.-> n7
+  n10 ==>|mail| n8
+  n17 --> n3

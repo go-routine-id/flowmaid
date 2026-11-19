@@ -1,0 +1,481 @@
+Scene {
+    nodes: [
+        SceneNode {
+            id: "A",
+            x: 140.5,
+            y: 47.0,
+            w: 74.0,
+            h: 38.0,
+            shape: Stadium,
+            label: "Start",
+            style: NodeStyle {
+                fill: None,
+                stroke: None,
+                stroke_width: None,
+                color: None,
+            },
+            link: None,
+        },
+        SceneNode {
+            id: "B",
+            x: 140.5,
+            y: 145.0,
+            w: 99.69999999999999,
+            h: 38.0,
+            shape: Rect,
+            label: "Read input",
+            style: NodeStyle {
+                fill: None,
+                stroke: None,
+                stroke_width: None,
+                color: None,
+            },
+            link: None,
+        },
+        SceneNode {
+            id: "C",
+            x: 140.5,
+            y: 256.3,
+            w: 102.24,
+            h: 64.6,
+            shape: Diamond,
+            label: "Valid?",
+            style: NodeStyle {
+                fill: None,
+                stroke: None,
+                stroke_width: None,
+                color: None,
+            },
+            link: None,
+        },
+        SceneNode {
+            id: "D",
+            x: 69.5,
+            y: 379.6,
+            w: 83.0,
+            h: 38.0,
+            shape: Rect,
+            label: "Process",
+            style: NodeStyle {
+                fill: None,
+                stroke: None,
+                stroke_width: None,
+                color: None,
+            },
+            link: None,
+        },
+        SceneNode {
+            id: "E",
+            x: 211.5,
+            y: 379.6,
+            w: 101.0,
+            h: 38.0,
+            shape: Rect,
+            label: "Show error",
+            style: NodeStyle {
+                fill: None,
+                stroke: None,
+                stroke_width: None,
+                color: None,
+            },
+            link: None,
+        },
+        SceneNode {
+            id: "F",
+            x: 69.5,
+            y: 487.15000000000003,
+            w: 57.1,
+            h: 57.1,
+            shape: Circle,
+            label: "Done",
+            style: NodeStyle {
+                fill: None,
+                stroke: None,
+                stroke_width: None,
+                color: None,
+            },
+            link: None,
+        },
+    ],
+    edges: [
+        SceneEdge {
+            from: "A",
+            to: "B",
+            bezier: [
+                (
+                    140.5,
+                    66.0,
+                ),
+                (
+                    140.5,
+                    96.0,
+                ),
+                (
+                    140.5,
+                    96.0,
+                ),
+                (
+                    140.5,
+                    126.0,
+                ),
+            ],
+            waypoints: [],
+            kind: Arrow,
+            ends: EdgeEnds {
+                start: None,
+                end: None,
+            },
+            meta: EdgeMeta {
+                id: None,
+                animation: None,
+                curve: None,
+                style: LinkStyle {
+                    stroke: None,
+                    stroke_width: None,
+                    stroke_dasharray: None,
+                    fill: None,
+                    color: None,
+                },
+            },
+            label: None,
+            paint_width: None,
+        },
+        SceneEdge {
+            from: "B",
+            to: "C",
+            bezier: [
+                (
+                    140.5,
+                    164.0,
+                ),
+                (
+                    140.5,
+                    194.0,
+                ),
+                (
+                    140.5,
+                    194.0,
+                ),
+                (
+                    140.5,
+                    224.0,
+                ),
+            ],
+            waypoints: [],
+            kind: Arrow,
+            ends: EdgeEnds {
+                start: None,
+                end: None,
+            },
+            meta: EdgeMeta {
+                id: None,
+                animation: None,
+                curve: None,
+                style: LinkStyle {
+                    stroke: None,
+                    stroke_width: None,
+                    stroke_dasharray: None,
+                    fill: None,
+                    color: None,
+                },
+            },
+            label: None,
+            paint_width: None,
+        },
+        SceneEdge {
+            from: "C",
+            to: "D",
+            bezier: [
+                (
+                    126.86248306848591,
+                    279.98318081200125,
+                ),
+                (
+                    126.86248306848591,
+                    303.695795203013,
+                ),
+                (
+                    69.5,
+                    303.695795203013,
+                ),
+                (
+                    69.5,
+                    360.6,
+                ),
+            ],
+            waypoints: [
+                (
+                    126.86248306848591,
+                    279.98318081200125,
+                ),
+                (
+                    126.86248306848591,
+                    291.8394880075325,
+                ),
+                (
+                    126.86248306848591,
+                    303.695795203013,
+                ),
+                (
+                    115.00617587300539,
+                    303.695795203013,
+                ),
+                (
+                    83.5,
+                    303.695795203013,
+                ),
+                (
+                    69.5,
+                    303.695795203013,
+                ),
+                (
+                    69.5,
+                    317.695795203013,
+                ),
+                (
+                    69.5,
+                    360.6,
+                ),
+            ],
+            kind: Arrow,
+            ends: EdgeEnds {
+                start: None,
+                end: None,
+            },
+            meta: EdgeMeta {
+                id: None,
+                animation: None,
+                curve: None,
+                style: LinkStyle {
+                    stroke: None,
+                    stroke_width: None,
+                    stroke_dasharray: None,
+                    fill: None,
+                    color: None,
+                },
+            },
+            label: Some(
+                (
+                    "yes",
+                    (
+                        81.86785268408893,
+                        303.72800276127555,
+                    ),
+                    35.8,
+                ),
+            ),
+            paint_width: None,
+        },
+        SceneEdge {
+            from: "C",
+            to: "E",
+            bezier: [
+                (
+                    154.13751693151409,
+                    279.98318081200125,
+                ),
+                (
+                    154.13751693151409,
+                    303.695795203013,
+                ),
+                (
+                    186.65,
+                    303.695795203013,
+                ),
+                (
+                    186.65,
+                    360.6,
+                ),
+            ],
+            waypoints: [
+                (
+                    154.13751693151409,
+                    279.98318081200125,
+                ),
+                (
+                    154.13751693151409,
+                    291.8394880075325,
+                ),
+                (
+                    154.13751693151409,
+                    303.695795203013,
+                ),
+                (
+                    165.9938241269946,
+                    303.695795203013,
+                ),
+                (
+                    172.65,
+                    303.695795203013,
+                ),
+                (
+                    186.65,
+                    303.695795203013,
+                ),
+                (
+                    186.65,
+                    317.695795203013,
+                ),
+                (
+                    186.65,
+                    360.6,
+                ),
+            ],
+            kind: Arrow,
+            ends: EdgeEnds {
+                start: None,
+                end: None,
+            },
+            meta: EdgeMeta {
+                id: None,
+                animation: None,
+                curve: None,
+                style: LinkStyle {
+                    stroke: None,
+                    stroke_width: None,
+                    stroke_dasharray: None,
+                    fill: None,
+                    color: None,
+                },
+            },
+            label: Some(
+                (
+                    "no",
+                    (
+                        185.45533333333339,
+                        307.729000809409,
+                    ),
+                    29.6,
+                ),
+            ),
+            paint_width: None,
+        },
+        SceneEdge {
+            from: "E",
+            to: "B",
+            bezier: [
+                (
+                    215.62,
+                    360.6,
+                ),
+                (
+                    215.62,
+                    360.6,
+                ),
+                (
+                    215.62,
+                    184.0,
+                ),
+                (
+                    178.35,
+                    164.0,
+                ),
+            ],
+            waypoints: [
+                (
+                    215.62,
+                    360.6,
+                ),
+                (
+                    215.62,
+                    198.0,
+                ),
+                (
+                    215.62,
+                    184.0,
+                ),
+                (
+                    201.62,
+                    184.0,
+                ),
+                (
+                    188.35,
+                    184.0,
+                ),
+                (
+                    178.35,
+                    184.0,
+                ),
+                (
+                    178.35,
+                    174.0,
+                ),
+                (
+                    178.35,
+                    164.0,
+                ),
+            ],
+            kind: Arrow,
+            ends: EdgeEnds {
+                start: None,
+                end: None,
+            },
+            meta: EdgeMeta {
+                id: None,
+                animation: None,
+                curve: None,
+                style: LinkStyle {
+                    stroke: None,
+                    stroke_width: None,
+                    stroke_dasharray: None,
+                    fill: None,
+                    color: None,
+                },
+            },
+            label: None,
+            paint_width: None,
+        },
+        SceneEdge {
+            from: "D",
+            to: "F",
+            bezier: [
+                (
+                    69.5,
+                    398.6,
+                ),
+                (
+                    69.5,
+                    428.6,
+                ),
+                (
+                    69.5,
+                    428.6,
+                ),
+                (
+                    69.5,
+                    458.6,
+                ),
+            ],
+            waypoints: [],
+            kind: Thick,
+            ends: EdgeEnds {
+                start: None,
+                end: None,
+            },
+            meta: EdgeMeta {
+                id: None,
+                animation: None,
+                curve: None,
+                style: LinkStyle {
+                    stroke: None,
+                    stroke_width: None,
+                    stroke_dasharray: None,
+                    fill: None,
+                    color: None,
+                },
+            },
+            label: None,
+            paint_width: None,
+        },
+    ],
+    clusters: [],
+    width: 290.0,
+    height: 543.7,
+    origin: (
+        0.0,
+        0.0,
+    ),
+    routed: false,
+    plain_crossings: false,
+    block_layout: false,
+}

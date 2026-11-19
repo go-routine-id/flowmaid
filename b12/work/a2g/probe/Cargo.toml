@@ -1,0 +1,29 @@
+[package]
+name = "probe"
+version = "0.1.0"
+edition = "2021"
+[dependencies]
+flowmaid = { path = "/home/user/flowmaid" }
+[profile.release]
+debug = false
+[[bin]]
+name = "frdiff"
+path = "src/frdiff.rs"
+[[bin]]
+name = "pdiff"
+path = "src/pdiff.rs"
+[[bin]]
+name = "onsvg"
+path = "src/onsvg.rs"
+[[bin]]
+name = "meas"
+path = "src/meas.rs"
+[[bin]]
+name = "frdiff2"
+path = "src/frdiff2.rs"
+[[bin]]
+name = "details"
+path = "src/details.rs"
+[[bin]]
+name = "dump"
+path = "src/dump.rs"

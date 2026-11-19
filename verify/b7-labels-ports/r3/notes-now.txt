@@ -1,0 +1,2 @@
+g96.mmd	1	drag K2NN_c: K2NN_0->__note_34 22
+TOTAL note-link moves>1px 1 in 1 files; note links 1152; scene!=route(at) note links 718

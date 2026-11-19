@@ -1,0 +1,53 @@
+fix(blocks): a displaced title-side end crosses past the chip in a frame broad enough, and its gap keeps room for the step back (B12.7 X2.2, B12.9 G1/G2; B12a2 fix round 3 #2)
+
+What (block mode, behind the internal switch; TD / BT):
+- X2.2's breadth for a frame its members make broader than its title:
+  when its title row takes displaced entries, the frame is as broad as
+  the columns past the chip they cross the title side at
+  (`scene::title_column_width`), grown on the chip's far side so the
+  chip and the members under it stay where F2 counted them. The frame
+  function draws it (`scene::frame_boxes`, so `scene()`, `route()` and
+  `route_partial()` alike) and the layout reserves it
+  (`layout::f1_breadths`). A frame F1 grew to its title is not grown
+  for them: the 26.5 px that adds put the hub-fed row of
+  `layout::a_hub_fed_row_of_shallow_frames_wraps_into_two_rows` past
+  its bound (1275.8 against < 1262), so that case stays as reported
+  under D6.
+- G1/G2: `layout::title_entries` (the count `title_counts` gives, and
+  which entries are displaced, with the column each takes, as `ortho`
+  takes them) feeds the gap's track room: a displaced end's step across
+  the gap before its title side runs from the breadth it comes from to
+  its column, not to its member's own. Counted from the member, an end
+  straight above its port stepped nowhere and the gap kept its 13 px
+  floor.
+- A frame stays title-bound (measured bold) while the frame-function
+  box is what F3 leaves it, not the bare title width.
+
+Why: blocks/t9-frames-8px and t9b-frames-8px-lr drawn BT went from
+lateral_x 0 at the package start to 4 (since acacab7): `a -> b` left
+`Alpha one` and `Alpha` through their right lateral walls and entered
+`Beta` and `Beta one` through theirs. The frames had no column past
+the chip and the gap between the stacked frames had no room for the
+step back, so the router took the link round. Now it crosses both title
+sides past the chips and steps back in the gap between the frames.
+
+Changed (static, block mode; default build byte-identical,
+off-identity test green): repository fixtures t9-frames-8px TD/BT,
+t9b-frames-8px-lr TD/BT, t9c-frames-8px-two-way TD/BT (lateral_x
+4 -> 2: its turned edge still goes round, its step sharing one gap with
+its twin's), interleave TD (lateral_x 1 -> 0), l5loop TD,
+nested-chain TD/BT, title-entry TD, bench-75 TD (geometry only, every
+harness number unchanged). compact_max rises a little where a frame
+now holds its columns (t9 8.50 -> 9.69, t9c 9.17 -> 11.49, interleave
+4.43 -> 4.98). Routed (B12.13's): interleave edge_chip 0 -> 1.
+Suite-on failing tests: the same 14 names as before. Local acceptance
+inputs: the musts of checkpoint A1 all hold; no A2 line added.
+
+Test: blockcheck::an_edge_between_stacked_blocks_crosses_their_title_sides_past_the_chips
+(t9, t9b, t9c in four directions: lateral_x 0 (t9c TD/BT <= 2),
+edge_chip and frame_side 0, no line within CHIP_SEP of a title's bold
+ink). No gate or snapshot changes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5
+

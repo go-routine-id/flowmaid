@@ -1,0 +1,7 @@
+classDiagram
+  Root <|-- Left
+  Root <|-- Task
+  Root <|-- Right
+  Task <|-- Sub
+  Task --> Task : blocks
+  Task --> Task : follows

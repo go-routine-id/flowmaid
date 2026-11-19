@@ -1,0 +1,16 @@
+flowchart LR
+  subgraph F0 [Frame 0]
+    n1((Node 1 with a long label))
+  end
+  n2 --> n0
+  n3 -.-> n2
+  n1 e2@-.- n0
+  e2@{ curve: stepBefore }
+  n4 ==>|a longer label| n3
+  n3 x--x n4
+  n4 ==>|a longer label| n4
+  n1 ---> n4
+  n4 === n0
+  n2 -.->|a longer label| n3
+  linkStyle 2 stroke-width:8px,stroke:#36c,stroke-dasharray:6 3
+  linkStyle 8 stroke-width:3.5px,stroke:#3a3

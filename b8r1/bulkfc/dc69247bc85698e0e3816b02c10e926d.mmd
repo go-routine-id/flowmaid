@@ -1,0 +1,14 @@
+flowchart LR
+    N0{Fetch fetch}
+    N1{Done}
+    N2((Parse notify))
+    N3{Notify parse}
+    N4{Emit}
+    N5([Store])
+    N0 -->|next| N1
+    N1 --> N2
+    N0 --> N3
+    N3 --> N4
+    N2 --> N5
+    N0 --> N4
+    N1 -.->|again| N0

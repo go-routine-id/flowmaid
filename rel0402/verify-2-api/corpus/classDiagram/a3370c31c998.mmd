@@ -1,0 +1,36 @@
+classDiagram
+    class Repository~T~ {
+        <<interface>>
+        +findById(id) T
+        +save(entity T) void
+        +delete(id) void
+    }
+    class UserRepository
+    class OrderRepository
+    Repository~T~ <|.. UserRepository
+    Repository~T~ <|.. OrderRepository
+    class UserService {
+        -UserRepository repo
+        +register(email) User
+        +login(email, pw) Session
+    }
+    class OrderService {
+        -OrderRepository repo
+        -PaymentGateway gateway
+        +checkout(cart) Order
+    }
+    UserService --> UserRepository : uses
+    OrderService --> OrderRepository : uses
+    OrderService ..> PaymentGateway : calls
+    class PaymentGateway {
+        <<interface>>
+        +charge(amount) Receipt
+    }
+    PaymentGateway <|.. StripeGateway
+    PaymentGateway <|.. PaypalGateway
+    User "1" --> "*" Order : places
+    Order "1" *-- "1..*" OrderLine
+    OrderLine "*" --> "1" Product
+    UserService ..> User : creates
+    OrderService ..> Order : creates
+    note for OrderService "Coordinates checkout"

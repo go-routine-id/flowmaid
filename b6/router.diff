@@ -1,0 +1,46 @@
+diff --git a/src/router.rs b/src/router.rs
+index d3358da..9c55b78 100644
+--- a/src/router.rs
++++ b/src/router.rs
+@@ -3072,17 +3072,32 @@ fn flat_shape(s: Shape) -> bool {
+ /// and the side is straight; `None` otherwise.
+ fn slide_range(w: &World, end: EndRef, p: Pt, axis: usize) -> Option<(Side, f64, f64)> {
+     let r = w.end_rect(end);
+-    if let EndRef::Node(v) = end {
+-        if !flat_shape(w.nodes[v].1) {
+-            return None;
+-        }
+-    }
+     let side = side_of(r, p);
+-    let (moves, t0, t1) = match side {
+-        Side::Top | Side::Bottom => (1, r.0, r.2),
+-        Side::Left | Side::Right => (0, r.1, r.3),
++    let moves = match side {
++        Side::Top | Side::Bottom => 1,
++        Side::Left | Side::Right => 0,
++    };
++    let (lo, hi) = match end {
++        EndRef::Node(v) => {
++            let shape = w.nodes[v].1;
++            if !flat_shape(shape) {
++                return None;
++            }
++            // The part of the side the ports stage spreads ends over:
++            // a hexagon's or a parallelogram's top off its slants, a
++            // cylinder's flank off its shoulders; none on a hexagon's
++            // point. The final stage puts the slid end on the outline
++            // along its leg (`edgepass::snap_ends`).
++            crate::ports::slide_span(shape, r, side)?
++        }
++        EndRef::Frame(_) => {
++            let (t0, t1) = match side {
++                Side::Top | Side::Bottom => (r.0, r.2),
++                Side::Left | Side::Right => (r.1, r.3),
++            };
++            (t0 + PORT_INSET, t1 - PORT_INSET)
++        }
+     };
+-    let (lo, hi) = (t0 + PORT_INSET, t1 - PORT_INSET);
+     (moves == axis && lo <= hi).then_some((side, lo, hi))
+ }
+ 

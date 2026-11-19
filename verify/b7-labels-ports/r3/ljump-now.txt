@@ -1,0 +1,304 @@
+stress.mmd	4	drag A (1,0): A->B 'parallel' 14.4
+ drag A (0,1): A->B 'parallel' 22.3
+ drag B (1,0): A->B 'parallel' 14.3
+ drag B (0,1): A->B 'parallel' 15.1
+wide-labels.mmd	14	drag A (1,0): B->A 'cached response served without hitting the backend' 20.6
+ drag A (1,0): A->C 'health probe' 239.2
+ drag A (0,1): B->A 'cached response served without hitting the backend' 21.8
+ drag A (0,1): A->C 'health probe' 25.7
+ drag C (1,0): A->B 'request with a very long descriptive label' 16.6
+ drag C (1,0): B->A 'cached response served without hitting the backend' 13.1
+ drag C (1,0): C->D 'query by primary key' 256.5
+ drag C (1,0): A->C 'health probe' 206.5
+ drag C (0,1): A->B 'request with a very long descriptive label' 16.6
+ drag C (0,1): B->A 'cached response served without hitting the backend' 13.1
+ drag C (0,1): C->D 'query by primary key' 256.9
+ drag C (0,1): A->C 'health probe' 206.7
+ drag D (1,0): C->D 'query by primary key' 256.5
+ drag D (0,1): C->D 'query by primary key' 257.0
+dense-lr.mmd	76	drag n6 (1,0): n12->n26 'magna' 45.1
+ drag n6 (0,1): n12->n26 'magna' 45.1
+ drag n12 (1,0): n12->n17 'labore' 108.7
+ drag n12 (1,0): n12->n26 'magna' 17.3
+ drag n12 (1,0): n12->n38 'tempor adipiscing' 23.2
+ drag n12 (1,0): n12->n16 'sit ullamco' 81.6
+ drag n12 (1,0): n12->n46 'magna ipsum laboris' 367.5
+ drag n12 (1,0): n12->n43 'labore sit consectetur' 343.1
+ drag n12 (1,0): n12->n44 'nostrud laboris dolor' 222.6
+ drag n12 (1,0): n12->n22 'nostrud' 218.2
+ drag n12 (0,1): n12->n30 'tempor eiusmod' 8.4
+ drag n12 (0,1): n12->n17 'labore' 108.5
+ drag n12 (0,1): n12->n38 'tempor adipiscing' 23.1
+ drag n12 (0,1): n12->n16 'sit ullamco' 81.8
+ drag n12 (0,1): n12->n46 'magna ipsum laboris' 367.9
+ drag n12 (0,1): n12->n43 'labore sit consectetur' 342.9
+ drag n12 (0,1): n12->n44 'nostrud laboris dolor' 219.0
+ drag n14 (0,1): n12->n43 'labore sit consectetur' 36.0
+ drag n15 (0,1): n12->n43 'labore sit consectetur' 36.0
+ drag n16 (1,0): n12->n16 'sit ullamco' 38.3
+ drag n16 (1,0): n12->n43 'labore sit consectetur' 319.2
+ drag n16 (0,1): n12->n16 'sit ullamco' 38.9
+ drag n16 (0,1): n12->n43 'labore sit consectetur' 319.2
+ drag n17 (1,0): n12->n17 'labore' 211.0
+ drag n17 (1,0): n12->n16 'sit ullamco' 45.9
+ drag n17 (1,0): n12->n43 'labore sit consectetur' 319.2
+ drag n17 (0,1): n12->n17 'labore' 211.7
+ drag n17 (0,1): n12->n16 'sit ullamco' 45.9
+ drag n17 (0,1): n12->n43 'labore sit consectetur' 319.2
+ drag n18 (0,1): n12->n43 'labore sit consectetur' 36.0
+ drag n22 (1,0): n12->n22 'nostrud' 168.6
+ drag n22 (1,0): n6->n22 'do' 19.1
+ drag n22 (1,0): n22->n44 'labore ipsum' 22.6
+ drag n22 (0,1): n12->n22 'nostrud' 170.6
+ drag n22 (0,1): n6->n22 'do' 19.4
+ drag n22 (0,1): n22->n44 'labore ipsum' 22.8
+ drag n26 (1,0): n26->n47 'magna' 360.1
+ drag n26 (0,1): n26->n47 'magna' 400.7
+ drag n30 (1,0): n12->n30 'tempor eiusmod' 8.9
+ drag n30 (0,1): n12->n30 'tempor eiusmod' 9.2
+ drag n33 (1,0): n12->n33 'eiusmod nostrud' 20.3
+ drag n33 (1,0): n12->n36 'sed' 10.5
+ drag n33 (0,1): n12->n33 'eiusmod nostrud' 19.5
+ drag n33 (0,1): n12->n36 'sed' 10.5
+ drag n36 (1,0): n12->n36 'sed' 131.9
+ drag n36 (1,0): n36->n45 'dolor dolor magna' 28.7
+ drag n36 (0,1): n12->n36 'sed' 131.2
+ drag n36 (0,1): n36->n45 'dolor dolor magna' 28.1
+ drag n38 (1,0): n12->n33 'eiusmod nostrud' 117.6
+ drag n38 (1,0): n12->n26 'magna' 43.9
+ drag n38 (1,0): n12->n38 'tempor adipiscing' 8.2
+ drag n38 (1,0): n12->n36 'sed' 10.5
+ drag n38 (0,1): n12->n33 'eiusmod nostrud' 117.6
+ drag n38 (0,1): n12->n26 'magna' 43.9
+ drag n38 (0,1): n12->n36 'sed' 10.5
+ drag n42 (1,0): n42->n49 'eiusmod tempor eiusmod' 133.8
+ drag n42 (0,1): n42->n49 'eiusmod tempor eiusmod' 133.4
+ drag n43 (1,0): n12->n43 'labore sit consectetur' 353.8
+ drag n43 (1,0): n12->n44 'nostrud laboris dolor' 1212.7
+ drag n43 (0,1): n12->n43 'labore sit consectetur' 352.9
+ drag n43 (0,1): n12->n44 'nostrud laboris dolor' 1212.7
+ drag n44 (1,0): n12->n44 'nostrud laboris dolor' 244.7
+ drag n44 (1,0): n22->n44 'labore ipsum' 30.4
+ drag n44 (0,1): n12->n44 'nostrud laboris dolor' 244.8
+ drag n44 (0,1): n22->n44 'labore ipsum' 30.2
+ drag n45 (1,0): n18->n45 'veniam laboris incididunt' 8.1
+ drag n45 (1,0): n36->n45 'dolor dolor magna' 26.5
+ drag n45 (0,1): n36->n45 'dolor dolor magna' 27.2
+ drag n46 (1,0): n12->n46 'magna ipsum laboris' 209.0
+ drag n46 (0,1): n12->n46 'magna ipsum laboris' 208.1
+ drag n47 (1,0): n26->n47 'magna' 360.2
+ drag n47 (0,1): n26->n47 'magna' 360.4
+ drag n48 (1,0): n12->n44 'nostrud laboris dolor' 1210.4
+ drag n48 (0,1): n12->n44 'nostrud laboris dolor' 1210.4
+ drag n49 (1,0): n42->n49 'eiusmod tempor eiusmod' 133.8
+ drag n49 (0,1): n42->n49 'eiusmod tempor eiusmod' 133.4
+dense-td.mmd	113	drag n5 (1,0): n16->n43 'do labore' 10.7
+ drag n5 (1,0): n16->n44 'sed dolor aliqua' 18.2
+ drag n5 (1,0): n8->n42 'aliqua sit amet' 416.2
+ drag n5 (1,0): n28->n42 'amet dolor' 369.5
+ drag n5 (1,0): n25->n38 'do' 561.1
+ drag n8 (1,0): n8->n42 'aliqua sit amet' 185.1
+ drag n8 (0,1): n8->n42 'aliqua sit amet' 185.1
+ drag n10 (1,0): n8->n42 'aliqua sit amet' 416.2
+ drag n10 (1,0): n28->n42 'amet dolor' 369.5
+ drag n10 (1,0): n25->n38 'do' 561.1
+ drag n11 (1,0): n11->n37 'nostrud' 234.4
+ drag n11 (0,1): n11->n37 'nostrud' 241.4
+ drag n14 (1,0): n28->n42 'amet dolor' 372.8
+ drag n14 (1,0): n25->n38 'do' 561.1
+ drag n16 (1,0): n16->n32 'dolor ullamco' 481.3
+ drag n16 (1,0): n16->n31 'elit aliqua adipiscing' 58.0
+ drag n16 (1,0): n16->n40 'sed' 8.3
+ drag n16 (1,0): n16->n35 'laboris' 208.6
+ drag n16 (1,0): n16->n43 'do labore' 14.0
+ drag n16 (1,0): n16->n23 'amet lorem amet' 434.3
+ drag n16 (1,0): n16->n44 'sed dolor aliqua' 236.1
+ drag n16 (1,0): n16->n29 'dolor' 236.5
+ drag n16 (1,0): n22->n40 'magna veniam magna' 421.8
+ drag n16 (1,0): n20->n37 'laboris ullamco adipiscing' 264.0
+ drag n16 (0,1): n16->n32 'dolor ullamco' 480.5
+ drag n16 (0,1): n16->n31 'elit aliqua adipiscing' 58.0
+ drag n16 (0,1): n16->n35 'laboris' 208.8
+ drag n16 (0,1): n16->n43 'do labore' 14.1
+ drag n16 (0,1): n16->n37 'labore nostrud' 8.7
+ drag n16 (0,1): n16->n23 'amet lorem amet' 434.6
+ drag n16 (0,1): n16->n44 'sed dolor aliqua' 236.1
+ drag n16 (0,1): n16->n29 'dolor' 236.7
+ drag n16 (0,1): n22->n40 'magna veniam magna' 421.8
+ drag n16 (0,1): n20->n37 'laboris ullamco adipiscing' 264.0
+ drag n17 (1,0): n16->n40 'sed' 9.9
+ drag n17 (1,0): n16->n17 'elit adipiscing laboris' 10.4
+ drag n17 (1,0): n16->n43 'do labore' 10.7
+ drag n17 (1,0): n16->n44 'sed dolor aliqua' 18.2
+ drag n17 (0,1): n16->n40 'sed' 9.9
+ drag n17 (0,1): n16->n17 'elit adipiscing laboris' 9.9
+ drag n20 (1,0): n20->n37 'laboris ullamco adipiscing' 9.4
+ drag n20 (0,1): n20->n37 'laboris ullamco adipiscing' 9.4
+ drag n22 (1,0): n22->n40 'magna veniam magna' 527.7
+ drag n22 (0,1): n22->n40 'magna veniam magna' 527.1
+ drag n23 (1,0): n16->n23 'amet lorem amet' 432.8
+ drag n23 (0,1): n16->n23 'amet lorem amet' 433.5
+ drag n25 (1,0): n31->n38 'aliqua amet' 441.3
+ drag n25 (1,0): n25->n38 'do' 52.5
+ drag n25 (0,1): n31->n38 'aliqua amet' 441.3
+ drag n25 (0,1): n25->n38 'do' 53.0
+ drag n28 (1,0): n8->n42 'aliqua sit amet' 371.2
+ drag n28 (1,0): n28->n42 'amet dolor' 81.8
+ drag n28 (1,0): n11->n37 'nostrud' 249.6
+ drag n28 (0,1): n8->n42 'aliqua sit amet' 371.2
+ drag n28 (0,1): n28->n42 'amet dolor' 81.0
+ drag n28 (0,1): n11->n37 'nostrud' 138.6
+ drag n29 (1,0): n16->n31 'elit aliqua adipiscing' 128.2
+ drag n29 (1,0): n16->n23 'amet lorem amet' 434.5
+ drag n29 (1,0): n16->n29 'dolor' 214.2
+ drag n29 (1,0): n29->n31 'tempor' 14.4
+ drag n29 (0,1): n16->n31 'elit aliqua adipiscing' 128.2
+ drag n29 (0,1): n16->n23 'amet lorem amet' 434.5
+ drag n29 (0,1): n16->n29 'dolor' 302.5
+ drag n29 (0,1): n29->n31 'tempor' 14.7
+ drag n31 (1,0): n16->n31 'elit aliqua adipiscing' 48.5
+ drag n31 (1,0): n31->n38 'aliqua amet' 439.5
+ drag n31 (1,0): n22->n40 'magna veniam magna' 421.8
+ drag n31 (0,1): n16->n31 'elit aliqua adipiscing' 47.8
+ drag n31 (0,1): n31->n38 'aliqua amet' 440.3
+ drag n31 (0,1): n22->n40 'magna veniam magna' 421.8
+ drag n32 (1,0): n16->n32 'dolor ullamco' 319.4
+ drag n32 (0,1): n16->n32 'dolor ullamco' 325.5
+ drag n37 (1,0): n16->n40 'sed' 9.9
+ drag n37 (1,0): n16->n37 'labore nostrud' 30.4
+ drag n37 (1,0): n20->n37 'laboris ullamco adipiscing' 17.3
+ drag n37 (0,1): n16->n40 'sed' 9.9
+ drag n37 (0,1): n16->n37 'labore nostrud' 28.2
+ drag n37 (0,1): n11->n37 'nostrud' 29.0
+ drag n37 (0,1): n20->n37 'laboris ullamco adipiscing' 17.1
+ drag n38 (1,0): n28->n42 'amet dolor' 383.6
+ drag n38 (1,0): n31->n38 'aliqua amet' 441.0
+ drag n38 (1,0): n25->n38 'do' 891.5
+ drag n38 (0,1): n28->n42 'amet dolor' 383.6
+ drag n38 (0,1): n31->n38 'aliqua amet' 441.3
+ drag n38 (0,1): n25->n38 'do' 844.2
+ drag n40 (1,0): n16->n40 'sed' 11.9
+ drag n40 (1,0): n22->n40 'magna veniam magna' 526.8
+ drag n40 (0,1): n16->n40 'sed' 11.4
+ drag n40 (0,1): n22->n40 'magna veniam magna' 526.2
+ drag n41 (1,0): n16->n41 'labore incididunt' 8.3
+ drag n41 (1,0): n16->n44 'sed dolor aliqua' 28.6
+ drag n41 (0,1): n16->n44 'sed dolor aliqua' 28.6
+ drag n42 (1,0): n16->n44 'sed dolor aliqua' 28.6
+ drag n42 (1,0): n8->n42 'aliqua sit amet' 371.1
+ drag n42 (1,0): n28->n42 'amet dolor' 81.7
+ drag n42 (1,0): n11->n37 'nostrud' 249.6
+ drag n42 (0,1): n16->n44 'sed dolor aliqua' 28.6
+ drag n42 (0,1): n8->n42 'aliqua sit amet' 371.3
+ drag n42 (0,1): n28->n42 'amet dolor' 81.1
+ drag n42 (0,1): n11->n37 'nostrud' 138.6
+ drag n43 (1,0): n16->n40 'sed' 9.3
+ drag n43 (1,0): n16->n17 'elit adipiscing laboris' 9.1
+ drag n43 (1,0): n16->n43 'do labore' 129.7
+ drag n43 (1,0): n16->n44 'sed dolor aliqua' 238.4
+ drag n43 (0,1): n16->n40 'sed' 9.3
+ drag n43 (0,1): n16->n17 'elit adipiscing laboris' 9.1
+ drag n43 (0,1): n16->n43 'do labore' 67.9
+ drag n44 (1,0): n16->n40 'sed' 9.9
+ drag n44 (1,0): n16->n43 'do labore' 14.0
+ drag n44 (1,0): n16->n44 'sed dolor aliqua' 360.3
+ drag n44 (0,1): n16->n40 'sed' 9.9
+ drag n44 (0,1): n16->n43 'do labore' 14.0
+ drag n44 (0,1): n16->n44 'sed dolor aliqua' 360.3
+u2-rl-labels.mmd	7	drag A (1,0): A->D 'no' 49.1
+ drag A (0,1): A->D 'no' 48.1
+ drag C (1,0): C->D 'escalate to on-call' 29.6
+ drag C (0,1): C->D 'escalate to on-call' 29.9
+ drag D (1,0): A->D 'no' 49.1
+ drag D (0,1): C->D 'escalate to on-call' 28.4
+ drag D (0,1): A->D 'no' 48.1
+u4-lr-clusters.mmd	4	drag D (1,0): D->F 'result' 21.7
+ drag D (0,1): D->F 'result' 24.3
+ drag F (1,0): D->F 'result' 22.0
+ drag F (0,1): D->F 'result' 24.3
+u5-td-fan-labels.mmd	14	drag H (1,0): H->A2 'beta' 61.6
+ drag H (1,0): H->A3 'gamma ray' 62.9
+ drag H (1,0): H->A4 'delta' 46.2
+ drag H (0,1): H->A2 'beta' 61.8
+ drag H (0,1): H->A3 'gamma ray' 62.7
+ drag H (0,1): H->A4 'delta' 46.4
+ drag A3 (1,0): H->A2 'beta' 61.2
+ drag A3 (1,0): H->A3 'gamma ray' 26.8
+ drag A3 (0,1): H->A2 'beta' 61.2
+ drag A3 (0,1): H->A3 'gamma ray' 26.5
+ drag A4 (1,0): H->A3 'gamma ray' 40.3
+ drag A4 (1,0): H->A4 'delta' 46.3
+ drag A4 (0,1): H->A3 'gamma ray' 40.3
+ drag A4 (0,1): H->A4 'delta' 46.6
+t1-hub-labels.mmd	18	drag H (1,0): H->D 'blocked' 13.0
+ drag H (0,1): H->D 'blocked' 13.8
+ drag B (1,0): H->B 'miss' 54.3
+ drag B (1,0): H->C 'stale while revalidate' 42.4
+ drag B (1,0): H->D 'blocked' 48.9
+ drag B (0,1): H->B 'miss' 53.6
+ drag B (0,1): H->C 'stale while revalidate' 42.4
+ drag B (0,1): H->D 'blocked' 48.9
+ drag C (1,0): H->C 'stale while revalidate' 10.8
+ drag C (1,0): H->D 'blocked' 39.0
+ drag C (0,1): H->C 'stale while revalidate' 11.9
+ drag C (0,1): H->D 'blocked' 39.0
+ drag D (1,0): H->C 'stale while revalidate' 67.8
+ drag D (1,0): H->D 'blocked' 59.6
+ drag D (0,1): H->C 'stale while revalidate' 67.8
+ drag D (0,1): H->D 'blocked' 59.5
+ drag E (1,0): H->E 'rate limited' 10.7
+ drag E (0,1): H->E 'rate limited' 10.0
+t2-clusters-bt.mmd	11	drag c (1,0): c->d 'publish' 27.7
+ drag c (0,1): c->d 'publish' 28.7
+ drag d (1,0): c->d 'publish' 28.7
+ drag d (0,1): c->d 'publish' 28.8
+ drag e (1,0): c->d 'publish' 36.9
+ drag e (1,0): x->e 'request' 310.3
+ drag e (0,1): c->d 'publish' 39.9
+ drag e (0,1): x->e 'request' 312.9
+ drag x (1,0): c->d 'publish' 39.9
+ drag x (1,0): x->e 'request' 311.6
+ drag x (0,1): x->e 'request' 146.6
+t3-lr-straight.mmd	4	drag D (1,0): D->E 'yes please continue' 12.3
+ drag D (0,1): D->E 'yes please continue' 12.2
+ drag E (1,0): D->E 'yes please continue' 12.3
+ drag E (0,1): D->E 'yes please continue' 11.9
+t6-rl-labels.mmd	4	drag q (1,0): q->r 'consume' 15.1
+ drag q (0,1): s->p 'replay' 109.8
+ drag r (1,0): q->r 'consume' 15.1
+ drag r (0,1): s->p 'replay' 109.8
+t8-lr-straight-labels.mmd	4	drag D (1,0): D->E 'a much longer label here' 20.4
+ drag D (0,1): D->E 'a much longer label here' 19.3
+ drag E (1,0): D->E 'a much longer label here' 20.4
+ drag E (0,1): D->E 'a much longer label here' 20.3
+r1.mmd	8	drag A (1,0): C->A 'retry' 18.1
+ drag A (1,0): C->A 'again' 35.2
+ drag A (0,1): C->A 'retry' 17.5
+ drag A (0,1): C->A 'again' 35.3
+ drag C (1,0): C->A 'retry' 18.2
+ drag C (1,0): C->A 'again' 34.5
+ drag C (0,1): C->A 'retry' 17.8
+ drag C (0,1): C->A 'again' 35.3
+r2.mmd	4	drag W (1,0): C->W 'a' 9.7
+ drag W (0,1): C->W 'a' 10.4
+ drag C (1,0): C->W 'b' 21.7
+ drag C (0,1): C->W 'a' 10.3
+r4.mmd	6	drag __start_root (1,0): C->W 'b' 21.2
+ drag __start_root (0,1): C->W 'b' 21.2
+ drag A (1,0): C->W 'b' 21.2
+ drag A (0,1): C->W 'b' 21.2
+ drag B (1,0): C->W 'b' 21.2
+ drag B (0,1): C->W 'b' 21.2
+r6.mmd	4	drag K1_1 (1,0): K1_c->K1_1 'a' 9.7
+ drag K1_1 (0,1): K1_c->K1_1 'b' 15.0
+ drag K1_c (1,0): K1_c->K1_1 'b' 21.6
+ drag K1_c (0,1): K1_c->K1_1 'b' 15.1
+r7.mmd	8	drag K1_1 (1,0): K1_c->K1_1 'a' 47.7
+ drag K1_1 (1,0): K1_c->K1_1 'b' 51.5
+ drag K1_1 (0,1): K1_c->K1_1 'a' 47.6
+ drag K1_1 (0,1): K1_c->K1_1 'b' 50.9
+ drag K1_c (1,0): K1_c->K1_1 'a' 47.9
+ drag K1_c (1,0): K1_c->K1_1 'b' 51.5
+ drag K1_c (0,1): K1_c->K1_1 'a' 47.8
+ drag K1_c (0,1): K1_c->K1_1 'b' 51.3
+TOTAL label jumps > thr under 1px drags: 303 (label-frames 5616)

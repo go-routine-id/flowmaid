@@ -1,0 +1,63 @@
+flowchart TD
+  n1["ship"]
+  subgraph B0["Fulfilment desk"]
+    n2["queue"]
+    n3["mail"]
+    n4["ship merge index"]
+    subgraph B0s0["Fulfilment desk 0"]
+      n5["cache"]
+      n6["api"]
+      n7["db"]
+    end
+  end
+  subgraph B1["Analytics"]
+    n8["merge<br/>queue"]
+    subgraph B1s0["Core 0"]
+      n9["store"]
+      n10["db"]
+      n11["merge"]
+    end
+  end
+  subgraph B2["Core"]
+    n12["search"]
+    n13["mail"]
+    subgraph B2s0["Storefront 0"]
+      n14["cache"]
+      n15["ship"]
+      n16["merge cache merge"]
+    end
+    subgraph B2s1["Ingest 1"]
+      n17["auth"]
+      n18["store billing cache"]
+    end
+  end
+  subgraph B3["Analytics"]
+    n19["report merge worker"]
+    subgraph B3s0["Analytics 0"]
+      n20["ingest db report<br/>api"]
+      n21["worker auth cache"]
+    end
+  end
+  n22["split parse store<br/>merge"]
+  n12 -->|split| n13
+  n16 ==> n19
+  n7 ==>|audit| n19
+  n16 --> n18
+  n19 -.-> n6
+  n9 --> n5
+  n5 -->|split| n16
+  n16 -->|api| n4
+  n16 ==> n5
+  n12 -.->|search| n20
+  n16 --> n1
+  n18 --> n10
+  n6 -.->|pack| n2
+  n22 -->|mail| n20
+  n17 --> n8
+  n10 ==> n21
+  n3 --> n4
+  n2 --> n6
+  n10 ==> n1
+  n1 ==> B2s1
+  n10 -->|api| n7
+  n9 -.-> n7

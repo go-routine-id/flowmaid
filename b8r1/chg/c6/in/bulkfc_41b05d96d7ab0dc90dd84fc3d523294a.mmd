@@ -1,0 +1,14 @@
+flowchart BT
+  subgraph F0 [Frame 0]
+    n7(Node 7 with a long label)
+    n4{{Node 4}}
+    n3(Node 3)
+  end
+  n4 <-.-> n7
+  n5 ---> n5
+  n7 <-.->|no| n7
+  n7 === F0
+  n6 ~~~ n4
+  n6 -.->|no| n2
+  n0 --x n2
+  linkStyle 2 stroke-width:3.5px

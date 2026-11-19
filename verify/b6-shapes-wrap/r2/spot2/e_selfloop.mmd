@@ -1,0 +1,7 @@
+stateDiagram-v2
+    state c <<choice>>
+    [*] --> A
+    A --> c
+    c --> c : self
+    c --> B : out
+    c --> C : other

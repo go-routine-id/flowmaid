@@ -1,0 +1,19 @@
+flowchart BT
+  n1["split"]
+  n2["audit cache notify<br/>search"]
+  n3["report"]
+  subgraph B0["Ops"]
+    n4["merge<br/>mail"]
+    n5["index"]
+  end
+  subgraph B1["Platform"]
+    n6["audit<br/>parse"]
+  end
+  n7["worker"]
+  n3 ==>|merge| n6
+  n2 --> n7
+  n5 --> n2
+  n1 ==> B1
+  n6 --> n3
+  n5 ==> n6
+  n3 --> n2

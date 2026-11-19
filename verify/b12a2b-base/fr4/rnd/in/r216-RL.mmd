@@ -1,0 +1,15 @@
+flowchart RL
+    subgraph O[Order processing]
+        subgraph G[Shipping and returns desk]
+            m0[charge]
+            m1[queue]
+            m2[y]
+        end
+        k[k]
+    end
+    m2 --> k
+    s0[src0] --> O
+    s0 --> G
+    s1[src1] --> m2
+    m2 --> z[end]
+    G --> z2[after]

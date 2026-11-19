@@ -1,0 +1,22 @@
+flowchart TD
+  n1["notify"]
+  n2["auth<br/>parse"]
+  subgraph B0["Analytics"]
+    n3["ship"]
+  end
+  subgraph B1["Fulfilment desk"]
+    n4["merge"]
+    subgraph B1s0["Ops 0"]
+      n5["ingest auth report"]
+      n6["pack"]
+      n7["ingest"]
+    end
+  end
+  n8["report"]
+  n8 ==> n4
+  n7 --> n5
+  n1 -.->|split| n2
+  n5 --> n8
+  n2 --> n8
+  n8 -.->|split| n1
+  n7 -->|cache| n6

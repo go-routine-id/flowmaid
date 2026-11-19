@@ -1,0 +1,54 @@
+fix(layout): seat a subgraph's onward-linking and entry-leading sources; nodes hanging below the move follow it (B8b r1 #1-#3; P1, §2.9)
+
+B8b verify r1 #2 (blocking): seat_box_sources' spill guard unseated a
+box whenever seating moved any node outside it and its follower boxes,
+so a box source linking out to a plain node (x7's `nightly job -->
+mail relay`), a chain of boxes (x1: Alpha -> Beta -> Gamma) and a
+nested LR region (x3) kept their frames on the hub's row. A node
+outside may now move along when it HANGS below the move (every link
+into it comes from a moved node: no other line stretches); a box such
+a node belongs to follows the seated box down whole (a max-node link
+from the moved member, iterated). dense-lr's spill (25 of 52 nodes,
+six of them ranked by nodes that stay) is still refused, so the dense
+fixtures keep their layering.
+
+B8b verify r1 #1 (blocking): f051's hub edge through a title came from
+the "source leading to an entry" exclusion: n8 -> n9 kept n8 (and the
+frame) level with the hub. Such a source now takes the first row too,
+pushing its entry a row down, as mermaid draws it. h284's `queue
+queue` was seated but leaf staggering stepped it back up beside the
+hub; stagger_proposals no longer lifts a source above its outermost
+box's top row.
+
+Results (5 337-input bulk, 0.35.0 -> now; 96 ordinary changed
+flowchart/state drawings, 3 large random ones aside): static defects
+168 -> 35 (0.34.0: 275), edges through frames 89 -> 16, title-chip
+strikes 48 -> 31, crossings 364 -> 243; route() defects 166 -> 52,
+frames 87 -> 17, chips 54 -> 42. x7 3 -> 0, x1 1 -> 0, x3 3 -> 0, x8
+4 -> 0, f051 9 -> 0 (0.34.0: 4), f093 1 -> 0, f288 3 -> 1, f292 2 -> 0,
+h284 static 4 -> 2 / route() frames 2 -> 2. Still worse than both
+releases on frame strikes: c288c13a (2) and h284 (2) - the ordering
+puts a frame between two linked nodes (or a subgraph beyond a third
+from the node feeding it); both were so before this commit. No corpus,
+example, fixture or class-diagram output changes; static timings equal
+to the previous commit (bench-75 45-49 vs 51-53 ms, dense-td 34-37 vs
+39-40 ms per CLI run); route()/drag code untouched.
+
+Tests: new a_box_source_takes_its_sink_down_with_it (x7, frame strikes
+0/0 in scene and route) and boxes_a_moved_chain_leads_through_follow_
+it_down_whole (x1); a_box_seats_its_loose_parts_on_its_top_layer now
+expects src2/x2/y2 on the box's row with out2 below (it pinned the old
+spill) and adds a pinned case (src3 -> out3 <- pin) that must stay;
+a_hub_fed_box_sits_below_its_hub now expects `up` on the box's first
+row and `down` a row lower (it pinned the old entry exclusion). No
+snapshot or quality gate changed.
+
+Docs: CHANGELOG's P1 entry rewritten (headline no longer claims every
+hub-fed subgraph sits wholly below; lists what is left alone and the
+nine inputs that gain a frame strike with their actual cause); README's
+layout paragraph says the same; P2 entry notes the 1 000-node synthetic
+benchmark renders 0.34.0's layout again (7.9 MB SVG, 10-20 % slower
+than 0.35.0) (B8b verify r1 #3, #6).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

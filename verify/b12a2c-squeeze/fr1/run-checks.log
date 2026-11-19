@@ -1,0 +1,19 @@
+run-checks.sh 2026-11-19T09:44:35Z: outdir /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a2c-squeeze/fr1/cand-5e30a15, mode commit 5e30a15, only local,gates,dirs; 8 GB free on /
+worktree /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a2c-squeeze/fr1/scratch/wt-5e30a15 at 5e30a15eb3a627f4eea86214f5f27de0d0af0666
+build.sh: Finished `release` profile [optimized] target(s) in 1.31s; binaries in /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a2c-squeeze/fr1/cand-5e30a15/bin
+  build.sh 191 s (exit 0)
+  build: src=/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a2c-squeeze/fr1/scratch/wt-5e30a15
+  build: commit=5e30a15eb3a627f4eea86214f5f27de0d0af0666
+  build: dirty_files=0
+  build: rustflags=--cfg flowmaid_blocks
+  build: rustc=rustc 1.97.0 (2d8144b78 2026-07-07)
+  build: built=2026-11-19T09:47:46Z
+rejudge.sh cand-5e30a15: 95 static SVGs (0 missing), 95 routed | live judge --due A2 75 must-fail, --due A1 0, routed 19
+  fmrun.sh 16 s (exit 0)
+trun.sh: 8 failing; FAILED. 1227 passed; 5 failed; 5 ignored; 0 measured; 0 filtered out; finished in 57.03s; quality: FAILED. 12 passed; 3 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.17s
+  trun.sh 64 s (exit 0)
+qrun.sh: dirs 332 copies x static/routed
+qrun.sh: dirsx 32 copies x static/routed
+  qrun.sh 14 s (exit 0)
+run-checks.sh: done in 285 s (exit 0). Compare with: /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/tools-a2b/compare.sh <baseline-outdir> /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a2c-squeeze/fr1/cand-5e30a15
+removed: /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a2c-squeeze/fr1/scratch/wt-5e30a15 /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a2c-squeeze/fr1/scratch/target-5e30a15

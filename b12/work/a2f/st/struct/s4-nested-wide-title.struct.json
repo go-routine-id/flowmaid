@@ -1,0 +1,28 @@
+{"tool":"structdump","flowmaid":"0.38.0","kind":"flowchart","direction":"TD",
+"nodes":[
+ {"id":"x","label":"entry","shape":"Rect","sub":null},
+ {"id":"p1","label":"n","shape":"Rect","sub":1},
+ {"id":"p2","label":"m","shape":"Rect","sub":0},
+ {"id":"y","label":"exit","shape":"Rect","sub":null}],
+"subgraphs":[
+ {"id":"P","title":"P","parent":null,"direction":null,"nodes":[2]},
+ {"id":"Q","title":"A nested block whose title is far wider than its single member","parent":0,"direction":null,"nodes":[1]}],
+"edges":[
+ {"from":{"n":0},"to":{"n":1},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":1},"to":{"n":3},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":2},"to":{"n":3},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":0},"to":{"n":2},"label":null,"kind":"Arrow","drawn":true}],
+"scene":{"width":247.500,"height":442.000,
+ "nodes":[
+  {"id":"x","x":106.900,"y":28.000,"w":63.200,"h":38.000},
+  {"id":"p1","x":71.500,"y":254.000,"w":54.000,"h":38.000},
+  {"id":"p2","x":151.500,"y":254.000,"w":54.000,"h":38.000},
+  {"id":"y","x":111.450,"y":376.000,"w":54.100,"h":38.000}],
+ "clusters":[
+  {"id":"P","x":43.500,"y":174.000,"w":176.000,"h":146.000,"depth":0},
+  {"id":"Q","x":57.500,"y":214.000,"w":82.000,"h":92.000,"depth":1}],
+ "edges":[
+  {"from":"x","to":"p1","routed":true,"label":null,"points":[[124.500,66.000],[124.500,110.875],[124.500,124.875],[110.500,124.875],[43.000,124.875],[29.000,124.875],[29.000,138.875],[29.000,259.000],[29.000,273.000],[43.000,273.000],[71.500,273.000]]},
+  {"from":"p1","to":"y","routed":true,"label":null,"points":[[98.500,292.000],[98.500,321.500],[98.500,334.500],[111.500,334.500],[124.500,334.500],[124.500,347.500],[124.500,376.000]]},
+  {"from":"p2","to":"y","routed":true,"label":null,"points":[[178.500,292.000],[178.500,321.500],[178.500,334.500],[165.500,334.500],[152.500,334.500],[152.500,347.500],[152.500,376.000]]},
+  {"from":"x","to":"p2","routed":true,"label":null,"points":[[152.500,66.000],[152.500,146.500],[152.500,159.500],[165.500,159.500],[178.500,159.500],[178.500,172.500],[178.500,254.000]]}]}}

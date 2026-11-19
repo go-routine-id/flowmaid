@@ -1,0 +1,47 @@
+feat(blocks): title-clear entries with their jog room, and ends spilled or cornered on a small side meet it in the middle (B12.7 F2 and B12.11 title-clear entries, pulled forward in their smallest form; 2.8 spill)
+
+Behind the block layout only; the default build draws exactly what it drew
+(`everything_renders_as_before_with_blocks_off`, guard green).
+
+- F2, the jog room (`layout::title_jogs`, `scene::cluster_boxes_with_jogs`):
+  in TD / BT a block layout counts, per block, the crossings of its title
+  side that its title chip forces off their column: the entries into a
+  title-row member beyond what the free stretch of its side beside the
+  chip holds (`cap`), and the block's own runs under the chip. With k of
+  them the frame grows on its title side by ROW_CLEAR + (k - 1) *
+  TRACK_PITCH, reserved on the title row's slot and reach (the strip
+  leaves 19 px between chip and row; a displaced entry takes the chip's
+  clearance, a track and a head's straight run). The frame boxes add the
+  same room, summed so that a frame without it is the same to the bit.
+- Title-clear entries, rule 2 (`ortho::TitleSides`): an entry (or an exit
+  going back up) whose port lies on a member side wholly under the chip
+  crosses the title side at the nearest free column past the chip's end
+  (a corner's rounding past its clearance, a track off the side's other
+  crossings, the columns of one side a track apart in port order) and
+  steps over to its port on a track in that room, inside the frame. Runs
+  under a chip are left to the coordinates (X2.5, not built: jogged over
+  here, a fan's runs into a narrow block crossed above it on dense-td).
+- An end spilled round the corner of an over-full side onto a side no
+  other end takes meets that side in the middle, and a lone end on a
+  compact shape's facet within PORT_SPACING of another side's end does
+  too (2.8): at the corner both stood 1-2 px apart (notes/nested-composite:
+  the choice `K0_c`, shared port and arrow on start 1 -> 0;
+  notes/fork-twins: shared port 1 -> 0, fan crossings 2 -> 0).
+- `scene::marquee_selects_an_edge_once_its_painted_stroke_touches` reads a
+  hop's lens as what it is: ink a painter-only treatment removes, which
+  picking may ignore (a probe there, 1 px off the line the hop lifts off,
+  is not clear of the stroke picking measures). It held by luck of where
+  the probes fell; bench-75 drawn as blocks put one in a lens.
+
+Suite-on, static, on the repository fixtures: dense-td fan_x 1 (start 1),
+x_drawn 53; bench-75 fan_x 9 -> 8 (start 6); the public fixture and its
+permutations and direction copies fan_x 0, crossings 6 (must 7);
+notes/fork-twins fan_x 0 (start 0); every crossing must and xframe_runs 0
+held, dense-td 46-54 crossings under the six edge-line shuffles (must
+74.6), width unchanged.
+
+Tests: `blockcheck::an_entry_under_a_title_chip_crosses_past_it_and_jogs_inside_the_frame`.
+No snapshot or gate changes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

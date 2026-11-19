@@ -1,0 +1,28 @@
+flowchart TB
+  H0 ==> N8
+  H0 ==>|express| N14
+  H0 -.->|retry| N1
+  H0 -.->|yes| N5
+  H0 -->|express| N5
+  H0 -.->|retry| N10
+  H0 --- N15
+  H1 ==>|express| N0
+  H1 ==>|x| N12
+  H2 -->|yes| N3
+  H2 -->|gift wrap| N11
+  H2 -.-> N13
+  H2 -->|express| N18
+  H2 ==>|no| N8
+  H2 ==> N6
+  H2 ==>|gift wrap| N11
+  H2 -.->|no| N12
+  H2 ==>|gift wrap| N19
+  H2 ---|retry| N0
+  N6 -->|yes| N2
+  N4 -->|retry| N9
+  N13 --> N17
+  N16 --> N19
+  N2 --> N1
+  N6 -->|yes| N17
+  N7 --> N17
+  N8 --> N16

@@ -1,0 +1,23 @@
+flowchart LR
+    N0[Report]
+    N1([Fetch])
+    N2([Store])
+    N3{Validate}
+    N4[Queue]
+    N5([Archive])
+    N6(Archive)
+    N7(Emit)
+    N8([Fetch])
+    N0 -->|yes| N1
+    N0 --> N2
+    N1 --> N3
+    N3 -->|fail| N4
+    N3 --> N5
+    N3 -->|ok| N6
+    N6 --> N7
+    N5 -->|next| N8
+    N2 --> N3
+    N1 --> N5
+    N4 ==>|back| N2
+    N4 ==> N2
+    N4 --> N3

@@ -1,0 +1,33 @@
+classDiagram
+direction BT
+C3 <|-- C7 : <b>bold</b>
+C5 --> C7 : gamma
+C7 "1" --> "*" C7 : 日本語
+C7 <--> C2 : a&b
+C2 --> C1
+C4 *-- C7 : delta
+C6 --> C0 : 日本語
+C0 *-- C3
+C5 o-- C2 : Long label here
+C7 "1" --> "*" C7 : Long label here
+C6 "1" ..> "*" C5
+C5 <--> C7 : Long label here
+C6 --> C2
+C4 ..|> C4 : beta
+C0 <|-- C6
+C6 "1" *-- "*" C7 : Customer Order
+note for C2 "<b>bold</b>"
+note "x"
+note "<b>bold</b>"
+class C0 {
+  +int id
+  +name() String
+}
+class C3 {
+  +int id
+  +name() String
+}
+class C5 {
+  +int id
+  +name() String
+}

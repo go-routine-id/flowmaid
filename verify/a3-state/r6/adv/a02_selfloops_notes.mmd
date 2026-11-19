@@ -1,0 +1,10 @@
+stateDiagram-v2
+direction LR
+[*] --> S
+S --> S : retry
+S --> S : again
+S --> T
+T --> T
+note right of S : loops here
+note left of T : t loops
+T --> [*]

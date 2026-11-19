@@ -1,0 +1,17 @@
+flowchart LR
+    N0(Load report)
+    N1([Report])
+    N2{Archive validate}
+    N3[Notify fetch]
+    N4{Load archive}
+    N5(Notify queue)
+    N6([Notify])
+    N0 -->|next| N1
+    N0 -->|ok| N2
+    N2 --> N3
+    N1 --> N4
+    N4 --> N5
+    N3 --> N6
+    N1 --> N6
+    N1 --> N4
+    N6 ==>|retry| N5

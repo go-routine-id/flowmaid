@@ -1,0 +1,17 @@
+flowchart RL
+  subgraph F0 [Frame 0]
+    direction TB
+    n1((Node 1))
+  end
+  n3 <-.-> n0
+  n2 ==>|thick lbl| n2
+  n4 -.->|dot| n1
+  n7 ==> n4
+  n1 <==> n6
+  n1 ==>|thick lbl| n6
+  n2 ==> F0
+  n2 ==> n0
+  n6 o--o n1
+  n4 -->|lbl| F0
+  n1 --> F0
+  linkStyle 3 stroke-width:24px

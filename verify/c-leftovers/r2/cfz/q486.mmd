@@ -1,0 +1,16 @@
+classDiagram
+direction LR
+A *-- B
+A <|-- C
+C ..|> D
+A *-- C
+C ..|> B
+C -- D
+D "1" --> "*" D : d0
+D --> D : d1
+D o-- D : d2
+D o-- D : d3
+D "1" --> "*" D
+D ..> D : d5
+D o-- D : d6
+D o-- D : d7

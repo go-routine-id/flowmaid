@@ -1,0 +1,40 @@
+sequenceDiagram
+autonumber
+participant P0 as <b>bold</b>
+participant P1 as alpha
+participant P2 as beta
+actor P3 as beta
+participant P4 as delta
+participant P5 as a&b
+activate P0
+P0->>P2: act
+deactivate P0
+P2-)P0: delta
+P5->>P5: self <b>bold</b>
+activate P2
+P2->>P0: act
+deactivate P2
+Note over P0: delta
+P0->P0: x
+P0-->>P2: x
+P1--xP3: x
+P0-)P1: gamma
+activate P2
+P2->>P1: act
+deactivate P2
+P0->>P0: self a&b
+activate P2
+P2->>P5: act
+deactivate P2
+activate P2
+P2->>P4: act
+deactivate P2
+P2->>P2: x
+P2--xP3: x
+Note over P0,P5: delta
+P1->P0: beta
+P2--xP2: 日本語
+activate P1
+P1->>P4: act
+deactivate P1
+Note right of P2: a&b

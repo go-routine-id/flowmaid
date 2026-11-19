@@ -1,0 +1,17 @@
+flowchart LR
+    subgraph O[Shipping and returns desk]
+        subgraph G[Édition générale des données]
+            m0[charge]
+            m1[ledger]
+            m2[y]
+        end
+        k[k]
+    end
+    s0[src0] --> m1
+    s1[src1] -- "lbl9" --> m0
+    s1 -- "lbl5" --> m0
+    s2[src2] --> G
+    s3[src3] --> G
+    s3 --> O
+    s4[src4] --> m1
+    s4 --> m0

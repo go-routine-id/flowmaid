@@ -1,0 +1,14 @@
+flowchart LR
+    N0[Done]
+    N1[Validate]
+    N2([Retry load])
+    N3{Retry}
+    N4{Parse archive}
+    N5[Notify check]
+    N0 --> N1
+    N1 --> N2
+    N2 --> N3
+    N1 --> N4
+    N2 --> N5
+    N2 -->|back| N1
+    N2 ==>|retry| N0

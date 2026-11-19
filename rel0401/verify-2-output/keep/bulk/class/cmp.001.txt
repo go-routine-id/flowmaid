@@ -1,0 +1,44 @@
+d1.r MISMATCH 43
+d1.r TRANSLATION 332
+d4 same 10
+d4.r MISMATCH 55
+d4.r TRANSLATION 310
+d6 same 364
+d6.r MISMATCH 1
+d6.r TRANSLATION 10
+d9.r MISMATCH 102
+d9.r TRANSLATION 273
+r0 MISMATCH 1
+r0 TRANSLATION 29
+r0 same 348
+render same 400
+scene same 378
+== MISMATCH: 202
+   /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b8r1/bulkcl/3ed5768a80b0fd8f09e6c1528bd02f61.mmd d1.r {'ox': -136.0, 'oy': -94.0, 'bvb': [0.0, 0.0], 'verdict': 'MISMATCH'}
+       ('num', 138, '<text x="#" y="#" dy="#em" text-anchor="middle" fill="##" font-size="#">', 'x', 640.7, 523.3, -136.0)
+   /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b8r1/bulkcl/3ed5768a80b0fd8f09e6c1528bd02f61.mmd d4.r {'ox': -150.0, 'oy': 0.0, 'bvb': [0.0, 0.0], 'verdict': 'MISMATCH'}
+       ('num', 138, '<text x="#" y="#" dy="#em" text-anchor="middle" fill="##" font-size="#">', 'x', 654.7, 523.3, -150.0)
+   /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b8r1/bulkcl/3ed5768a80b0fd8f09e6c1528bd02f61.mmd d9.r {'ox': -40.0, 'oy': -25.0, 'bvb': [0.0, 0.0], 'verdict': 'MISMATCH'}
+       ('num', 138, '<text x="#" y="#" dy="#em" text-anchor="middle" fill="##" font-size="#">', 'x', 523.3, 464.7, -40.0)
+   /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b8r1/bulkcl/3f0a7632851e00f5198cabf19d44a828.mmd d4.r {'ox': -150.0, 'oy': 0.0, 'bvb': [0.0, 0.0], 'verdict': 'MISMATCH'}
+       ('num', 40, '<text x="#" y="#" dy="#em" text-anchor="middle" fill="##" font-size="#">', 'x', 90.7, -40.7, -150.0)
+   /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b8r1/bulkcl/3f0a7632851e00f5198cabf19d44a828.mmd d9.r {'ox': -40.0, 'oy': -25.0, 'bvb': [0.0, 0.0], 'verdict': 'MISMATCH'}
+       ('num', 40, '<text x="#" y="#" dy="#em" text-anchor="middle" fill="##" font-size="#">', 'x', 66.7, 45.3, -40.0)
+   /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b8r1/bulkcl/3f167701b7d984469280abffb9822577.mmd d4.r {'ox': -150.0, 'oy': 0.0, 'bvb': [0.0, 0.0], 'verdict': 'MISMATCH'}
+       ('num', 260, '<text x="#" y="#" dy="#em" text-anchor="middle" fill="##" font-size="#">', 'x', 284.5, 101.9, -150.0)
+   /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b8r1/bulkcl/3f167701b7d984469280abffb9822577.mmd d9.r {'ox': -40.0, 'oy': -25.0, 'bvb': [0.0, 0.0], 'verdict': 'MISMATCH'}
+       ('num', 244, '<text x="#" y="#" dy="#em" text-anchor="middle" fill="##" font-size="#">', 'x', 186.3, 113.7, -40.0)
+       ('num', 260, '<text x="#" y="#" dy="#em" text-anchor="middle" fill="##" font-size="#">', 'x', 101.9, 94.5, -40.0)
+       ('num', 268, '<text x="#" y="#" dy="#em" text-anchor="middle" fill="##" font-size="#">', 'x', 311.3, 239.7, -40.0)
+   /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b8r1/bulkcl/3f2e8b0a890294c78666c6b8abb3ded8.mmd d1.r {'ox': -136.0, 'oy': -94.0, 'bvb': [0.0, 0.0], 'verdict': 'MISMATCH'}
+       ('num', 338, '<text x="#" y="#" dy="#em" text-anchor="middle" fill="##" font-size="#">', 'x', 723.2, 605.8, -136.0)
+       ('num', 346, '<text x="#" y="#" dy="#em" text-anchor="middle" fill="##" font-size="#">', 'x', 345.6, 228.2, -136.0)
+       ('num', 358, '<text x="#" y="#" dy="#em" text-anchor="middle" fill="##" font-size="#">', 'x', 339.1, 234.7, -136.0)
+   /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b8r1/bulkcl/3f2e8b0a890294c78666c6b8abb3ded8.mmd d4.r {'ox': -148.2, 'oy': 0.0, 'bvb': [0.0, 0.0], 'verdict': 'MISMATCH'}
+       ('num', 338, '<text x="#" y="#" dy="#em" text-anchor="middle" fill="##" font-size="#">', 'x', 735.3, 605.8, -148.2)
+       ('num', 346, '<text x="#" y="#" dy="#em" text-anchor="middle" fill="##" font-size="#">', 'x', 357.8, 228.2, -148.2)
+       ('num', 394, '<text x="#" y="#" dy="#em" text-anchor="middle" fill="##" font-size="#">', 'x', 1089.1, 922.3, -148.2)
+       ('num', 402, '<text x="#" y="#" dy="#em" text-anchor="middle" fill="##" font-size="#">', 'x', 530.4, 363.6, -148.2)
+   /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b8r1/bulkcl/3f2e8b0a890294c78666c6b8abb3ded8.mmd d9.r {'ox': -40.0, 'oy': -25.0, 'bvb': [0.0, 0.0], 'verdict': 'MISMATCH'}
+       ('num', 338, '<text x="#" y="#" dy="#em" text-anchor="middle" fill="##" font-size="#">', 'x', 605.8, 547.2, -40.0)
+       ('num', 378, '<text x="#" y="#" dy="#em" text-anchor="middle" fill="##" font-size="#">', 'x', 633.1, 574.5, -40.0)

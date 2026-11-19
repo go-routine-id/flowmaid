@@ -1,0 +1,20 @@
+flowchart TD
+  s0["search"]
+  subgraph g0["metric pay zone"]
+    m0["cart"]
+    m1["index"]
+    m2["queue queue"]
+    m0 --> m1
+  end
+  subgraph g1["order zone"]
+    m3["ship"]
+  end
+  subgraph g2["web index zone"]
+    direction LR
+    m4["pay"]
+  end
+  s0 --> g0
+  s0 --> g1
+  s0 --> m4
+  s0 --> L5["search billing billing"]
+  s0 --> L6["db order ship"]

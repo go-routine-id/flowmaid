@@ -1,0 +1,10 @@
+classDiagram
+    direction LR
+    A "a1" --> "B2" B : makes
+    B "b1" --> "C2" C : feeds
+    C "c1" --> "A2" A : returns to
+    C ..> D : depends
+    D --|> A : is an
+    B <|-- E
+    B <|-- F
+    E o-- F : peers

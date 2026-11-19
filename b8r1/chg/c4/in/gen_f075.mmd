@@ -1,0 +1,47 @@
+flowchart TB
+  n0["ipsum aliqua magna tempor<br/>eiusmod"]
+  subgraph g0["sed magna tempor"]
+    direction LR
+    n1("veniam nostrud labore adipiscing")
+    n2(["do magna"])
+    n3(["do<br/>dolor"])
+    n1 --> n2
+  end
+  subgraph g1["ipsum dolor sit do tempor aliqua"]
+    direction LR
+    n4[("elit incididunt<br/>lorem<br/>eiusmod labore do")]
+    n5["veniam veniam<br/>lorem sed veniam eiusmod<br/>tempor sed"]
+    n6("sit incididunt sed tempor<br/>tempor sit do incididunt")
+  end
+  subgraph g2["eiusmod ullamco tempor ut"]
+    direction LR
+    n7(["incididunt<br/>adipiscing tempor labore<br/>amet aliqua"])
+    n8(["labore eiusmod laboris magna"])
+    n9(["tempor dolor tempor amet"])
+    n10(["sed magna<br/>magna veniam consectetur incididunt"])
+    n11(["tempor<br/>adipiscing ullamco"])
+    n7 --> n8
+  end
+  subgraph g3["aliqua magna sed adipiscing tempor amet laboris labore ipsum adipiscing"]
+    direction LR
+    n12(["elit eiusmod consectetur nostrud"])
+  end
+  subgraph g4["magna aliqua"]
+    direction LR
+    n13[("ipsum ipsum<br/>adipiscing sed consectetur<br/>adipiscing consectetur")]
+    n14("magna ut adipiscing")
+    n13 --> n14
+  end
+  subgraph g5["amet tempor amet labore"]
+    direction LR
+    n15["lorem ullamco incididunt sit<br/>amet<br/>veniam"]
+    n16["adipiscing<br/>amet dolor"]
+  end
+  n17(["amet<br/>ut sed sit lorem"])
+  n0 --> n2
+  n0 --> g1
+  n0 --> g2
+  n0 --> g3
+  n0 --> g4
+  n0 --> n15
+  n0 --> n17

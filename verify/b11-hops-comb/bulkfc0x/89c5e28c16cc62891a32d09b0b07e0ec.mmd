@@ -1,0 +1,23 @@
+flowchart LR
+    N0([Queue])
+    N1(Notify retry)
+    N2[Retry]
+    N3{Queue}
+    N4{Retry}
+    N5[Retry]
+    N6[Archive report]
+    N7[Report]
+    N8{Queue}
+    N9(Emit parse)
+    N0 --> N1
+    N1 --> N2
+    N1 --> N3
+    N2 --> N4
+    N4 --> N5
+    N3 --> N6
+    N4 -->|ok| N7
+    N6 -->|yes| N8
+    N8 -->|ok| N9
+    N0 --> N1
+    N0 --> N9
+    N9 -->|again| N5

@@ -1,0 +1,13 @@
+classDiagram
+direction LR
+P <|-- S0
+P <|-- M
+P <|-- S1
+M --> K0
+M "1" --> "*" M : m0
+M o-- M : m1
+M "1" --> "*" M : m2
+M o-- M : m3
+M "1" --> "*" M : m4
+M o-- M : m5
+S0 --> S0 : s

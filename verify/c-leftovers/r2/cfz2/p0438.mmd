@@ -1,0 +1,15 @@
+classDiagram
+direction TB
+A "1" <|-- "*" B
+B ..|> C : x
+C o-- D
+B "1" ..|> "*" E
+E ..> F
+F --> G : x
+A <|-- D
+D *-- D : d0
+D "1" --> "*" D : d1
+D "1" --> "*" D
+D "1" --> "*" D : d3
+D "1" --> "*" D : d4
+F "1" --> "*" F : f0

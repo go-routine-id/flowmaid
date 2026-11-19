@@ -1,0 +1,20 @@
+flowchart RL
+  H0 -.-> N4
+  H0 ==> N1
+  H0 ==>|yes| N1
+  H0 ==> N4
+  H0 ==>|a much longer label here| N0
+  H0 ==> N2
+  H1 ==>|no| N1
+  H1 --- N4
+  H1 -.-> N3
+  H1 -->|ok| N1
+  H1 ==>|no| N2
+  H1 -.->|yes| N2
+  H1 --- N2
+  H1 -->|x| N2
+  H1 -.-> N1
+  H1 -->|no| N2
+  H1 -->|ok| N1
+  N0 --> N3
+  N4 --> N4

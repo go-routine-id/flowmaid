@@ -1,0 +1,15 @@
+flowchart RL
+    a[alpha] --> x
+    b[beta] --> G
+    c[gamma] --> y
+    d[delta] --> G
+    d --> x
+    e[eps] --> y
+    subgraph G[Shipping and returns desk]
+        x[x node wide one]
+        y[y]
+        w[w]
+        x --> w
+        y --> w
+    end
+    w --> out[out]

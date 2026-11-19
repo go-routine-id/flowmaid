@@ -1,0 +1,27 @@
+flowchart RL
+  n5 -.->|no| n4
+  n1 --- n4
+  n2 ===|x| n4
+  n1 ~~~ n2
+  n0 -.-> n4
+  n4 --> n7
+  n4 --o n0
+  n4 o--o n4
+  n8 ---> n4
+  n5 ---|no| n4
+  n3 ~~~ n1
+  n6 o--o n4
+  n2 e12@--- n5
+  e12@{ curve: basis }
+  n6 === n1
+  n4 --- n4
+  linkStyle 1 stroke-width:12px,stroke:#3a3
+  linkStyle 2 stroke-width:8px,stroke:#c33
+  linkStyle 3 interpolate linear stroke-width:12px
+  linkStyle 4 interpolate natural stroke-width:8px
+  linkStyle 6 stroke-width:20px
+  linkStyle 7 stroke-width:2px,stroke:#c33
+  linkStyle 8 interpolate linear stroke-width:15px
+  linkStyle 9 stroke-width:8px,stroke:#c33
+  linkStyle 10 stroke-width:20px,stroke:#c33
+  linkStyle 14 interpolate basis stroke-width:40px

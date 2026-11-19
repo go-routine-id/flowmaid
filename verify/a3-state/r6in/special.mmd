@@ -1,0 +1,11 @@
+stateDiagram-v2
+state c <<choice>>
+state f <<fork>>
+[*] --> A
+A --> c
+c --> f : go
+c --> Z : stop
+f --> X
+f --> Y
+note right of c : choice note
+note left of f : fork note

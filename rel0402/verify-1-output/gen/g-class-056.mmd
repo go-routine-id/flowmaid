@@ -1,0 +1,13 @@
+classDiagram
+direction BT
+C4 "1" o-- "*" C3 : gamma
+C2 <--> C1
+C4 <|-- C4
+C2 "1" <--> "*" C3
+C4 ..> C3
+C2 ..|> C4
+note for C1 "x"
+class C4 {
+  +int id
+  +name() String
+}

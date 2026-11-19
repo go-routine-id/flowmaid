@@ -1,0 +1,14 @@
+architecture-beta
+    service a(server)[Authentication and Authorization Service]
+    service b(database)[Free]
+    service c(disk)[Also free]
+    service d(cloud)[Supercalifragilisticexpialidocious]
+    service e[No icon here at all, just a fairly long label]
+    group g(cloud)[Edge, west]
+    service f(internet)["Quoted, title"] in g
+    a:R -- L:b
+    b:B -- T:c
+    a:B -[calls]-> T:d
+    d:R -- L:e
+    e:R -- L:f
+    c:R -[very long edge label here]- L:f

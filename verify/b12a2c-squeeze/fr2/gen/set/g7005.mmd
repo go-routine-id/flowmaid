@@ -1,0 +1,44 @@
+flowchart LR
+  n1["store cache pack"]
+  n2["pack"]
+  subgraph B0["Back office and finance"]
+    n3["ingest db index"]
+    n4["billing"]
+    n5["report<br/>ship"]
+  end
+  subgraph B1["Back office and finance"]
+    n6["api ship index"]
+    n7["index"]
+  end
+  subgraph B2["Analytics"]
+    n8["parse"]
+    n9["parse"]
+    n10["audit"]
+    subgraph B2s0["Platform 0"]
+      n11["audit worker ship"]
+    end
+  end
+  subgraph B3["Analytics"]
+    n12["db"]
+  end
+  n13["ingest auth merge"]
+  n4 -.-> n5
+  n5 -.-> n13
+  n5 --> n8
+  n7 -.-> n5
+  n3 -.-> n6
+  n9 --> n3
+  n8 -.-> n13
+  n3 --> n11
+  n6 -.-> B3
+  n6 --> n10
+  n10 --> n6
+  n8 --> n12
+  n10 ==> n5
+  n7 -->|audit| n8
+  n6 -->|billing| n3
+  n4 --> n1
+  n2 --> B0
+  n10 ==> n4
+  n6 --> n5
+  n6 -->|worker| n9

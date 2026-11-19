@@ -1,0 +1,22 @@
+release: 0.40.2 — say what Debug prints, and tighten the route_partial wording
+
+The ClassScene Debug doc said a scene that keeps no cardinalities
+prints as it always did. It prints the fields 0.40.1's derive printed,
+in the same order, but its Scene prints the private block_layout field
+(and bold_title per subgraph frame) that the switched-off block layout
+added. The doc now says so, the Highlights say existing functions
+return the same values and only the Debug text differs, and the
+Internal line names the two fields.
+
+CHANGELOG: "route the drop with route to clear that" is for ER and
+class only; an ER or class frame's canvas holds every line, also a
+class line routed round the top or left that route's canvas can leave
+out; with a class::scene base of a diagram with notes, pass class and
+note centres (also in the class::route_partial doc). README: the
+try_route_partial functions are route_partial returning None. ROADMAP:
+a drag redraws what is attached to a moved box.
+
+Doc comments and docs only; no behaviour change.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

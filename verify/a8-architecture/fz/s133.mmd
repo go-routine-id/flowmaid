@@ -1,0 +1,12 @@
+architecture-beta
+    group g0(database)[Edge]
+    group g1(cloud)[Backend Services] in g0
+    group g2(server)[Frontend]
+    group g3(disk)[Frontend] in g0
+    service s0(cloud)[Service 0] in g3
+    service s1(cloud)[Service 1] in g2
+    service s2(disk)[Service 2]
+    service s3(cloud)[Service 3]
+    service s4(cloud)[Service 4] in g3
+    s0:B -- T:s1
+    s2:B -- T:s1

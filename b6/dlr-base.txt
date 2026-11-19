@@ -1,0 +1,2 @@
+dense-lr	static	n12->n33 end_cross n12->n38 at (865,1372)
+dense-lr	routed	n12->n22 end_cross n6->n22 at (1102,1830)

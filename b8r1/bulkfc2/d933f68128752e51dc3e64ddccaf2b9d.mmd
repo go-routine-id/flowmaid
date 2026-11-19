@@ -1,0 +1,20 @@
+flowchart LR
+    A[Start] --> B{{Validate input}}
+    A --> C[/Read file/]
+    B --> D[(Users DB)]
+    C --> D
+    B --> E[\Write log\]
+    C --> E
+    D --> F{Decide}
+    E --> F
+    F -->|yes| G([Done])
+    F -->|no| B
+    D --> D
+    subgraph grp [Storage layer]
+      D
+      H[(Cache)]
+    end
+    E --> H
+    H --> G
+    A e2@--> H
+    e2@{ curve: stepBefore }

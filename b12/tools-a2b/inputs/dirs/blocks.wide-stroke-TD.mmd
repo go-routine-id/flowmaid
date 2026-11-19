@@ -1,0 +1,20 @@
+%% Block layout fixture with a default stroke width: the orthogonal
+%% edge stage does not run on such a graph, so the builders round
+%% their own corners.
+flowchart TD
+    in[request]
+    subgraph A[Front]
+        a1[form] --> a2[page]
+    end
+    subgraph B[Middle]
+        b1[check] --> b2[store]
+    end
+    subgraph C[Back]
+        c1[report] --> c2[archive]
+    end
+    in --> a1
+    a2 -->|submit| b1
+    b2 -->|log| c1
+    a1 -->|skip| c2
+    c2 -.->|done| a2
+    linkStyle default stroke-width:3px

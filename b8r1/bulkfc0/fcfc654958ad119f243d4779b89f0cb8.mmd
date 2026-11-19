@@ -1,0 +1,22 @@
+flowchart TD
+    N0{Store}
+    N1[Notify]
+    N2(Fetch)
+    N3[Report]
+    N4([Parse check])
+    N5[Done]
+    N6[Report]
+    N7{Load}
+    N8[Report]
+    N9([Store])
+    N0 -->|yes| N1
+    N0 --> N2
+    N1 --> N3
+    N2 -->|no| N4
+    N2 --> N5
+    N5 -->|fail| N6
+    N4 --> N7
+    N7 --> N8
+    N7 --> N9
+    N0 --> N7
+    N7 --> N4

@@ -1,0 +1,17 @@
+flowchart TD
+    N0([Emit report])
+    N1([Archive notify])
+    N2{Emit done}
+    N3(Retry)
+    N4([Report])
+    N5(Queue done)
+    N0 -->|ok| N1
+    N1 -->|yes| N2
+    N0 -->|ok| N3
+    N2 --> N4
+    N2 -->|no| N5
+    N0 --> N4
+    N1 --> N4
+    N1 --> N5
+    N5 -.-> N4
+    N3 ==>|retry| N0

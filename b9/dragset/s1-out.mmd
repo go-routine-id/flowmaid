@@ -1,0 +1,10 @@
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> Syntax
+    state Validating {
+        direction LR
+        [*] --> Syntax
+        Syntax --> Semantics : ok
+        Semantics --> [*]
+    }
+    Semantics --> Done

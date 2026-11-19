@@ -1,0 +1,43 @@
+flowchart TD
+  n1["search ingest search"]
+  subgraph B0["Data tier"]
+    n2["report"]
+    n3["billing"]
+  end
+  subgraph B1["Storefront"]
+    n4["pack"]
+    n5["audit<br/>index"]
+    n6["report"]
+    subgraph B1s0["Edge services 0"]
+      n7["queue"]
+      n8["api<br/>auth"]
+    end
+  end
+  subgraph B2["Ingest"]
+    n9["store parse auth<br/>ship"]
+    n10["ship db parse"]
+    subgraph B2s0["Data tier 0"]
+      n11["api"]
+      n12["notify worker report"]
+      n13["ship"]
+    end
+    subgraph B2s1["Ingest 1"]
+      n14["report"]
+    end
+  end
+  n15["report merge report<br/>store"]
+  n14 --> n2
+  n12 ==>|search| n5
+  n7 --> n5
+  n5 --> n14
+  n7 --> n15
+  n2 -.-> n12
+  n14 --> B2s0
+  n2 --> n4
+  n14 --> n7
+  n10 --> n5
+  n15 -->|worker| n11
+  n1 -.-> n7
+  n7 -.-> n1
+  n9 --> n6
+  n8 ==> n15

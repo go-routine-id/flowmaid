@@ -1,0 +1,555 @@
+NOPLAN Anchored teeth 4 movable 4
+REFUSE crossings 0->2
+NOPLAN Anchored teeth 4 movable 4
+NOPLAN Pooled teeth 4 movable 4
+REFUSE crossings 0->3
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Pooled teeth 3 movable 3
+REFUSE crossings 2->3
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Pooled teeth 3 movable 3
+ACCEPT x3->2
+REFUSE crossings 0->1
+REFUSE crossings 1->1
+NOPLAN Pooled teeth 2 movable 2
+NOPLAN Anchored teeth 2 movable 2
+REFUSE crossings 0->0
+REFUSE crossings 0->0
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Anchored teeth 4 movable 4
+NOPLAN Pooled teeth 4 movable 4
+REFUSE crossings 1->1
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Pooled teeth 2 movable 2
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Pooled teeth 2 movable 2
+REFUSE crossings 1->2
+REFUSE crossings 1->5
+NOPLAN Pooled teeth 3 movable 3
+REFUSE crossings 1->2
+REFUSE crossings 0->0
+REFUSE crossings 0->0
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Pooled teeth 2 movable 2
+REFUSE crossings 4->5
+NOPLAN Anchored teeth 4 movable 3
+NOPLAN Pooled teeth 4 movable 3
+REFUSE crossings 4->5
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Pooled teeth 3 movable 3
+REFUSE crossings 4->5
+NOPLAN Anchored teeth 3 movable 3
+REFUSE hits x4->3 boxes 0->100 labels 0->1
+REFUSE crossings 4->4
+NOPLAN Anchored teeth 2 movable 2
+REFUSE crossings 0->1
+NOPLAN Anchored teeth 2 movable 2
+REFUSE crossings 0->1
+ACCEPT x3->2
+ACCEPT x5->3
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Pooled teeth 2 movable 2
+REFUSE crossings 3->4
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Pooled teeth 2 movable 2
+REFUSE crossings 3->4
+REFUSE crossings 3->3
+REFUSE crossings 6->6
+REFUSE crossings 0->0
+REFUSE crossings 0->0
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Anchored teeth 4 movable 4
+NOPLAN Pooled teeth 4 movable 4
+REFUSE crossings 0->2
+NOPLAN Anchored teeth 4 movable 3
+NOPLAN Pooled teeth 4 movable 3
+NOPLAN Anchored teeth 4 movable 4
+NOPLAN Pooled teeth 4 movable 4
+REFUSE crossings 0->3
+ACCEPT x6->4
+REFUSE crossings 34->34
+REFUSE crossings 34->34
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Pooled teeth 2 movable 2
+REFUSE crossings 64->65
+REFUSE close12 x57->56 (1, 196.19999999999982)->(2, 2455.2)
+ACCEPT x57->54
+NOPLAN Anchored teeth 5 movable 4
+NOPLAN Pooled teeth 5 movable 4
+REFUSE crossings 10->11
+ACCEPT x76->74
+REFUSE crossings 69->69
+REFUSE close12 x107->105 (3, 5065.600000000001)->(4, 5099.600000000001)
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Pooled teeth 3 movable 3
+ACCEPT x105->104
+REFUSE crossings 52->52
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Pooled teeth 3 movable 3
+REFUSE crossings 35->36
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Pooled teeth 2 movable 2
+REFUSE hits x16->15 boxes 0->100 labels 0->0
+REFUSE crossings 30->30
+REFUSE close6 x45->43 (3, 216.0)->(3, 222.3)
+ACCEPT x51->50
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Pooled teeth 3 movable 3
+REFUSE crossings 74->74
+REFUSE crossings 67->73
+REFUSE crossings 86->89
+REFUSE crossings 67->69
+NOPLAN Anchored teeth 4 movable 3
+NOPLAN Pooled teeth 4 movable 3
+REFUSE crossings 56->57
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Pooled teeth 3 movable 3
+REFUSE crossings 34->35
+REFUSE close12 x84->82 (4, 4023.042142857143)->(4, 4047.156428571429)
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Pooled teeth 2 movable 2
+REFUSE crossings 42->43
+REFUSE close6 x30->29 (1, 1114.8000000000009)->(1, 1133.900000000001)
+ACCEPT x44->43
+ACCEPT x57->56
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Pooled teeth 2 movable 2
+REFUSE crossings 34->35
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Pooled teeth 3 movable 3
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Pooled teeth 3 movable 3
+REFUSE crossings 20->21
+NOPLAN Anchored teeth 2 movable 2
+REFUSE crossings 66->67
+ACCEPT x17->15
+NOPLAN Anchored teeth 5 movable 5
+NOPLAN Pooled teeth 5 movable 5
+REFUSE crossings 78->80
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Pooled teeth 2 movable 2
+REFUSE crossings 67->68
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Pooled teeth 3 movable 3
+REFUSE crossings 60->60
+REFUSE crossings 19->19
+REFUSE crossings 23->23
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Pooled teeth 2 movable 2
+REFUSE crossings 33->33
+REFUSE close12 x120->118 (3, 2035.1250000000023)->(3, 2054.2250000000017)
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Pooled teeth 2 movable 2
+REFUSE crossings 44->45
+REFUSE close12 x48->45 (1, 1619.5999999999995)->(1, 1633.75)
+REFUSE crossings 95->97
+REFUSE close6 x58->56 (0, 0.0)->(1, 1881.1500000000015)
+NOPLAN Pooled teeth 3 movable 3
+ACCEPT x39->38
+NOPLAN Anchored teeth 5 movable 5
+NOPLAN Pooled teeth 5 movable 5
+NOPLAN Anchored teeth 5 movable 5
+NOPLAN Pooled teeth 5 movable 5
+REFUSE crossings 43->44
+REFUSE hits x81->79 boxes 10->100 labels 0->0
+REFUSE crossings 81->81
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Pooled teeth 2 movable 2
+REFUSE crossings 56->57
+NOPLAN Anchored teeth 4 movable 4
+REFUSE hits x49->47 boxes 11->110 labels 0->0
+ACCEPT x58->57
+REFUSE hits x73->52 boxes 10->110 labels 0->0
+NOPLAN Pooled teeth 3 movable 3
+REFUSE crossings 73->74
+NOPLAN Anchored teeth 4 movable 4
+NOPLAN Pooled teeth 4 movable 4
+REFUSE close6 x102->100 (2, 1214.8750000000014)->(2, 1222.7500000000014)
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Pooled teeth 3 movable 3
+REFUSE crossings 2->4
+ACCEPT x93->92
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Pooled teeth 3 movable 3
+REFUSE crossings 31->32
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Pooled teeth 3 movable 3
+REFUSE crossings 24->25
+NOPLAN Anchored teeth 5 movable 5
+NOPLAN Pooled teeth 5 movable 5
+REFUSE crossings 62->64
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Pooled teeth 3 movable 3
+REFUSE crossings 41->55
+NOPLAN Pooled teeth 4 movable 4
+NOPLAN Anchored teeth 4 movable 4
+NOPLAN Pooled teeth 4 movable 4
+REFUSE crossings 19->20
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Pooled teeth 3 movable 3
+REFUSE crossings 31->32
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Pooled teeth 2 movable 2
+NOPLAN Anchored teeth 8 movable 8
+NOPLAN Pooled teeth 8 movable 8
+REFUSE close12 x115->113 (1, 903.5500000000011)->(1, 915.607142857144)
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Pooled teeth 2 movable 2
+REFUSE crossings 31->32
+ACCEPT x41->40
+NOPLAN Anchored teeth 4 movable 4
+NOPLAN Pooled teeth 4 movable 4
+REFUSE crossings 53->53
+REFUSE close12 x42->41 (1, 251.6500000000002)->(1, 265.6500000000002)
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Pooled teeth 3 movable 3
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Pooled teeth 3 movable 3
+REFUSE crossings 37->38
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Pooled teeth 2 movable 2
+REFUSE crossings 28->29
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Pooled teeth 3 movable 3
+REFUSE crossings 61->81
+NOPLAN Pooled teeth 3 movable 3
+REFUSE crossings 68->75
+REFUSE hits x68->51 boxes 10->110 labels 0->0
+REFUSE crossings 68->69
+ACCEPT x37->36
+NOPLAN Anchored teeth 5 movable 5
+REFUSE close6 x103->102 (1, 924.3500000000249)->(3, 2726.207142857167)
+REFUSE close6 x82->81 (1, 924.3500000000158)->(1, 941.3500000000158)
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Pooled teeth 3 movable 3
+REFUSE crossings 16->17
+NOPLAN Anchored teeth 2 movable 2
+REFUSE crossings 64->65
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Pooled teeth 3 movable 3
+REFUSE crossings 26->27
+ACCEPT x32->31
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Pooled teeth 2 movable 2
+REFUSE crossings 1->1
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Pooled teeth 3 movable 3
+REFUSE crossings 46->47
+REFUSE crossings 36->43
+NOPLAN Pooled teeth 3 movable 3
+REFUSE crossings 36->37
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Pooled teeth 2 movable 2
+REFUSE crossings 15->16
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Pooled teeth 2 movable 2
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Pooled teeth 3 movable 3
+REFUSE hits x36->31 boxes 0->500 labels 0->0
+REFUSE crossings 36->37
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Pooled teeth 2 movable 2
+REFUSE crossings 0->1
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Pooled teeth 2 movable 2
+REFUSE crossings 0->1
+NOPLAN Anchored teeth 3 movable 2
+NOPLAN Pooled teeth 3 movable 2
+REFUSE crossings 3->4
+ACCEPT x1->0
+NOPLAN Anchored teeth 4 movable 4
+NOPLAN Pooled teeth 4 movable 4
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Pooled teeth 3 movable 3
+NOPLAN Anchored teeth 4 movable 4
+NOPLAN Pooled teeth 4 movable 4
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Pooled teeth 3 movable 3
+NOPLAN Anchored teeth 4 movable 4
+REFUSE crossings 0->0
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Pooled teeth 2 movable 2
+REFUSE crossings 3->4
+REFUSE crossings 0->0
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Pooled teeth 2 movable 2
+REFUSE crossings 3->4
+REFUSE crossings 0->0
+NOPLAN Pooled teeth 2 movable 2
+ACCEPT x2->0
+NOPLAN Anchored teeth 5 movable 5
+REFUSE crossings 1->2
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Pooled teeth 3 movable 3
+REFUSE crossings 4->5
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Pooled teeth 3 movable 3
+REFUSE crossings 4->5
+NOPLAN Anchored teeth 3 movable 3
+REFUSE crossings 0->0
+REFUSE crossings 0->0
+REFUSE crossings 0->0
+NOPLAN Anchored teeth 2 movable 2
+REFUSE crossings 0->1
+NOPLAN Anchored teeth 3 movable 3
+REFUSE crossings 0->0
+REFUSE crossings 0->0
+REFUSE crossings 0->0
+REFUSE hits x2->1 boxes 0->100 labels 0->0
+ACCEPT x2->1
+NOPLAN Anchored teeth 2 movable 2
+REFUSE crossings 0->1
+ACCEPT x1->0
+NOPLAN Anchored teeth 3 movable 3
+REFUSE crossings 1->2
+REFUSE hits x3->1 boxes 1->101 labels 0->1
+REFUSE hits x4->2 boxes 2->101 labels 2->2
+NOPLAN Anchored teeth 2 movable 2
+REFUSE crossings 0->1
+NOPLAN Anchored teeth 2 movable 2
+REFUSE crossings 0->1
+ACCEPT x4->3
+ACCEPT x3->2
+ACCEPT x4->3
+ACCEPT x3->2
+NOPLAN Anchored teeth 3 movable 3
+REFUSE crossings 6->8
+REFUSE close12 x3->2 (1, 227.5)->(1, 240.0)
+NOPLAN Pooled teeth 3 movable 3
+REFUSE crossings 3->4
+REFUSE crossings 9->10
+NOPLAN Pooled teeth 3 movable 3
+REFUSE crossings 9->11
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Pooled teeth 3 movable 3
+REFUSE crossings 4->5
+NOPLAN Anchored teeth 3 movable 3
+REFUSE crossings 6->8
+REFUSE hits x9->7 boxes 20->40 labels 0->0
+NOPLAN Pooled teeth 3 movable 3
+REFUSE crossings 9->11
+REFUSE crossings 5->5
+NOPLAN Pooled teeth 3 movable 3
+REFUSE crossings 5->7
+REFUSE crossings 0->0
+REFUSE crossings 0->0
+NOPLAN Anchored teeth 2 movable 2
+ACCEPT x1->0
+ACCEPT x1->0
+REFUSE hits x4->1 boxes 2->12 labels 0->0
+ACCEPT x2->1
+ACCEPT x2->1
+NOPLAN Anchored teeth 2 movable 2
+REFUSE crossings 0->1
+NOPLAN Anchored teeth 2 movable 2
+REFUSE crossings 0->1
+NOPLAN Anchored teeth 2 movable 2
+REFUSE crossings 0->1
+NOPLAN Anchored teeth 2 movable 2
+REFUSE crossings 0->1
+ACCEPT x2->0
+NOPLAN Anchored teeth 4 movable 4
+NOPLAN Pooled teeth 4 movable 4
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Pooled teeth 2 movable 2
+REFUSE crossings 0->1
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Pooled teeth 3 movable 3
+REFUSE crossings 0->2
+NOPLAN Pooled teeth 2 movable 2
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Pooled teeth 3 movable 3
+NOPLAN Anchored teeth 4 movable 4
+NOPLAN Pooled teeth 4 movable 4
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Pooled teeth 3 movable 3
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Pooled teeth 3 movable 3
+REFUSE hits x1->0 boxes 0->10 labels 0->0
+ACCEPT x1->0
+NOPLAN Anchored teeth 4 movable 4
+REFUSE hits x2->1 boxes 0->100 labels 1->1
+REFUSE crossings 2->3
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Pooled teeth 3 movable 3
+NOPLAN Anchored teeth 3 movable 3
+REFUSE hits x1->0 boxes 0->100 labels 1->1
+NOPLAN Pooled teeth 4 movable 4
+REFUSE crossings 1->2
+NOPLAN Anchored teeth 2 movable 2
+REFUSE crossings 0->1
+NOPLAN Anchored teeth 2 movable 2
+REFUSE crossings 0->1
+NOPLAN Anchored teeth 4 movable 3
+REFUSE crossings 0->0
+NOPLAN Anchored teeth 2 movable 2
+REFUSE crossings 1->2
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Pooled teeth 2 movable 2
+REFUSE crossings 0->1
+ACCEPT x2->1
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Pooled teeth 2 movable 2
+REFUSE crossings 1->2
+NOPLAN Anchored teeth 3 movable 3
+REFUSE crossings 0->0
+REFUSE crossings 0->0
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Pooled teeth 3 movable 3
+REFUSE crossings 0->0
+NOPLAN Anchored teeth 4 movable 4
+NOPLAN Pooled teeth 4 movable 4
+REFUSE crossings 0->1
+NOPLAN Anchored teeth 4 movable 4
+NOPLAN Pooled teeth 4 movable 4
+REFUSE crossings 0->1
+REFUSE hits x5->4 boxes 10->130 labels 0->0
+REFUSE crossings 5->6
+REFUSE hits x3->2 boxes 10->130 labels 0->0
+REFUSE crossings 3->4
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Pooled teeth 2 movable 2
+REFUSE crossings 0->1
+NOPLAN Anchored teeth 4 movable 3
+NOPLAN Pooled teeth 4 movable 3
+REFUSE crossings 0->1
+REFUSE crossings 0->0
+REFUSE crossings 1->1
+NOPLAN Anchored teeth 6 movable 6
+NOPLAN Pooled teeth 6 movable 6
+NOPLAN Keep teeth 6 movable 6
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Pooled teeth 3 movable 3
+NOPLAN Keep teeth 3 movable 3
+ACCEPT x4->2
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Pooled teeth 2 movable 2
+REFUSE crossings 0->1
+REFUSE crossings 0->1
+NOPLAN Pooled teeth 4 movable 4
+REFUSE crossings 0->2
+NOPLAN Anchored teeth 3 movable 3
+REFUSE crossings 1->3
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Pooled teeth 2 movable 2
+REFUSE crossings 1->2
+REFUSE hits x1->0 boxes 1->200 labels 0->0
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Pooled teeth 3 movable 3
+REFUSE crossings 1->3
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Pooled teeth 2 movable 2
+REFUSE crossings 1->2
+NOPLAN Anchored teeth 4 movable 4
+REFUSE crossings 0->2
+REFUSE crossings 0->0
+REFUSE crossings 0->0
+REFUSE crossings 0->0
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Pooled teeth 2 movable 2
+REFUSE crossings 1->2
+NOPLAN Anchored teeth 3 movable 2
+NOPLAN Pooled teeth 3 movable 2
+REFUSE crossings 4->5
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Pooled teeth 2 movable 2
+REFUSE crossings 1->2
+REFUSE crossings 6->6
+NOPLAN Pooled teeth 5 movable 5
+REFUSE crossings 6->8
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Pooled teeth 2 movable 2
+REFUSE crossings 4->5
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Pooled teeth 3 movable 3
+REFUSE crossings 4->5
+NOPLAN Anchored teeth 5 movable 4
+NOPLAN Pooled teeth 5 movable 4
+REFUSE crossings 3->5
+NOPLAN Anchored teeth 2 movable 2
+REFUSE crossings 5->6
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Pooled teeth 2 movable 2
+REFUSE crossings 6->7
+ACCEPT x5->4
+REFUSE hits x3->2 boxes 20->120 labels 0->1
+REFUSE crossings 3->4
+NOPLAN Anchored teeth 3 movable 3
+REFUSE hits x5->4 boxes 1->100 labels 1->1
+ACCEPT x4->3
+NOPLAN Anchored teeth 7 movable 7
+NOPLAN Pooled teeth 7 movable 7
+REFUSE crossings 9->14
+NOPLAN Anchored teeth 3 movable 3
+REFUSE crossings 1->2
+NOPLAN Anchored teeth 7 movable 7
+NOPLAN Pooled teeth 7 movable 7
+REFUSE crossings 8->10
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Pooled teeth 2 movable 2
+REFUSE crossings 2->3
+NOPLAN Anchored teeth 4 movable 4
+REFUSE crossings 1->2
+NOPLAN Anchored teeth 2 movable 2
+REFUSE crossings 1->2
+NOPLAN Anchored teeth 2 movable 2
+REFUSE crossings 3->4
+ACCEPT x3->2
+NOPLAN Anchored teeth 2 movable 2
+REFUSE crossings 3->4
+ACCEPT x3->2
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Pooled teeth 2 movable 2
+REFUSE crossings 0->1
+REFUSE crossings 0->0
+REFUSE crossings 0->0
+NOPLAN Anchored teeth 5 movable 5
+NOPLAN Pooled teeth 5 movable 5
+REFUSE crossings 2->4
+NOPLAN Anchored teeth 5 movable 5
+NOPLAN Pooled teeth 5 movable 5
+REFUSE crossings 8->11
+NOPLAN Anchored teeth 5 movable 4
+NOPLAN Pooled teeth 5 movable 4
+REFUSE crossings 8->8
+ACCEPT x2->0
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Pooled teeth 3 movable 3
+REFUSE close6 x1->0 (0, 0.0)->(1, 24.431285985768568)
+ACCEPT x2->0
+ACCEPT x1->0
+REFUSE crossings 0->1
+REFUSE crossings 0->1
+REFUSE crossings 0->0
+REFUSE crossings 0->1
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Pooled teeth 2 movable 2
+REFUSE crossings 0->1
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Pooled teeth 2 movable 2
+REFUSE crossings 0->1
+NOPLAN Anchored teeth 2 movable 2
+REFUSE crossings 0->1
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Pooled teeth 2 movable 2
+REFUSE crossings 0->1
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Pooled teeth 3 movable 3
+NOPLAN Anchored teeth 4 movable 4
+NOPLAN Pooled teeth 4 movable 4
+REFUSE crossings 2->5
+NOPLAN Anchored teeth 2 movable 2
+NOPLAN Pooled teeth 2 movable 2
+REFUSE crossings 0->1
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Pooled teeth 3 movable 3
+NOPLAN Anchored teeth 4 movable 4
+NOPLAN Pooled teeth 4 movable 4
+REFUSE crossings 1->3
+NOPLAN Anchored teeth 3 movable 3
+NOPLAN Pooled teeth 3 movable 3
+REFUSE crossings 0->1
+REFUSE hits x3->2 boxes 0->102 labels 2->2
+NOPLAN Pooled teeth 3 movable 3
+REFUSE crossings 3->4

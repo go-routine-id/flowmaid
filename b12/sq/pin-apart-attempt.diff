@@ -1,0 +1,66 @@
+diff --git a/src/ortho.rs b/src/ortho.rs
+index b75091b..8528876 100644
+--- a/src/ortho.rs
++++ b/src/ortho.rs
+@@ -1427,6 +1427,16 @@ impl TitleSides {
+             std::collections::BTreeMap::new();
+         let mut taken: std::collections::BTreeMap<usize, Vec<f64>> =
+             std::collections::BTreeMap::new();
++        // The frame's own pins on its title side (an edge to or from the
++        // whole block, ending on the border past the chip): a displaced
++        // column keeps a track off them too. They end on the border, so
++        // no crossing of the side finds them, and a displaced entry of
++        // the pin's source took the pin's own column and ran through its
++        // arrowhead (two blocks stacked, `q --> B` beside `q --> b0`
++        // into a member wholly under `B`'s title: 46 px on top of the
++        // pin).
++        let mut pins: std::collections::BTreeMap<usize, Vec<(f64, EndRef)>> =
++            std::collections::BTreeMap::new();
+         for (i, e) in sc.edges.iter().enumerate() {
+             if !cx.drawn.get(i).copied().unwrap_or(false)
+                 || e.waypoints.len() < 2 && e.bezier[0] == e.bezier[3]
+@@ -1438,6 +1448,16 @@ impl TitleSides {
+             } else {
+                 vec![to_flow(dir, e.bezier[0]), to_flow(dir, e.bezier[3])]
+             };
++            if let Some((f, t)) = cx.ends.get(i).copied().flatten() {
++                for (end, other, p) in [(f, t, pts[0]), (t, f, pts[pts.len() - 1])] {
++                    let EndRef::Frame(k) = end else { continue };
++                    if let Some(Some((f0, f1, side, _, _, _))) = out.sides.get(k) {
++                        if (p.1 - side).abs() < EPS && p.0 > *f0 && p.0 < *f1 {
++                            pins.entry(k).or_default().push((p.0, other));
++                        }
++                    }
++                }
++            }
+             // Only an end on a side that lies wholly under the chip: the
+             // ports stage keeps the others' ends on the free stretch
+             // beside it (rule 1), and drawn displaced as well, the
+@@ -1474,13 +1494,25 @@ impl TitleSides {
+             };
+             let mut taken = taken.remove(&k).unwrap_or_default();
+             taken.sort_by(f64::total_cmp);
++            let side_pins = pins.remove(&k).unwrap_or_default();
+             v.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
+             // The nearest free columns past the chip, in the order of
+             // the breadths they replace, a track apart and a track off
+-            // the side's other crossings, from the side's `start`.
++            // the side's other crossings and off the pins of the edge's
++            // other end, from the side's `start`.
+             let mut next = start;
+             for &(b, i) in &v {
+-                let col = column_clear_of(next, &taken);
++                let mine = |o: EndRef| {
++                    let all = std::env::var("FMX_ALLPINS").is_ok();
++                    all || cx.ends.get(i).copied().flatten().is_some_and(|(f, t)| f == o || t == o)
++                };
++                let mut apart = taken.clone();
++                apart.extend(side_pins.iter().filter(|p| mine(p.1)).map(|p| p.0));
++                apart.sort_by(f64::total_cmp);
++                let col = column_clear_of(next, &apart);
++                if std::env::var("FMDBG_PIN").is_ok() {
++                    eprintln!("TS frame {k} edge {i} b {b:.1} next {next:.1} taken {taken:?} pins {side_pins:?} -> col {col:.1}");
++                }
+                 if col > f1 - crate::scene::LANE_PAD {
+                     break;
+                 }

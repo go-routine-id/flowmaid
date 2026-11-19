@@ -1,0 +1,16 @@
+flowchart LR
+    src[source] --> E1
+    subgraph E["Edge tier with a long title that runs along the flow"]
+        E1[cdn]
+    end
+    subgraph M["Middle"]
+        M1[app] --> M2[worker]
+    end
+    subgraph Z["Storage block also carrying a fairly long title"]
+        Z1[s3]
+        Z2[glacier]
+    end
+    E1 --> M1
+    M2 --> Z1
+    M2 --> Z2
+    E1 -->|bypass| Z1

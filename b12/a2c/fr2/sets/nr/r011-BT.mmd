@@ -1,0 +1,9 @@
+flowchart BT
+    subgraph G[Order processing]
+        m0[y]
+        m1[auth service]
+    end
+    s0[src0] --> G
+    s1[src1] --> m0
+    m1 --> z[end]
+    G --> z2[after]

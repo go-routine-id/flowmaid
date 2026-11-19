@@ -1,0 +1,15 @@
+flowchart LR
+    N0(Parse notify)
+    N1{Validate}
+    N2[Load validate]
+    N3[(Check)]
+    N4{Retry}
+    N5([Archive])
+    N0 -->|next| N1
+    N1 --> N2
+    N1 -->|ok| N3
+    N2 --> N4
+    N2 --> N5
+    N3 --> N5
+    N5 -->|back| N4
+    N5 -.-> N3

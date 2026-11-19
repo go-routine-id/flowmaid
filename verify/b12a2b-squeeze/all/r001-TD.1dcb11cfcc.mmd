@@ -1,0 +1,13 @@
+flowchart TD
+    subgraph G[Order processing]
+        m0[auth service]
+        m1[x wide member node]
+    end
+    s0[src0] --> m1
+    s0 -- "lbl8" --> m0
+    s1[src1] -- "lbl2" --> m1
+    s2[src2] -- "lbl5" --> m1
+    s2 --> G
+    s3[src3] -- "lbl6" --> G
+    s4[src4] -- "lbl2" --> G
+    G --> z2[after]

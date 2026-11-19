@@ -1,0 +1,13 @@
+flowchart LR
+  subgraph G [Group]
+    a1[Alpha] --> a2[Beta]
+    a2 --> a3[Gamma]
+  end
+  x[X] --> a1
+  x --> a2
+  x --> a3
+  a3 --> x
+  y[Y] <==> a2
+  y --> G
+  a1 --> y
+  linkStyle default stroke-width:28px,stroke:#666

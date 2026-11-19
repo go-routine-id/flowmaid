@@ -1,0 +1,11 @@
+flowchart TD
+    top[Start here] --> m1
+    top --> m2
+    top --> m3
+    subgraph WIDE["Monitoring Dashboard Workloads"]
+        m1[alpha service] --> m4[delta]
+        m2[beta service] --> m4
+        m3[gamma service]
+    end
+    m4 --> out[Done]
+    m3 --> out

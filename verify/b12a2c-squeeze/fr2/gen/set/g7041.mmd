@@ -1,0 +1,45 @@
+flowchart LR
+  n1["worker"]
+  n2["worker"]
+  n3["mail db db"]
+  subgraph B0["Storefront"]
+    n4["ingest<br/>pack"]
+    n5["search"]
+    n6["worker<br/>pack"]
+  end
+  subgraph B1["Analytics"]
+    n7["audit"]
+    n8["split index worker"]
+    subgraph B1s0["Core 0"]
+      n9["report"]
+      n10["pack merge notify"]
+      n11["search"]
+    end
+    subgraph B1s1["Platform 1"]
+      n12["api"]
+      n13["api<br/>store"]
+    end
+  end
+  n14["split"]
+  n15["report"]
+  n3 -->|queue| n14
+  n13 ==>|ship| n6
+  n12 --> n1
+  n15 --> B1s1
+  n9 -.-> n11
+  n5 ==> n3
+  n9 --> n6
+  n15 -->|audit| n1
+  n11 -.-> n5
+  n8 -->|notify| n3
+  n10 --> n8
+  n7 -->|ingest| n3
+  n4 ==> n12
+  n12 -.-> n3
+  n11 --> n1
+  n8 ==> n9
+  n1 -->|index| n14
+  n5 -.->|api| n1
+  n1 -.-> n6
+  n7 --> n2
+  n2 ==>|store| n4

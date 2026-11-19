@@ -1,0 +1,12 @@
+n000-TD.routed.svg	a1 → b1: x	7.3
+n001-BT.routed.svg	a0 → b1: x	0.0
+n003-BT.routed.svg	a0 → b1: x	0.0
+n005-TD.routed.svg	a1 → b0: x	0.0
+n012-TD.routed.svg	a0 → b1: x	0.0
+n015-TD.routed.svg	a0 → b0: x	0.0
+n016-TD.routed.svg	a0 → b1: x	0.0
+n021-TD.routed.svg	a0 → b0: x	0.0
+n022-BT.routed.svg	a0 → b1: x	0.0
+n023-BT.routed.svg	a1 → b2: x	0.0
+n025-BT.routed.svg	a2 → b0: x	0.0
+n031-TD.routed.svg	a2 → b2: x	0.0

@@ -1,0 +1,9 @@
+flowchart TD
+    Person --> Customer
+    PaymentMethod -.-> CreditCard
+    PaymentMethod -.-> PayPal
+    Customer -->|places| Order
+    Order -->|contains| LineItem
+    LineItem -->|refers to| Product
+    Customer -->|owns| PaymentMethod
+    Order -.->|charges| PaymentMethod

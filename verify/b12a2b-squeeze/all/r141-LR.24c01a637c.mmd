@@ -1,0 +1,21 @@
+flowchart LR
+    subgraph O[Payments]
+        subgraph G[Shipping and returns desk]
+            m0[queue]
+            m1[db]
+            m2[charge]
+        end
+        k[k]
+    end
+    m0 --> k
+    m2 --> k
+    s0[src0] --> G
+    s0 -- "lbl5" --> G
+    s1[src1] --> m0
+    s1 --> G
+    s2[src2] -- "lbl6" --> m2
+    s3[src3] --> O
+    s3 -- "lbl6" --> m0
+    s4[src4] --> G
+    m2 --> z[end]
+    G --> z2[after]

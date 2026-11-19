@@ -1,0 +1,12 @@
+architecture-beta
+    group g0(cloud)[Observability]
+    service s0(monitoring)[Svc 0] in g0
+    service s1(internet)[Q 1]
+    service s2(nonsense)[PostgreSQL Primary 2] in g0
+    service s3(internet)[Svc 3] in g0
+    junction s4 in g0
+    s3:L -[calls]-> R:s4
+    s1:T --> B:s4
+    s3:L <-[replicates to standby]-> R:s2
+    s4:R -[sync]- L:s2
+    s1:R -[publishes order events]-> L:s4

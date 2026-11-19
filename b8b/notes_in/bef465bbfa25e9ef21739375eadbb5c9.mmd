@@ -1,0 +1,47 @@
+stateDiagram-v2
+[*] --> A
+state K0 {
+  [*] --> K0_0
+  state K0N {
+    [*] --> K0N_0
+    K0N_0 --> K0N_1 : t1
+    K0N_0 --> K0N_2 : t2
+    K0N_2 --> K0N_3 : t3
+    state K0NN {
+      [*] --> K0NN_0
+      K0NN_0 --> K0NN_1
+      K0NN_0 --> K0NN_2
+      note right of K0NN_2
+        in133 line one
+        second line
+      end note
+      note left of K0NN_2 : in732
+      note right of K0NN_0 : in553
+    }
+    K0N_3 --> K0NN
+    K0NN --> K0N_2 : up
+  }
+  K0_0 --> K0N
+  note right of K0NN_1 : in542
+}
+state K1 {
+  [*] --> K1_0
+  K1_0 --> K1_1
+  K1_0 --> K1_2 : t2
+  state K1N {
+    [*] --> K1N_0
+    K1N_0 --> K1N_1 : t1
+    K1N_1 --> K1N_2
+    K1N_1 --> [*]
+  }
+  K1_0 --> K1N
+}
+A --> K0 : g1
+A --> K1
+K0 --> B0
+K1N_2 --> K0 : out
+K1N --> K0NN : cc
+K1 --> A : back
+note left of K0 : on450
+note left of K0N : on390
+K0 --> [*]

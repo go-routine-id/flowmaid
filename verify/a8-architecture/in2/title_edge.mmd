@@ -1,0 +1,14 @@
+architecture-beta
+    group backend(server)[Backend Services]
+    service api(server)[API] in backend
+    service auth(lock)[Auth] in backend
+    group data(database)[Data Storage Layer]
+    service db(database)[DB] in data
+    service files(disk)[Files] in data
+    group ops(monitoring)[Ops]
+    service mon(monitoring)[Monitor] in ops
+    api:B -- T:db
+    api:R -- L:auth
+    db:R -- L:files
+    auth:B -- T:files
+    mon:L -- R:auth

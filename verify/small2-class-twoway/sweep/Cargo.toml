@@ -1,0 +1,9 @@
+[package]
+name = "sweep"
+version = "0.1.0"
+edition = "2021"
+[dependencies]
+flowmaid = { path = "/home/user/flowmaid" }
+[profile.release]
+debug-assertions = true
+overflow-checks = true

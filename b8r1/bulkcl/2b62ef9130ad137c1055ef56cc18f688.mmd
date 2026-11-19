@@ -1,0 +1,10 @@
+classDiagram
+    direction BT
+    Animal <|--|> Zebra
+    Zebra "1" *--* "2" Stripe : has
+    Zebra o--o Herd
+    Herd <--> Keeper
+    Keeper <..> Zoo : visits
+    Zoo <|..|> Place
+    Place *--> Map
+    Map o..|> Drawing

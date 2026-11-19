@@ -1,0 +1,10 @@
+stateDiagram-v2
+direction RL
+[*] --> f
+state f <<fork>>
+f --> B0
+f --> Q0
+state B0 {
+  direction RL
+  B0_0 --> B0_1 : go
+}

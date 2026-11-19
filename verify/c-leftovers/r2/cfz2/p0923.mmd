@@ -1,0 +1,17 @@
+classDiagram
+A -- B : has many of
+B o-- C
+B --> D : owns
+C <|-- E
+D <|-- B
+D --|> C
+C *-- C : c0
+A ..> A : a0
+D *-- D : d0
+D o-- D : d1
+D --> D : d2
+class D {
+ +int id
+ +run() void
+ +stop()
+}

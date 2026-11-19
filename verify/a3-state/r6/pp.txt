@@ -1,0 +1,11 @@
+a10_lr_wide_twins: drag card __note_7 by 1px: edge 8 __note_7->B jumps 15.8
+a10_lr_wide_twins: note edge 8 __note_7->B scene vs route differ by 15.3 (wps 0 vs 0)
+a11_nested_composite_notes: drag card __note_12 by 1px: edge 14 Outer->__note_12 jumps 87.8
+a11_nested_composite_notes: note edge 14 Outer->__note_12 scene vs route differ by 87.8 (wps 0 vs 0)
+a14_long_chain_notes: note edge 7 S1->__note_6 scene vs route differ by 9.8 (wps 0 vs 0)
+notes1: note edge 5 Still->__note_5 scene vs route differ by 14.4 (wps 0 vs 0)
+notes1: note edge 6 __note_6->Moving scene vs route differ by 17.0 (wps 0 vs 0)
+notes2: drag card __note_11 by 1px: edge 11 Second->__note_11 jumps 12.6
+notes2: drag card __note_6 by 1px: edge 9 __note_6->First jumps 22.0
+notes2: note edge 11 Second->__note_11 scene vs route differ by 12.2 (wps 0 vs 0)
+notes2: note edge 9 __note_6->First scene vs route differ by 21.7 (wps 0 vs 0)

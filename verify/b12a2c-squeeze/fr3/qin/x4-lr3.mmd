@@ -1,0 +1,17 @@
+flowchart LR
+  src[Ingest gateway] --> a1
+  src --> b1
+  ops[Operator console] --> c1
+  subgraph A[Fast path]
+    a1[parse] --> a2[validate payload schema and size] --> a3[store]
+  end
+  subgraph B[Slow path with a much longer title]
+    b1[queue the very large batch request] --> b2[split] --> b3[merge]
+  end
+  subgraph C[Admin]
+    c1[auth] --> c2[audit log writer]
+  end
+  a3 -->|ok| out[Archive]
+  b3 -->|done| out
+  c2 --> out
+  ops -.->|override| b2

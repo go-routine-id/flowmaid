@@ -1,0 +1,263 @@
+diff --git a/src/edgepass.rs b/src/edgepass.rs
+index ce9d0ad..4460318 100644
+--- a/src/edgepass.rs
++++ b/src/edgepass.rs
+@@ -452,6 +452,9 @@ fn stages(g: &Graph, sc: &mut Scene, mut cx: Ctx, mode: Mode) {
+     // Then a fan's teeth nest: the ports, the tracks and the turns of
+     // each side's ends in one order (report B4, see [`crate::comb`]).
+     crate::comb::comb(sc, &cx, &mut moved);
++    // A block layout's node sides in the order their paths head off
++    // them (B12 2.8): a reroute can leave a fan crossing itself.
++    crate::ports::untangle_sides(sc, &cx, &mut moved);
+     glyph_stubs(sc, &cx, &mut moved);
+     straight_cubics(sc, &cx);
+     square_s_cubics(sc, &cx);
+diff --git a/src/ports.rs b/src/ports.rs
+index babf59e..6fd40e4 100644
+--- a/src/ports.rs
++++ b/src/ports.rs
+@@ -779,6 +779,149 @@ pub(crate) fn assign(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
+     }
+ }
+ 
++/// B12 2.8, node-side end order (block layouts, the static scene): the
++/// ends of a node side stand in the order their paths head off it, so
++/// a fan does not cross itself. After the router and the comb a side
++/// can hold two ends whose first steps go the other way round from
++/// their ports (dense-td: `n16`'s bottom, where a reroute of `n16 ->
++/// n35` left its port left of `n16 -> n32`'s while it heads right and
++/// `n16 -> n32` steps left across it). Per side with two or more ends
++/// whose edges cross each other: the ends take the side's places in
++/// the order of where each path first turns to across the side (its
++/// first point off the end's own column), and the change is kept only
++/// when the side's edges then cross each other and everything else
++/// less often than before. Only the ends' own places are exchanged:
++/// each straight leg out of the side follows its end ([`move_end`]).
++pub(crate) fn untangle_sides(sc: &mut Scene, cx: &Ctx, moved: &mut [bool]) {
++    if !cx.blocks {
++        return;
++    }
++    type Ends = std::collections::BTreeMap<(usize, Side), Vec<(f64, usize, bool)>>;
++    let mut groups: Ends = Ends::new();
++    for i in 0..sc.edges.len() {
++        if !cx.drawn.get(i).copied().unwrap_or(false)
++            || cx.fixed.get(i).copied().unwrap_or(false)
++            || cx.held.get(i).copied().unwrap_or(false)
++            || sc.edges[i].waypoints.len() < 2
++        {
++            continue;
++        }
++        let Some((a, b)) = cx.ends.get(i).copied().flatten() else {
++            continue;
++        };
++        if a == b {
++            continue;
++        }
++        for (src, end) in [(true, a), (false, b)] {
++            let EndRef::Node(v) = end else {
++                continue;
++            };
++            let r = end_rect(sc, end);
++            let p = end_point(sc, i, src);
++            let side = side_of(r, p);
++            groups
++                .entry((v, side))
++                .or_default()
++                .push((split(side, p).0, i, src));
++        }
++    }
++    let lines: Vec<Vec<Pt>> = sc.edges.iter().map(edge_polyline).collect();
++    let cross = |a: &[Pt], b: &[Pt]| -> usize {
++        let mut n = 0;
++        for u in a.windows(2) {
++            for v in b.windows(2) {
++                n += usize::from(segs_cross(u[0], u[1], v[0], v[1]));
++            }
++        }
++        n
++    };
++    for ((_, side), mut ends) in groups {
++        if ends.len() < 2 {
++            continue;
++        }
++        let idx: Vec<usize> = ends.iter().map(|e| e.1).collect();
++        let tangled = (0..idx.len()).any(|a| {
++            (a + 1..idx.len()).any(|b| idx[a] != idx[b] && cross(&lines[idx[a]], &lines[idx[b]]) > 0)
++        });
++        if !tangled {
++            continue;
++        }
++        ends.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
++        // Where each path first turns to across the side.
++        let heading = |i: usize, src: bool, at: f64| -> f64 {
++            let w = &sc.edges[i].waypoints;
++            let pts: Vec<Pt> = if src {
++                w.clone()
++            } else {
++                w.iter().rev().copied().collect()
++            };
++            pts.iter()
++                .map(|&q| split(side, q).0)
++                .find(|&t| (t - at).abs() > PORT_EPS)
++                .unwrap_or(at)
++        };
++        let mut by_key: Vec<(f64, f64, usize, bool)> = ends
++            .iter()
++            .map(|&(at, i, src)| (heading(i, src, at), at, i, src))
++            .collect();
++        by_key.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.total_cmp(&b.1)));
++        let places: Vec<f64> = ends.iter().map(|e| e.0).collect();
++        if by_key
++            .iter()
++            .zip(&places)
++            .all(|(k, &t)| (t - k.1).abs() <= PORT_EPS)
++        {
++            continue;
++        }
++        let mine: Vec<usize> = {
++            let mut m: Vec<usize> = ends.iter().map(|e| e.1).collect();
++            m.sort_unstable();
++            m.dedup();
++            m
++        };
++        let count = |sc: &Scene| -> usize {
++            let own: Vec<Vec<Pt>> = mine.iter().map(|&i| edge_polyline(&sc.edges[i])).collect();
++            let mut n = 0;
++            for (a, &i) in mine.iter().enumerate() {
++                for (j, line) in lines.iter().enumerate() {
++                    if mine.contains(&j) || j == i || !cx.drawn.get(j).copied().unwrap_or(false) {
++                        continue;
++                    }
++                    n += cross(&own[a], line);
++                }
++                for b in a + 1..mine.len() {
++                    n += cross(&own[a], &own[b]);
++                }
++            }
++            n
++        };
++        let before = count(sc);
++        let was: Vec<SceneEdge> = mine.iter().map(|&i| sc.edges[i].clone()).collect();
++        for (k, &(_, at, i, src)) in by_key.iter().enumerate() {
++            let t = places[k];
++            if (t - at).abs() <= PORT_EPS {
++                continue;
++            }
++            let p = end_point(sc, i, src);
++            let (_, line) = split(side, p);
++            let new = join(side, t, line);
++            let delta = (new.0 - p.0, new.1 - p.1);
++            move_end(&mut sc.edges[i], src, p, delta, side, false, false);
++        }
++        if count(sc) < before {
++            for &i in &mine {
++                if let Some(m) = moved.get_mut(i) {
++                    *m = true;
++                }
++            }
++        } else {
++            for (&i, e) in mine.iter().zip(was) {
++                sc.edges[i] = e;
++            }
++        }
++    }
++}
++
+ /// A block layout's free pin ([`free_pins`]): edge `i`'s end (`src`:
+ /// its start) on the whole block it joins, lying on that block's frame
+ /// (not an edge to the block's own member, which meets the border from
+diff --git a/src/scene.rs b/src/scene.rs
+index d3ee1af..07eb053 100644
+--- a/src/scene.rs
++++ b/src/scene.rs
+@@ -4497,18 +4497,12 @@ fn scene_clustered(
+             });
+         }
+         renest_boxes(g, &depth, &mut boxes);
+-        // A frame F1 grew to its title stays title-bound only while what
+-        // it covers besides (the channels inside it) leaves it no broader
+-        // than the frame function made it (its title, and the columns of
+-        // its displaced entries past the chip): a broader one keeps the
+-        // estimate every frame has.
+-        let mut bound = bound;
+-        for (si, b) in bound.iter_mut().enumerate() {
+-            if let (Some((_, _, w, _)), Some((_, _, w0, _))) = (boxes[si], raw[si]) {
+-                *b = *b && w <= w0 + TITLE_BOUND_EPS;
+-            }
+-        }
+-        let out = clusters_of(g, &boxes, &depth, &bound);
++        // In a block layout every title is measured as it is drawn, bold
++        // ([`SceneCluster::bold_title`]); `bound` (F1 grew the frame to
++        // its title) only counted the jog room above.
++        let _ = bound;
++        let bold = vec![block_paths.is_some(); g.subgraphs.len()];
++        let out = clusters_of(g, &boxes, &depth, &bold);
+         frames = boxes;
+         out
+     };
+@@ -6244,9 +6238,6 @@ fn keep_inner_room(
+         };
+         let (ob0, ob1, ol0, ol1) = span(o);
+         let (fb0, fb1, fl0, fl1) = span(&clusters[k]);
+-        // (The frame function's width: a title-bound frame stays so while
+-        // the room kept below leaves it no broader.)
+-        let w0 = clusters[k].w;
+         let (mut b0, mut b1) = (fb0, fb1);
+         for (i, e) in edges.iter().enumerate() {
+             if !kept.get(i).copied().unwrap_or(false) {
+@@ -6286,9 +6277,7 @@ fn keep_inner_room(
+         } else {
+             (c.x, c.w) = (b0, b1 - b0);
+         }
+-        if c.bold_title {
+-            c.bold_title = c.w <= w0 + TITLE_BOUND_EPS;
+-        }
++
+     }
+ }
+ 
+@@ -6492,11 +6481,6 @@ fn cluster_raw_boxes(g: &Graph, nodes: &[SceneNode]) -> (Vec<RawBox>, Vec<usize>
+     (boxes, depth)
+ }
+ 
+-/// How much broader (px) than its title a frame F1 grew to it may end
+-/// up and still count as title-bound ([`SceneCluster::bold_title`]):
+-/// float noise of the wrap, far below any channel's [`LANE_PAD`].
+-const TITLE_BOUND_EPS: f64 = 0.5;
+-
+ /// The least width (px, on screen) of a block's frame in a block
+ /// layout (B12 F1, F2): its title as it is drawn, bold
+ /// ([`crate::layout::bold_text_width`]), with the chip's pad and a
+@@ -6745,18 +6729,7 @@ fn route_lane_clusters(
+         });
+     }
+     renest_boxes(g, depth, &mut boxes);
+-    // A frame F1 grew to its title stays title-bound only while what it
+-    // covers besides leaves it no broader than the frame function made
+-    // it, as in `scene_clustered`.
+-    let bound: Vec<bool> = bound
+-        .iter()
+-        .zip(&boxes)
+-        .zip(raw)
+-        .map(|((&b, f), f0)| {
+-            b && matches!((f, f0), (Some((_, _, w, _)), Some((_, _, w0, _))) if *w <= *w0 + TITLE_BOUND_EPS)
+-        })
+-        .collect();
+-    clusters_of(g, &boxes, depth, &bound)
++    clusters_of(g, &boxes, depth, bound)
+ }
+ 
+ /// The frames [`route_built`] starts from, per subgraph: its box, its
+@@ -6788,7 +6761,11 @@ fn route_frame_base(g: &Graph, nodes: &[SceneNode], blocks: bool) -> FrameBase {
+     }
+     let (f1, _, bound) = frame_boxes(g, nodes, &[], true);
+     let jog = route_title_jogs(g, nodes, &f1, &bound);
+-    frame_boxes(g, nodes, &jog, true)
++    let (boxes, depth, _) = frame_boxes(g, nodes, &jog, true);
++    // Every title measured as drawn, bold, as `scene_clustered` measures
++    // a block layout's ([`SceneCluster::bold_title`]).
++    let bold = vec![true; boxes.len()];
++    (boxes, depth, bold)
+ }
+ 
+ /// The jog room of each block's frame in [`route`] and [`route_partial`]

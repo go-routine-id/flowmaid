@@ -1,0 +1,28 @@
+sequenceDiagram
+participant P0 as beta
+participant P1 as Customer Order
+P1--)P0: 日本語
+P1->>P1: self x
+activate P0
+P0->>P1: act
+deactivate P0
+P1--)P1: x
+P0-->>P1: beta
+P0--xP1: alpha
+Note over P0: Customer Order
+activate P0
+P0->>P1: act
+deactivate P0
+activate P0
+P0->>P0: act
+deactivate P0
+par gamma
+par Customer Order
+P1-->P0: Long label here
+end
+activate P0
+P0->>P0: act
+deactivate P0
+P0-)P1: <b>bold</b>
+P0-xP1: x
+end

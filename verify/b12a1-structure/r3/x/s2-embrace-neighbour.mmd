@@ -1,0 +1,17 @@
+flowchart TD
+  subgraph X[Outer]
+    subgraph Y[Inner source with a long title]
+      a --> b --> b2
+    end
+    subgraph Z[Inner target with a long title]
+      c --> c2
+    end
+    b2 --> c
+    a --> c2
+    a --> c
+  end
+  subgraph W[Neighbour]
+    w1 --> w2
+  end
+  a --> w1
+  w2 --> c2

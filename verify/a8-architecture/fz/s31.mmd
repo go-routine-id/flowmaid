@@ -1,0 +1,9 @@
+architecture-beta
+    service s0(cloud)[Service 0]
+    service s1(database)[Service 1]
+    service s2(internet)[Service 2]
+    service s3(disk)[Service 3]
+    service s4(server)[Service 4]
+    service s5(internet)[Service 5]
+    s1:T --> B:s2
+    s1:B --> T:s2

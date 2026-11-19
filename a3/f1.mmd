@@ -1,0 +1,14 @@
+stateDiagram-v2
+    direction LR
+    [*] --> Start
+    Start --> fk
+    state fk <<fork>>
+    fk --> A
+    fk --> B
+    fk --> C
+    state jn <<join>>
+    A --> jn
+    B --> jn
+    C --> jn
+    jn --> End
+    End --> [*]

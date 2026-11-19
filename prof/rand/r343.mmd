@@ -1,0 +1,15 @@
+flowchart TB
+  H0 ==> N6
+  H0 -->|gift wrap| N2
+  H0 ---|no| N2
+  H0 ---|yes| N11
+  H0 --> N9
+  H0 -.->|ok| N3
+  H0 -.-> N6
+  H0 -->|yes| N9
+  H0 -.-> N10
+  N10 -->|ok| N10
+  N8 --> N2
+  N3 --> N7
+  N2 --> N9
+  N3 -->|gift wrap| N1

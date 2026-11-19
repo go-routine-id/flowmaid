@@ -1,0 +1,41 @@
+flowchart BT
+  H0 -.->|yes| N8
+  H0 ==> N6
+  H0 ---|a much longer label here| N1
+  H0 -.-> N16
+  H0 ==>|express| N14
+  H0 ==> N0
+  H0 ---|a much longer label here| N22
+  H0 --- N21
+  H1 ==> N5
+  H1 ==>|yes| N13
+  H1 --- N7
+  H1 ==> N8
+  H1 ---|a much longer label here| N14
+  H1 ==>|ok| N20
+  H1 -->|yes| N26
+  H1 ---|no| N8
+  H1 ---|x| N16
+  H1 -.->|ok| N22
+  H1 ---|x| N16
+  H1 -.->|yes| N21
+  N1 -->|a much longer label here| N8
+  N1 -->|a much longer label here| N0
+  N20 --> N22
+  N18 -->|express| N8
+  N23 --> N12
+  N16 --> N7
+  N12 -->|no| N14
+  N24 --> N2
+  N20 --> N6
+  N17 -->|no| N23
+  N11 --> N21
+  N26 --> N25
+  N14 --> N9
+  N20 --> N4
+  N15 --> N11
+  N7 --> N8
+  N21 --> N8
+  N21 --> N5
+  N25 --> N23
+  N11 --> N7

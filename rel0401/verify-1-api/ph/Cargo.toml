@@ -1,0 +1,15 @@
+[package]
+name = "probe_ph"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+flowmaid = { path = "../head" }
+
+[features]
+default = ["head"]
+head = []
+
+[profile.release]
+debug = false
+incremental = false

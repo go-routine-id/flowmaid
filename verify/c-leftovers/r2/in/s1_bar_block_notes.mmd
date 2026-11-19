@@ -1,0 +1,24 @@
+stateDiagram-v2
+[*] --> f
+state f <<fork>>
+f --> P
+f --> Q
+f --> R
+state P {
+  direction LR
+  a --> b : go
+  b --> c
+  c --> d : done
+  note right of b : in the row
+}
+state R {
+  direction LR
+  r1 --> r2
+  r2 --> r3
+}
+state j <<join>>
+P --> j
+Q --> j
+R --> j
+j --> [*]
+note right of Q : beside

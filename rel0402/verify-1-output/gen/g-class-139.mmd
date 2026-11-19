@@ -1,0 +1,61 @@
+classDiagram
+direction TB
+C2 "1" *-- "*" C5 : gamma
+C8 <--> C4
+C4 o-- C2
+C10 --> C8 : Long label here
+C6 o-- C0
+C1 <--> C10
+C7 "1" -- "*" C10
+C3 "1" ..> "*" C10
+C1 ..> C0 : alpha
+C0 -- C6
+C5 ..> C10
+C1 -- C5
+C8 <|-- C0 : x
+C10 o-- C0 : gamma
+C8 --> C7 : Customer Order
+C2 --> C7 : x
+C2 --> C4
+C0 <|-- C7
+C1 "1" -- "*" C4
+C2 "1" ..> "*" C4 : 日本語
+C0 "1" o-- "*" C1 : 日本語
+C5 --> C8
+C10 <--> C2
+C7 "1" *-- "*" C8
+C4 -- C10
+C1 "1" --> "*" C3 : a&b
+C0 *-- C6
+C1 "1" --> "*" C1 : alpha
+C2 ..|> C1
+C5 "1" o-- "*" C10 : alpha
+C8 o-- C6
+C4 ..> C2 : beta
+C10 <|-- C10
+C9 ..|> C0
+C9 "1" ..> "*" C9
+C3 "1" *-- "*" C5 : delta
+C10 ..> C9
+C1 <|-- C2 : delta
+C7 --> C1
+C3 <--> C1
+C8 <|-- C9 : a&b
+C10 "1" ..> "*" C0 : gamma
+C9 "1" ..> "*" C5 : 日本語
+C4 ..|> C2
+C4 ..|> C7 : alpha
+note for C3 "Long label here"
+note "gamma"
+class C1 {
+  +int id
+  +name() String
+}
+class C2 {
+  +int id
+  +name() String
+}
+class C4 {
+  +int id
+  +name() String
+}

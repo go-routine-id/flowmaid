@@ -1,0 +1,9 @@
+stateDiagram-v2
+state c <<choice>>
+[*] --> P
+P --> c
+c --> B : lo
+c --> B : med
+c --> C : hi
+c --> D : crit
+c --> E : other

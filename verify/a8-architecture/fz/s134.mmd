@@ -1,0 +1,14 @@
+architecture-beta
+    group g0(cloud)[Ops]
+    service s0(cloud)[Service 0] in g0
+    service s1(disk)[Service 1] in g0
+    service s2(cloud)[Service 2] in g0
+    service s3(database)[Service 3] in g0
+    service s4(server)[Service 4] in g0
+    service s5(server)[Service 5] in g0
+    service s6(monitoring)[Service 6]
+    service s7(disk)[Service 7] in g0
+    service s8(internet)[Service 8] in g0
+    service s9(cloud)[Service 9] in g0
+    s7:R -- L:s2
+    s4:B -- B:s2

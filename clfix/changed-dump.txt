@@ -1,0 +1,110 @@
+0248317aecad839fe82c145fbd3c2ff7.mmd	FM: Alpha,Beta,Gamma,Delta,Eps,Zeta rel=21 [Alpha>Beta Alpha>Gamma Alpha>Delta Alpha>Eps Alpha>Zeta Alpha>Alpha Beta>Gamma Beta>Delta Beta>Eps Beta>Zeta Beta>Beta Gamma>Delta Gamma>Eps Gamma>Zeta Gamma>Gamma Delta>Eps Delta>Zeta Delta>Delta Eps>Zeta Eps>Eps Zeta>Zeta] notes=6
+0489f24a6eba6c63e5d2b5f556f1dedc.mmd	FM: Svc0,Hub,Svc1,Svc2,Svc3,Svc4,Svc5 rel=6 [Svc0>Hub Svc1>Hub Svc2>Hub Svc3>Hub Svc4>Hub Svc5>Hub] notes=0
+07d9c4c32e3da9f5ab04649f381bf52e.mmd	FM: S0,Hub,S1,S2,S3,S4,S5,S6,S7,S8,S9,S10,S11,Sub1,Sub2 rel=15 [S0>Hub S1>Hub S2>Hub S3>Hub S4>Hub S5>Hub S6>Hub S7>Hub S8>Hub S9>Hub S10>Hub S11>Hub Hub>Hub Sub1>Hub Sub2>Hub] notes=2
+10aa7a07f218cfb9d63e000ddb5f928b.mmd	FM: A,B rel=32 [A>B B>A B>A A>B B>A B>A A>A B>B A>B B>A B>A A>B B>A B>A A>A B>B A>B B>A B>A A>B B>A B>A A>A B>B A>B B>A B>A A>B B>A B>A A>A B>B] notes=0
+32168b606a3fa85ecb69dfa497feb771.mmd	FM: A,B rel=15 [A>B A>B A>B A>B A>B A>B A>B A>B A>B A>B B>A A>B B>A A>A A>A] notes=0
+43db28555aba1e0e6ff72bb2b4d74814.mmd	FM: S1,Hub,S2,S3,S4,S5,S6,S7,S8,S9,S10,S11,S12,S13,S14,S15,S16,S17,S18,S19,S20,S21,S22,S23,S24,S25,S26,S27,S28,S29,S30,S31,S32,S33,S34,S35,S36,S37,S38,S39,S40,S41,S42,S43,S44,S45 rel=45 [S1>Hub S2>Hub S3>Hub S4>Hub S5>Hub S6>Hub S7>Hub S8>Hub S9>Hub S10>Hub S11>Hub S12>Hub S13>Hub S14>Hub S15>Hub S16>Hub S17>Hub S18>Hub S19>Hub S20>Hub S21>Hub S22>Hub S23>Hub S24>Hub S25>Hub S26>Hub S27>Hub S28>Hub S29>Hub S30>Hub S31>Hub S32>Hub S33>Hub S34>Hub S35>Hub S36>Hub S37>Hub S38>Hub S39>Hub S40>Hub S41>Hub S42>Hub S43>Hub S44>Hub S45>Hub] notes=0
+44d6755805f6bafb890fe6f9fe168bf8.mmd	FM: Svc0,Hub,Svc1,Svc2,Svc3,Svc4,Svc5,Svc6,Svc7,Svc8,Svc9,Svc10 rel=11 [Svc0>Hub Svc1>Hub Svc2>Hub Svc3>Hub Svc4>Hub Svc5>Hub Svc6>Hub Svc7>Hub Svc8>Hub Svc9>Hub Svc10>Hub] notes=0
+653ffd2cc157e14883fe784875583efd.mmd	FM: Library,Book,Member,Loan,Author,Librarian,Fine,Student,Staff rel=10 [Book>Library Member>Library Librarian>Library Book>Author Member>Loan Loan>Book Loan>Fine Librarian>Loan Student>Member Staff>Member] notes=1
+86999025390e7ff4b2e9c2ed321a4b0e.mmd	FM:  rel=0 [] notes=0
+ab7cf8d4f018155560958ceca1c34994.mmd	FM: Svc0,Hub,Svc1,Svc2,Svc3,Svc4,Svc5 rel=6 [Svc0>Hub Svc1>Hub Svc2>Hub Svc3>Hub Svc4>Hub Svc5>Hub] notes=0
+b1a2bd90b3baac32333a3ed6409982ce.mmd	FM: S0,Hub,S1,S2,S3,S4,S5,S6,S7,S8,S9,S10,S11,Sub1,Sub2 rel=15 [S0>Hub S1>Hub S2>Hub S3>Hub S4>Hub S5>Hub S6>Hub S7>Hub S8>Hub S9>Hub S10>Hub S11>Hub Hub>Hub Sub1>Hub Sub2>Hub] notes=2
+d57cba402174bdfb5a7b3c9baa8fcde0.mmd	FM: Svc0,Hub,Svc1,Svc2,Svc3,Svc4,Svc5,Svc6,Svc7,Svc8,Svc9,Svc10 rel=11 [Svc0>Hub Svc1>Hub Svc2>Hub Svc3>Hub Svc4>Hub Svc5>Hub Svc6>Hub Svc7>Hub Svc8>Hub Svc9>Hub Svc10>Hub] notes=0
+daa3ea18e1836d6d4b47b5574854e72e.mmd	FM: Base,K1,K2,K3,K4,K5,K6,K7,K8,K9,K10,K11,K12,K13,K14,K15,K16,K17,K18,K19,K20,K21,K22,K23,K24,K25,K26,K27,K28,K29,K30 rel=30 [K1>Base K2>Base K3>Base K4>Base K5>Base K6>Base K7>Base K8>Base K9>Base K10>Base K11>Base K12>Base K13>Base K14>Base K15>Base K16>Base K17>Base K18>Base K19>Base K20>Base K21>Base K22>Base K23>Base K24>Base K25>Base K26>Base K27>Base K28>Base K29>Base K30>Base] notes=0
+edf632e164d0c45cebb197f117d517de.mmd	FM: C20,C9,C23,C37,C26,C4,C7,C14,C25,C3,C34,C6,C36,C49,C50,C11,C31,C56,C32,C2,C52,C29,C28,C22,C18,C8,C5,C10,C27,C55,C24,C0,C44,C54,C57,C12,C1,C38,C30,C47,C16,C33,C19,C41,C58,C21,C40,C51,C59,C46,C39,C53,C35,C15,C48,C42,C17 rel=90 [C20>C9 C37>C23 C4>C26 C7>C14 C3>C25 C34>C9 C6>C37 C36>C4 C49>C20 C50>C11 C56>C31 C7>C32 C26>C2 C20>C52 C29>C4 C4>C3 C28>C52 C22>C29 C18>C8 C5>C10 C27>C55 C24>C56 C14>C0 C9>C26 C44>C54 C29>C57 C25>C26 C4>C12 C6>C0 C1>C4 C38>C22 C29>C30 C47>C16 C23>C33 C19>C41 C10>C58 C40>C21 C51>C12 C31>C33 C16>C30 C46>C59 C30>C14 C53>C39 C5>C53 C30>C12 C46>C25 C8>C10 C9>C39 C9>C35 C41>C6 C12>C52 C15>C48 C3>C58 C57>C33 C9>C33 C0>C49 C35>C7 C49>C50 C49>C2 C58>C4 C44>C12 C15>C44 C57>C35 C20>C28 C50>C19 C23>C42 C47>C6 C14>C10 C22>C12 C29>C28 C4>C32 C5>C6 C48>C8 C25>C16 C5>C20 C17>C4 C14>C54 C26>C35 C10>C7 C19>C33 C17>C22 C46>C32 C28>C6 C53>C56 C21>C14 C22>C25 C56>C16 C55>C32 C29>C2 C35>C21] notes=0
+f09c96a6931f6dfe2f30bf8cd1b5bf7b.mmd	FM: Employee,Org,Team,Office rel=6 [Employee>Org Team>Org Office>Org Employee>Employee Employee>Employee Employee>Employee] notes=0
+fc5adb910f772d0cd158e8c1bfac35c1.mmd	FM: C20,C9,C23,C37,C26,C4,C7,C14,C25,C3,C34,C6,C36,C49,C50,C11,C31,C56,C32,C2,C52,C29,C28,C22,C18,C8,C5,C10,C27,C55,C24,C0,C44,C54,C57,C12,C1,C38,C30,C47,C16,C33,C19,C41,C58,C21,C40,C51,C59,C46,C39,C53,C35,C15,C48,C42,C17 rel=90 [C20>C9 C37>C23 C4>C26 C7>C14 C3>C25 C34>C9 C6>C37 C36>C4 C49>C20 C50>C11 C56>C31 C7>C32 C26>C2 C20>C52 C29>C4 C4>C3 C28>C52 C22>C29 C18>C8 C5>C10 C27>C55 C24>C56 C14>C0 C9>C26 C44>C54 C29>C57 C25>C26 C4>C12 C6>C0 C1>C4 C38>C22 C29>C30 C47>C16 C23>C33 C19>C41 C10>C58 C40>C21 C51>C12 C31>C33 C16>C30 C46>C59 C30>C14 C53>C39 C5>C53 C30>C12 C46>C25 C8>C10 C9>C39 C9>C35 C41>C6 C12>C52 C15>C48 C3>C58 C57>C33 C9>C33 C0>C49 C35>C7 C49>C50 C49>C2 C58>C4 C44>C12 C15>C44 C57>C35 C20>C28 C50>C19 C23>C42 C47>C6 C14>C10 C22>C12 C29>C28 C4>C32 C5>C6 C48>C8 C25>C16 C5>C20 C17>C4 C14>C54 C26>C35 C10>C7 C19>C33 C17>C22 C46>C32 C28>C6 C53>C56 C21>C14 C22>C25 C56>C16 C55>C32 C29>C2 C35>C21] notes=0
+in6_arrow_LR.mmd	FM: Svc0,Hub,Svc1,Svc2,Svc3,Svc4,Svc5 rel=6 [Svc0>Hub Svc1>Hub Svc2>Hub Svc3>Hub Svc4>Hub Svc5>Hub] notes=0
+in6_arrow_TB.mmd	FM: Svc0,Hub,Svc1,Svc2,Svc3,Svc4,Svc5 rel=6 [Svc0>Hub Svc1>Hub Svc2>Hub Svc3>Hub Svc4>Hub Svc5>Hub] notes=0
+in6_comp_LR.mmd	FM: Svc0,Hub,Svc1,Svc2,Svc3,Svc4,Svc5 rel=6 [Svc0>Hub Svc1>Hub Svc2>Hub Svc3>Hub Svc4>Hub Svc5>Hub] notes=0
+in6_comp_TB.mmd	FM: Svc0,Hub,Svc1,Svc2,Svc3,Svc4,Svc5 rel=6 [Svc0>Hub Svc1>Hub Svc2>Hub Svc3>Hub Svc4>Hub Svc5>Hub] notes=0
+in6_dep_LR.mmd	FM: Svc0,Hub,Svc1,Svc2,Svc3,Svc4,Svc5 rel=6 [Svc0>Hub Svc1>Hub Svc2>Hub Svc3>Hub Svc4>Hub Svc5>Hub] notes=0
+in6_dep_TB.mmd	FM: Svc0,Hub,Svc1,Svc2,Svc3,Svc4,Svc5 rel=6 [Svc0>Hub Svc1>Hub Svc2>Hub Svc3>Hub Svc4>Hub Svc5>Hub] notes=0
+in6_link_TB.mmd	FM: Svc0,Hub,Svc1,Svc2,Svc3,Svc4,Svc5 rel=6 [Svc0>Hub Svc1>Hub Svc2>Hub Svc3>Hub Svc4>Hub Svc5>Hub] notes=0
+in8_link_LR.mmd	FM: Svc0,Hub,Svc1,Svc2,Svc3,Svc4,Svc5,Svc6,Svc7 rel=8 [Svc0>Hub Svc1>Hub Svc2>Hub Svc3>Hub Svc4>Hub Svc5>Hub Svc6>Hub Svc7>Hub] notes=0
+out6_arrow_TB.mmd	FM: Hub,Svc0,Svc1,Svc2,Svc3,Svc4,Svc5 rel=6 [Hub>Svc0 Hub>Svc1 Hub>Svc2 Hub>Svc3 Hub>Svc4 Hub>Svc5] notes=0
+out6_comp_TB.mmd	FM: Hub,Svc0,Svc1,Svc2,Svc3,Svc4,Svc5 rel=6 [Hub>Svc0 Hub>Svc1 Hub>Svc2 Hub>Svc3 Hub>Svc4 Hub>Svc5] notes=0
+out6_dep_TB.mmd	FM: Hub,Svc0,Svc1,Svc2,Svc3,Svc4,Svc5 rel=6 [Hub>Svc0 Hub>Svc1 Hub>Svc2 Hub>Svc3 Hub>Svc4 Hub>Svc5] notes=0
+out6_inh_TB.mmd	FM: Hub,Svc0,Svc1,Svc2,Svc3,Svc4,Svc5 rel=6 [Hub>Svc0 Hub>Svc1 Hub>Svc2 Hub>Svc3 Hub>Svc4 Hub>Svc5] notes=0
+out6_link_TB.mmd	FM: Hub,Svc0,Svc1,Svc2,Svc3,Svc4,Svc5 rel=6 [Hub>Svc0 Hub>Svc1 Hub>Svc2 Hub>Svc3 Hub>Svc4 Hub>Svc5] notes=0
+in11_l1_c1_LR.mmd	FM: Svc0,Hub,Svc1,Svc2,Svc3,Svc4,Svc5,Svc6,Svc7,Svc8,Svc9,Svc10 rel=11 [Svc0>Hub Svc1>Hub Svc2>Hub Svc3>Hub Svc4>Hub Svc5>Hub Svc6>Hub Svc7>Hub Svc8>Hub Svc9>Hub Svc10>Hub] notes=0
+k2_BT.mmd	FM: P,A,B,C,D rel=9 [A>P B>P C>P D>P B>B B>B A>A C>C D>D] notes=0
+k2_LR.mmd	FM: P,A,B,C,D rel=9 [A>P B>P C>P D>P B>B B>B A>A C>C D>D] notes=0
+k2_RL.mmd	FM: P,A,B,C,D rel=9 [A>P B>P C>P D>P B>B B>B A>A C>C D>D] notes=0
+k2_TB.mmd	FM: P,A,B,C,D rel=9 [A>P B>P C>P D>P B>B B>B A>A C>C D>D] notes=0
+k3_BT.mmd	FM: P,A,B,C,D rel=10 [A>P B>P C>P D>P B>B B>B B>B A>A C>C D>D] notes=0
+k3_TB.mmd	FM: P,A,B,C,D rel=10 [A>P B>P C>P D>P B>B B>B B>B A>A C>C D>D] notes=0
+k4_BT.mmd	FM: P,A,B,C,D rel=11 [A>P B>P C>P D>P B>B B>B B>B B>B A>A C>C D>D] notes=0
+k4_LR.mmd	FM: P,A,B,C,D rel=11 [A>P B>P C>P D>P B>B B>B B>B B>B A>A C>C D>D] notes=0
+k4_RL.mmd	FM: P,A,B,C,D rel=11 [A>P B>P C>P D>P B>B B>B B>B B>B A>A C>C D>D] notes=0
+k4_TB.mmd	FM: P,A,B,C,D rel=11 [A>P B>P C>P D>P B>B B>B B>B B>B A>A C>C D>D] notes=0
+k5_BT.mmd	FM: P,A,B,C,D rel=12 [A>P B>P C>P D>P B>B B>B B>B B>B B>B A>A C>C D>D] notes=0
+k5_LR.mmd	FM: P,A,B,C,D rel=12 [A>P B>P C>P D>P B>B B>B B>B B>B B>B A>A C>C D>D] notes=0
+k5_RL.mmd	FM: P,A,B,C,D rel=12 [A>P B>P C>P D>P B>B B>B B>B B>B B>B A>A C>C D>D] notes=0
+k5_TB.mmd	FM: P,A,B,C,D rel=12 [A>P B>P C>P D>P B>B B>B B>B B>B B>B A>A C>C D>D] notes=0
+k6_BT.mmd	FM: P,A,B,C,D rel=13 [A>P B>P C>P D>P B>B B>B B>B B>B B>B B>B A>A C>C D>D] notes=0
+k6_LR.mmd	FM: P,A,B,C,D rel=13 [A>P B>P C>P D>P B>B B>B B>B B>B B>B B>B A>A C>C D>D] notes=0
+k6_RL.mmd	FM: P,A,B,C,D rel=13 [A>P B>P C>P D>P B>B B>B B>B B>B B>B B>B A>A C>C D>D] notes=0
+k6_TB.mmd	FM: P,A,B,C,D rel=13 [A>P B>P C>P D>P B>B B>B B>B B>B B>B B>B A>A C>C D>D] notes=0
+k7_BT.mmd	FM: P,A,B,C,D rel=14 [A>P B>P C>P D>P B>B B>B B>B B>B B>B B>B B>B A>A C>C D>D] notes=0
+k7_LR.mmd	FM: P,A,B,C,D rel=14 [A>P B>P C>P D>P B>B B>B B>B B>B B>B B>B B>B A>A C>C D>D] notes=0
+k7_RL.mmd	FM: P,A,B,C,D rel=14 [A>P B>P C>P D>P B>B B>B B>B B>B B>B B>B B>B A>A C>C D>D] notes=0
+k7_TB.mmd	FM: P,A,B,C,D rel=14 [A>P B>P C>P D>P B>B B>B B>B B>B B>B B>B B>B A>A C>C D>D] notes=0
+m1_BT.mmd	FM: P,A,B,C rel=6 [A>P B>P C>P B>B A>A C>C] notes=0
+m1_TB.mmd	FM: P,A,B,C rel=6 [A>P B>P C>P B>B A>A C>C] notes=0
+m2_BT.mmd	FM: P,A,B,C rel=9 [A>P B>P C>P B>B B>B A>A A>A C>C C>C] notes=0
+m2_LR.mmd	FM: P,A,B,C rel=9 [A>P B>P C>P B>B B>B A>A A>A C>C C>C] notes=0
+m2_RL.mmd	FM: P,A,B,C rel=9 [A>P B>P C>P B>B B>B A>A A>A C>C C>C] notes=0
+m2_TB.mmd	FM: P,A,B,C rel=9 [A>P B>P C>P B>B B>B A>A A>A C>C C>C] notes=0
+m3_BT.mmd	FM: P,A,B,C rel=11 [A>P B>P C>P B>B B>B B>B A>A A>A A>A C>C C>C] notes=0
+m3_LR.mmd	FM: P,A,B,C rel=11 [A>P B>P C>P B>B B>B B>B A>A A>A A>A C>C C>C] notes=0
+m3_RL.mmd	FM: P,A,B,C rel=11 [A>P B>P C>P B>B B>B B>B A>A A>A A>A C>C C>C] notes=0
+m3_TB.mmd	FM: P,A,B,C rel=11 [A>P B>P C>P B>B B>B B>B A>A A>A A>A C>C C>C] notes=0
+m4_BT.mmd	FM: P,A,B,C rel=12 [A>P B>P C>P B>B B>B B>B B>B A>A A>A A>A C>C C>C] notes=0
+m4_LR.mmd	FM: P,A,B,C rel=12 [A>P B>P C>P B>B B>B B>B B>B A>A A>A A>A C>C C>C] notes=0
+m4_RL.mmd	FM: P,A,B,C rel=12 [A>P B>P C>P B>B B>B B>B B>B A>A A>A A>A C>C C>C] notes=0
+m4_TB.mmd	FM: P,A,B,C rel=12 [A>P B>P C>P B>B B>B B>B B>B A>A A>A A>A C>C C>C] notes=0
+m5_BT.mmd	FM: P,A,B,C rel=13 [A>P B>P C>P B>B B>B B>B B>B B>B A>A A>A A>A C>C C>C] notes=0
+m5_LR.mmd	FM: P,A,B,C rel=13 [A>P B>P C>P B>B B>B B>B B>B B>B A>A A>A A>A C>C C>C] notes=0
+m5_RL.mmd	FM: P,A,B,C rel=13 [A>P B>P C>P B>B B>B B>B B>B B>B A>A A>A A>A C>C C>C] notes=0
+m5_TB.mmd	FM: P,A,B,C rel=13 [A>P B>P C>P B>B B>B B>B B>B B>B A>A A>A A>A C>C C>C] notes=0
+m6_BT.mmd	FM: P,A,B,C rel=14 [A>P B>P C>P B>B B>B B>B B>B B>B B>B A>A A>A A>A C>C C>C] notes=0
+m6_LR.mmd	FM: P,A,B,C rel=14 [A>P B>P C>P B>B B>B B>B B>B B>B B>B A>A A>A A>A C>C C>C] notes=0
+m6_RL.mmd	FM: P,A,B,C rel=14 [A>P B>P C>P B>B B>B B>B B>B B>B B>B A>A A>A A>A C>C C>C] notes=0
+m6_TB.mmd	FM: P,A,B,C rel=14 [A>P B>P C>P B>B B>B B>B B>B B>B B>B A>A A>A A>A C>C C>C] notes=0
+m7_BT.mmd	FM: P,A,B,C rel=15 [A>P B>P C>P B>B B>B B>B B>B B>B B>B B>B A>A A>A A>A C>C C>C] notes=0
+m7_LR.mmd	FM: P,A,B,C rel=15 [A>P B>P C>P B>B B>B B>B B>B B>B B>B B>B A>A A>A A>A C>C C>C] notes=0
+m7_RL.mmd	FM: P,A,B,C rel=15 [A>P B>P C>P B>B B>B B>B B>B B>B B>B B>B A>A A>A A>A C>C C>C] notes=0
+m7_TB.mmd	FM: P,A,B,C rel=15 [A>P B>P C>P B>B B>B B>B B>B B>B B>B B>B A>A A>A A>A C>C C>C] notes=0
+m8_BT.mmd	FM: P,A,B,C rel=16 [A>P B>P C>P B>B B>B B>B B>B B>B B>B B>B B>B A>A A>A A>A C>C C>C] notes=0
+m8_LR.mmd	FM: P,A,B,C rel=16 [A>P B>P C>P B>B B>B B>B B>B B>B B>B B>B B>B A>A A>A A>A C>C C>C] notes=0
+m8_RL.mmd	FM: P,A,B,C rel=16 [A>P B>P C>P B>B B>B B>B B>B B>B B>B B>B B>B A>A A>A A>A C>C C>C] notes=0
+m8_TB.mmd	FM: P,A,B,C rel=16 [A>P B>P C>P B>B B>B B>B B>B B>B B>B B>B B>B A>A A>A A>A C>C C>C] notes=0
+u2_BT.mmd	FM: P,A,B,C rel=7 [A>P B>P C>P B>B B>B A>A C>C] notes=0
+u2_LR.mmd	FM: P,A,B,C rel=7 [A>P B>P C>P B>B B>B A>A C>C] notes=0
+u2_RL.mmd	FM: P,A,B,C rel=7 [A>P B>P C>P B>B B>B A>A C>C] notes=0
+u2_TB.mmd	FM: P,A,B,C rel=7 [A>P B>P C>P B>B B>B A>A C>C] notes=0
+u3_BT.mmd	FM: P,A,B,C rel=8 [A>P B>P C>P B>B B>B B>B A>A C>C] notes=0
+u3_TB.mmd	FM: P,A,B,C rel=8 [A>P B>P C>P B>B B>B B>B A>A C>C] notes=0
+u4_BT.mmd	FM: P,A,B,C rel=9 [A>P B>P C>P B>B B>B B>B B>B A>A C>C] notes=0
+u4_LR.mmd	FM: P,A,B,C rel=9 [A>P B>P C>P B>B B>B B>B B>B A>A C>C] notes=0
+u4_RL.mmd	FM: P,A,B,C rel=9 [A>P B>P C>P B>B B>B B>B B>B A>A C>C] notes=0
+u4_TB.mmd	FM: P,A,B,C rel=9 [A>P B>P C>P B>B B>B B>B B>B A>A C>C] notes=0
+u5_BT.mmd	FM: P,A,B,C rel=10 [A>P B>P C>P B>B B>B B>B B>B B>B A>A C>C] notes=0
+u5_LR.mmd	FM: P,A,B,C rel=10 [A>P B>P C>P B>B B>B B>B B>B B>B A>A C>C] notes=0
+u5_RL.mmd	FM: P,A,B,C rel=10 [A>P B>P C>P B>B B>B B>B B>B B>B A>A C>C] notes=0
+u5_TB.mmd	FM: P,A,B,C rel=10 [A>P B>P C>P B>B B>B B>B B>B B>B A>A C>C] notes=0
+u6_BT.mmd	FM: P,A,B,C rel=11 [A>P B>P C>P B>B B>B B>B B>B B>B B>B A>A C>C] notes=0
+u6_LR.mmd	FM: P,A,B,C rel=11 [A>P B>P C>P B>B B>B B>B B>B B>B B>B A>A C>C] notes=0
+u6_RL.mmd	FM: P,A,B,C rel=11 [A>P B>P C>P B>B B>B B>B B>B B>B B>B A>A C>C] notes=0
+u6_TB.mmd	FM: P,A,B,C rel=11 [A>P B>P C>P B>B B>B B>B B>B B>B B>B A>A C>C] notes=0
+u7_BT.mmd	FM: P,A,B,C rel=12 [A>P B>P C>P B>B B>B B>B B>B B>B B>B B>B A>A C>C] notes=0
+u7_LR.mmd	FM: P,A,B,C rel=12 [A>P B>P C>P B>B B>B B>B B>B B>B B>B B>B A>A C>C] notes=0
+u7_RL.mmd	FM: P,A,B,C rel=12 [A>P B>P C>P B>B B>B B>B B>B B>B B>B B>B A>A C>C] notes=0
+u7_TB.mmd	FM: P,A,B,C rel=12 [A>P B>P C>P B>B B>B B>B B>B B>B B>B B>B A>A C>C] notes=0
+u8_BT.mmd	FM: P,A,B,C rel=13 [A>P B>P C>P B>B B>B B>B B>B B>B B>B B>B B>B A>A C>C] notes=0
+u8_LR.mmd	FM: P,A,B,C rel=13 [A>P B>P C>P B>B B>B B>B B>B B>B B>B B>B B>B A>A C>C] notes=0
+u8_RL.mmd	FM: P,A,B,C rel=13 [A>P B>P C>P B>B B>B B>B B>B B>B B>B B>B B>B A>A C>C] notes=0
+u8_TB.mmd	FM: P,A,B,C rel=13 [A>P B>P C>P B>B B>B B>B B>B B>B B>B B>B B>B A>A C>C] notes=0
+k12_LR.mmd	FM: P,A,B,C,D rel=19 [A>P B>P C>P D>P B>B B>B B>B B>B B>B B>B B>B B>B B>B B>B B>B B>B A>A C>C D>D] notes=0
+n03_dups_both_TB.mmd	FM: A,B rel=32 [A>B B>A B>A A>B B>A B>A A>A B>B A>B B>A B>A A>B B>A B>A A>A B>B A>B B>A B>A A>B B>A B>A A>A B>B A>B B>A B>A A>B B>A B>A A>A B>B] notes=0

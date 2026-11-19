@@ -1,0 +1,955 @@
+ClassScene {
+    scene: Scene {
+        nodes: [
+            SceneNode {
+                id: "PaymentMethod",
+                x: 371.50000000000006,
+                y: 668.0,
+                w: 180.50000000000006,
+                h: 102.0,
+                shape: Rect,
+                label: "PaymentMethod",
+                style: NodeStyle {
+                    fill: None,
+                    stroke: None,
+                    stroke_width: None,
+                    color: None,
+                },
+                link: None,
+            },
+            SceneNode {
+                id: "Person",
+                x: 266.27500000000003,
+                y: 72.0,
+                w: 104.1,
+                h: 88.0,
+                shape: Rect,
+                label: "Person",
+                style: NodeStyle {
+                    fill: None,
+                    stroke: None,
+                    stroke_width: None,
+                    color: None,
+                },
+                link: None,
+            },
+            SceneNode {
+                id: "Customer",
+                x: 266.27500000000003,
+                y: 252.0,
+                w: 175.50000000000003,
+                h: 104.0,
+                shape: Rect,
+                label: "Customer",
+                style: NodeStyle {
+                    fill: None,
+                    stroke: None,
+                    stroke_width: None,
+                    color: None,
+                },
+                link: None,
+            },
+            SceneNode {
+                id: "Order",
+                x: 118.15000000000003,
+                y: 460.0,
+                w: 180.30000000000007,
+                h: 144.0,
+                shape: Rect,
+                label: "Order",
+                style: NodeStyle {
+                    fill: None,
+                    stroke: None,
+                    stroke_width: None,
+                    color: None,
+                },
+                link: None,
+            },
+            SceneNode {
+                id: "LineItem",
+                x: 118.15000000000003,
+                y: 668.0,
+                w: 140.4,
+                h: 104.0,
+                shape: Rect,
+                label: "LineItem",
+                style: NodeStyle {
+                    fill: None,
+                    stroke: None,
+                    stroke_width: None,
+                    color: None,
+                },
+                link: None,
+            },
+            SceneNode {
+                id: "Product",
+                x: 118.15000000000003,
+                y: 858.0,
+                w: 104.5,
+                h: 108.0,
+                shape: Rect,
+                label: "Product",
+                style: NodeStyle {
+                    fill: None,
+                    stroke: None,
+                    stroke_width: None,
+                    color: None,
+                },
+                link: None,
+            },
+            SceneNode {
+                id: "CreditCard",
+                x: 298.50000000000006,
+                y: 858.0,
+                w: 96.0,
+                h: 52.0,
+                shape: Rect,
+                label: "CreditCard",
+                style: NodeStyle {
+                    fill: None,
+                    stroke: None,
+                    stroke_width: None,
+                    color: None,
+                },
+                link: None,
+            },
+            SceneNode {
+                id: "PayPal",
+                x: 444.50000000000006,
+                y: 858.0,
+                w: 96.0,
+                h: 52.0,
+                shape: Rect,
+                label: "PayPal",
+                style: NodeStyle {
+                    fill: None,
+                    stroke: None,
+                    stroke_width: None,
+                    color: None,
+                },
+                link: None,
+            },
+            SceneNode {
+                id: "note-0",
+                x: 475.37500000000006,
+                y: 72.0,
+                w: 214.10000000000005,
+                h: 33.0,
+                shape: Rect,
+                label: "Domain model for a small shop",
+                style: NodeStyle {
+                    fill: None,
+                    stroke: None,
+                    stroke_width: None,
+                    color: None,
+                },
+                link: None,
+            },
+        ],
+        edges: [
+            SceneEdge {
+                from: "Customer",
+                to: "Person",
+                bezier: [
+                    (
+                        266.27500000000003,
+                        200.0,
+                    ),
+                    (
+                        266.27500000000003,
+                        172.0,
+                    ),
+                    (
+                        266.27500000000003,
+                        144.0,
+                    ),
+                    (
+                        266.27500000000003,
+                        116.0,
+                    ),
+                ],
+                waypoints: [],
+                kind: Open,
+                ends: EdgeEnds {
+                    start: None,
+                    end: None,
+                },
+                meta: EdgeMeta {
+                    id: None,
+                    animation: None,
+                    curve: None,
+                    style: LinkStyle {
+                        stroke: None,
+                        stroke_width: None,
+                        stroke_dasharray: None,
+                        fill: None,
+                        color: None,
+                    },
+                },
+                label: None,
+                paint_width: Some(
+                    1.6,
+                ),
+            },
+            SceneEdge {
+                from: "CreditCard",
+                to: "PaymentMethod",
+                bezier: [
+                    (
+                        322.50000000000006,
+                        832.0,
+                    ),
+                    (
+                        322.50000000000006,
+                        810.0,
+                    ),
+                    (
+                        341.4166666666667,
+                        741.0,
+                    ),
+                    (
+                        341.4166666666667,
+                        719.0,
+                    ),
+                ],
+                waypoints: [
+                    (
+                        322.50000000000006,
+                        832.0,
+                    ),
+                    (
+                        322.50000000000006,
+                        782.5,
+                    ),
+                    (
+                        322.50000000000006,
+                        775.5,
+                    ),
+                    (
+                        329.50000000000006,
+                        775.5,
+                    ),
+                    (
+                        334.4166666666667,
+                        775.5,
+                    ),
+                    (
+                        341.4166666666667,
+                        775.5,
+                    ),
+                    (
+                        341.4166666666667,
+                        768.5,
+                    ),
+                    (
+                        341.4166666666667,
+                        719.0,
+                    ),
+                ],
+                kind: Dotted,
+                ends: EdgeEnds {
+                    start: None,
+                    end: None,
+                },
+                meta: EdgeMeta {
+                    id: None,
+                    animation: None,
+                    curve: None,
+                    style: LinkStyle {
+                        stroke: None,
+                        stroke_width: None,
+                        stroke_dasharray: None,
+                        fill: None,
+                        color: None,
+                    },
+                },
+                label: None,
+                paint_width: Some(
+                    1.6,
+                ),
+            },
+            SceneEdge {
+                from: "PayPal",
+                to: "PaymentMethod",
+                bezier: [
+                    (
+                        420.50000000000006,
+                        832.0,
+                    ),
+                    (
+                        420.50000000000006,
+                        810.0,
+                    ),
+                    (
+                        401.5833333333334,
+                        741.0,
+                    ),
+                    (
+                        401.5833333333334,
+                        719.0,
+                    ),
+                ],
+                waypoints: [
+                    (
+                        420.50000000000006,
+                        832.0,
+                    ),
+                    (
+                        420.50000000000006,
+                        782.5,
+                    ),
+                    (
+                        420.50000000000006,
+                        775.5,
+                    ),
+                    (
+                        413.50000000000006,
+                        775.5,
+                    ),
+                    (
+                        408.5833333333334,
+                        775.5,
+                    ),
+                    (
+                        401.5833333333334,
+                        775.5,
+                    ),
+                    (
+                        401.5833333333334,
+                        768.5,
+                    ),
+                    (
+                        401.5833333333334,
+                        719.0,
+                    ),
+                ],
+                kind: Dotted,
+                ends: EdgeEnds {
+                    start: None,
+                    end: None,
+                },
+                meta: EdgeMeta {
+                    id: None,
+                    animation: None,
+                    curve: None,
+                    style: LinkStyle {
+                        stroke: None,
+                        stroke_width: None,
+                        stroke_dasharray: None,
+                        fill: None,
+                        color: None,
+                    },
+                },
+                label: None,
+                paint_width: Some(
+                    1.6,
+                ),
+            },
+            SceneEdge {
+                from: "Customer",
+                to: "Order",
+                bezier: [
+                    (
+                        240.81437500000004,
+                        304.0,
+                    ),
+                    (
+                        240.81437500000004,
+                        326.0,
+                    ),
+                    (
+                        169.99375000000003,
+                        366.0,
+                    ),
+                    (
+                        169.99375000000003,
+                        388.0,
+                    ),
+                ],
+                waypoints: [
+                    (
+                        240.81437500000004,
+                        304.0,
+                    ),
+                    (
+                        240.81437500000004,
+                        339.0,
+                    ),
+                    (
+                        240.81437500000004,
+                        346.0,
+                    ),
+                    (
+                        233.81437500000004,
+                        346.0,
+                    ),
+                    (
+                        176.99375000000003,
+                        346.0,
+                    ),
+                    (
+                        169.99375000000003,
+                        346.0,
+                    ),
+                    (
+                        169.99375000000003,
+                        353.0,
+                    ),
+                    (
+                        169.99375000000003,
+                        388.0,
+                    ),
+                ],
+                kind: Open,
+                ends: EdgeEnds {
+                    start: None,
+                    end: None,
+                },
+                meta: EdgeMeta {
+                    id: None,
+                    animation: None,
+                    curve: None,
+                    style: LinkStyle {
+                        stroke: None,
+                        stroke_width: None,
+                        stroke_dasharray: None,
+                        fill: None,
+                        color: None,
+                    },
+                },
+                label: Some(
+                    (
+                        "places",
+                        (
+                            192.21250000000003,
+                            346.0,
+                        ),
+                        54.8,
+                    ),
+                ),
+                paint_width: Some(
+                    1.6,
+                ),
+            },
+            SceneEdge {
+                from: "LineItem",
+                to: "Order",
+                bezier: [
+                    (
+                        88.10000000000002,
+                        616.0,
+                    ),
+                    (
+                        88.10000000000002,
+                        588.0,
+                    ),
+                    (
+                        88.10000000000002,
+                        560.0,
+                    ),
+                    (
+                        88.10000000000002,
+                        532.0,
+                    ),
+                ],
+                waypoints: [],
+                kind: Open,
+                ends: EdgeEnds {
+                    start: None,
+                    end: None,
+                },
+                meta: EdgeMeta {
+                    id: None,
+                    animation: None,
+                    curve: None,
+                    style: LinkStyle {
+                        stroke: None,
+                        stroke_width: None,
+                        stroke_dasharray: None,
+                        fill: None,
+                        color: None,
+                    },
+                },
+                label: Some(
+                    (
+                        "contains",
+                        (
+                            88.10000000000002,
+                            574.0,
+                        ),
+                        66.5,
+                    ),
+                ),
+                paint_width: Some(
+                    1.6,
+                ),
+            },
+            SceneEdge {
+                from: "LineItem",
+                to: "Product",
+                bezier: [
+                    (
+                        118.15000000000003,
+                        720.0,
+                    ),
+                    (
+                        118.15000000000003,
+                        748.0,
+                    ),
+                    (
+                        118.15000000000003,
+                        776.0,
+                    ),
+                    (
+                        118.15000000000003,
+                        804.0,
+                    ),
+                ],
+                waypoints: [],
+                kind: Open,
+                ends: EdgeEnds {
+                    start: None,
+                    end: None,
+                },
+                meta: EdgeMeta {
+                    id: None,
+                    animation: None,
+                    curve: None,
+                    style: LinkStyle {
+                        stroke: None,
+                        stroke_width: None,
+                        stroke_dasharray: None,
+                        fill: None,
+                        color: None,
+                    },
+                },
+                label: Some(
+                    (
+                        "refers to",
+                        (
+                            118.15000000000003,
+                            762.0,
+                        ),
+                        65.5,
+                    ),
+                ),
+                paint_width: Some(
+                    1.6,
+                ),
+            },
+            SceneEdge {
+                from: "PaymentMethod",
+                to: "Customer",
+                bezier: [
+                    (
+                        371.50000000000006,
+                        617.0,
+                    ),
+                    (
+                        371.50000000000006,
+                        595.0,
+                    ),
+                    (
+                        303.10375000000005,
+                        326.0,
+                    ),
+                    (
+                        303.10375000000005,
+                        304.0,
+                    ),
+                ],
+                waypoints: [
+                    (
+                        371.50000000000006,
+                        617.0,
+                    ),
+                    (
+                        371.50000000000006,
+                        389.0,
+                    ),
+                    (
+                        371.50000000000006,
+                        382.0,
+                    ),
+                    (
+                        364.50000000000006,
+                        382.0,
+                    ),
+                    (
+                        310.10375000000005,
+                        382.0,
+                    ),
+                    (
+                        303.10375000000005,
+                        382.0,
+                    ),
+                    (
+                        303.10375000000005,
+                        375.0,
+                    ),
+                    (
+                        303.10375000000005,
+                        304.0,
+                    ),
+                ],
+                kind: Open,
+                ends: EdgeEnds {
+                    start: None,
+                    end: None,
+                },
+                meta: EdgeMeta {
+                    id: None,
+                    animation: None,
+                    curve: None,
+                    style: LinkStyle {
+                        stroke: None,
+                        stroke_width: None,
+                        stroke_dasharray: None,
+                        fill: None,
+                        color: None,
+                    },
+                },
+                label: Some(
+                    (
+                        "owns",
+                        (
+                            371.50000000000006,
+                            460.0,
+                        ),
+                        46.7,
+                    ),
+                ),
+                paint_width: Some(
+                    1.6,
+                ),
+            },
+            SceneEdge {
+                from: "Order",
+                to: "PaymentMethod",
+                bezier: [
+                    (
+                        148.20000000000005,
+                        532.0,
+                    ),
+                    (
+                        148.20000000000005,
+                        554.0,
+                    ),
+                    (
+                        326.375,
+                        595.0,
+                    ),
+                    (
+                        326.375,
+                        617.0,
+                    ),
+                ],
+                waypoints: [
+                    (
+                        148.20000000000005,
+                        532.0,
+                    ),
+                    (
+                        148.20000000000005,
+                        567.5,
+                    ),
+                    (
+                        148.20000000000005,
+                        574.5,
+                    ),
+                    (
+                        155.20000000000005,
+                        574.5,
+                    ),
+                    (
+                        319.375,
+                        574.5,
+                    ),
+                    (
+                        326.375,
+                        574.5,
+                    ),
+                    (
+                        326.375,
+                        581.5,
+                    ),
+                    (
+                        326.375,
+                        617.0,
+                    ),
+                ],
+                kind: Dotted,
+                ends: EdgeEnds {
+                    start: None,
+                    end: None,
+                },
+                meta: EdgeMeta {
+                    id: None,
+                    animation: None,
+                    curve: None,
+                    style: LinkStyle {
+                        stroke: None,
+                        stroke_width: None,
+                        stroke_dasharray: None,
+                        fill: None,
+                        color: None,
+                    },
+                },
+                label: Some(
+                    (
+                        "charges",
+                        (
+                            244.77500000000003,
+                            574.5,
+                        ),
+                        63.9,
+                    ),
+                ),
+                paint_width: Some(
+                    1.6,
+                ),
+            },
+        ],
+        clusters: [],
+        width: 610.4250000000001,
+        height: 940.0,
+        origin: (
+            0.0,
+            0.0,
+        ),
+        routed: false,
+        plain_crossings: false,
+    },
+    boxes: [
+        ClassBox {
+            name: "PaymentMethod",
+            annotations: [
+                "«interface»",
+            ],
+            fields: [],
+            methods: [
+                ClassRow {
+                    text: "+authorize(amount) : bool",
+                    is_static: false,
+                    is_abstract: false,
+                },
+                ClassRow {
+                    text: "+capture() : void",
+                    is_static: false,
+                    is_abstract: false,
+                },
+            ],
+            lollipop: false,
+        },
+        ClassBox {
+            name: "Person",
+            annotations: [],
+            fields: [
+                ClassRow {
+                    text: "+String id",
+                    is_static: false,
+                    is_abstract: false,
+                },
+                ClassRow {
+                    text: "+String name",
+                    is_static: false,
+                    is_abstract: false,
+                },
+            ],
+            methods: [],
+            lollipop: false,
+        },
+        ClassBox {
+            name: "Customer",
+            annotations: [],
+            fields: [
+                ClassRow {
+                    text: "-String email",
+                    is_static: false,
+                    is_abstract: false,
+                },
+            ],
+            methods: [
+                ClassRow {
+                    text: "+placeOrder(cart) : Order",
+                    is_static: false,
+                    is_abstract: false,
+                },
+                ClassRow {
+                    text: "+history() : List",
+                    is_static: false,
+                    is_abstract: false,
+                },
+            ],
+            lollipop: false,
+        },
+        ClassBox {
+            name: "Order",
+            annotations: [],
+            fields: [
+                ClassRow {
+                    text: "+String number",
+                    is_static: false,
+                    is_abstract: false,
+                },
+                ClassRow {
+                    text: "+Date createdAt",
+                    is_static: false,
+                    is_abstract: false,
+                },
+                ClassRow {
+                    text: "-OrderStatus status",
+                    is_static: false,
+                    is_abstract: false,
+                },
+            ],
+            methods: [
+                ClassRow {
+                    text: "+total() : Money",
+                    is_static: false,
+                    is_abstract: false,
+                },
+                ClassRow {
+                    text: "+addLine(item, qty) : void",
+                    is_static: false,
+                    is_abstract: false,
+                },
+            ],
+            lollipop: false,
+        },
+        ClassBox {
+            name: "LineItem",
+            annotations: [],
+            fields: [
+                ClassRow {
+                    text: "+int quantity",
+                    is_static: false,
+                    is_abstract: false,
+                },
+                ClassRow {
+                    text: "+Money unitPrice",
+                    is_static: false,
+                    is_abstract: false,
+                },
+            ],
+            methods: [
+                ClassRow {
+                    text: "+subtotal() : Money",
+                    is_static: false,
+                    is_abstract: false,
+                },
+            ],
+            lollipop: false,
+        },
+        ClassBox {
+            name: "Product",
+            annotations: [],
+            fields: [
+                ClassRow {
+                    text: "+String sku",
+                    is_static: false,
+                    is_abstract: false,
+                },
+                ClassRow {
+                    text: "+String title",
+                    is_static: false,
+                    is_abstract: false,
+                },
+                ClassRow {
+                    text: "+Money price",
+                    is_static: false,
+                    is_abstract: false,
+                },
+            ],
+            methods: [],
+            lollipop: false,
+        },
+        ClassBox {
+            name: "CreditCard",
+            annotations: [],
+            fields: [],
+            methods: [],
+            lollipop: false,
+        },
+        ClassBox {
+            name: "PayPal",
+            annotations: [],
+            fields: [],
+            methods: [],
+            lollipop: false,
+        },
+    ],
+    rels: [
+        RelStyle {
+            kind: Inheritance,
+            from_card: None,
+            to_card: None,
+            from_kind: None,
+        },
+        RelStyle {
+            kind: Realization,
+            from_card: None,
+            to_card: None,
+            from_kind: None,
+        },
+        RelStyle {
+            kind: Realization,
+            from_card: None,
+            to_card: None,
+            from_kind: None,
+        },
+        RelStyle {
+            kind: Association,
+            from_card: Some(
+                "1",
+            ),
+            to_card: Some(
+                "*",
+            ),
+            from_kind: None,
+        },
+        RelStyle {
+            kind: Composition,
+            from_card: Some(
+                "1..*",
+            ),
+            to_card: Some(
+                "1",
+            ),
+            from_kind: None,
+        },
+        RelStyle {
+            kind: Association,
+            from_card: Some(
+                "*",
+            ),
+            to_card: Some(
+                "1",
+            ),
+            from_kind: None,
+        },
+        RelStyle {
+            kind: Aggregation,
+            from_card: Some(
+                "*",
+            ),
+            to_card: Some(
+                "1",
+            ),
+            from_kind: None,
+        },
+        RelStyle {
+            kind: Dependency,
+            from_card: None,
+            to_card: None,
+            from_kind: None,
+        },
+    ],
+    notes: [
+        NoteBox {
+            text: "Domain model for a small shop",
+            class: None,
+            edge: None,
+        },
+    ],
+}

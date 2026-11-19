@@ -1,0 +1,33 @@
+classDiagram
+C0 "1" <|-- "*" C15 : 日本語
+C1 "1" --> "*" C3
+C10 <|-- C17
+C7 <--> C5 : 日本語
+C10 *-- C17 : <b>bold</b>
+C6 --> C14 : Customer Order
+C7 --> C5 : <b>bold</b>
+note for C0 "Customer Order"
+class C1 {
+  +int id
+  +name() String
+}
+class C8 {
+  +int id
+  +name() String
+}
+class C9 {
+  +int id
+  +name() String
+}
+class C11 {
+  +int id
+  +name() String
+}
+class C15 {
+  +int id
+  +name() String
+}
+class C17 {
+  +int id
+  +name() String
+}

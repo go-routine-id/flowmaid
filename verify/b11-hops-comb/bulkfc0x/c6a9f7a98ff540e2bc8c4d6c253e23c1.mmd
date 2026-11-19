@@ -1,0 +1,4 @@
+flowchart LR
+  S[Service Layer] ==> DB[Database]
+  S --> C([Redis Cache])
+  C --> S

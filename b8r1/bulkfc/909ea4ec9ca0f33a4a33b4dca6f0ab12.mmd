@@ -1,0 +1,23 @@
+flowchart RL
+    N0{{Archive}}
+    N1{Report emit}
+    N2([Report parse])
+    N3([Fetch])
+    N4{Retry}
+    N5[Archive load]
+    N6[Check]
+    N7{Parse report}
+    N8{Emit report}
+    N0 --> N1
+    N1 --> N2
+    N2 --> N3
+    N3 -->|fail| N4
+    N2 --> N5
+    N5 --> N6
+    N6 --> N7
+    N7 -->|yes| N8
+    N6 --> N7
+    N1 --> N8
+    N7 ==>|retry| N0
+    N7 -->|retry| N6
+    N4 ==> N0

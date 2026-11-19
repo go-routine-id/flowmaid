@@ -1,0 +1,25 @@
+flowchart TD
+    N0(Emit)
+    N1[Fetch validate]
+    N2{Report}
+    N3(Retry fetch)
+    N4([Done done])
+    N5{Notify report}
+    N6{Fetch}
+    N7([Notify])
+    N8{Load}
+    N9(Archive)
+    N0 -->|no| N1
+    N0 --> N2
+    N1 -->|no| N3
+    N2 -->|fail| N4
+    N4 -->|next| N5
+    N4 --> N6
+    N5 -->|next| N7
+    N7 --> N8
+    N8 --> N9
+    N1 --> N6
+    N1 --> N4
+    N2 --> N7
+    N9 -.-> N2
+    N9 --> N3

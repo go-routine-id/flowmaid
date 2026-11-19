@@ -1,0 +1,210 @@
+name	engine	dir	W	H	area	aspect	fill	nodes	edges	frames	top_frames	compact_mean	compact_max	compact_max_id	span_max	span_max_id	sib_pairs	sib_side	sib_stacked	sib_stagger	sib_side_linked	frame_overlap	frame_foreign_nodes	xframe_runs	xframe_len	xframe_edges	node_hits	crossings	hops	edge_len	edge_len_n	straight_max	straight_max_edge	bends	lanes_max	lane_gap_min	lbl_n	lbl_off_mean	lbl_off_max	lbl_endpx_mean	lbl_endpx_max	lbl_detach_max	lbl_lbl	lbl_node	lbl_struck	lbl_gap_min	lbl_crowd	membership	edge_ends	warn	lateral_x	lateral_edges	flow_x	bends_max	bends_max_edge	detour_max	detour_max_edge	lbl_in_end	lbl_own_gap_max	breadth	bands_n	bands	band_sets
+dense-lr	fm	LR	3233	3363	10872579	0.96	0.047	52	42	11	5	10.49	43.03	g11	0.235	g11	11	2	9	2	0	0	0	0	0	0	0	17	7	49989	503.1	2389	n16>n42	194	6	7.6	21	0.238	0.424	366	2089	29.4	0	0	0	4.3	5	struct	struct	0	5	3	84	18	n12>n46	1.74	n12>n46	2	0.0	3363	5	n52 n51 n50 / g1 / g5 g3 / g10 / g11	n50 n51 n52 / g1 / g3 g5 / g10 / g11
+== dense-lr [fm] 3233 x 3363, dir LR, membership struct, edge ends struct
+ frames:
+  id   parent  x       y       w      h       members  node_area  compact  span   foreign_nodes
+  g1   -       355     202.6   612.4  2821.6  12       127503.5   13.6     0.189  0            
+  g3   -       1238.2  2698.8  618.2  636.1   7        72970.8    5.389    0.191  0            
+  g5   -       1179.9  370.8   645.9  2292    22       203977.8   7.258    0.200  0            
+  g10  -       1956.4  28      425.6  429.4   3        23550.8    7.760    0.132  0            
+  g11  -       2444.5  106.6   760.4  2714.1  5        47958.3    43.0     0.235  0            
+  g2   g1      369     791.4   584.4  2218.8  5        70366.1    18.4     0.181  0            
+  g4   g3      1252.2  2841.1  590.2  243.8   3        34710.9    4.145    0.183  0            
+  g6   g5      1193.9  491.4   309.2  1025.3  9        80300.7    3.948    0.096  0            
+  g8   g5      1216.3  1620.7  595.5  1028.1  11       107152.7   5.714    0.184  0            
+  g7   g6      1207.9  783.1   281.2  719.6   7        58452.5    3.462    0.087  0            
+  g9   g8      1230.3  2162.2  236.4  472.6   4        41661.4    2.682    0.073  0
+ sibling pairs:
+  a    b    kind           flow_overlap  linked
+  g1   g3   stacked        -270.8        edge  
+  g1   g5   stacked        -212.5        edge  
+  g1   g10  stacked        -989.0        edge  
+  g1   g11  stacked        -1477.1       edge  
+  g3   g5   side(stagger)  587.6         -     
+  g3   g10  stacked        -100          edge  
+  g3   g11  stacked        -588.1        edge  
+  g5   g10  stacked        -130.6        edge  
+  g5   g11  stacked        -618.7        edge  
+  g10  g11  stacked        -62.5         edge  
+  g6   g8   side(stagger)  286.8         -
+ edges:
+  edge       len     straight_max  bends  detour  hops  xframe_runs  xframe_len  node_hits  lateral_x  flow_x  ends         
+  n12>n30    464.0   211.6         4      0.984   0     0            0           0          0          5       struct/struct
+  n12>n33    651.1   275.0         4      0.988   0     0            0           0          0          4       struct/struct
+  n12>n17    2035.5  1617.1        4      0.997   0     0            0           0          2          2       struct/struct
+  n12>n26    563.9   203.5         5      0.980   0     0            0           0          0          5       struct/struct
+  n12>n38    1216.7  698.4         5      0.991   0     0            0           0          0          5       struct/struct
+  n12>n16    1770.7  1387.2        1      1.000   0     0            0           0          0          3       struct/struct
+  n12>n36    733.0   322.6         5      0.990   0     0            0           0          0          4       struct/struct
+  n12>n46    4594.8  1331.3        18     1.745   0     0            0           0          0          3       struct/struct
+  n12>n43    2240.0  892.3         8      0.995   1     0            0           0          0          3       struct/struct
+  n12>n44    2484.9  939.7         11     1.111   1     0            0           0          0          3       struct/struct
+  n12>n22    1096.3  594.8         7      0.990   0     0            0           0          0          4       struct/struct
+  n12>n27    481.6   177.8         3      0.985   0     0            0           0          0          5       struct/struct
+  n28>n12    392.7   156.2         4      0.981   0     0            0           0          0          5       struct/struct
+  n15>n12    2492.3  1439.4        8      0.995   0     0            0           0          2          1       struct/struct
+  n17>n47    2321.4  522.3         10     0.993   0     0            0           0          0          3       struct/struct
+  n43>n48    1025.9  571.6         4      0.993   1     0            0           0          0          2       struct/struct
+  n6>n22     489.0   178.0         4      0.985   1     0            0           0          0          3       struct/struct
+  n18>n45    1374.5  462.7         7      1.204   0     0            0           0          0          3       struct/struct
+  n36>n45    1968.5  516.1         9      0.995   0     0            0           0          0          3       struct/struct
+  n16>n42    3205.5  2388.8        4      0.998   0     0            0           0          0          2       struct/struct
+  n21>n47    1214.0  978.3         3      0.994   1     0            0           0          0          2       struct/struct
+  n42>n49    1977.2  887.9         8      0.992   0     0            0           0          0          2       struct/struct
+  n22>n44    880.3   413.9         4      0.992   0     0            0           0          0          3       struct/struct
+  n44>n48    565.0   281.8         3      0.987   0     0            0           0          0          2       struct/struct
+  n26>n47    1641.3  937.1         4      0.995   1     0            0           0          0          4       struct/struct
+  n2>n6      173.8   63.2          3      -       0     0            0           0          0          0       struct/struct
+  n3>n4      161.3   161.3         0      -       0     0            0           0          0          0       struct/struct
+  n8>n11     242.0   125.8         3      0.972   0     0            0           0          0          0       struct/struct
+  n8>n12     277.9   137.3         3      0.974   0     0            0           0          0          0       struct/struct
+  n47>n48    1178.2  878.3         4      0.993   0     0            0           0          0          0       struct/struct
+  n42>n44    325.4   189.4         4      0.977   0     0            0           0          0          0       struct/struct
+  n43>n44    278.9   128.1         3      0.974   0     0            0           0          0          0       struct/struct
+  n8>n9      367.9   236.7         3      0.984   0     0            0           0          0          0       struct/struct
+  n46>n49    877.4   686.2         4      0.991   0     0            0           0          0          0       struct/struct
+  n14>n15    198.1   63.1          3      -       0     0            0           0          0          0       struct/struct
+  n45>n46    789.9   517.6         4      0.990   0     0            0           0          0          0       struct/struct
+  n18>n19    133.4   50.9          1      -       0     0            0           0          0          0       struct/struct
+  n50>n13    1068.7  1068.7        0      1       0     0            0           0          0          1       struct/struct
+  n51>n5     1442.9  1173.4        3      0.996   0     0            0           0          0          1       struct/struct
+  n52>n6     753.5   498.3         2      0.992   0     0            0           0          1          0       struct/struct
+  n52>[g10]  1733.9  1673.0        1      0.998   0     0            0           0          0          0       struct/struct
+  n51>[g4]   2105.4  896.9         6      0.996   1     0            0           0          0          1       struct/struct
+ crossings of the border of a frame that holds exactly one end:
+  edge      frame  side  kind     at             
+  n12>n30   g1     R     flow     (967.4,1368.9) 
+  n12>n30   g5     L     flow     (1179.9,1461.2)
+  n12>n30   g2     R     flow     (953.4,1368.9) 
+  n12>n30   g6     L     flow     (1193.9,1461.2)
+  n12>n30   g7     L     flow     (1207.9,1461.2)
+  n12>n33   g1     R     flow     (967.4,1376.6) 
+  n12>n33   g5     L     flow     (1179.9,1702.8)
+  n12>n33   g2     R     flow     (953.4,1376.6) 
+  n12>n33   g8     L     flow     (1216.3,1702.8)
+  n12>n17   g1     B     lateral  (882.3,3024.2) 
+  n12>n17   g3     L     flow     (1238.2,3043.4)
+  n12>n17   g2     B     lateral  (881.8,3010.2) 
+  n12>n17   g4     L     flow     (1252.2,3043.4)
+  n12>n26   g1     R     flow     (967.4,1348.7) 
+  n12>n26   g5     L     flow     (1179.9,1075.2)
+  n12>n26   g2     R     flow     (953.4,1349.0) 
+  n12>n26   g6     L     flow     (1193.9,1075.2)
+  n12>n26   g7     L     flow     (1207.9,1075.2)
+  n12>n38   g1     R     flow     (967.4,1391.1) 
+  n12>n38   g5     L     flow     (1179.9,2252.8)
+  n12>n38   g2     R     flow     (953.4,1390.3) 
+  n12>n38   g8     L     flow     (1216.3,2252.8)
+  n12>n38   g9     L     flow     (1230.3,2252.8)
+  n12>n16   g1     R     flow     (967.4,2780.9) 
+  n12>n16   g3     L     flow     (1238.2,2780.9)
+  n12>n16   g2     R     flow     (953.4,2780.9) 
+  n12>n36   g1     R     flow     (967.4,1384.3) 
+  n12>n36   g5     L     flow     (1179.9,1799.2)
+  n12>n36   g2     R     flow     (953.4,1384.3) 
+  n12>n36   g8     L     flow     (1216.3,1799.2)
+  n12>n46   g1     R     flow     (967.4,1304.4) 
+  n12>n46   g11    L     flow     (2444.5,491.6) 
+  n12>n46   g2     R     flow     (953.4,1304.4) 
+  n12>n43   g1     R     flow     (967.4,1279.4) 
+  n12>n43   g10    L     flow     (1956.4,223.6) 
+  n12>n43   g2     R     flow     (953.4,1279.4) 
+  n12>n44   g1     R     flow     (967.4,1291.9) 
+  n12>n44   g10    L     flow     (1956.4,288.8) 
+  n12>n44   g2     R     flow     (953.4,1291.9) 
+  n12>n22   g1     R     flow     (967.4,1316.9) 
+  n12>n22   g5     L     flow     (1179.9,574.4) 
+  n12>n22   g2     R     flow     (953.4,1316.9) 
+  n12>n22   g6     L     flow     (1193.9,574.4) 
+  n12>n27   g1     R     flow     (967.4,1353.6) 
+  n12>n27   g5     L     flow     (1179.9,1180.2)
+  n12>n27   g2     R     flow     (953.4,1353.6) 
+  n12>n27   g6     L     flow     (1193.9,1180.2)
+  n12>n27   g7     L     flow     (1207.9,1180.2)
+  n28>n12   g1     R     flow     (967.4,1361.3) 
+  n28>n12   g5     L     flow     (1179.9,1276.7)
+  n28>n12   g2     R     flow     (953.4,1361.3) 
+  n28>n12   g6     L     flow     (1193.9,1276.7)
+  n28>n12   g7     L     flow     (1207.9,1276.7)
+  n15>n12   g1     B     lateral  (867.2,3024.2) 
+  n15>n12   g3     L     flow     (1238.2,3139.9)
+  n15>n12   g2     B     lateral  (867.1,3010.2) 
+  n17>n47   g3     R     flow     (1856.4,3043.4)
+  n17>n47   g11    L     flow     (2444.5,1760.2)
+  n17>n47   g4     R     flow     (1842.4,3043.4)
+  n43>n48   g10    R     flow     (2382.0,216.6) 
+  n43>n48   g11    L     flow     (2444.5,216.6) 
+  n6>n22    g1     R     flow     (967.4,414.2)  
+  n6>n22    g5     L     flow     (1179.9,560.4) 
+  n6>n22    g6     L     flow     (1193.9,560.4) 
+  n18>n45   g3     R     flow     (1856.4,2905.3)
+  n18>n45   g11    L     flow     (2444.5,2786.2)
+  n18>n45   g4     R     flow     (1842.4,2905.1)
+  n36>n45   g5     R     flow     (1825.8,1799.2)
+  n36>n45   g11    L     flow     (2444.5,2772.2)
+  n36>n45   g8     R     flow     (1811.8,1799.2)
+  n16>n42   g3     R     flow     (1856.4,2780.9)
+  n16>n42   g10    L     flow     (1956.4,118.6) 
+  n21>n47   g5     R     flow     (1825.8,1572.7)
+  n21>n47   g11    L     flow     (2444.5,1743.2)
+  n42>n49   g10    R     flow     (2382.0,118.6) 
+  n42>n49   g11    L     flow     (2444.5,192.0) 
+  n22>n44   g5     R     flow     (1825.8,567.4) 
+  n22>n44   g10    L     flow     (1956.4,434.7) 
+  n22>n44   g6     R     flow     (1503.1,567.4) 
+  n44>n48   g10    R     flow     (2382.0,415.9) 
+  n44>n48   g11    L     flow     (2444.5,415.9) 
+  n26>n47   g5     R     flow     (1825.8,1075.2)
+  n26>n47   g11    L     flow     (2444.5,1726.3)
+  n26>n47   g6     R     flow     (1503.1,1075.2)
+  n26>n47   g7     R     flow     (1489.1,1075.2)
+  n50>n13   g3     L     flow     (1238.2,3179.9)
+  n51>n5    g1     L     flow     (355.0,663.9)  
+  n52>n6    g1     T     lateral  (740.2,202.6)  
+  n51>[g4]  g3     L     flow     (1238.2,3057.4)
+ runs through a frame holding neither end:
+  (none)
+ crossings:
+  a        b          x       y     
+  n12>n46  n6>n22     1060.5  414.2 
+  n12>n46  n16>n42    1916.9  351.1 
+  n12>n46  n22>n44    1941.9  434.7 
+  n12>n46  n47>n48    2640.3  1745.1
+  n12>n43  n6>n22     1035.4  414.2 
+  n12>n43  n16>n42    1917.0  223.6 
+  n12>n44  n6>n22     1047.9  414.2 
+  n12>n44  n16>n42    1917.0  288.8 
+  n15>n12  n51>[g4]   867.2   3057.4
+  n17>n47  n18>n45    1929.2  3021.1
+  n17>n47  n36>n45    1929.6  2439.1
+  n43>n48  n42>n44    2171.6  216.6 
+  n36>n45  n16>n42    1916.9  2439.1
+  n16>n42  n21>n47    1916.9  1572.7
+  n16>n42  n22>n44    1916.9  434.7 
+  n16>n42  n26>n47    1916.9  1075.2
+  n16>n42  n52>[g10]  1917.8  132.6
+ labels:
+  edge     text                       x       y       w      h   edge_len  s       off    end_px  detach  own_gap  in_end  gap    on_node  struck  on_label_after
+  n12>n30  tempor eiusmod             1110.0  1461.2  114.9  20  464.0     277.0   0.097  187.0   0       0        -       34.4   0        0       0             
+  n12>n33  eiusmod nostrud            1086.8  1702.8  118    20  651.1     487.6   0.249  163.5   0       0        -       22.1   0        0       0             
+  n12>n17  labore                     902.8   3043.1  53.3   20  2035.5    1665.3  0.318  370.2   0.012   0        -       4.300  0        0       0             
+  n12>n26  magna                      1112.0  1075.3  56.9   20  563.9     459.5   0.315  104.4   0.014   0        -       10.7   0        0       0             
+  n12>n38  tempor adipiscing          1101.2  2252.8  124.8  20  1216.7    1038.7  0.354  178     0       0        -       143.7  0        0       0             
+  n12>n16  sit ullamco                1011.0  2780.9  81.1   20  1770.7    1504.0  0.349  266.8   0       0        -       89.4   0        0       0             
+  n12>n36  sed                        1083.3  1799.2  36.6   20  733.0     572.8   0.281  160.2   0       0        -       71.8   0        0       0             
+  n12>n46  magna ipsum laboris        2285.2  491.6   144.3  20  4594.8    2505.8  0.045  2089.0  0.001   0        -       47.3   0        0       0             
+  n12>n43  labore sit consectetur     1690.8  223.6   147.9  20  2240.0    1931.3  0.362  308.7   0       0        -       55.2   0        0       0             
+  n12>n44  nostrud laboris dolor      1690.8  288.8   142    20  2484.9    1853.0  0.246  631.9   0.000   0        -       52.0   0        0       0             
+  n12>n22  nostrud                    1102.3  670.8   60.8   20  1096.3    833.5   0.260  262.8   29.4    0        -       11.5   0        0       0             
+  n12>n27  laboris                    1141.2  1180.2  55.9   20  481.6     389.3   0.308  92.3    0       0        -       15.3   0        0       0             
+  n6>n22   do                         1085.4  472.7   29.6   20  489.0     247.3   0.006  241.7   0.000   0        -       10.2   0        0       0             
+  n18>n45  veniam laboris incididunt  2284.8  3026.1  169.3  20  1374.5    973.2   0.208  401.3   0.001   0        -       249.6  0        0       0             
+  n36>n45  dolor dolor magna          2284.8  2444.1  127.7  20  1968.5    1479.0  0.251  489.4   0.001   0        -       21.0   0        0       0             
+  n42>n49  eiusmod tempor eiusmod     2925.3  858.5   172.1  20  1977.2    1510.8  0.264  466.4   17.4    0        g11     186.4  0        0       0             
+  n22>n44  labore ipsum               1645.0  567.4   94.9   20  880.3     196.0   0.277  196.0   0.000   0        g5      206.6  0        0       0             
+  n26>n47  magna                      1868.2  1075.2  56.9   20  1641.3    393.0   0.261  393.0   0.001   0        -       20.3   0        0       0             
+  n8>n11   do sed                     683.3   1077.1  56.1   20  242.0     138.2   0.071  103.8   0.050   0        -       10.3   0        0       0             
+  n50>n13  amet                       823.8   3179.9  45.2   20  1068.7    598.2   0.060  470.5   0       0        -       39.6   0        0       0             
+  n51>n5   tempor dolor               303.4   663.9   93.1   20  1442.9    1332.8  0.424  110.2   0       0        -       257.7  0        0       0
+ bands: n52 n51 n50 / g1 / g5 g3 / g10 / g11
+ widest bundle of parallel lanes: 6 at y=1244,x=1035..1110

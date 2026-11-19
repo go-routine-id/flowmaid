@@ -1,0 +1,26 @@
+release: 0.37.0 — subgraph and state composite direction as in mermaid; tidier README
+
+- Version 0.37.0. CHANGELOG [0.37.0] with Highlights for B9: a subgraph
+  or state composite that nothing inside links out of is laid out on its
+  own, in its own direction, as in mermaid; route()/route_partial() and
+  picking follow it.
+- README reorganised and brought up to date:
+  - a table of contents and a diagram-type table (header, example,
+    draggable or static) up front;
+  - one section per diagram type in the same shape, with new sections
+    for user journeys, git graphs and architecture diagrams;
+  - the flowchart syntax split into subsections instead of paragraphs
+    of up to 4,900 characters; the interactive API in one place; the
+    roadmap a checklist (`$$math$$` was listed three times);
+  - the pipeline overview describes today's layout (cycle breakers,
+    seating, narrowing, compound blocks, edge-finishing stages); stale
+    claims removed (hosts hit-test themselves, long edges bow sideways);
+  - the swimlane text-DSL example renders again (a trailing `#` comment
+    is not a comment there) and the sub-element example is complete;
+    every diagram example in the README was rendered with the CLI;
+  - version mentions; large-graph table re-measured on this build.
+- docs/img/compare re-rendered with the 0.37.0 label. state.png changes:
+  the Validating composite is now one row, as in mermaid.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

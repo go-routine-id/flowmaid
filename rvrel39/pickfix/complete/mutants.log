@@ -1,0 +1,24 @@
+PICKFIX_MUTANT=0
+test architecture::tests::a_crossing_in_an_architecture_scene_is_picked_plain ... ok
+test gitgraph::tests::a_gitgraph_scene_is_picked_plain ... ok
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 1099 filtered out; finished in 0.00s
+PICKFIX_MUTANT=1
+test architecture::tests::a_crossing_in_an_architecture_scene_is_picked_plain ... FAILED
+test gitgraph::tests::a_gitgraph_scene_is_picked_plain ... FAILED
+thread 'architecture::tests::a_crossing_in_an_architecture_scene_is_picked_plain' (20782) panicked at src/architecture.rs:4184:9:
+assertion failed: crate::hops::find(&sc).iter().all(Vec::is_empty)
+thread 'gitgraph::tests::a_gitgraph_scene_is_picked_plain' (20783) panicked at src/gitgraph.rs:1878:9:
+assertion failed: crate::hops::find(&sc).iter().all(Vec::is_empty)
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 1099 filtered out; finished in 0.00s
+PICKFIX_MUTANT=2
+test architecture::tests::a_crossing_in_an_architecture_scene_is_picked_plain ... ok
+test gitgraph::tests::a_gitgraph_scene_is_picked_plain ... ok
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 1099 filtered out; finished in 0.00s
+PICKFIX_MUTANT=3
+test architecture::tests::a_crossing_in_an_architecture_scene_is_picked_plain ... FAILED
+test gitgraph::tests::a_gitgraph_scene_is_picked_plain ... FAILED
+thread 'architecture::tests::a_crossing_in_an_architecture_scene_is_picked_plain' (20792) panicked at src/architecture.rs:4184:9:
+assertion failed: crate::hops::find(&sc).iter().all(Vec::is_empty)
+thread 'gitgraph::tests::a_gitgraph_scene_is_picked_plain' (20793) panicked at src/gitgraph.rs:1878:9:
+assertion failed: crate::hops::find(&sc).iter().all(Vec::is_empty)
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 1099 filtered out; finished in 0.00s

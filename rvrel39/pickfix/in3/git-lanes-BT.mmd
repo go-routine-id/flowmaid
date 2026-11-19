@@ -1,0 +1,22 @@
+gitGraph BT:
+    commit
+    branch a
+    commit
+    branch b
+    commit
+    branch c
+    commit
+    checkout main
+    commit
+    merge c
+    checkout a
+    commit
+    checkout main
+    merge b
+    commit
+    checkout c
+    commit
+    checkout a
+    merge c
+    checkout main
+    merge a

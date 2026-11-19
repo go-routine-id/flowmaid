@@ -1,0 +1,12 @@
+prev s1-gap-nested x=2 fan=0 efp=0 ovl=0 hz=1.03
+prev s2-title-pin x=2 fan=0 efp=0 ovl=0 hz=0.06
+prev s3-direct-sibling x=0 fan=0 efp=0 ovl=0 hz=1
+prev s4-state x=1 fan=0 efp=0 ovl=0 hz=0.19
+prev s5-lr-hub x=0 fan=0 efp=0 ovl=0 hz=0.12
+prev s6-neutral-rev x=1 fan=0 efp=0 ovl=0 hz=1.03
+prev y1-link-sides x=2 fan=0 efp=0 ovl=0 hz=2
+prev y2-turned-blocks x=1 fan=0 efp=0 ovl=0 hz=0.04
+prev y2b-turned-blocks-lr x=0 fan=0 efp=0 ovl=1 hz=0.14
+prev y3-free-pins x=1 fan=1 efp=0 ovl=0 hz=3
+prev y4-state-turned x=0 fan=0 efp=0 ovl=0 hz=0.2
+prev y5-nested-links x=0 fan=0 efp=0 ovl=0 hz=1.05

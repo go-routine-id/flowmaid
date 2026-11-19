@@ -1,0 +1,11 @@
+flowchart LR
+    in[ingress] --> p1
+    subgraph OUTER["Outer platform<br/>with a much longer second title line here"]
+        subgraph INNER["<b>Inner</b> processing lane with long words"]
+            p1[parse] --> p2[check]
+        end
+        p3[store]
+    end
+    p2 --> p3
+    p3 --> outn[egress]
+    in --> p3

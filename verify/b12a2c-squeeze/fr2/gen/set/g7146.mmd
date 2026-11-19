@@ -1,0 +1,46 @@
+flowchart RL
+  n1["mail report billing"]
+  subgraph B0["Fulfilment desk"]
+    n2["db"]
+    n3["db"]
+    n4["queue"]
+    n5["db"]
+    subgraph B0s0["Back office and finance 0"]
+      n6["store"]
+      n7["notify<br/>notify"]
+      n8["parse notify pack"]
+    end
+  end
+  subgraph B1["Ingest"]
+    n9["queue"]
+  end
+  subgraph B2["Ops"]
+    n10["search"]
+    n11["db notify auth<br/>split"]
+    n12["notify"]
+    n13["worker pack cache"]
+  end
+  subgraph B3["Platform"]
+    n14["auth"]
+    n15["notify"]
+    n16["ship"]
+    n17["pack<br/>audit"]
+  end
+  n18["merge<br/>audit"]
+  n5 --> n13
+  n16 --> n5
+  n6 ==>|billing| n3
+  n5 --> n12
+  n4 -.-> n10
+  n3 -->|api| n6
+  n9 ==> n1
+  n7 --> n18
+  n12 -.->|merge| n4
+  n18 -->|report| n4
+  n5 -->|notify| n2
+  n16 -.->|split| n6
+  n13 ==> n14
+  n17 -->|auth| n15
+  n13 -.-> n4
+  n7 -.-> n6
+  n6 --> n17

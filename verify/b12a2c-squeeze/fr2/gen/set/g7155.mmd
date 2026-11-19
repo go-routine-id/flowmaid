@@ -1,0 +1,22 @@
+flowchart BT
+  n1["worker<br/>store"]
+  n2["search"]
+  subgraph B0["Ingest"]
+    n3["ingest index audit"]
+  end
+  subgraph B1["Analytics"]
+    n4["parse report auth"]
+    n5["api"]
+    subgraph B1s0["Back office and finance 0"]
+      n6["cache"]
+    end
+  end
+  n7["ship split api"]
+  n8["report<br/>ingest"]
+  n2 -->|ship| n1
+  n1 --> B1
+  n2 --> n8
+  n3 --> n8
+  n5 -->|search| n3
+  n7 -.->|audit| B1s0
+  n2 -->|audit| n6

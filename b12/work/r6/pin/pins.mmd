@@ -1,0 +1,20 @@
+flowchart TD
+  a[Feed one] --> POOL
+  b[Feed two] --> POOL
+  a --> m1
+  b --> m1
+  c[Feed three] --> m1
+  c --> POOL
+  subgraph POOL[A pool block with a long title]
+    m1[First] --> m2[Second]
+    m1 --> m3[Third]
+  end
+  POOL --> o1[Out one]
+  POOL --> o2[Out two]
+  m2 --> o1
+  m3 --> o2
+  subgraph SIDE[Side]
+    s1 --> s2
+  end
+  a --> SIDE
+  SIDE --> POOL

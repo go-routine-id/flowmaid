@@ -1,0 +1,18 @@
+flowchart LR
+    subgraph O[Shipping and returns desk]
+        subgraph G[Payments]
+            m0[auth service]
+            m1[charge]
+        end
+        k[k]
+    end
+    m0 --> k
+    m1 --> k
+    s0[src0] --> G
+    s0 --> G
+    s1[src1] --> O
+    s1 --> O
+    s2[src2] --> O
+    s2 --> m0
+    s3[src3] --> m0
+    s3 --> m0

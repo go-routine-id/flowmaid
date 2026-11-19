@@ -1,0 +1,588 @@
+<<interface>> .9 .C1..9["l.b"]
+----
+<<interface>> .9.~a.b~
+----
+<<interface>> .A. µ. µ~T~ ["x"]
+----
+<<interface>> ._x. 9
+----
+<<interface>> .b. 9:::st
+----
+<<interface>> .b..9["l.b"]
+----
+<<interface>> .b..A~T~
+----
+<<interface>> .x-y. _x`q`
+----
+<<interface>> .µ..A. C1~T~
+----
+<<interface>> .µ._x~a.b~
+----
+<<interface>> .µ~T~
+----
+<<interface>> .日本..._x~a.b~
+----
+<<interface>> .日本~T~
+----
+<<interface>> 9 . b...x-y.:::st
+----
+<<interface>> 9.	9.["l.b"]
+----
+<<interface>> 9..日本 . 9:::st
+----
+<<interface>> 9:::st
+----
+<<interface>> A.`q`
+----
+<<interface>> C1. 日本~T~ ["x"]
+----
+<<interface>> C1:::st
+----
+<<interface>> _x.	x-y.9.~a.b~
+----
+<<interface>> _x:::st
+----
+<<interface>> _x`q`
+----
+<<interface>> `A ._x.	b`["l.b"]
+----
+<<interface>> `A. x-y`:::st
+----
+<<interface>> `A`.~a.b~
+----
+<<interface>> `C1...9`["l.b"]
+----
+<<interface>> `C1`~T~
+----
+<<interface>> `_x. _x`.
+----
+<<interface>> `_x`.
+----
+<<interface>> `µ.C1.	_x`:::st
+----
+<<interface>> `µ`.~T~ ["x"]
+----
+<<interface>> `日本 ._x``q`
+----
+<<interface>> b...x-y._x~T~
+----
+<<interface>> x-y . C1 .x-y:::st
+----
+<<interface>> x-y . 日本. b~T~ ["x"]
+----
+<<interface>> x-y.C1~a.b~
+----
+<<interface>> µ.C1~T~ ["x"]
+----
+<<interface>> 日本. µ:::st
+----
+<<interface>> 日本.C1~a.b~
+----
+class .9 .C1
+----
+class .9. C1.["l.b"]
+----
+class .9...C1~T~
+----
+class .9...b. 日本{
++f int
+}
+----
+class .9...日本:::st
+----
+class .9~a.b~
+----
+class .A
+----
+class .A . _x.
+----
+class .A ._x. µ~T~ ["x"]
+----
+class .A. {
+}
+----
+class .A...C1..C1`q`
+----
+class .A.._x`q`
+----
+class .C1 . _x.	_x.~T~
+----
+class .C1 . x-y.C1 {
+}
+----
+class .C1.	b . 9
+----
+class .C1. A...x-y.~a.b~
+----
+class .C1. 日本~T~
+----
+class .C1.{
++f int
+}
+----
+class .C1~a.b~
+----
+class ._x
+----
+class ._x .x-y..._x["l.b"]
+----
+class ._x. x-y . A {
+}
+----
+class ._x...C1 . µ`q`
+----
+class ._x.x-y..µ{
++f int
+}
+----
+class ._x.~a.b~
+----
+class ._x`q`
+----
+class .b . µ..C1`q`
+----
+class .b. C1 {
+}
+----
+class .b. C1`q`
+----
+class .b:::st
+----
+class .x-y
+----
+class .x-y. 9`q`
+----
+class .x-y`q`
+----
+class .x-y{
++f int
+}
+----
+class .µ
+----
+class .µ. 日本.C1.
+----
+class .µ..日本 {
+}
+----
+class .µ.~T~ ["x"]
+----
+class .µ`q`
+----
+class .日本
+----
+class .日本.	C1..日本.`q`
+----
+class .日本.._x . _x["l.b"]
+----
+class .日本..µ.b:::st
+----
+class .日本~T~
+----
+class .日本~T~ ["x"]
+----
+class 9 . µ.	日本 {
+}
+----
+class 9 {
+}
+----
+class 9..9~a.b~
+----
+class 9..C1.A{
++f int
+}
+----
+class 9..b~a.b~
+----
+class 9.A.C1~a.b~
+----
+class 9:::st
+----
+class 9`q`
+----
+class 9~a.b~
+----
+class A . x-y . µ~a.b~
+----
+class A.日本
+----
+class A["l.b"]
+----
+class A`q`
+----
+class A{
++f int
+}
+----
+class C1 .A..日本`q`
+----
+class C1 .b . A.{
++f int
+}
+----
+class C1.	日本~T~ ["x"]
+----
+class C1. _x..._x:::st
+----
+class C1. x-y...A:::st
+----
+class C1...日本{
++f int
+}
+----
+class C1.~T~ ["x"]
+----
+class C1~T~
+----
+class X, .9 . 9~T~
+----
+class X, .9 . A.x-y:::st
+----
+class X, .9 . 日本
+----
+class X, .9 ._x. 日本["l.b"]
+----
+class X, .9. A`q`
+----
+class X, .9.A:::st
+----
+class X, .A
+----
+class X, .A . A~T~ ["x"]
+----
+class X, .A . 日本
+----
+class X, .A...x-y . 日本 {
+}
+----
+class X, .A~a.b~
+----
+class X, .C1 . µ
+----
+class X, ._x . A.	µ.~a.b~
+----
+class X, ._x.	b~a.b~
+----
+class X, ._x...A...日本["l.b"]
+----
+class X, ._x.~T~
+----
+class X, .b . µ.	日本 {
+}
+----
+class X, .b. A . _x{
++f int
+}
+----
+class X, .b. A~T~
+----
+class X, .x-y..b...A`q`
+----
+class X, .x-y..日本 .x-y.~a.b~
+----
+class X, .µ.`q`
+----
+class X, .日本`q`
+----
+class X, .日本~a.b~
+----
+class X, 9.	日本..C1~T~
+----
+class X, 9..9["l.b"]
+----
+class X, 9~T~ ["x"]
+----
+class X, A.	x-y . 日本{
++f int
+}
+----
+class X, C1
+----
+class X, C1. A {
+}
+----
+class X, C1..µ~T~ ["x"]
+----
+class X, C1~T~ ["x"]
+----
+class X, _x
+----
+class X, _x. {
+}
+----
+class X, _x...A.~T~
+----
+class X, _x..A.x-y.{
++f int
+}
+----
+class X, `9``q`
+----
+class X, `A.C1.日本`
+----
+class X, `A`~T~ ["x"]
+----
+class X, `C1. _x. C1` {
+}
+----
+class X, `_x...C1`.~T~
+----
+class X, `b`~a.b~
+----
+class X, `x-y`.
+----
+class X, `x-y`~T~ ["x"]
+----
+class X, `µ . _x. µ`~T~ ["x"]
+----
+class X, `µ.9`
+----
+class X, `日本`~a.b~
+----
+class X, b.	x-y .日本:::st
+----
+class X, x-y .µ.	b~a.b~
+----
+class X, µ ._x.	b~T~ ["x"]
+----
+class X, 日本 .日本. 9.{
++f int
+}
+----
+class X, 日本.	A.	A.~a.b~
+----
+class X, 日本.	µ . µ~a.b~
+----
+class X, 日本..A
+----
+class X, 日本.C1.
+----
+class X, 日本.~a.b~
+----
+class X, 日本~a.b~
+----
+class _x
+----
+class _x. x-y..A~T~ ["x"]
+----
+class _x..9{
++f int
+}
+----
+class _x.._x["l.b"]
+----
+class _x.A.~T~
+----
+class _x.`q`
+----
+class _x.{
++f int
+}
+----
+class _x.~T~ ["x"]
+----
+class _x:::st
+----
+class _x["l.b"]
+----
+class _x`q`
+----
+class `9 ._x.	x-y`.~T~ ["x"]
+----
+class `9. b`["l.b"]
+----
+class `9...b`:::st
+----
+class `9..C1._x`.~T~ ["x"]
+----
+class `9`.~a.b~
+----
+class `A . x-y`~T~
+----
+class `A.	A`.~T~ ["x"]
+----
+class `A.	日本...b`~T~ ["x"]
+----
+class `A.	日本.µ``q`
+----
+class `A. 日本...b`{
++f int
+}
+----
+class `A...b...µ`~T~ ["x"]
+----
+class `A...b``q`
+----
+class `A..µ. 日本`~T~
+----
+class `A..日本. 9`~T~ ["x"]
+----
+class `A.µ`~T~ ["x"]
+----
+class `A`.~T~
+----
+class `A`:::st
+----
+class `A`["l.b"]
+----
+class `A`~a.b~
+----
+class `C1 . 9 . b`{
++f int
+}
+----
+class `C1 .9`~T~
+----
+class `C1. x-y. x-y`{
++f int
+}
+----
+class `C1...9` {
+}
+----
+class `C1...x-y`~a.b~
+----
+class `C1.A`~T~ ["x"]
+----
+class `C1.b`:::st
+----
+class `C1`.~T~
+----
+class `C1`{
++f int
+}
+----
+class `_x . x-y...C1`.:::st
+----
+class `_x . 日本. 日本``q`
+----
+class `_x .x-y`. {
+}
+----
+class `_x.	b` {
+}
+----
+class `_x..µ..µ`.`q`
+----
+class `_x.C1 . x-y`["l.b"]
+----
+class `_x`["l.b"]
+----
+class `_x`{
++f int
+}
+----
+class `_x`~T~
+----
+class `b...日本 . 日本`~T~ ["x"]
+----
+class `b.9..C1`{
++f int
+}
+----
+class `b._x.9`{
++f int
+}
+----
+class `b`
+----
+class `b``q`
+----
+class `x-y. A..x-y`
+----
+class `x-y...C1`.~T~
+----
+class `x-y..9.	_x`~T~ ["x"]
+----
+class `x-y..b`~a.b~
+----
+class `x-y.A..9`~T~
+----
+class `x-y`.["l.b"]
+----
+class `µ . x-y`{
++f int
+}
+----
+class `µ.	C1 .A`.~T~
+----
+class `µ.	µ`.~T~ ["x"]
+----
+class `µ...C1 .C1`~T~ ["x"]
+----
+class `µ..._x`.["l.b"]
+----
+class `µ`.`q`
+----
+class `日本 ._x. x-y`.:::st
+----
+class `日本...9. b`~T~
+----
+class `日本...A...C1`{
++f int
+}
+----
+class `日本.9 ._x``q`
+----
+class `日本`
+----
+class `日本`~T~
+----
+class `日本`~a.b~
+----
+class b.	A.日本{
++f int
+}
+----
+class b.	C1..C1.~T~ ["x"]
+----
+class b...x-y. b:::st
+----
+class b._x~a.b~
+----
+class b.~T~
+----
+class x-y ._x~T~ ["x"]
+----
+class x-y.	_x:::st
+----
+class x-y.	µ . µ.~T~
+----
+class x-y. _x~T~
+----
+class µ
+----
+class µ .C1.	b~T~ ["x"]
+----
+class µ .日本{
++f int
+}
+----
+class µ.	b
+----
+class µ.	x-y . _x["l.b"]
+----
+class µ.A{
++f int
+}
+----
+class µ.~a.b~
+----
+class µ~T~
+----
+class µ~a.b~
+----
+class 日本 . x-y:::st
+----
+class 日本.	_x ._x:::st
+----
+class 日本. C1..A.{
++f int
+}
+----
+class 日本. C1~T~ ["x"]
+----
+class 日本. x-y~a.b~
+----
+class 日本..9:::st

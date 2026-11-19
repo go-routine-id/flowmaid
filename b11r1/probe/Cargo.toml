@@ -1,0 +1,47 @@
+[package]
+name = "probe"
+version = "0.1.0"
+edition = "2021"
+[dependencies]
+flowmaid = { path = "/home/user/flowmaid" }
+[profile.release]
+debug = false
+[[bin]]
+name = "rp"
+path = "bin/rp.rs"
+[[bin]]
+name = "contract"
+path = "bin/contract.rs"
+[[bin]]
+name = "dbg"
+path = "bin/dbg.rs"
+[[bin]]
+name = "grid"
+path = "bin/grid.rs"
+[[bin]]
+name = "part"
+path = "bin/part.rs"
+[[bin]]
+name = "ends"
+path = "bin/ends.rs"
+[[bin]]
+name = "tie"
+path = "bin/tie.rs"
+[[bin]]
+name = "fuzz"
+path = "bin/fuzz.rs"
+[[bin]]
+name = "el"
+path = "bin/el.rs"
+[[bin]]
+name = "rsvg"
+path = "bin/rsvg.rs"
+[[bin]]
+name = "pk"
+path = "bin/pk.rs"
+[[bin]]
+name = "pk2"
+path = "bin/pk2.rs"
+[[bin]]
+name = "part2"
+path = "bin/part2.rs"

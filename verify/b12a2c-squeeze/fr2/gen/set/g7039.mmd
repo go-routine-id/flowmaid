@@ -1,0 +1,15 @@
+flowchart TD
+  n1["queue<br/>merge"]
+  n2["report"]
+  subgraph B0["Ingest"]
+    n3["ingest<br/>db"]
+    n4["mail"]
+  end
+  subgraph B1["Storefront"]
+    n5["queue"]
+  end
+  n6["ship ingest worker"]
+  n1 -.-> n3
+  n4 --> B1
+  n6 --> n5
+  n6 --> n2

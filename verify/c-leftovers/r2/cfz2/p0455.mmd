@@ -1,0 +1,17 @@
+classDiagram
+direction BT
+A ..> B
+B ..|> C : has many of
+A --|> D : x
+B o-- D
+C ..|> A
+D ..> D : d0
+D ..> D
+D *-- D : d2
+A o-- A
+B *-- B : b0
+class C {
+ +int id
+ +run() void
+ +stop()
+}

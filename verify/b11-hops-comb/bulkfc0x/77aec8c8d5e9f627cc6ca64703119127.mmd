@@ -1,0 +1,13 @@
+flowchart LR
+  A[Hub] ==> B[One]
+  A ==> C[Two]
+  A ==> D[Three]
+  A ==> E[Four]
+  A ==> F[Five]
+  B ==> Z[Sink]
+  C ==> Z
+  D ==> Z
+  E ==> Z
+  F ==> Z
+  Z -.-> A
+  A <==> Z

@@ -1,0 +1,6 @@
+flowchart TD
+  A[Order] --> B{Paid?}
+  B -->|yes| C[Ship]
+  B -->|no| D[Remind]
+  D -->|paid| C
+  D -->|cancel| E[Close]

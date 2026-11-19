@@ -1,0 +1,20 @@
+classDiagram
+direction BT
+A <|-- B : uses
+A --> C
+A -- D
+B --> E : has many of
+A ..|> F : owns
+E --> E : e0
+E *-- E
+E ..> E
+E *-- E
+E o-- E : e4
+D *-- D : d0
+D ..> D : d1
+D *-- D : d2
+D --> D
+D o-- D : d4
+A ..> A
+A o-- A : a1
+A ..> A : a2

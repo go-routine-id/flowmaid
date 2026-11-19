@@ -1,0 +1,11 @@
+flowchart BT
+  subgraph OUT [Outer platform]
+    subgraph IN [Inner service]
+      a[Ingest] -->|parse| b[Normalize]
+      b --> c[Store]
+    end
+    d[Index] --> e[Query API]
+  end
+  c -->|publish| d
+  x[Client] -->|request| e
+  y[Admin] --> a

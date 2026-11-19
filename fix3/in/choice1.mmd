@@ -1,0 +1,11 @@
+stateDiagram-v2
+    state if_state <<choice>>
+    [*] --> IsPositive
+    IsPositive --> if_state
+    if_state --> False: if n < 0
+    if_state --> True : if n >= 0
+    if_state --> Zero : if n == 0
+    state c2 <<choice>>
+    True --> c2
+    c2 --> Big : > 100
+    c2 --> Small : <= 100

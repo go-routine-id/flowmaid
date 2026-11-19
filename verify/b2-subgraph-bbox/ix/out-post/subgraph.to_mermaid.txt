@@ -1,0 +1,28 @@
+flowchart TD
+    Client
+    GW("API Gateway")
+    Auth["Auth service"]
+    Users["User DB"]
+    Bus["Broker"]
+    C1["Consumer A"]
+    C2["Consumer B"]
+    Store["Warehouse"]
+    subgraph platform["Platform"]
+        direction LR
+        Auth
+        Users
+        subgraph events["Event bus"]
+            Bus
+            C1
+            C2
+        end
+    end
+    Client --> GW
+    GW --> Auth
+    Auth --> Users
+    Users --> Bus
+    Bus --> C1
+    Bus --> C2
+    C1 --> Store
+    C2 --> Store
+    style Client fill:#fff3bf,stroke:#f08c00

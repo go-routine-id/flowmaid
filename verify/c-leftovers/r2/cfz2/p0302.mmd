@@ -1,0 +1,9 @@
+classDiagram
+A *-- B
+B *-- C
+C ..|> D
+B -- E
+D "1" *-- "*" F : owns
+C <|-- E
+A *-- D
+E "1" --> "*" E

@@ -1,0 +1,13 @@
+flowchart BT
+    subgraph G[Data ingestion workers]
+        m0[w]
+        m1[auth service]
+    end
+    s0[src0] -- "lbl4" --> G
+    s1[src1] --> m0
+    s2[src2] --> m0
+    s2 --> G
+    s3[src3] --> G
+    s3 --> G
+    m1 --> z[end]
+    G --> z2[after]

@@ -1,0 +1,16 @@
+flowchart TD
+  n1["queue"]
+  n2["search mail report"]
+  subgraph B0["Ingest"]
+    n3["worker"]
+  end
+  subgraph B1["Platform"]
+    n4["parse"]
+  end
+  n5["worker"]
+  n6["report"]
+  n1 --> n3
+  n5 ==>|worker| n3
+  n5 --> n6
+  n6 --> n5
+  n1 -.-> n2

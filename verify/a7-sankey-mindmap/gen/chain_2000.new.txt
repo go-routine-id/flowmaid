@@ -1,0 +1,1 @@
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/a7-sankey-mindmap/gen/chain_2000.mmd: err ParseError { line: 502, message: "mindmap nesting too deep (max 500 levels)" }

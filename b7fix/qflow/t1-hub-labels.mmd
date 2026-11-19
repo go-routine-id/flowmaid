@@ -1,0 +1,10 @@
+flowchart TD
+  H{Route request} -->|cache hit| A[Serve cached]
+  H -->|miss| B[Fetch origin]
+  H -->|stale while revalidate| C[Serve stale]
+  H -->|blocked| D[Deny]
+  H -->|rate limited| E[Throttle]
+  H --> F[Log]
+  A --> Z[Respond]
+  B --> Z
+  C --> Z

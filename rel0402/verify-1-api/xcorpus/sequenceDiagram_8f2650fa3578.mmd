@@ -1,0 +1,20 @@
+---
+config:
+  sequence:
+    scopedFrames: true
+---
+sequenceDiagram
+    participant A as Alice
+    participant B as Bob
+    participant C as Carol
+    A->>+B: open session
+    alt acquire the lock
+        B->>C: lock
+        C-->>B: granted
+    else timeout
+        B->>C: retry
+    end
+    loop poll
+        B->>C: status
+    end
+    B-->>-A: done

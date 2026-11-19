@@ -1,0 +1,10 @@
+[package]
+name = "sweeprob"
+version = "0.0.0"
+edition = "2021"
+[dependencies]
+flowmaid = { path = "/home/user/flowmaid" }
+[workspace]
+[profile.release]
+debug-assertions = true
+overflow-checks = true

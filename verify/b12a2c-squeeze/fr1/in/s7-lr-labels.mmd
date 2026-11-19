@@ -1,0 +1,14 @@
+flowchart LR
+  subgraph In [Ingest]
+    i1[Collector] --> i2[Parser]
+  end
+  subgraph Proc [Processing]
+    p1[Enricher] --> p2[Aggregator]
+  end
+  subgraph Out [Output]
+    o1[Writer] --> o2[Archive]
+  end
+  i2 -->|parsed records| p1
+  i1 -->|raw copy| o2
+  p2 -->|rollups| o1
+  i2 -->|errors| o1

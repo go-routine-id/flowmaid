@@ -1,0 +1,18 @@
+flowchart RL
+  H0 -->|no| N2
+  H0 -.->|retry| N1
+  H0 -->|retry| N0
+  H0 -.-> N6
+  H0 ---|express| N4
+  H0 --- N0
+  H0 -.->|express| N1
+  H0 --> N6
+  H0 --> N4
+  H0 -.->|x| N3
+  H1 --- N3
+  H1 ==>|no| N1
+  N2 --> N2
+  N0 --> N2
+  N1 --> N0
+  N4 -->|x| N6
+  N0 -->|gift wrap| N4

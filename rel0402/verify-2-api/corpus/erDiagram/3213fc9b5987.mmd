@@ -1,0 +1,14 @@
+erDiagram
+direction LR
+A ||--o{ B : has
+A only one to zero or more C
+A }|..|{ D : "x"
+A 1 optionally to 0+ E
+"Customer Account" ||--|| F
+p[Person] ||--|| G
+H ||--|| I
+A {
+ int id PK "key" string name
+ varchar(255) e pk, fk "c"
+}
+B {}

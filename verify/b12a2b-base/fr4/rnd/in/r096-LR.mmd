@@ -1,0 +1,11 @@
+flowchart LR
+    subgraph G[Édition générale des données]
+        m0[charge]
+        m1[ledger]
+        m2[ledger]
+        m0 --> m1
+    end
+    s0[src0] --> G
+    s1[src1] -- "lbl4" --> m0
+    m2 --> z[end]
+    G --> z2[after]

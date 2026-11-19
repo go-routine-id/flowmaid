@@ -1,0 +1,23 @@
+stateDiagram-v2
+direction LR
+[*] --> f
+state f <<fork>>
+f --> Q0
+f --> Outer
+state Outer {
+  o1 --> B0
+  state B0 {
+    direction TB
+    B0_0 --> B0_1 : a longer label here
+    B0_1 --> B0_2
+    B0_2 --> B0_3 : a longer label here
+  }
+}
+state j <<join>>
+Q0 --> j
+Outer --> j
+j --> [*]
+state g2 <<fork>>
+f --> g2
+g2 --> Z1
+g2 --> Z2

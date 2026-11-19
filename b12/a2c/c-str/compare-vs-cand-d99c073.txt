@@ -1,0 +1,177 @@
+compare.sh: baseline /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/tools-a2b/cand-d99c073
+            candidate /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/a2c/c-str
+
+== 1. local inputs, per cell (LIVE judge)
+[local static A2] 444 / 444 cells; must-fail 86 -> 86; worse 3 (new 0, worse inside failing 3, changed 0, missing 0); gone 0, better inside failing 8; info: target new 0 / gone 0 / worse 0, drift inside passing 7
+  WORSE    infra-overview detour_max 1.72 -> 1.73 (must <= 1.63)
+  WORSE    infra-overview-v2 lbl_in_end 1 -> 2 (must <= 0)
+  WORSE    perm-b-subgraphs-reversed lbl_in_end 1 -> 2 (must <= 0)
+  better       infra-overview compact_mean 5.4 -> 5.39 (must <= 3.9)
+  better       infra-overview area 4505510 -> 4496156 (must <= 4267593.75)
+  better       infra-overview-v2 lbl_crowd 4 -> 3 (must <= 1)
+  better       infra-overview-v2 lbl_endpx_mean 381 -> 365 (must <= 329)
+  better       infra-overview-v2 area 5093327 -> 5052780 (must <= 3209880)
+  better       perm-e-one-more-inner-edge compact_max 10.12 -> 9.94 (must <= 5.5)
+  better       perm-b-subgraphs-reversed lbl_crowd 8 -> 7 (must <= 0)
+  better       bench-75 compact_max 71.64 -> 65.38 (must <= 52.03)
+  drift        infra-overview span_max 0.3 -> 0.301 (must <= 0.37)
+  drift        infra-overview-v2 span_max 0.247 -> 0.249 (must <= 0.28)
+  drift        infra-overview-v2 detour_max 1.47 -> 1.48 (must <= 1.76)
+  drift        perm-a-edges-reversed span_max 0.3 -> 0.301 (must <= 0.37)
+  drift        perm-c-actors-reversed span_max 0.3 -> 0.301 (must <= 0.37)
+  drift        perm-d-edges-rotated span_max 0.3 -> 0.301 (must <= 0.37)
+  drift        perm-e-one-more-inner-edge span_max 0.3 -> 0.301 (must <= 0.37)
+[local routed] 62 / 62 cells; must-fail 19 -> 19; worse 0 (new 0, worse inside failing 0, changed 0, missing 0); gone 0, better inside failing 1; info: target new 0 / gone 0 / worse 0, drift inside passing 0
+  better       perm-b-subgraphs-reversed lbl_crowd 8 -> 7 (must <= 5)
+cells: WORSE
+
+== 2. suite-on gate messages
+[gates] tests 1246 / 1246; failing 8 -> 8
+  == defect_baseline_gate: message lines worse 0, better 6
+     ~ better static lat_wiggles 33.00 > ceiling 15  ->  static lat_wiggles 32.00 > ceiling 15
+     ~ better static lat_backtrack 10599.64 > ceiling 1870  ->  static lat_backtrack 10574.14 > ceiling 1870
+     ~ better static band_len 91602.00 > ceiling 74730  ->  static band_len 90832.00 > ceiling 74730
+     ~ better routed lat_wiggles 33.00 > ceiling 5  ->  routed lat_wiggles 32.00 > ceiling 5
+     ~ better routed lat_backtrack 10599.64 > ceiling 425  ->  routed lat_backtrack 10574.14 > ceiling 425
+     ~ better routed band_len 91456.00 > ceiling 71020  ->  routed band_len 90686.00 > ceiling 71020
+  == scene::tests::far_apart_back_edges_and_frame_legs_square_up_alike_in_route: message lines worse 0, better 1
+     ~ better leg at 1401.7999999999997, frame at 1416.2999999999997  ->  leg at 1339.2999999999997, frame at 1353.7999999999997
+  info stdout defect_baseline_gate: 20 cells changed
+       routed band_len: 91456.0000 -> 90686.0000  lower
+       routed compact_max: 71.6394 -> 65.3772  lower
+       routed compact_mean: 7.2604 -> 7.0516  lower
+       routed edge_len: 210464.7227 -> 208873.5767  lower
+       routed end_tilt_max: 0.0707 -> 0.0000  lower
+       routed ink: 0.1092 -> 0.1093  higher (worse?)
+       routed lat_backtrack: 10599.6366 -> 10574.1366  lower
+       routed lat_wiggles: 33.0000 -> 32.0000  lower
+       routed lateral_x: 13.0000 -> 12.0000  lower
+       routed xhops: 201.0000 -> 203.0000  higher (worse?)
+       static band_len: 91602.0000 -> 90832.0000  lower
+       static compact_max: 71.6394 -> 65.3772  lower
+       static compact_mean: 7.2604 -> 7.0516  lower
+       static edge_len: 210411.4918 -> 208820.3457  lower
+       static end_tilt_max: 0.0707 -> 0.0000  lower
+       static ink: 0.1139 -> 0.1140  higher (worse?)
+       static lat_backtrack: 10599.6366 -> 10574.1366  lower
+       static lat_wiggles: 33.0000 -> 32.0000  lower
+       static lateral_x: 13.0000 -> 12.0000  lower
+       static xhops: 200.0000 -> 202.0000  higher (worse?)
+  info stdout quality_gate: 40 cells changed
+       bench-75 routed area_per_node: 144458.66 -> 140725.03  lower
+       bench-75 routed aspect: 1.93 -> 1.88  lower
+       bench-75 routed band_len: 29346.00 -> 28576.00  lower
+       bench-75 routed border_len: 514.35 -> 514.89  higher (worse?)
+       bench-75 routed compact_max: 71.64 -> 65.38  lower
+       bench-75 routed compact_mean: 21.15 -> 19.90  lower
+       bench-75 routed detour_max: 1.42 -> 1.44  higher (worse?)
+       bench-75 routed edge_len: 68501.09 -> 66909.94  lower
+       bench-75 routed end_tilt_max: 0.07 -> 0.00  lower
+       bench-75 routed hug_len: 578.17 -> 618.30  higher (worse?)
+       bench-75 routed hug_runs: 4.00 -> 5.00  higher (worse?)
+       bench-75 routed lat_backtrack: 2260.70 -> 2235.20  lower
+       bench-75 routed lat_wiggles: 18.00 -> 17.00  lower
+       bench-75 routed lateral_x: 2.00 -> 1.00  lower
+       bench-75 routed ortho_edges: 74.00 -> 75.00  higher (worse?)
+       bench-75 routed span_max: 0.15 -> 0.16  higher (worse?)
+       bench-75 routed tight_len: 7416.00 -> 7242.00  lower
+       bench-75 routed tight_pairs: 46.00 -> 47.00  higher (worse?)
+       bench-75 routed width: 2418.20 -> 2355.70  lower
+       bench-75 routed xhops: 150.00 -> 152.00  higher (worse?)
+       bench-75 static area_per_node: 144458.66 -> 140725.03  lower
+       bench-75 static aspect: 1.93 -> 1.88  lower
+       bench-75 static band_len: 29346.00 -> 28576.00  lower
+       bench-75 static border_len: 514.35 -> 514.89  higher (worse?)
+       bench-75 static compact_max: 71.64 -> 65.38  lower
+       bench-75 static compact_mean: 21.15 -> 19.90  lower
+       bench-75 static detour_max: 1.42 -> 1.44  higher (worse?)
+       bench-75 static edge_len: 68501.09 -> 66909.94  lower
+       bench-75 static end_tilt_max: 0.07 -> 0.00  lower
+       bench-75 static hug_len: 578.17 -> 618.30  higher (worse?)
+       bench-75 static hug_runs: 4.00 -> 5.00  higher (worse?)
+       bench-75 static lat_backtrack: 2260.70 -> 2235.20  lower
+       bench-75 static lat_wiggles: 18.00 -> 17.00  lower
+       bench-75 static lateral_x: 2.00 -> 1.00  lower
+       bench-75 static ortho_edges: 74.00 -> 75.00  higher (worse?)
+       bench-75 static span_max: 0.15 -> 0.16  higher (worse?)
+       bench-75 static tight_len: 7416.00 -> 7242.00  lower
+       bench-75 static tight_pairs: 46.00 -> 47.00  higher (worse?)
+       bench-75 static width: 2418.20 -> 2355.70  lower
+       bench-75 static xhops: 150.00 -> 152.00  higher (worse?)
+panics: no worse
+
+== 3. direction copies (332 + 32, static and routed)
+[dirs static] 332 copies  defects 41->41 (+0/-0)  x_drawn 1283->1286 (+2/-1)  lateral_x 201->199 (+0/-2)  fan_x 30->32 (+1/-0)  edge_chip 8->7 (+0/-1)  side_ends 216->216 (+1/-1)  min_edge_gap down 0
+    WORSE x_drawn (2): quality.bench-75-BT 200->204; quality.dense-td-RL 29->30
+    WORSE fan_x (1): quality.bench-75-BT 6->8
+    WORSE side_ends (1): quality.bench-75-TD 15->16
+    info edge_edge_x: total 1266->1269, up 2 / down 1 (worse on 2, better on 1): quality.bench-75-BT 200->204; quality.dense-td-RL 29->30
+    info min_node_gap: total 8404.87->8399.59, up 0 / down 5 (worse on 5, better on 0): notes.nested-composite-LR 11.92->11.66; notes.nested-composite-RL 11.92->11.66; quality.bench-75-BT 12.86->12.51; quality.bench-75-RL 12.53->12.52; quality.bench-75-TD 20.39->15.99
+    info lbl_edge: total 11->9, up 0 / down 2 (worse on 0, better on 2)
+    info width: total 275143->274964, up 0 / down 8 (no direction)
+    info height: total 217280->217129, up 0 / down 6 (no direction)
+    info aspect: total 786.33->786.11, up 2 / down 9 (no direction)
+    info area_per_node: total 14812004->14791369, up 0 / down 14 (no direction)
+    info border_len: total 514.35->514.89, up 1 / down 0 (worse on 1, better on 0): quality.bench-75-LR 514.35->514.89
+    info tight_pairs: total 313->313, up 3 / down 3 (worse on 3, better on 3): quality.bench-75-LR 46->47; quality.bench-75-RL 48->49; quality.bench-75-TD 35->36
+    info tight_len: total 43226->41428, up 0 / down 9 (worse on 0, better on 9)
+    info hug_runs: total 12->13, up 1 / down 0 (worse on 1, better on 0): quality.bench-75-LR 4->5
+    info hug_len: total 1394.37->1434.34, up 1 / down 1 (worse on 1, better on 1): quality.bench-75-LR 578.17->618.3
+    info hug_max: total 1195.14->1194.98, up 0 / down 1 (worse on 0, better on 1)
+    info xgap_max: total 62->64, up 2 / down 0 (worse on 2, better on 0): quality.bench-75-BT 2->3; quality.dense-td-RL 1->2
+    info ortho_edges: total 2605->2607, up 2 / down 0 (no direction)
+    info end_tilt_max: total 433.73->433.59, up 0 / down 2 (worse on 0, better on 2)
+    info lat_wiggles: total 323->318, up 0 / down 3 (worse on 0, better on 3)
+    info lat_backtrack: total 47038.4->46323.1, up 0 / down 3 (worse on 0, better on 3)
+    info band_pairs: total 1028->1013, up 3 / down 3 (worse on 3, better on 3): notes.spread-face-BT 4->5; quality.dense-td-LR 51->52; quality.dense-td-RL 51->54
+    info band_len: total 389738->384174, up 3 / down 7 (worse on 3, better on 7): notes.spread-face-BT 534->1658; quality.dense-td-LR 25834->25882; quality.dense-td-RL 25834->27154
+    info xhops: total 1000->997, up 3 / down 2 (no direction)
+    info compact_max: total 3810.58->3797.57, up 0 / down 6 (worse on 0, better on 6)
+    info compact_mean: total 2502.75->2499.59, up 0 / down 8 (worse on 0, better on 8)
+    info span_max: total 166.08->166.13, up 5 / down 0 (worse on 5, better on 0): blocks.b9-inside2-BT 0.48->0.49; blocks.b9-inside2-TD 0.48->0.49; quality.bench-75-BT 0.15->0.16; quality.bench-75-LR 0.15->0.16; quality.bench-75-RL 0.15->0.16
+    info edge_len: total 1.90489e+06->1.8959e+06, up 0 / down 15 (worse on 0, better on 15)
+    info bends_max: total 1382->1384, up 2 / down 0 (worse on 2, better on 0): quality.bench-75-RL 9->10; quality.dense-td-RL 9->10
+    info detour_max: total 322.88->322.55, up 2 / down 2 (worse on 2, better on 2): quality.bench-75-LR 1.42->1.44; quality.bench-75-RL 1.43->1.44
+    info lbl_end_mean: total 31852.5->31845.7, up 5 / down 5 (worse on 5, better on 5): notes.nested-composite-LR 176.14->178.88; notes.nested-composite-RL 176.14->178.88; notes.routed-around-BT 111.65->117.15; notes.spread-face-BT 141.36->143.71; notes.spread-face-RL 143.36->144.46
+    info chip_gap_min: total 8900.11->8906.13, up 2 / down 1 (worse on 1, better on 2): notes.routed-around-BT 5.75->5.71
+[dirs routed] 332 copies  defects 41->41 (+0/-0)  x_drawn 1285->1288 (+2/-1)  lateral_x 201->199 (+0/-2)  fan_x 32->34 (+1/-0)  edge_chip 8->7 (+0/-1)  side_ends 216->216 (+1/-1)  min_edge_gap down 0
+    WORSE x_drawn (2): quality.bench-75-BT 200->204; quality.dense-td-RL 29->30
+    WORSE fan_x (1): quality.bench-75-BT 6->8
+    WORSE side_ends (1): quality.bench-75-TD 15->16
+    info edge_edge_x: total 1268->1271, up 2 / down 1 (worse on 2, better on 1): quality.bench-75-BT 200->204; quality.dense-td-RL 29->30
+    info min_node_gap: total 8379.65->8374.37, up 0 / down 5 (worse on 5, better on 0): notes.nested-composite-LR 11.92->11.66; notes.nested-composite-RL 11.92->11.66; quality.bench-75-BT 12.86->12.51; quality.bench-75-RL 12.53->12.52; quality.bench-75-TD 20.39->15.99
+    info lbl_edge: total 13->11, up 0 / down 2 (worse on 0, better on 2)
+    info width: total 274843->274664, up 0 / down 8 (no direction)
+    info height: total 217338->217187, up 0 / down 6 (no direction)
+    info aspect: total 783.41->783.19, up 2 / down 9 (no direction)
+    info area_per_node: total 14794886->14774252, up 0 / down 14 (no direction)
+    info border_len: total 514.35->514.89, up 1 / down 0 (worse on 1, better on 0): quality.bench-75-LR 514.35->514.89
+    info tight_pairs: total 313->313, up 3 / down 3 (worse on 3, better on 3): quality.bench-75-LR 46->47; quality.bench-75-RL 48->49; quality.bench-75-TD 35->36
+    info tight_len: total 43226->41428, up 0 / down 9 (worse on 0, better on 9)
+    info hug_runs: total 20->21, up 1 / down 0 (worse on 1, better on 0): quality.bench-75-LR 4->5
+    info hug_len: total 1818.69->1858.66, up 1 / down 1 (worse on 1, better on 1): quality.bench-75-LR 578.17->618.3
+    info hug_max: total 1407.3->1407.14, up 0 / down 1 (worse on 0, better on 1)
+    info xgap_max: total 62->64, up 2 / down 0 (worse on 2, better on 0): quality.bench-75-BT 2->3; quality.dense-td-RL 1->2
+    info ortho_edges: total 2597->2599, up 2 / down 0 (no direction)
+    info end_tilt_max: total 433.73->433.59, up 0 / down 2 (worse on 0, better on 2)
+    info lat_wiggles: total 319->314, up 0 / down 3 (worse on 0, better on 3)
+    info lat_backtrack: total 46868.7->46153.4, up 0 / down 3 (worse on 0, better on 3)
+    info band_pairs: total 1030->1015, up 3 / down 3 (worse on 3, better on 3): notes.spread-face-BT 4->5; quality.dense-td-LR 51->52; quality.dense-td-RL 51->54
+    info band_len: total 390478->384914, up 3 / down 7 (worse on 3, better on 7): notes.spread-face-BT 534->1658; quality.dense-td-LR 25834->25882; quality.dense-td-RL 25834->27154
+    info xhops: total 1002->999, up 3 / down 2 (no direction)
+    info compact_max: total 3810.98->3797.97, up 0 / down 6 (worse on 0, better on 6)
+    info compact_mean: total 2503.15->2499.99, up 0 / down 8 (worse on 0, better on 8)
+    info span_max: total 166.08->166.13, up 5 / down 0 (worse on 5, better on 0): blocks.b9-inside2-BT 0.48->0.49; blocks.b9-inside2-TD 0.48->0.49; quality.bench-75-BT 0.15->0.16; quality.bench-75-LR 0.15->0.16; quality.bench-75-RL 0.15->0.16
+    info edge_len: total 1.90422e+06->1.89523e+06, up 0 / down 15 (worse on 0, better on 15)
+    info bends_max: total 1376->1378, up 2 / down 0 (worse on 2, better on 0): quality.bench-75-RL 9->10; quality.dense-td-RL 9->10
+    info detour_max: total 322.08->321.75, up 2 / down 2 (worse on 2, better on 2): quality.bench-75-LR 1.42->1.44; quality.bench-75-RL 1.43->1.44
+    info lbl_end_mean: total 31790.8->31783.9, up 5 / down 5 (worse on 5, better on 5): notes.nested-composite-LR 176.14->178.88; notes.nested-composite-RL 176.14->178.88; notes.routed-around-BT 111.65->117.15; notes.spread-face-BT 141.36->143.71; notes.spread-face-RL 143.36->144.46
+    info chip_gap_min: total 8915.19->8921.21, up 2 / down 1 (worse on 1, better on 2): notes.routed-around-BT 5.75->5.71
+[dirsx static] 32 copies  defects 0->0 (+0/-0)  x_drawn 1->1 (+0/-0)  lateral_x 1->1 (+0/-0)  fan_x 0->0 (+0/-0)  edge_chip 0->0 (+0/-0)  side_ends 2->2 (+0/-0)  min_edge_gap down 0
+[dirsx routed] 32 copies  defects 0->0 (+0/-0)  x_drawn 1->1 (+0/-0)  lateral_x 1->1 (+0/-0)  fan_x 0->0 (+0/-0)  edge_chip 0->0 (+0/-0)  side_ends 2->2 (+0/-0)  min_edge_gap down 0
+dirs: WORSE (8)
+
+VERDICT cells:  WORSE
+VERDICT panics: no worse
+VERDICT dirs:   WORSE
+VERDICT: WORSE

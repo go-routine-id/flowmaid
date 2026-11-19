@@ -1,0 +1,6 @@
+flowchart TD
+    A[Start] --> B{Is the payment valid for this order?}
+    B -->|yes| C{All succeeded?}
+    B -->|no| D{Retry the charge once more?}
+    C --> E{ok?}
+    D --> F((Is this a long circle label here))

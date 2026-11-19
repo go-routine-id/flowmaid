@@ -1,0 +1,14 @@
+flowchart TD
+    a1[Web client] --> m1
+    a2[Mobile client] --> m1
+    a3[Partner API] --> m1
+    a4[Batch job] --> WMS
+    subgraph WMS[WWW MMM Warehouse Management]
+        m1[MW]
+        m2[stock]
+        m3[pick]
+        m1 --> m2
+        m1 --> m3
+    end
+    m2 --> out[Shipping]
+    m3 --> out

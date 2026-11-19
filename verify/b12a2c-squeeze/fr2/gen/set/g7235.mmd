@@ -1,0 +1,55 @@
+flowchart TD
+  n1["parse"]
+  n2["pack"]
+  n3["notify"]
+  subgraph B0["Platform"]
+    n4["db"]
+  end
+  subgraph B1["Ops"]
+    n5["ingest ingest audit"]
+    n6["pack"]
+    n7["worker report notify"]
+    n8["notify"]
+  end
+  subgraph B2["Analytics"]
+    n9["api auth billing"]
+    n10["api queue index"]
+    n11["cache<br/>report"]
+    n12["api"]
+    subgraph B2s0["Fulfilment desk 0"]
+      n13["split"]
+    end
+    subgraph B2s1["Storefront 1"]
+      n14["store merge notify"]
+    end
+  end
+  subgraph B3["Back office and finance"]
+    n15["index"]
+    n16["cache"]
+    n17["index cache merge<br/>pack"]
+  end
+  n18["api"]
+  n1 --> n2
+  n4 -->|index| n18
+  n17 -.->|index| n13
+  n9 -.-> n8
+  n7 ==>|ship| n3
+  n13 --> n7
+  n6 -.->|queue| n15
+  n9 -->|search| n3
+  n2 ==>|ship| n8
+  n10 --> n11
+  n16 --> n11
+  n11 --> n10
+  n18 ==> n12
+  n10 ==>|auth| n7
+  n16 --> n17
+  n6 -->|notify| n5
+  n1 --> n14
+  n14 -.->|cache| n6
+  n17 --> n7
+  n16 --> n15
+  n1 --> n12
+  n1 ==> n10
+  n15 -.-> n5
+  n9 ==> n6

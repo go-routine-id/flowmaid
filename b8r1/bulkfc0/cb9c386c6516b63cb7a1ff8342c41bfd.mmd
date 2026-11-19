@@ -1,0 +1,17 @@
+flowchart RL
+    N0{Check}
+    N1[Notify store]
+    N2{Retry emit}
+    N3[Retry emit]
+    N4{Emit}
+    N5{Fetch notify}
+    N6(Check)
+    N7[Parse store]
+    N0 --> N1
+    N1 --> N2
+    N0 -->|yes| N3
+    N3 --> N4
+    N4 -->|ok| N5
+    N5 --> N6
+    N4 --> N7
+    N7 -.->|back| N1

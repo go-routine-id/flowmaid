@@ -1,0 +1,19 @@
+blocks.blocks-overview-BT.svg	Edge and shared services	pre 1.45 CDN → GATE: cache miss	head 1.45 CDN → GATE: cache miss
+blocks.blocks-overview-TD.svg	Order processing	pre 11.96 REG → ORD: deploy	head 1.97 CART → QUEUE: place order
+blocks.blocks-overview-actors-reversed-BT.svg	Edge and shared services	pre 1.45 CDN → GATE: cache miss	head 1.45 CDN → GATE: cache miss
+blocks.blocks-overview-actors-reversed-TD.svg	Order processing	pre 11.96 REG → ORD: deploy	head 1.97 CART → QUEUE: place order
+blocks.blocks-overview-bt-BT.svg	Edge and shared services	pre 1.45 CDN → GATE: cache miss	head 1.45 CDN → GATE: cache miss
+blocks.blocks-overview-bt-TD.svg	Order processing	pre 11.96 REG → ORD: deploy	head 1.97 CART → QUEUE: place order
+blocks.blocks-overview-edges-reversed-BT.svg	Edge and shared services	pre 1.45 CDN → GATE: cache miss	head 1.45 CDN → GATE: cache miss
+blocks.blocks-overview-edges-reversed-TD.svg	Order processing	pre 11.96 REG → ORD: deploy	head 1.97 CART → QUEUE: place order
+blocks.blocks-overview-edges-rotated-BT.svg	Edge and shared services	pre 1.45 CDN → GATE: cache miss	head 1.45 CDN → GATE: cache miss
+blocks.blocks-overview-edges-rotated-TD.svg	Order processing	pre 11.96 REG → ORD: deploy	head 1.97 CART → QUEUE: place order
+blocks.blocks-overview-lr-BT.svg	Edge and shared services	pre 1.45 CDN → GATE: cache miss	head 1.45 CDN → GATE: cache miss
+blocks.blocks-overview-lr-TD.svg	Order processing	pre 11.96 REG → ORD: deploy	head 1.97 CART → QUEUE: place order
+blocks.blocks-overview-rl-BT.svg	Edge and shared services	pre 1.45 CDN → GATE: cache miss	head 1.45 CDN → GATE: cache miss
+blocks.blocks-overview-rl-TD.svg	Order processing	pre 11.96 REG → ORD: deploy	head 1.97 CART → QUEUE: place order
+blocks.blocks-overview-subgraphs-reversed-BT.svg	Edge and shared services	pre 1.45 CDN → GATE: cache miss	head 1.45 CDN → GATE: cache miss
+blocks.blocks-overview-subgraphs-reversed-TD.svg	Order processing	pre 11.96 REG → ORD: deploy	head 1.97 CART → QUEUE: place order
+blocks.lr-BT.svg	Edge and shared services with a long title	pre 0.00 cart → PAGER: page	head 0.00 cart → PAGER: page
+quality.dense-lr-BT.svg	consectetur ipsum	pre 26.09 n42 → n49: eiusmod tempor eiusmod	head 1.60 n42 → n49: eiusmod tempor eiusmod
+quality.dense-lr-TD.svg	ullamco tempor magna	pre 32.90 n6 → n22: do	head 1.71 n6 → n22: do

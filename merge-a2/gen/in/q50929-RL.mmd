@@ -1,0 +1,23 @@
+flowchart RL
+    subgraph G0[Edge 0]
+        g0m0[g0m0]
+        g0m1[g0m1]
+    end
+    subgraph G1[Edge 1]
+        subgraph H1[inner 1]
+            g1m0[g1m0]
+            g1m1[g1m1]
+        end
+    end
+    o0 --> g1m0
+    o0 -.-> g1m0
+    g1m0 --> g0m1
+    o2 -- l9 --> g1m0
+    o0 -- l2 --> g0m0
+    o0 -- l4 --> g0m0
+    o1 --> G1
+    G0 --> o2
+    g1m1 -.-> g0m1
+    g1m1 --> o0
+    o0 --> o2
+    G0 ==> o0

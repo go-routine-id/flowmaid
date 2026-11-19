@@ -1,0 +1,25 @@
+inputs 2169 block mode 1077
+hard   start    568  now    247  prev    247
+enx    start     33  now     16  prev     16
+sp     start    229  now    139  prev    139
+aos    start     79  now     79  prev     79
+wig    start      3  now      3  prev      3
+fside  start    196  now      5  prev      5
+nov    start      0  now      0  prev      0
+nfr    start      7  now      0  prev      0
+fov    start      0  now      0  prev      0
+own    start     21  now      5  prev      5
+x      start   4821  now   2680  prev   2676
+fan    start    264  now    214  prev    214
+ovl    start    140  now     99  prev    104
+efp    start    535  now      0  prev      0
+files with more hard zeros than start: 48
+ by kind: {'sp': 41, 'aos': 28, 'enx': 3, 'own': 1, 'fside': 1}
+prev worse files 48  new now: []  gone: []
+files whose row changed vs prev: 6
+   17ce77e713c0e98fe95ec7175b0bb087.mmd {'ovl': ('1', '0'), 'x': ('41', '42'), 'def': ('1', '0')}
+   1b77ae7101ef7c57156b0cd0294fd4d4.mmd {'ovl': ('1', '0'), 'x': ('48', '49'), 'def': ('1', '0')}
+   58b9d2ef883bf8cf8874c06847b1d4ea.mmd {'ovl': ('1', '0'), 'x': ('44', '45'), 'def': ('1', '0')}
+   868f0bdac690a00a6af012f284d329a8.mmd {'ovl': ('1', '0'), 'x': ('41', '42'), 'def': ('1', '0')}
+   fa698a93d74809c2c986a43bb11ddb48.mmd {'ovl': ('1', '0'), 'x': ('41', '42'), 'def': ('1', '0')}
+   7cd3394018dd4a77e14812c564878acb.mmd {'x': ('2', '1')}

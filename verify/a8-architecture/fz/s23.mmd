@@ -1,0 +1,8 @@
+architecture-beta
+    group g0(database)[Observability]
+    service s0(disk)[Service 0] in g0
+    service s1(monitoring)[Service 1] in g0
+    service s2(monitoring)[Service 2] in g0
+    s0:T --> B:s1
+    s2:L -- T:s1
+    s1:R --> L:s0

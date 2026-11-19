@@ -1,0 +1,51 @@
+flowchart LR
+  n1["notify"]
+  n2["parse"]
+  subgraph B0["Storefront"]
+    n3["ship"]
+    n4["billing"]
+    n5["store"]
+  end
+  subgraph B1["Ops"]
+    n6["store"]
+    n7["mail"]
+    n8["report"]
+  end
+  subgraph B2["Data tier"]
+    n9["queue"]
+    n10["db"]
+    subgraph B2s0["Ops 0"]
+      n11["report"]
+      n12["cache audit api"]
+    end
+    subgraph B2s1["Analytics 1"]
+      n13["search worker index"]
+      n14["ingest"]
+      n15["parse"]
+    end
+  end
+  subgraph B3["Fulfilment desk"]
+    n16["worker<br/>billing"]
+    n17["ingest"]
+  end
+  n18["split<br/>pack"]
+  n2 ==>|billing| n10
+  n9 ==> n10
+  n5 -->|mail| n6
+  n1 -->|ship| n10
+  n17 -->|billing| n16
+  n6 -.-> n11
+  n10 -.-> n15
+  n15 --> n11
+  n4 -.->|parse| n10
+  n9 -->|db| n4
+  n5 --> n12
+  n6 ==> n12
+  n3 --> n14
+  n15 -.-> n7
+  n9 --> n3
+  n1 --> n2
+  n18 -.-> B2
+  n14 --> n8
+  n12 -.-> n18
+  n9 ==> n12

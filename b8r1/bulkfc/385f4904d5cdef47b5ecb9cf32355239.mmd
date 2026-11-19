@@ -1,0 +1,17 @@
+flowchart TD
+    N0([Validate notify])
+    N1([Fetch archive])
+    N2{Check}
+    N3[Queue check]
+    N4{Done}
+    N5(Queue)
+    N0 --> N1
+    N1 --> N2
+    N2 --> N3
+    N2 --> N4
+    N3 --> N5
+    N0 --> N2
+    N1 --> N3
+    N1 --> N5
+    N2 -->|again| N1
+    N1 -.->|back| N0

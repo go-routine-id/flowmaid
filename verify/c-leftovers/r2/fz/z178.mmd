@@ -1,0 +1,32 @@
+stateDiagram-v2
+direction BT
+[*] --> f
+state f <<fork>>
+f --> Q0 : x
+f --> B0
+f --> Q1
+state B0 {
+  direction BT
+  B0_0 --> B0_1 : go
+  B0_1 --> B0_2 : go
+  state B0_fk <<fork>>
+  B0_2 --> B0_fk
+  B0_fk --> B0_x
+  B0_fk --> B0_y
+  state B0i {
+    direction RL
+    B0i_0 --> B0i_1 : go
+    B0i_1 --> B0i_2 : go
+    B0i_2 --> B0i_3
+  }
+  B0_2 --> B0i
+}
+state j <<join>>
+Q0 --> j
+B0 --> j
+Q1 --> j
+j --> [*]
+state g2 <<fork>>
+f --> g2
+g2 --> Z1
+g2 --> Z2

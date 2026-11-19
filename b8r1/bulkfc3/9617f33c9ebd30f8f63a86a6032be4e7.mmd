@@ -1,0 +1,20 @@
+flowchart TD
+    N0[Archive parse]
+    N1([Retry fetch])
+    N2{Fetch}
+    N3{Retry}
+    N4(Parse load)
+    N5[Validate]
+    N6{Done archive}
+    N7([Validate])
+    N8[Retry]
+    N0 -->|yes| N1
+    N0 -->|ok| N2
+    N1 --> N3
+    N2 -->|no| N4
+    N4 --> N5
+    N5 --> N6
+    N5 --> N7
+    N7 -->|no| N8
+    N1 --> N7
+    N6 -.->|retry| N4

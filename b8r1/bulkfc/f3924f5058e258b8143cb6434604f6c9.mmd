@@ -1,0 +1,12 @@
+flowchart RL
+  subgraph F0 [Frame 0]
+    n1(Node 1 with a long label)
+    n2{Node 2}
+  end
+  n0 <-.-> n3
+  n2 ==> n1
+  n2 --o n1
+  n2 <-.-> n2
+  n2 <==>|yes| n2
+  linkStyle 2 interpolate natural stroke-width:1px
+  linkStyle 3 stroke-width:30px,stroke:#c33

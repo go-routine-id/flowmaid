@@ -1,0 +1,4 @@
+36:pub struct ErRow { 
+47:pub struct ErTable { 
+59:pub struct ErScene { 
+69:pub struct Glyph { 

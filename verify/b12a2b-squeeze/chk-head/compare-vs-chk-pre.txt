@@ -1,0 +1,53 @@
+compare.sh: baseline /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a2b-squeeze/chk-pre
+            candidate /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a2b-squeeze/chk-head
+
+== 1. local inputs, per cell (LIVE judge)
+[local static A2] 444 / 444 cells; must-fail 86 -> 86; worse 0 (new 0, worse inside failing 0, changed 0, missing 0); gone 0, better inside failing 0; info: target new 0 / gone 0 / worse 0, drift inside passing 0
+[local routed] 62 / 62 cells; must-fail 37 -> 37; worse 0 (new 0, worse inside failing 0, changed 0, missing 0); gone 0, better inside failing 0; info: target new 0 / gone 0 / worse 0, drift inside passing 0
+cells: no worse
+
+== 2. suite-on gate messages
+[gates] tests 1220 / 1224; failing 14 -> 14
+  == defect_baseline_gate: message lines worse 0, better 2
+     - gone    static end_tilt_max 0.80 > ceiling 0.3
+     - gone    static idiom_spline 1.00 > ceiling 0
+  info new test blockcheck::a_waypoint_runs_last_leg_meets_its_head_square: ok
+  info new test casing::tests::a_block_layouts_under_line_keeps_no_fragment_between_two_gaps: ok
+  info new test casing::tests::gaps_of_one_cluster_on_a_line_are_cut_as_one: ok
+  info stdout defect_baseline_gate: 5 cells changed
+       static edge_len: 210411.5633 -> 210411.4918  lower
+       static end_tilt_max: 0.7969 -> 0.0707  lower
+       static idiom_ortho: 184.0000 -> 185.0000  higher (worse?)
+       static idiom_spline: 1.0000 -> 0.0000  lower
+       static xhops: 198.0000 -> 200.0000  higher (worse?)
+  info new test edgepass::tests::a_snapped_end_carries_its_runs_line_back_to_the_corner: ok
+  info stdout quality_gate: 7 cells changed
+       dense-lr static edge_len: 50203.41 -> 50203.33  lower
+       dense-lr static end_tilt_max: 0.80 -> 0.00  lower
+       dense-lr static idiom_ortho: 41.00 -> 42.00  higher (worse?)
+       dense-lr static idiom_spline: 1.00 -> 0.00  lower
+       dense-lr static ortho_edges: 40.00 -> 41.00  higher (worse?)
+       dense-lr static xgap_max: 2.00 -> 1.00  lower
+       dense-lr static xhops: 12.00 -> 14.00  higher (worse?)
+panics: no worse
+
+== 3. direction copies (332 + 32, static and routed)
+[dirs static] 332 copies  defects 41->41 (+0/-0)  x_drawn 1283->1283 (+0/-0)  lateral_x 201->201 (+0/-0)  fan_x 30->30 (+0/-0)  edge_chip 8->8 (+0/-0)  side_ends 216->216 (+0/-0)  min_edge_gap down 0
+    info xgap_max: total 64->62, up 0 / down 2 (worse on 0, better on 2)
+    info ortho_edges: total 2603->2605, up 2 / down 0 (no direction)
+    info end_tilt_max: total 435.33->433.73, up 0 / down 2 (worse on 0, better on 2)
+    info idiom_ortho: total 3842->3844, up 2 / down 0 (no direction)
+    info idiom_spline: total 2->0, up 0 / down 2 (worse on 0, better on 2)
+    info xhops: total 996->1000, up 2 / down 0 (no direction)
+    info edge_len: total 1.90488e+06->1.90489e+06, up 16 / down 2 (worse on 16, better on 2): blocks.blocks-overview-LR 18787.2->18787.7; blocks.blocks-overview-RL 18786->18786.5; blocks.blocks-overview-actors-reversed-LR 18787.2->18787.7; blocks.blocks-overview-actors-reversed-RL 18786->18786.5; blocks.blocks-overview-bt-LR 18787.2->18787.7; blocks.blocks-overview-bt-RL 18786->18786.5 ...
+    info chip_gap_min: total 8905.55->8900.11, up 0 / down 16 (worse on 16, better on 0): blocks.blocks-overview-LR 3.78->3.44; blocks.blocks-overview-RL 3.78->3.44; blocks.blocks-overview-actors-reversed-LR 3.78->3.44; blocks.blocks-overview-actors-reversed-RL 3.78->3.44; blocks.blocks-overview-bt-LR 3.78->3.44; blocks.blocks-overview-bt-RL 3.78->3.44 ...
+[dirs routed] 332 copies  defects 169->169 (+0/-0)  x_drawn 1997->1997 (+0/-0)  lateral_x 418->418 (+0/-0)  fan_x 183->183 (+0/-0)  edge_chip 78->78 (+0/-0)  side_ends 361->361 (+0/-0)  min_edge_gap down 0
+[dirsx static] 32 copies  defects 0->0 (+0/-0)  x_drawn 1->1 (+0/-0)  lateral_x 1->1 (+0/-0)  fan_x 0->0 (+0/-0)  edge_chip 0->0 (+0/-0)  side_ends 2->2 (+0/-0)  min_edge_gap down 0
+    info edge_len: total 40177.2->40177.3, up 2 / down 0 (worse on 2, better on 0): examples.advanced-LR 3002.71->3002.78; examples.advanced-RL 2996.94->2997.01
+[dirsx routed] 32 copies  defects 0->0 (+0/-0)  x_drawn 1->1 (+0/-0)  lateral_x 1->1 (+0/-0)  fan_x 0->0 (+0/-0)  edge_chip 0->0 (+0/-0)  side_ends 2->2 (+0/-0)  min_edge_gap down 0
+dirs: no worse
+
+VERDICT cells:  no worse
+VERDICT panics: no worse
+VERDICT dirs:   no worse
+VERDICT: no worse

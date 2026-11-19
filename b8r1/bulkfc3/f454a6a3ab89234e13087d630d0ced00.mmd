@@ -1,0 +1,17 @@
+flowchart LR
+    N0[Emit]
+    N1[Emit archive]
+    N2([Load])
+    N3[Validate fetch]
+    N4(Fetch done)
+    N5([Retry notify])
+    N0 --> N1
+    N0 --> N2
+    N0 -->|yes| N3
+    N1 --> N4
+    N4 --> N5
+    N2 --> N3
+    N0 --> N4
+    N5 ==>|rollback| N3
+    N3 -.->|again| N1
+    N4 -.-> N3

@@ -1,0 +1,17 @@
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> Connecting : dial
+    Connecting --> Connected : ok
+    Connecting --> Backoff : timeout
+    Backoff --> Connecting : retry
+    state Connected {
+        [*] --> Active
+        Active --> Paused : pause
+        Paused --> Active : resume
+        Active --> Draining : close
+        Draining --> Active : reopen
+    }
+    Connected --> Idle : hangup
+    Connected --> Backoff : drop
+    Backoff --> Idle : give up
+    Idle --> [*]

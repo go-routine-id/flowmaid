@@ -1,0 +1,36 @@
+flowchart TD
+  n1["queue api split"]
+  n2["search"]
+  n3["index"]
+  subgraph B0["Storefront"]
+    n4["billing"]
+    subgraph B0s0["Core 0"]
+      n5["report notify split"]
+      n6["index db split<br/>pack"]
+      n7["index"]
+    end
+  end
+  subgraph B1["Ingest"]
+    n8["api"]
+  end
+  subgraph B2["Ops"]
+    n9["split"]
+    subgraph B2s0["Data tier 0"]
+      n10["cache"]
+      n11["notify"]
+      n12["ingest<br/>mail"]
+    end
+  end
+  n13["merge"]
+  n14["search"]
+  n9 --> n12
+  n10 -->|db| n6
+  n1 --> n8
+  n6 -.-> n13
+  n4 -->|billing| n2
+  n12 --> n5
+  n12 --> n10
+  n2 -->|parse| n4
+  n6 -.->|mail| n5
+  n11 -->|auth| n5
+  n6 ==> n9

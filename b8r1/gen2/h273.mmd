@@ -1,0 +1,39 @@
+flowchart LR
+  s0["auth"]
+  subgraph g0["search zone"]
+    m0["store queue"]
+    m1["web"]
+    m0 --> m1
+  end
+  subgraph g1["pay api metric zone"]
+    m2["metric"]
+    m3["index store"]
+    m2 --> m3
+  end
+  subgraph g2["search web zone"]
+    m4["log order"]
+  end
+  subgraph g3["metric db db zone"]
+    m5["log web pay"]
+    m6["store"]
+    m7["store api"]
+    m8["pay auth web"]
+    m5 --> m6
+    m5 --> m8
+  end
+  subgraph g4["metric zone"]
+    direction TB
+    m9["ship cart pay"]
+  end
+  subgraph g5["store metric cache zone"]
+    m10["cache"]
+    m11["api search"]
+    m10 --> m11
+  end
+  s0 --> g0
+  s0 --> m2
+  s0 --> g2
+  s0 --> m5
+  s0 --> g4
+  s0 --> g5
+  s0 --> L12["user search"]

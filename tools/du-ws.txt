@@ -1,0 +1,26 @@
+59	b10r3
+75	b1r3
+79	b3r4
+81	b10r2
+83	merge-a1
+84	b10r
+85	b9
+94	a1fix
+99	b11r1
+146	r5chk
+159	b1r
+160	b3r3
+169	a8fix
+177	a7
+201	a7r3
+218	b8r1
+261	b8b
+351	merge-a2
+361	rel0402
+371	rel0401
+371	release040
+1418	b12a2b
+1522	runs
+2593	verify
+5355	b12
+TOTAL MB 14572

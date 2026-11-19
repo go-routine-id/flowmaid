@@ -1,0 +1,11 @@
+flowchart TD
+  H{Route?} -->|alpha| A1[One]
+  H -->|beta| A2[Two]
+  H -->|gamma ray| A3[Three]
+  H -->|delta| A4[Four]
+  A1 --> Z[Join]
+  A2 --> Z
+  A3 --> Z
+  A4 --> Z
+  Z -->|done| Out([Exit])
+  X[Side] --> Z

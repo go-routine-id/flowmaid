@@ -1,0 +1,20 @@
+flowchart BT
+    N0(Validate parse)
+    N1([Notify])
+    N2{{Notify}}
+    N3([Check fetch])
+    N4[Check]
+    N5{Load}
+    N6[Report]
+    N0 --> N1
+    N0 -->|fail| N2
+    N2 --> N3
+    N3 -->|next| N4
+    N3 --> N5
+    N5 --> N6
+    N2 --> N4
+    N1 --> N6
+    N3 --> N5
+    N6 ==>|retry| N3
+    N3 --> N2
+    N6 -->|retry| N4

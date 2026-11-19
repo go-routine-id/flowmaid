@@ -1,0 +1,14 @@
+stateDiagram-v2
+  [*] --> Idle
+  Idle --> Check
+  state Check <<choice>>
+  Check --> Valid: valid
+  Check --> Invalid: invalid
+  Valid --> Done: ok
+  Invalid --> Idle: retry
+  state Done {
+    [*] --> Saving
+    Saving --> Saved: saved
+    Saving --> Failed: failed
+  }
+  Done --> [*]

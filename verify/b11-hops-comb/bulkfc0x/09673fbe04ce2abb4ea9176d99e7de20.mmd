@@ -1,0 +1,17 @@
+flowchart BT
+    N0{Store}
+    N1(Archive)
+    N2{Emit emit}
+    N3(Done)
+    N4[/Load notify/]
+    N5{Queue}
+    N6(Emit report)
+    N0 -->|ok| N1
+    N0 --> N2
+    N1 --> N3
+    N3 --> N4
+    N2 --> N5
+    N5 -->|next| N6
+    N0 --> N6
+    N0 --> N2
+    N6 --> N0

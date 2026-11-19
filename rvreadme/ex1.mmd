@@ -1,0 +1,5 @@
+flowchart LR
+    A([Start]) --> B{Valid?}
+    B -- yes --> C[(Store)]
+    B -- no --> D[Reject]
+    D -.-> A

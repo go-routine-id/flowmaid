@@ -1,0 +1,8 @@
+name	type	median_ms	min_ms	svg_bytes
+q004	class	9.486	8.544	21306
+q005	class	7.820	6.787	13383
+q049	class	7.876	7.089	10955
+q063	class	5.902	5.167	18614
+q080	class	9.981	7.589	15871
+q097	class	3.317	2.910	18476
+LR_b8_a1_q1_l0_c1	class	0.248	0.214	8015

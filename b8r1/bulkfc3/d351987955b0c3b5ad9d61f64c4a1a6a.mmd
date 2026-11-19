@@ -1,0 +1,22 @@
+flowchart RL
+    N0([Load])
+    N1[Notify]
+    N2([Load validate])
+    N3(Validate store)
+    N4([Report])
+    N5(Done)
+    N6[Report]
+    N7{Notify}
+    N0 --> N1
+    N0 --> N2
+    N1 --> N3
+    N2 --> N4
+    N2 --> N5
+    N3 -->|yes| N6
+    N5 -->|ok| N7
+    N0 --> N6
+    N2 --> N4
+    N2 --> N3
+    N5 -->|retry| N2
+    N5 -.->|back| N3
+    N6 -->|rollback| N2

@@ -1,0 +1,27 @@
+flowchart RL
+  n1["parse"]
+  n2["ingest"]
+  n3["api billing notify"]
+  subgraph B0["Storefront"]
+    n4["report"]
+    n5["pack cache auth<br/>merge"]
+  end
+  subgraph B1["Fulfilment desk"]
+    n6["split"]
+    subgraph B1s0["Storefront 0"]
+      n7["ingest<br/>api"]
+      n8["split report report"]
+    end
+  end
+  n9["queue<br/>mail"]
+  n7 ==>|audit| n3
+  n2 -.->|merge| n5
+  n5 ==> n8
+  n8 --> n4
+  n1 -.-> n5
+  n6 ==> n4
+  n3 --> n6
+  n9 --> n1
+  n9 -->|cache| n3
+  n4 ==>|db| n6
+  n9 -.->|parse| n5

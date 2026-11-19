@@ -1,0 +1,44 @@
+[package]
+name = "hp"
+version = "0.1.0"
+edition = "2021"
+[dependencies]
+flowmaid = { path = "/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/clfix/pre" }
+[profile.release]
+debug = false
+[[bin]]
+name = "dump"
+path = "../h/src/bin/dump.rs"
+[[bin]]
+name = "contract"
+path = "../h/src/bin/contract.rs"
+[[bin]]
+name = "classq"
+path = "../h/src/bin/classq.rs"
+[[bin]]
+name = "bars"
+path = "../h/src/bin/bars.rs"
+[[bin]]
+name = "rtime"
+path = "../h/src/bin/rtime.rs"
+[[bin]]
+name = "dragt"
+path = "../h/src/bin/dragt.rs"
+[[bin]]
+name = "clsdump"
+path = "../h/src/bin/clsdump.rs"
+[[bin]]
+name = "zero"
+path = "../h/src/bin/zero.rs"
+[[bin]]
+name = "barsall"
+path = "../h/src/bin/barsall.rs"
+[[bin]]
+name = "chips"
+path = "../h/src/bin/chips.rs"
+[[bin]]
+name = "clsbytes"
+path = "../h/src/bin/clsbytes.rs"
+[[bin]]
+name = "classqd"
+path = "../h/src/bin/classqd.rs"

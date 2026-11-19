@@ -1,0 +1,57 @@
+advanced.mmd	block_mode=1	same_as_off=1	violations=43
+    scene: edge 15 (Users>Mon) not picked on 1 of 1 waypoint steps
+    route: edge 15 (Users>Mon) not picked on 3 of 3 waypoint steps
+    drag node 0 by 7,5: partial: edge 15 (Users>Mon) not picked on 1 of 1 waypoint steps
+    drag node 0 by -120,60: partial: edge 15 (Users>Mon) not picked on 1 of 1 waypoint steps
+    drag node 0 by 1,0: partial: edge 15 (Users>Mon) not picked on 1 of 1 waypoint steps
+    drag node 1 by 7,5: partial: edge 15 (Users>Mon) not picked on 1 of 1 waypoint steps
+back-edge.mmd	block_mode=0	same_as_off=1	violations=0
+bench-75.mmd	block_mode=1	same_as_off=1	violations=0
+demo.mmd	block_mode=0	same_as_off=1	violations=0
+dense-lr.mmd	block_mode=1	same_as_off=1	violations=0
+dense-td.mmd	block_mode=1	same_as_off=1	violations=0
+fanout-frames.mmd	block_mode=1	same_as_off=1	violations=0
+fanout.mmd	block_mode=0	same_as_off=1	violations=0
+long-labels.mmd	block_mode=0	same_as_off=1	violations=0
+lr.mmd	block_mode=0	same_as_off=1	violations=0
+shapes.mmd	block_mode=0	same_as_off=1	violations=0
+state.mmd	block_mode=0	same_as_off=1	violations=0
+stress.mmd	block_mode=0	same_as_off=1	violations=0
+subgraph.mmd	block_mode=1	same_as_off=1	violations=0
+wide-labels.mmd	block_mode=0	same_as_off=1	violations=0
+advanced.mmd	block_mode=1	same_as_off=1	violations=43
+    scene: edge 15 (Users>Mon) not picked on 1 of 1 waypoint steps
+    route: edge 15 (Users>Mon) not picked on 3 of 3 waypoint steps
+    drag node 0 by 7,5: partial: edge 15 (Users>Mon) not picked on 1 of 1 waypoint steps
+    drag node 0 by -120,60: partial: edge 15 (Users>Mon) not picked on 1 of 1 waypoint steps
+    drag node 0 by 1,0: partial: edge 15 (Users>Mon) not picked on 1 of 1 waypoint steps
+    drag node 1 by 7,5: partial: edge 15 (Users>Mon) not picked on 1 of 1 waypoint steps
+demo.mmd	block_mode=0	same_as_off=1	violations=0
+fanout.mmd	block_mode=0	same_as_off=1	violations=0
+long-labels.mmd	block_mode=0	same_as_off=1	violations=0
+lr.mmd	block_mode=0	same_as_off=1	violations=0
+shapes.mmd	block_mode=0	same_as_off=1	violations=0
+state.mmd	block_mode=0	same_as_off=1	violations=0
+stress.mmd	block_mode=0	same_as_off=1	violations=0
+subgraph.mmd	block_mode=1	same_as_off=1	violations=0
+back-edge.mmd	block_mode=0	same_as_off=1	violations=0
+bench-75.mmd	block_mode=1	same_as_off=1	violations=0
+dense-lr.mmd	block_mode=1	same_as_off=1	violations=0
+dense-td.mmd	block_mode=1	same_as_off=1	violations=0
+fanout-frames.mmd	block_mode=1	same_as_off=1	violations=0
+wide-labels.mmd	block_mode=0	same_as_off=1	violations=0
+v1-cyrillic-greek-titles-BT.mmd	block_mode=1	same_as_off=1	violations=0
+v1-cyrillic-greek-titles-LR.mmd	block_mode=1	same_as_off=1	violations=0
+v1-cyrillic-greek-titles-RL.mmd	block_mode=1	same_as_off=1	violations=0
+v1-cyrillic-greek-titles.mmd	block_mode=1	same_as_off=1	violations=0
+v2-lr-labels-end-blocks-RL.mmd	block_mode=1	same_as_off=1	violations=0
+v2-lr-labels-end-blocks-TD.mmd	block_mode=1	same_as_off=1	violations=0
+v2-lr-labels-end-blocks.mmd	block_mode=1	same_as_off=1	violations=0
+v3-nested-drag-room-BT.mmd	block_mode=1	same_as_off=1	violations=0
+v3-nested-drag-room-LR.mmd	block_mode=1	same_as_off=1	violations=0
+v3-nested-drag-room-RL.mmd	block_mode=1	same_as_off=1	violations=0
+v3-nested-drag-room.mmd	block_mode=1	same_as_off=1	violations=0
+v4-cjk-emoji-bt.mmd	block_mode=1	same_as_off=1	violations=0
+v4-cjk-emoji-td.mmd	block_mode=1	same_as_off=1	violations=0
+v5-state-long-titles.mmd	block_mode=1	same_as_off=1	violations=0
+TOTAL files=66 block_mode=26 with_violations=2 differs_outside_block_mode=0

@@ -1,0 +1,22 @@
+flowchart LR
+    N0{Check validate}
+    N1[Fetch]
+    N2{Emit fetch}
+    N3[Fetch archive]
+    N4([Validate])
+    N5{Store}
+    N6(Report)
+    N7([Archive])
+    N0 -->|no| N1
+    N1 -->|ok| N2
+    N1 -->|yes| N3
+    N2 -->|next| N4
+    N2 --> N5
+    N3 --> N6
+    N5 --> N7
+    N5 --> N6
+    N4 --> N7
+    N2 --> N4
+    N5 --> N0
+    N5 -.-> N1
+    N6 -->|again| N2

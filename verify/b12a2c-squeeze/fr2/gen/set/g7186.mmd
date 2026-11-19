@@ -1,0 +1,65 @@
+flowchart TD
+  n1["index"]
+  n2["parse parse pack"]
+  n3["pack report api"]
+  subgraph B0["Edge services"]
+    n4["report"]
+    n5["db<br/>merge"]
+  end
+  subgraph B1["Analytics"]
+    n6["ingest"]
+    n7["notify"]
+    n8["billing"]
+    n9["pack<br/>index"]
+    subgraph B1s0["Back office and finance 0"]
+      n10["api"]
+    end
+  end
+  subgraph B2["Edge services"]
+    n11["report db report"]
+    n12["notify"]
+    n13["auth"]
+    subgraph B2s0["Ops 0"]
+      n14["store<br/>mail"]
+      n15["billing store parse"]
+      n16["index"]
+    end
+    subgraph B2s1["Ingest 1"]
+      n17["index cache worker"]
+      n18["index merge index"]
+    end
+  end
+  subgraph B3["Ingest"]
+    n19["merge ingest index"]
+    n20["cache parse audit"]
+    n21["pack"]
+    subgraph B3s0["Storefront 0"]
+      n22["db"]
+    end
+  end
+  n23["worker"]
+  n2 --> n18
+  n4 ==> n17
+  n12 --> n18
+  n2 -->|merge| n20
+  n20 ==>|store| n3
+  n21 -->|auth| n18
+  n17 --> n23
+  n2 --> n21
+  n15 --> n10
+  n23 ==> n15
+  n10 -.->|notify| n17
+  n7 --> n6
+  n2 --> n13
+  n1 -.-> n11
+  n19 --> n22
+  n13 ==> n20
+  n5 --> n4
+  n8 ==>|billing| n2
+  n4 --> n22
+  n18 --> n5
+  n7 --> n18
+  n6 ==> n19
+  n14 -->|search| n6
+  n12 --> n10
+  n3 --> n15

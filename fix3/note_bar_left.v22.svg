@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="344" height="500" viewBox="0 0 344 500" font-family="Helvetica, Arial, sans-serif" font-size="14" role="img" aria-label="State diagram">
+<title>State diagram</title>
+<rect width="344" height="500" fill="#ffffff"/>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 1 L 9 5 L 0 9 z" fill="#44507a"/></marker></defs>
+<path d="M 233.6 42.0 C 233.6 72.0, 233.6 72.0, 233.6 102.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>start → Start</title></path>
+<path d="M 233.6 140.0 C 233.6 170.0, 233.6 170.0, 233.6 200.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>Start → forked</title></path>
+<path d="M 181.6 208.0 C 181.6 238.0, 181.6 238.0, 181.6 268.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>forked → A</title></path>
+<path d="M 285.6 208.0 C 285.6 238.0, 285.6 238.0, 285.6 268.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>forked → B</title></path>
+<path d="M 181.6 306.0 C 181.6 336.0, 181.6 336.0, 181.6 366.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>A → joined</title></path>
+<path d="M 285.6 306.0 C 285.6 336.0, 285.6 336.0, 285.6 366.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>B → joined</title></path>
+<path d="M 233.6 374.0 C 233.6 404.0, 233.6 404.0, 233.6 434.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>joined → Done</title></path>
+<path d="M 114.6 140.0 C 114.6 170.0, 159.6 170.0, 159.6 200.0" fill="none" stroke="#44507a" stroke-width="1.7" stroke-dasharray="5 4"><title>note → forked</title></path>
+<g><title>forked</title>
+<rect x="151.6" y="200.0" width="164.0" height="8.0" rx="3" fill="#44507a" stroke="#44507a" stroke-width="1.6"/>
+<text x="233.6" y="204.0" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<g><title>joined</title>
+<rect x="165.6" y="366.0" width="136.0" height="8.0" rx="3" fill="#44507a" stroke="#44507a" stroke-width="1.6"/>
+<text x="233.6" y="370.0" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<g><title>start</title>
+<circle cx="233.6" cy="35.0" r="7.0" fill="#44507a" stroke="#44507a" stroke-width="1.6"/>
+<text x="233.6" y="35.0" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<g><title>Start</title>
+<rect x="202.6" y="102.0" width="62.0" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="233.6" y="121.0" dy="0.33em" text-anchor="middle" fill="#232840">Start</text>
+</g>
+<g><title>A</title>
+<rect x="154.6" y="268.0" width="54.0" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="181.6" y="287.0" dy="0.33em" text-anchor="middle" fill="#232840">A</text>
+</g>
+<g><title>B</title>
+<rect x="258.6" y="268.0" width="54.0" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="285.6" y="287.0" dy="0.33em" text-anchor="middle" fill="#232840">B</text>
+</g>
+<g><title>Done</title>
+<rect x="201.1" y="434.0" width="65.1" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="233.6" y="453.0" dy="0.33em" text-anchor="middle" fill="#232840">Done</text>
+</g>
+<g><title>before the split</title>
+<rect x="28.0" y="102.0" width="124.6" height="38.0" rx="3.0" fill="#fff8c5" stroke="#9c8a2c" stroke-width="1.6"/>
+<text x="90.3" y="121.0" dy="0.33em" text-anchor="middle" fill="#232840">before the split</text>
+</g>
+</svg>

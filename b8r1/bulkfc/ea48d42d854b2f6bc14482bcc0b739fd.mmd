@@ -1,0 +1,12 @@
+flowchart TD
+    N0(Report report)
+    N1[/Emit/]
+    N2{Load store}
+    N3([Load])
+    N4[Check]
+    N0 -->|next| N1
+    N1 --> N2
+    N2 --> N3
+    N3 --> N4
+    N2 --> N4
+    N1 -.-> N0

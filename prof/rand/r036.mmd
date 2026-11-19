@@ -1,0 +1,20 @@
+flowchart TD
+  H0 -.->|yes| N20
+  H0 ---|retry| N25
+  H0 -.->|gift wrap| N21
+  H0 --- N16
+  H0 ==> N11
+  H0 -.->|gift wrap| N10
+  H0 ==> N28
+  H0 ---|retry| N16
+  N4 -->|x| N4
+  N12 -->|express| N14
+  N29 --> N5
+  N4 --> N9
+  N8 --> N23
+  N21 --> N29
+  N2 -->|yes| N29
+  N18 -->|gift wrap| N5
+  N14 --> N11
+  N22 --> N13
+  N29 --> N2

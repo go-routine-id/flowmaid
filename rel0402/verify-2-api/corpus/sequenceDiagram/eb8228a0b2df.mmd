@@ -1,0 +1,18 @@
+sequenceDiagram
+    participant A as Alice
+    participant B as Bob
+    participant C as Carol
+    A->>+B: start
+    alt ok
+        B->>C: ask
+        Note right of C: a fairly long note on the right
+    else fail
+        B->>A: err
+    end
+    B-->>-A: done
+    loop outer
+      opt inner
+        Note left of A: left side note here
+        A->>A: think hard about it
+      end
+    end

@@ -1,0 +1,24 @@
+architecture-beta
+    group g1(cloud)[Ingress]
+    group g2(server)[Services]
+    group g3(database)[Storage]
+    service lb(internet)[LB] in g1
+    service waf(firewall)[WAF] in g1
+    service s1(server)[Orders] in g2
+    service s2(server)[Payments] in g2
+    service s3(server)[Inventory] in g2
+    service s4(server)[Shipping] in g2
+    service pg(database)[Postgres] in g3
+    service rd(cache)[Redis] in g3
+    service mq(queue)[Kafka] in g3
+    lb:R -[tls]-> L:waf
+    waf:B -[route /orders]-> T:s1
+    waf:R -[route /pay]-> L:s2
+    s1:R -[reserve]-> L:s3
+    s2:B -[charge]-> T:s4
+    s1:B -[insert order]-> T:pg
+    s2:R -[cache token]-> L:rd
+    s3:B -[stock events]-> T:mq
+    s4:R -[ship events]-> L:mq
+    s3:R -[read stock]-> L:pg
+    pg:R -[cdc]-> L:mq

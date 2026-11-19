@@ -1,0 +1,17 @@
+flowchart LR
+    subgraph O[WWW Mammoth Wombat Overview]
+        subgraph G[Order processing]
+            m0[charge]
+            m1[queue]
+            m2[charge]
+        end
+        k[k]
+    end
+    m0 --> k
+    m2 --> k
+    s0[src0] --> m1
+    s0 --> O
+    s1[src1] --> m2
+    s2[src2] --> m1
+    s2 --> G
+    s3[src3] --> m2

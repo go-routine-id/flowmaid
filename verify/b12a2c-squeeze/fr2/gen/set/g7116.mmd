@@ -1,0 +1,45 @@
+flowchart TD
+  n1["notify"]
+  n2["search"]
+  subgraph B0["Ingest"]
+    n3["index"]
+    subgraph B0s0["Core 0"]
+      n4["pack"]
+      n5["auth"]
+    end
+  end
+  subgraph B1["Analytics"]
+    n6["billing<br/>mail"]
+    subgraph B1s0["Back office and finance 0"]
+      n7["auth"]
+      n8["audit api pack"]
+    end
+  end
+  subgraph B2["Ingest"]
+    n9["notify"]
+    n10["ship"]
+  end
+  subgraph B3["Ingest"]
+    n11["notify"]
+    subgraph B3s0["Ops 0"]
+      n12["report"]
+      n13["search<br/>store"]
+      n14["audit"]
+    end
+  end
+  n15["queue"]
+  n14 -->|api| n13
+  n15 --> n10
+  n2 ==> n10
+  n1 -->|search| n12
+  n5 --> n14
+  n12 -.-> n9
+  n12 --> n15
+  n10 ==> n2
+  n13 ==> n14
+  n7 --> n11
+  n9 --> B3
+  n9 --> n6
+  n7 --> n8
+  n5 ==> n4
+  n15 -.-> B3s0

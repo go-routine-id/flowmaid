@@ -1,0 +1,16 @@
+classDiagram
+direction BT
+A o-- B : x
+B --> C : owns
+C --|> D : owns
+C --|> E
+E ..> F
+A o-- B
+C *-- C : c0
+C *-- C
+C ..> C : c2
+A o-- A : a0
+A ..> A : a1
+A ..> A
+B ..> B : b0
+B o-- B : b1

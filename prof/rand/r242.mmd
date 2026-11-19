@@ -1,0 +1,20 @@
+flowchart TD
+  H0 -.->|x| N1
+  H0 ==> N3
+  H0 --- N3
+  H0 --> N0
+  H0 -.-> N0
+  H0 --- N0
+  H0 ==> N0
+  H1 ==>|x| N4
+  H1 ---|a much longer label here| N1
+  H1 ---|ok| N4
+  H1 ==>|yes| N1
+  H1 ---|express| N3
+  H1 ==>|x| N1
+  H1 -.-> N5
+  N1 --> N3
+  N1 --> N4
+  N1 --> N1
+  N3 -->|no| N2
+  N4 --> N1

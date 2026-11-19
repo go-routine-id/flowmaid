@@ -1,0 +1,57 @@
+flowchart TD
+  n1["ingest"]
+  n2["cache<br/>api"]
+  subgraph B0["Ops"]
+    n3["index"]
+    subgraph B0s0["Platform 0"]
+      n4["queue ingest store"]
+      n5["auth ship report<br/>queue"]
+    end
+    subgraph B0s1["Fulfilment desk 1"]
+      n6["store"]
+      n7["api"]
+      n8["worker"]
+    end
+  end
+  subgraph B1["Data tier"]
+    n9["cache store ship"]
+    n10["pack"]
+  end
+  subgraph B2["Edge services"]
+    n11["api"]
+    n12["store"]
+    n13["store cache index<br/>audit"]
+  end
+  subgraph B3["Platform"]
+    n14["mail"]
+    n15["search"]
+    n16["parse"]
+    subgraph B3s0["Storefront 0"]
+      n17["notify"]
+    end
+    subgraph B3s1["Data tier 1"]
+      n18["store store report"]
+    end
+  end
+  n19["audit"]
+  n20["cache search store"]
+  n18 --> n10
+  n4 --> n13
+  n11 --> n16
+  n20 --> n13
+  n10 -.->|mail| n8
+  n14 -.->|notify| n2
+  n5 -->|ingest| n11
+  n14 --> n12
+  n20 ==> n8
+  n6 ==>|parse| n14
+  n16 -.->|split| n4
+  n19 ==>|notify| n16
+  n16 --> n8
+  n18 ==> n19
+  n7 --> n2
+  n2 --> n3
+  n7 -.-> n20
+  n7 ==>|mail| n10
+  n7 ==> n8
+  n19 --> n14

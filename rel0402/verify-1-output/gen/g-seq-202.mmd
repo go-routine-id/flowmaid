@@ -1,0 +1,14 @@
+sequenceDiagram
+participant P0 as a&b
+participant P1 as a&b
+alt Customer Order
+P0-->P0: delta
+P1->>P1: Customer Order
+Note over P1: Long label here
+P0--)P0: Customer Order
+Note right of P1: Customer Order
+Note over P0,P1: beta
+Note over P0,P1: <b>bold</b>
+else <b>bold</b>
+P1--xP0: Long label here
+end

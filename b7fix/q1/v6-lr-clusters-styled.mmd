@@ -1,0 +1,13 @@
+flowchart LR
+  subgraph edge [Edge tier]
+    LB[Load balancer] ==>|primary| GW[Gateway]
+  end
+  subgraph app [App tier]
+    API[API] -.->|async| Q[[Queue]]
+    API -->|sync call| SVC[Service]
+  end
+  GW -.->|forward| API
+  Q ==>|drain| W[Worker]
+  SVC -->|write| DB[(DB)]
+  W -.->|write later| DB
+  linkStyle 5 stroke:#e80,stroke-width:3px

@@ -1,0 +1,14 @@
+flowchart TD
+ top --> m1
+ top --> m0
+ top --> last
+ subgraph O[Outer block]
+  subgraph M[Middle block]
+   subgraph I[Inner block]
+    m1 --> m2
+    m0 --> m3
+   end
+  end
+ end
+ m2 --> last
+ m3 --> last

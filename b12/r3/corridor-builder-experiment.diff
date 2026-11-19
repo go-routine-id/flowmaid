@@ -1,0 +1,304 @@
+diff --git a/src/edgepass.rs b/src/edgepass.rs
+index 343d2d2..0b5e3ed 100644
+--- a/src/edgepass.rs
++++ b/src/edgepass.rs
+@@ -139,6 +139,14 @@ pub(crate) struct Ctx {
+     /// out of its source's upstream side and into its target's
+     /// downstream side, and the stages shape it as they shape those.
+     pub lane: Vec<bool>,
++    /// Index-parallel with `sc.edges`: the edge comes from a block
++    /// layout's `route()` with corridor columns as its waypoints (B12
++    /// R3, [`crate::corridor`]): one point per row of boxes it passes,
++    /// as a static long edge's dummy chain holds them. The ortho stage
++    /// runs it down those columns as it runs a static chain, where it
++    /// would otherwise draw one step from its ports. All `false` but
++    /// there.
++    pub corridor: Vec<bool>,
+ }
+ 
+ /// Build the shared context. `sc.edges` holds `g.edges` first, then the
+@@ -267,6 +275,7 @@ pub(crate) fn ctx(g: &Graph, sc: &Scene) -> Ctx {
+     let held = fixed.clone();
+     let chain = fixed.clone();
+     let shaped = fixed.clone();
++    let corridor = fixed.clone();
+     let back: Vec<bool> = back;
+     let lane = back.clone();
+     Ctx {
+@@ -282,6 +291,7 @@ pub(crate) fn ctx(g: &Graph, sc: &Scene) -> Ctx {
+         blocks: false,
+         axis_ends: sc.block_layout,
+         lane,
++        corridor,
+     }
+ }
+ 
+@@ -438,6 +448,44 @@ pub(crate) fn finish_blocks(g: &Graph, sc: &mut Scene, blocks: Option<&[Vec<usiz
+     stages(g, sc, cx, Mode::Static);
+ }
+ 
++/// What a block layout's `route()` tells the stages besides the scene
++/// (B12 R1-R3): it draws with the block layout's frames, so the stages
++/// shape its edges by the static scene's block rules ([`Ctx::blocks`]).
++/// Index-parallel with `sc.edges`; missing entries are `false`.
++pub(crate) struct RoutedBlocks {
++    /// The edges drawn in a back-edge lane ([`Ctx::lane`]).
++    pub lanes: Vec<bool>,
++    /// The edges drawn down corridor columns ([`Ctx::corridor`]).
++    pub corridors: Vec<bool>,
++}
++
++/// [`finish_held`] for a block layout's `route()` or `route_partial()`
++/// (`rb`): its lanes and corridors as the builder drew them, and the
++/// stages' block rules on, as in the static scene.
++pub(crate) fn finish_routed_blocks(
++    g: &Graph,
++    sc: &mut Scene,
++    fixed: &[bool],
++    held: &[bool],
++    rb: &RoutedBlocks,
++) {
++    let mut cx = ctx(g, sc);
++    for (f, &x) in cx.fixed.iter_mut().zip(fixed) {
++        *f = x;
++    }
++    for (f, &x) in cx.held.iter_mut().zip(held) {
++        *f = x;
++    }
++    cx.blocks = std::env::var("FMX_NOCXB").is_err();
++    for (i, l) in cx.lane.iter_mut().enumerate() {
++        *l = rb.lanes.get(i).copied().unwrap_or(false);
++    }
++    for (i, c) in cx.corridor.iter_mut().enumerate() {
++        *c = rb.corridors.get(i).copied().unwrap_or(false);
++    }
++    stages(g, sc, cx, Mode::Routed);
++}
++
+ /// The edge stages over `sc` with its context built.
+ fn stages(g: &Graph, sc: &mut Scene, mut cx: Ctx, mode: Mode) {
+     let mut moved = vec![false; sc.edges.len()];
+diff --git a/src/lib.rs b/src/lib.rs
+index 739a028..75da4b8 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -42,6 +42,7 @@ pub mod class;
+ pub(crate) mod clearance;
+ mod comb;
+ mod compound;
++mod corridor;
+ mod edgepass;
+ pub mod emit;
+ pub mod er;
+diff --git a/src/ortho.rs b/src/ortho.rs
+index 0abbaee..1198c18 100644
+--- a/src/ortho.rs
++++ b/src/ortho.rs
+@@ -842,6 +842,14 @@ fn ortho_pass(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
+                     .collect();
+                 straighten(&room, f0.0, &cols, f3.0, &pinned)
+             }
++        } else if is_chain && cx.corridor.get(i).copied().unwrap_or(false) {
++            // A block layout's `route()` corridor ([`crate::corridor`]):
++            // its columns as the builder dealt them, a chain's in all but
++            // being laid by a layout.
++            e.waypoints[1..e.waypoints.len() - 1]
++                .iter()
++                .map(|&p| to_flow(dir, p))
++                .collect()
+         } else {
+             Vec::new()
+         };
+@@ -1040,7 +1048,12 @@ fn ortho_pass(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
+                 let (a, b) = (screen[2], screen[3]);
+                 *at = ((a.0 + b.0) / 2.0, (a.1 + b.1) / 2.0);
+             }
+-        } else if cx.blocks && chain[i] {
++        } else if cx.blocks
++            && chain[i]
++            && (mode == Mode::Static
++                || (cx.corridor.get(i).copied().unwrap_or(false)
++                    && std::env::var("FMX_RELABEL").is_err()))
++        {
+             // A block layout's long edge: its label keeps the slot the
+             // layout reserved on the run between its two end blocks
+             // ([`crate::layout::label_slot`]), on the new path. Moved
+@@ -1891,7 +1904,7 @@ fn flow_path(
+ /// box beside it ([`crate::layout::GAP_B`] less half a dummy's breadth),
+ /// halved — still clear of the boxes by a good deal more than a
+ /// reroute keeps ([`ROW_CLEAR`]).
+-const COLUMN_CLEAR: f64 = 21.0;
++pub(crate) const COLUMN_CLEAR: f64 = 21.0;
+ 
+ /// What [`straighten`] reads (flow coordinates).
+ struct ColumnRoom<'a> {
+diff --git a/src/scene.rs b/src/scene.rs
+index 86d998d..8d6edcf 100644
+--- a/src/scene.rs
++++ b/src/scene.rs
+@@ -5594,8 +5594,12 @@ pub(crate) fn route_fitted(
+     crate::levels::note_used(crate::levels::Entry::Route, g, || block_mode_decided(g));
+     // The switch of the block layout, read once for this call.
+     let blocks = route_blocks(g, crate::levels::blocks_on());
+-    let mut sc = route_built(g, centers, sizes, labels, true, blocks);
+-    crate::edgepass::finish(g, &mut sc, crate::edgepass::Mode::Routed);
++    let (mut sc, rb) = route_built(g, centers, sizes, labels, true, blocks);
++    if blocks && std::env::var("FMX_NOBLK").is_err() {
++        crate::edgepass::finish_routed_blocks(g, &mut sc, &[], &[], &rb);
++    } else {
++        crate::edgepass::finish(g, &mut sc, crate::edgepass::Mode::Routed);
++    }
+     sc
+ }
+ 
+@@ -5634,7 +5638,7 @@ fn route_built(
+     labels: &[String],
+     place_labels: bool,
+     blocks: bool,
+-) -> Scene {
++) -> (Scene, crate::edgepass::RoutedBlocks) {
+     let placed: Vec<Placed> = (0..g.nodes.len())
+         .map(|i| Placed {
+             b: centers[i].0,
+@@ -5717,7 +5721,24 @@ fn route_built(
+     // Back-edges run in their lanes, or across the gap with nothing
+     // between their ends, by the static layout's rule ([`route_backs`]).
+     let flow_at: Vec<Placed> = placed.iter().map(|p| flow_placed(g.direction, p)).collect();
+-    let backs = route_backs(g, &flow_at);
++    // B12 R2: in block mode each edge's class from the boxes of the units
++    // it joins; an upstream one between blocks (E3) runs in a channel
++    // like a downstream one, never in a back-edge lane.
++    let paths = node_cluster_paths(g);
++    let classes = (blocks && std::env::var("FMX_NOCOR").is_err())
++        .then(|| crate::corridor::Corridors::new(g, &nodes, raw_boxes, &paths));
++    let pre_cors = match &classes {
++        Some(c) if std::env::var("FMX_E3COR").is_ok() => c.plan(g, &paths, &[]),
++        _ => vec![None; g.edges.len()],
++    };
++    let no_lane: Vec<bool> = (0..g.edges.len())
++        .map(|ei| {
++            std::env::var("FMX_E3LANE").is_err()
++                && classes.as_ref().is_some_and(|c| c.upstream(ei))
++                && (std::env::var("FMX_E3COR").is_err() || pre_cors[ei].is_some())
++        })
++        .collect();
++    let backs = route_backs(g, &flow_at, &no_lane);
+     let frames = if g.subgraphs.is_empty() || !backs.iter().any(|b| matches!(b, Back::Lane(_))) {
+         Vec::new()
+     } else {
+@@ -5739,6 +5760,17 @@ fn route_built(
+     };
+     let bows = twin_bows(g, &offs, curve);
+     let sides = twin_sides(g, &offs, curve, |ei| backs[ei] == Back::Direct);
++    let mut lanes = vec![false; g.edges.len()];
++    let mut corridors = vec![false; g.edges.len()];
++    // B12 R3: in block mode the long edges between blocks run down the
++    // columns of their corridors ([`crate::corridor`]).
++    let cors = match &classes {
++        Some(c) => {
++            let skip: Vec<bool> = backs.iter().map(|b| *b != Back::No).collect();
++            c.plan(g, &paths, &skip)
++        }
++        None => vec![None; g.edges.len()],
++    };
+     for (ei, (e, off)) in g.edges.iter().zip(offs).enumerate() {
+         let a = &placed[e.from];
+         let b = &placed[e.to];
+@@ -5762,6 +5794,7 @@ fn route_built(
+         let (fa, fb) = (&flow_at[e.from], &flow_at[e.to]);
+         let (sa, sb) = (g.nodes[e.from].shape, g.nodes[e.to].shape);
+         let back = if elbow.is_some() { Back::No } else { backs[ei] };
++        lanes[ei] = matches!(back, Back::Lane(_));
+         if let Back::Lane(lane) = back {
+             let heads = |k: usize, v: usize| {
+                 let f = &g.edges[k];
+@@ -5835,7 +5868,17 @@ fn route_built(
+                 }
+             }
+         };
+-        let wps = if e.from != e.to && back == Back::No && top_of(e.from) != top_of(e.to) {
++        let cor = cors[ei].as_ref().filter(|_| back == Back::No);
++        corridors[ei] = cor.is_some();
++        // An upstream edge between blocks leaves its source's upstream
++        // side and enters its target's downstream side (B12 E3).
++        let pts = match (back, &classes) {
++            (Back::No, Some(c)) if no_lane[ei] => c.facing(ei, (e.from, e.to)).unwrap_or(pts),
++            _ => pts,
++        };
++        let wps = if let Some(c) = cor {
++            c.waypoints.clone()
++        } else if e.from != e.to && back == Back::No && top_of(e.from) != top_of(e.to) {
+             // Parallel edges between one pair get the same channel: each
+             // runs `off` across the flow from it, so they never coincide.
+             cross_cluster_route(
+@@ -5854,7 +5897,9 @@ fn route_built(
+             Vec::new()
+         };
+         let label = e.label.as_ref().map(|l| {
+-            let mid = if wps.is_empty() {
++            let mid = if let Some(c) = cor {
++                c.label
++            } else if wps.is_empty() {
+                 cubic_mid(pts[0], pts[1], pts[2], pts[3])
+             } else {
+                 wps[wps.len() / 2]
+@@ -6014,7 +6059,7 @@ fn route_built(
+         grow_label(&mut bb, e);
+     }
+     let (_, maxx, _, maxy) = bb.finish();
+-    Scene {
++    let sc = Scene {
+         nodes,
+         edges,
+         clusters,
+@@ -6024,7 +6069,8 @@ fn route_built(
+         routed: false,
+         plain_crossings: false,
+         block_layout: blocks,
+-    }
++    };
++    (sc, crate::edgepass::RoutedBlocks { lanes, corridors })
+ }
+ 
+ /// How close (px) an unmoved edge of [`route_partial`]'s base may come
+@@ -6155,7 +6201,8 @@ pub(crate) fn route_partial_with(
+     // drag frame and is left out here (G13).
+     // The switch of the block layout, read once for this call.
+     let on = crate::levels::blocks_on();
+-    let mut sc = route_built(g, centers, &sizes, &labels, false, route_blocks(g, on));
++    let blocks = route_blocks(g, on);
++    let (mut sc, rb) = route_built(g, centers, &sizes, &labels, false, blocks);
+     // A kept edge is copied from `base` whole (style, end glyphs,
+     // label text), and a node's box follows its text: an edit to any of
+     // them must not keep stale geometry.
+@@ -6391,7 +6438,11 @@ pub(crate) fn route_partial_with(
+     sc.width = base.width;
+     sc.height = base.height;
+     sc.origin = base.origin;
+-    crate::edgepass::finish_held(g, &mut sc, crate::edgepass::Mode::Routed, &fixed, &held);
++    if blocks && std::env::var("FMX_NOBLK").is_err() {
++        crate::edgepass::finish_routed_blocks(g, &mut sc, &fixed, &held, &rb);
++    } else {
++        crate::edgepass::finish_held(g, &mut sc, crate::edgepass::Mode::Routed, &fixed, &held);
++    }
+     sc
+ }
+ 
+@@ -9872,7 +9923,7 @@ enum Back {
+ /// innermost box holding both ends; crossings are judged against the
+ /// other edges' centre-to-centre lines. O(nodes + edges) per back-edge,
+ /// so a drag frame affords it.
+-fn route_backs(g: &Graph, flow: &[Placed]) -> Vec<Back> {
++fn route_backs(g: &Graph, flow: &[Placed], no_lane: &[bool]) -> Vec<Back> {
+     use crate::lanes::{
+         blocks_direct, crossings, direct_port, judged_path, label_breadth, legs, plan, port_span,
+         Lane, Skeleton, Want, LANE_CLEAR, LANE_REACH,
+@@ -9891,7 +9942,7 @@ fn route_backs(g: &Graph, flow: &[Placed]) -> Vec<Back> {
+     };
+     let mut backs: Vec<usize> = Vec::new();
+     for (ei, e) in g.edges.iter().enumerate() {
+-        if !drawn(e) || gap(e) < FLOW_MIN_GAP {
++        if !drawn(e) || gap(e) < FLOW_MIN_GAP || no_lane.get(ei).copied().unwrap_or(false) {
+             continue;
+         }
+         if card(e.from) || card(e.to) {

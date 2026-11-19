@@ -1,0 +1,26 @@
+---
+config:
+  sequence:
+    scopedFrames: true
+    mirrorActors: false
+---
+sequenceDiagram
+    participant A
+    participant B
+    participant C
+    participant D
+    participant E
+    A->>B: start
+    loop only C and D
+        C->>+D: work
+        D-->>-C: result
+        Note over C,D: spans two
+    end
+    alt B and E
+        B->>E: far
+    else nothing here
+    end
+    opt Note only on E
+        Note right of E: lonely note on the far right side
+    end
+    A->>E: final

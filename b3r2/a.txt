@@ -1,0 +1,190 @@
+bench-75	static	alerts->dash end_cross metrics->dash at (1513,272)
+bench-75	static	alerts->dash end_kink end on dash 76.8deg
+bench-75	static	alerts->dash end_tilt end on dash 76.8deg
+bench-75	static	alerts->dash idiom spline
+bench-75	static	alerts->gw edge_frame app
+bench-75	static	alerts->gw ortho
+bench-75	static	cache->svc4 ortho
+bench-75	static	dash->ext ortho
+bench-75	static	dash->user band svc5->ext 176px
+bench-75	static	dash->user ortho
+bench-75	static	db->metrics lat_wiggle 136.5
+bench-75	static	db->metrics ortho
+bench-75	static	db->svc2 end_kink end on svc2 84.6deg
+bench-75	static	db->svc2 idiom scubic
+bench-75	static	gw->lb band gw->svc6 110px
+bench-75	static	gw->lb end_kink end on lb 67.2deg
+bench-75	static	gw->lb idiom scubic
+bench-75	static	gw->logs lat_wiggle 110.0
+bench-75	static	gw->logs ortho
+bench-75	static	gw->svc1 idiom spline
+bench-75	static	gw->svc2 band alerts->gw 180px
+bench-75	static	gw->svc2 end_kink end on svc2 67.7deg
+bench-75	static	gw->svc2 end_tilt end on svc2 67.7deg
+bench-75	static	gw->svc2 lat_wiggle 129.5
+bench-75	static	gw->svc2 ortho
+bench-75	static	gw->svc3 idiom spline
+bench-75	static	gw->svc4 band gw->svc6 204px
+bench-75	static	gw->svc4 end_kink end on svc4 17.0deg
+bench-75	static	gw->svc4 end_tilt end on svc4 17.0deg
+bench-75	static	gw->svc4 ortho
+bench-75	static	gw->svc5 end_kink end on svc5 47.2deg
+bench-75	static	gw->svc5 end_tilt end on svc5 47.2deg
+bench-75	static	gw->svc5 idiom spline
+bench-75	static	gw->svc6 idiom spline
+bench-75	static	job1->db band job2->db 408px
+bench-75	static	job1->db band job3->db 490px
+bench-75	static	job1->db ortho
+bench-75	static	job1->ext band svc6->ext 130px
+bench-75	static	job1->ext ortho
+bench-75	static	job1->svc1 ortho
+bench-75	static	job2->db band db->metrics 112px
+bench-75	static	job2->db ortho
+bench-75	static	job2->ext idiom spline
+bench-75	static	job2->ext lat_wiggle 125.0
+bench-75	static	job2->objects ortho
+bench-75	static	job3->db band job1->svc1 544px
+bench-75	static	job3->db ortho
+bench-75	static	job3->ext band job3->logs 216px
+bench-75	static	job3->ext ortho
+bench-75	static	job3->logs ortho
+bench-75	static	lb->metrics edge_frame app
+bench-75	static	lb->metrics hug ops 26px
+bench-75	static	lb->metrics lat_wiggle 35.0
+bench-75	static	lb->metrics ortho
+bench-75	static	lb->svc1 border edge right 46px
+bench-75	static	lb->svc1 end_kink end on svc1 63.4deg
+bench-75	static	lb->svc1 hug edge 57px
+bench-75	static	lb->svc1 idiom scubic
+bench-75	static	lb->svc2 band svc5->logs 194px
+bench-75	static	lb->svc2 ortho
+bench-75	static	lb->svc2 tight svc2->db 38px
+bench-75	static	lb->svc3 end_kink end on svc3 65.6deg
+bench-75	static	lb->svc3 idiom scubic
+bench-75	static	lb->svc4 band svc2->db 134px
+bench-75	static	lb->svc4 band svc5->objects 150px
+bench-75	static	lb->svc4 hug svc5 58px
+bench-75	static	lb->svc4 ortho
+bench-75	static	lb->svc5 end_kink end on svc5 14.9deg
+bench-75	static	lb->svc5 idiom scubic
+bench-75	static	lb->svc6 end_kink end on svc6 69.6deg
+bench-75	static	lb->svc6 idiom scubic
+bench-75	static	logs->dash end_kink end on dash 40.0deg
+bench-75	static	logs->dash idiom scubic
+bench-75	static	metrics->alerts idiom scubic
+bench-75	static	metrics->dash ortho
+bench-75	static	objects->logs band job3->logs 864px
+bench-75	static	objects->logs ortho
+bench-75	static	queue->job1 ortho
+bench-75	static	queue->job2 ortho
+bench-75	static	queue->job3 ortho
+bench-75	static	queue->metrics end_tilt end on metrics 75.1deg
+bench-75	static	queue->metrics idiom scubic
+bench-75	static	queue->metrics overlap lb->metrics 30px
+bench-75	static	queue->metrics tight lb->metrics 30px
+bench-75	static	svc1->cache band svc3->cache 696px
+bench-75	static	svc1->cache band svc3->queue 372px
+bench-75	static	svc1->cache ortho
+bench-75	static	svc1->db band job1->svc1 622px
+bench-75	static	svc1->db band svc3->db 334px
+bench-75	static	svc1->db band svc5->db 334px
+bench-75	static	svc1->db ortho
+bench-75	static	svc1->db tight svc1->objects 42px
+bench-75	static	svc1->db tight svc3->db 104px
+bench-75	static	svc1->logs band svc3->logs 302px
+bench-75	static	svc1->logs band svc4->logs 260px
+bench-75	static	svc1->logs band svc6->logs 686px
+bench-75	static	svc1->logs ortho
+bench-75	static	svc1->logs tight svc4->logs 32px
+bench-75	static	svc1->logs tight svc6->logs 686px
+bench-75	static	svc1->metrics band alerts->gw 724px
+bench-75	static	svc1->metrics ortho
+bench-75	static	svc1->objects band svc1->metrics 554px
+bench-75	static	svc1->objects band svc3->objects 130px
+bench-75	static	svc1->objects band svc6->ext 286px
+bench-75	static	svc1->objects ortho
+bench-75	static	svc1->objects tight lb->metrics 66px
+bench-75	static	svc1->objects tight svc1->metrics 548px
+bench-75	static	svc1->queue band svc4->queue 578px
+bench-75	static	svc1->queue lat_wiggle 93.5
+bench-75	static	svc1->queue ortho
+bench-75	static	svc2->cache end_tilt end on cache 75.1deg
+bench-75	static	svc2->cache idiom scubic
+bench-75	static	svc2->db band db->svc2 234px
+bench-75	static	svc2->db ortho
+bench-75	static	svc2->logs band gw->logs 286px
+bench-75	static	svc2->logs idiom spline
+bench-75	static	svc2->logs lat_wiggle 71.5
+bench-75	static	svc2->metrics ortho
+bench-75	static	svc2->queue band svc2->metrics 344px
+bench-75	static	svc2->queue band svc3->queue 194px
+bench-75	static	svc2->queue band svc4->metrics 184px
+bench-75	static	svc2->queue ortho
+bench-75	static	svc2->queue tight svc2->metrics 338px
+bench-75	static	svc3->cache band svc3->metrics 314px
+bench-75	static	svc3->cache band svc3->objects 274px
+bench-75	static	svc3->cache ortho
+bench-75	static	svc3->db band job1->svc1 414px
+bench-75	static	svc3->db band svc5->db 248px
+bench-75	static	svc3->db border data left 120px
+bench-75	static	svc3->db end_kink end on db 84.4deg
+bench-75	static	svc3->db hug data 141px
+bench-75	static	svc3->db idiom scubic
+bench-75	static	svc3->db overlap job1->svc1 190px
+bench-75	static	svc3->db overlap svc5->db 196px
+bench-75	static	svc3->db tight job1->svc1 324px
+bench-75	static	svc3->db tight svc5->db 316px
+bench-75	static	svc3->logs end_kink end on logs 22.9deg
+bench-75	static	svc3->logs end_tilt end on logs 22.9deg
+bench-75	static	svc3->logs idiom spline
+bench-75	static	svc3->logs lat_wiggle 41.5
+bench-75	static	svc3->metrics ortho
+bench-75	static	svc3->objects ortho
+bench-75	static	svc3->objects tight svc3->metrics 38px
+bench-75	static	svc3->queue end_cross svc3->logs at (453,513)
+bench-75	static	svc3->queue lat_wiggle 14.5
+bench-75	static	svc3->queue ortho
+bench-75	static	svc4->cache end_kink end on cache 81.1deg
+bench-75	static	svc4->cache idiom scubic
+bench-75	static	svc4->db idiom scubic
+bench-75	static	svc4->logs border app right 99px
+bench-75	static	svc4->logs hug app 162px
+bench-75	static	svc4->logs idiom spline
+bench-75	static	svc4->logs lat_wiggle 15.0
+bench-75	static	svc4->metrics ortho
+bench-75	static	svc4->queue ortho
+bench-75	static	svc5->cache band svc5->objects 190px
+bench-75	static	svc5->cache ortho
+bench-75	static	svc5->db band job1->svc1 472px
+bench-75	static	svc5->db ortho
+bench-75	static	svc5->db tight job1->svc1 472px
+bench-75	static	svc5->db tight svc5->ext 36px
+bench-75	static	svc5->ext band lb->metrics 318px
+bench-75	static	svc5->ext ortho
+bench-75	static	svc5->logs ortho
+bench-75	static	svc5->objects ortho
+bench-75	static	svc5->queue band db->svc2 148px
+bench-75	static	svc5->queue band lb->metrics 160px
+bench-75	static	svc5->queue band svc5->ext 104px
+bench-75	static	svc5->queue band svc6->queue 366px
+bench-75	static	svc5->queue ortho
+bench-75	static	svc5->queue tight svc5->ext 104px
+bench-75	static	svc6->cache band svc6->queue 494px
+bench-75	static	svc6->cache ortho
+bench-75	static	svc6->db band svc6->cache 420px
+bench-75	static	svc6->db ortho
+bench-75	static	svc6->ext band lb->metrics 410px
+bench-75	static	svc6->ext end_kink end on ext 50.5deg
+bench-75	static	svc6->ext lat_wiggle 34.5
+bench-75	static	svc6->ext ortho
+bench-75	static	svc6->logs ortho
+bench-75	static	svc6->queue ortho
+bench-75	static	user->ext idiom spline
+bench-75	static	user->ext lat_wiggle 805.6
+bench-75	static	user->gw border edge left 51px
+bench-75	static	user->gw end_kink end on gw 73.6deg
+bench-75	static	user->gw hug edge 60px
+bench-75	static	user->gw idiom scubic
+bench-75	static	user->lb end_kink end on lb 48.4deg
+bench-75	static	user->lb end_tilt end on lb 48.4deg
+bench-75	static	user->lb idiom spline

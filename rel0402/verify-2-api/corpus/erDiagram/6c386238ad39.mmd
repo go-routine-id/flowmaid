@@ -1,0 +1,18 @@
+erDiagram
+  A ||--o{ B : ab
+  B ||--o{ C : bc
+  A ||--o{ C : "skips"
+  A {
+ int id PK
+ int x
+ int y
+ }
+ B {
+ int id PK
+ int x
+ int y
+ int z
+ }
+ C {
+ int id PK
+ }

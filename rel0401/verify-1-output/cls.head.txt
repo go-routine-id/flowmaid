@@ -1,0 +1,68 @@
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c000.mmd	ERR	ERR line 2: 'A.' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and '..' is the dotted line
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c001.mmd	ERR	ERR line 2: '.A' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and '..' is the dotted line
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c002.mmd	ERR	ERR line 2: 'A..B' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and '..' is the dotted line
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c003.mmd	ERR	ERR line 2: 'A...B' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and '..' is the dotted line
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c004.mmd	ERR	ERR line 2: 'A.B.' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and '..' is the dotted line
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c005.mmd	ERR	ERR line 2: 'A....B' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and '..' is the dotted line
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c006.mmd	ERR	ERR line 2: '..A' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and '..' is the dotted line
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c007.mmd	ERR	ERR line 2: '.' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and '..' is the dotted line
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c008.mmd	ERR	ERR line 2: 'A.' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and '..' is the dotted line
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c009.mmd	ERR	ERR line 2: 'A.' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and '..' is the dotted line
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c010.mmd	ERR	ERR line 2: 'A.' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and '..' is the dotted line
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c011.mmd	ERR	ERR line 2: 'A.' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and '..' is the dotted line
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c012.mmd	ERR	ERR line 2: 'A.' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and '..' is the dotted line
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c013.mmd	ERR	ERR line 2: 'A..B' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and '..' is the dotted line
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c014.mmd	ok	
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c015.mmd	ok	
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c016.mmd	ok	
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c017.mmd	ok	
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c018.mmd	ok	
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c019.mmd	ok	
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c020.mmd	ok	
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c021.mmd	ok	
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c022.mmd	ok	
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c023.mmd	ok	
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c024.mmd	ok	
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c025.mmd	ok	
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c026.mmd	ok	
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c027.mmd	ok	
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c028.mmd	ok	
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c029.mmd	ERR	ERR line 2: unknown class relation near: 'namespace N {'
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c030.mmd	ERR	ERR line 2: unknown class relation near: 'namespace N {'
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c031.mmd	ERR	ERR line 2: unknown class relation near: 'namespace N.M {'
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c032.mmd	ERR	ERR line 2: unknown class relation near: 'namespace N. {'
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c033.mmd	ok	
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c034.mmd	ok	
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c035.mmd	ok	
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c036.mmd	ok	
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c037.mmd	ok	
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c038.mmd	ok	
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c039.mmd	ERR	ERR line 2: 'A .' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and '..' is the dotted line
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c040.mmd	ERR	ERR line 2: 'A . . B' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and '..' is the dotted line
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c041.mmd	ERR	ERR line 2: '.A' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and '..' is the dotted line
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c042.mmd	ok	
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c043.mmd	ok	
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c044.mmd	ERR	ERR line 2: 'A..B' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and '..' is the dotted line
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c045.mmd	ok	
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c046.mmd	ok	
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c047.mmd	ok	
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c048.mmd	ERR	ERR line 2: 'A. ' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and '..' is the dotted line
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c049.mmd	ok	
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c050.mmd	ok	
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c051.mmd	ok	
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c052.mmd	ERR	ERR line 2: 'A.B.' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and '..' is the dotted line
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c053.mmd	ERR	ERR line 3: 'B.' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and '..' is the dotted line
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c054.mmd	ok	
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c055.mmd	ok	
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c056.mmd	ERR	ERR line 2: '.A.B' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and '..' is the dotted line
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c057.mmd	ERR	ERR line 2: 'A..' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and '..' is the dotted line
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c058.mmd	ERR	ERR line 2: 'A-.' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and '..' is the dotted line
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c059.mmd	ok	
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c060.mmd	ok	
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c061.mmd	ok	
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c062.mmd	ok	
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c063.mmd	ok	
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c064.mmd	ok	
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c065.mmd	ok	
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c066.mmd	ERR	ERR line 2: 'A.' is no class name: a dot joins two parts of a name, as in 'com.example.Order', and '..' is the dotted line
+/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/verify-1-output/cls/c067.mmd	ok	

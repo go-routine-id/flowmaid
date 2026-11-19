@@ -1,0 +1,49 @@
+flowchart TD
+  n1["index"]
+  n2["cache"]
+  n3["audit"]
+  subgraph B0["Analytics"]
+    n4["cache auth auth<br/>report"]
+    n5["ingest<br/>pack"]
+    n6["merge"]
+  end
+  subgraph B1["Analytics"]
+    n7["notify<br/>cache"]
+    n8["report"]
+    n9["ingest<br/>store"]
+    n10["db"]
+  end
+  subgraph B2["Fulfilment desk"]
+    n11["pack<br/>ingest"]
+    n12["mail"]
+    n13["index"]
+    subgraph B2s0["Platform 0"]
+      n14["mail"]
+      n15["api"]
+      n16["report search index<br/>search"]
+    end
+  end
+  n17["search"]
+  n5 --> n10
+  n4 -->|ship| n11
+  n6 --> n7
+  n5 --> n15
+  n14 -->|cache| n4
+  n3 -->|notify| n1
+  n7 --> n6
+  n14 -->|api| B2
+  n12 -.-> B2
+  n15 -.-> n7
+  n16 -->|store| n6
+  n10 --> n13
+  n8 --> n14
+  n16 --> n15
+  n4 ==> n14
+  n1 ==> n12
+  n2 --> n10
+  n5 --> n8
+  n8 -.-> n12
+  n15 --> n2
+  n12 --> n10
+  n5 --> n2
+  n2 -->|billing| n14

@@ -1,0 +1,33 @@
+flowchart LR
+  n1["notify"]
+  n2["cache"]
+  n3["split"]
+  subgraph B0["Ingest"]
+    n4["index merge ship"]
+    subgraph B0s0["Storefront 0"]
+      n5["pack"]
+    end
+    subgraph B0s1["Data tier 1"]
+      n6["api<br/>api"]
+    end
+  end
+  subgraph B1["Back office and finance"]
+    n7["billing"]
+    n8["billing"]
+    n9["queue"]
+  end
+  n10["notify"]
+  n11["index"]
+  n11 -.-> n9
+  n4 ==>|notify| n1
+  n9 --> n10
+  n8 --> n2
+  n4 --> n7
+  n1 ==> n9
+  n10 -.-> n8
+  n9 -.-> n2
+  n7 --> n11
+  n1 -.-> n7
+  n2 ==> n4
+  n7 ==>|auth| n8
+  n9 -.-> n3

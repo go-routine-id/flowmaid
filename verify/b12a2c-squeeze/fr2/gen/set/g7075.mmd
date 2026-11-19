@@ -1,0 +1,35 @@
+flowchart BT
+  n1["pack"]
+  n2["audit"]
+  subgraph B0["Storefront"]
+    n3["queue<br/>ingest"]
+    n4["search"]
+    n5["parse"]
+  end
+  subgraph B1["Storefront"]
+    n6["ingest merge billing"]
+    subgraph B1s0["Storefront 0"]
+      n7["notify"]
+    end
+  end
+  subgraph B2["Fulfilment desk"]
+    n8["merge api merge<br/>store"]
+    n9["billing"]
+    subgraph B2s0["Storefront 0"]
+      n10["queue notify worker"]
+      n11["ingest"]
+    end
+  end
+  n12["index"]
+  n9 --> n4
+  n7 ==>|split| n11
+  n10 --> n12
+  n4 --> n7
+  n2 -.-> n3
+  n9 --> n10
+  n11 -.-> n10
+  n12 --> n9
+  n6 ==> n2
+  n5 --> n8
+  n12 --> n8
+  n12 ==>|index| n7

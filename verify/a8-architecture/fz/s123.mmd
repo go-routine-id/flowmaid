@@ -1,0 +1,11 @@
+architecture-beta
+    group g0(server)[Data]
+    service s0(monitoring)[Service 0] in g0
+    service s1(database)[Service 1]
+    service s2(disk)[Service 2]
+    service s3(internet)[Service 3] in g0
+    service s4(server)[Service 4] in g0
+    service s5(cloud)[Service 5] in g0
+    service s6(database)[Service 6] in g0
+    service s7(monitoring)[Service 7] in g0
+    s1:T --> B:s7

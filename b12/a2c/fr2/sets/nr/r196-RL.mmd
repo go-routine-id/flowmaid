@@ -1,0 +1,18 @@
+flowchart RL
+    subgraph O[Shipping and returns desk]
+        subgraph G[Data ingestion workers]
+            m0[auth service]
+            m1[x wide member node]
+            m2[x wide member node]
+        end
+        k[k]
+    end
+    m0 --> k
+    s0[src0] --> m0
+    s0 --> m0
+    s1[src1] --> O
+    s1 --> m1
+    s2[src2] -- "lbl8" --> O
+    s2 --> m0
+    s3[src3] --> G
+    m2 --> z[end]

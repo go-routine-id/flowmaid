@@ -1,0 +1,11 @@
+flowchart RL
+    subgraph G[Data ingestion workers]
+        m0[w]
+        m1[ledger]
+        m2[db]
+    end
+    s0[src0] --> G
+    s0 --> m1
+    s1[src1] --> m1
+    m2 --> z[end]
+    G --> z2[after]

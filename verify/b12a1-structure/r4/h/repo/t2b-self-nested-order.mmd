@@ -1,0 +1,10 @@
+flowchart TD
+    x --> y
+    subgraph S[Service]
+        a
+        subgraph N[Inner]
+            n1 --> n2
+        end
+        a --> b
+    end
+    S --> S

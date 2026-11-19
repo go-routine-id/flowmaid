@@ -1,0 +1,10 @@
+flowchart TD
+    P[/Retry/] --> P
+    H{{Poll}} --> H
+    C[(Queue)] --> C
+    P --> H --> C
+    C -.-> P
+    D{Again?} --> D
+    C --> D
+    S([Wait]) --> S
+    D --> S

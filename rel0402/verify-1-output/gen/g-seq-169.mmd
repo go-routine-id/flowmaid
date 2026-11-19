@@ -1,0 +1,19 @@
+sequenceDiagram
+actor P0 as Customer Order
+participant P1 as alpha
+actor P2 as beta
+P2-->>P2: alpha
+P0-xP1: gamma
+P1--)P1: alpha
+Note over P1: delta
+P2--xP0: delta
+P2-->P0: Customer Order
+activate P0
+P0->>P0: act
+deactivate P0
+P2--xP0: x
+par beta
+P0--xP1: beta
+P2->P2: Long label here
+P0--)P1: Customer Order
+end

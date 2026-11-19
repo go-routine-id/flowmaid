@@ -1,0 +1,42 @@
+flowchart TD
+  n1["notify"]
+  n2["store<br/>parse"]
+  n3["db"]
+  subgraph B0["Analytics"]
+    n4["ingest<br/>ship"]
+    n5["worker"]
+  end
+  subgraph B1["Ops"]
+    n6["report split queue"]
+    n7["queue<br/>cache"]
+    n8["audit parse search"]
+  end
+  subgraph B2["Storefront"]
+    n9["billing split worker"]
+    n10["index parse split"]
+    n11["index"]
+  end
+  subgraph B3["Back office and finance"]
+    n12["ship"]
+    subgraph B3s0["Data tier 0"]
+      n13["auth"]
+    end
+  end
+  n14["worker"]
+  n15["notify<br/>report"]
+  n6 -->|report| n9
+  n2 -->|pack| n10
+  n13 -.-> n4
+  n11 --> n7
+  n7 --> n13
+  n6 ==> n10
+  n1 --> n5
+  n2 ==> n14
+  n3 --> n5
+  n8 -->|queue| n2
+  n5 --> n11
+  n5 --> n2
+  n5 -->|audit| n4
+  n10 --> n1
+  n15 --> n11
+  n13 ==> n9

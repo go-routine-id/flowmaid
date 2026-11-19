@@ -1,0 +1,16 @@
+sequenceDiagram
+participant P0 as <b>bold</b>
+participant P1 as 日本語
+activate P0
+P0->>P0: act
+deactivate P0
+Note right of P0: beta
+P1--xP0: 日本語
+P1-->P1: delta
+P0-)P1: 日本語
+par delta
+Note right of P1: <b>bold</b>
+activate P0
+P0->>P0: act
+deactivate P0
+end

@@ -1,0 +1,29 @@
+flowchart BT
+    a1
+    a2
+    a3
+    b1
+    b2
+    b3
+    C
+    subgraph A["Alpha"]
+        a1
+        a2
+        a3
+    end
+    subgraph B["Beta"]
+        b1
+        b2
+        b3
+    end
+    a1 --> a2
+    a2 --> a3
+    a3 --> a1
+    b1 --> b2
+    b2 --> b1
+    b2 --> b3
+    b3 --> C
+    A --> B
+    C -->|"loop back with a long label"| A
+    a2 --> A
+    B --> b1

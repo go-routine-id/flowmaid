@@ -1,0 +1,20 @@
+flowchart LR
+    N0[Queue]
+    N1(Report notify)
+    N2[Report]
+    N3[Queue fetch]
+    N4{Emit}
+    N5([Done])
+    N6(Archive notify)
+    N7{Store done}
+    N0 --> N1
+    N1 --> N2
+    N1 --> N3
+    N2 --> N4
+    N3 --> N5
+    N5 --> N6
+    N6 --> N7
+    N3 --> N7
+    N4 -.-> N1
+    N4 --> N0
+    N6 --> N3

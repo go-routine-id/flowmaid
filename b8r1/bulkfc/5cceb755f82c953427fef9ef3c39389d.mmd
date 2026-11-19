@@ -1,0 +1,20 @@
+flowchart LR
+    N0(Archive check)
+    N1[Report]
+    N2(Archive archive)
+    N3[/Emit/]
+    N4(Archive)
+    N5(Validate)
+    N6{Notify queue}
+    N7([Store])
+    N8(Store)
+    N0 -->|no| N1
+    N1 --> N2
+    N1 --> N3
+    N3 --> N4
+    N2 -->|yes| N5
+    N4 -->|fail| N6
+    N5 --> N7
+    N7 -->|fail| N8
+    N1 --> N7
+    N8 ==> N4

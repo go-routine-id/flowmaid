@@ -1,0 +1,11 @@
+flowchart BT
+    s1[one] --> m1
+    s2[two] --> m1
+    s3[three] --> m2
+    s4[four] --> m2
+    subgraph G["A title that is wider than the two members under it"]
+        m1[x]
+        m2[y]
+    end
+    m1 --> t[top]
+    m2 --> t

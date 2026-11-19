@@ -1,0 +1,33 @@
+sequenceDiagram
+participant P0 as Customer Order
+P0-->P0: a&b
+P0--xP0: a&b
+P0->>P0: self delta
+par alpha
+alt delta
+P0->>P0: beta
+opt <b>bold</b>
+P0--xP0: x
+P0->>P0: self delta
+P0->>P0: self delta
+P0->>P0: self gamma
+P0->>P0: self beta
+P0--)P0: <b>bold</b>
+Note over P0: delta
+Note over P0: a&b
+loop 日本語
+end
+end
+P0--)P0: Long label here
+Note left of P0: <b>bold</b>
+P0-xP0: 日本語
+P0->P0: Long label here
+P0-xP0: alpha
+par a&b
+P0->>P0: alpha
+P0--)P0: beta
+end
+par Customer Order
+end
+end
+end

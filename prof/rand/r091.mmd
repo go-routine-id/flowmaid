@@ -1,0 +1,21 @@
+flowchart TD
+  H0 ---|x| N7
+  H0 ==> N17
+  N14 -->|yes| N5
+  N0 -->|no| N20
+  N0 -->|no| N19
+  N4 -->|yes| N9
+  N16 --> N5
+  N13 -->|express| N20
+  N10 -->|no| N5
+  N14 -->|express| N12
+  N12 --> N4
+  N17 --> N7
+  N2 -->|x| N16
+  N3 --> N17
+  N20 --> N18
+  N18 --> N8
+  N4 -->|a much longer label here| N10
+  N0 -->|no| N17
+  N13 -->|no| N8
+  N8 -->|gift wrap| N3

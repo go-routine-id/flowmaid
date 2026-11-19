@@ -1,0 +1,25 @@
+labels:    
+edge text x y w
+#17>#33 dolor ullamco 2106.3 1191
+#17>#32 elit aliqua adipiscing 1718.3
+#17>#41 sed 736 855.3 36.6
+#17>#18 elit adipiscing laboris 2399.4
+#17>#42 labore incididunt 2232.6 576.6
+#17>#36 laboris 1976.5 1195.5 55.9
+#17>#44 do labore 3576.5 905.8
+#17>#38 labore nostrud 637.4 855.3
+#17>#22 elit 2169.8 1702 32.5
+#17>#24 amet lorem amet 1504.6
+#17>#45 sed dolor aliqua 3476.9
+#17>#30 dolor 1609.2 1218.8 45.5
+#9>#43 aliqua sit amet 929.5
+#29>#43 amet dolor 1041.5 562.7
+#12>#38 nostrud 269.3 1476.4 60.8
+#32>#39 aliqua amet 1425.8 614.9
+#23>#41 magna veniam magna 752.4
+#26>#39 do 1625.6 727.9 29.6
+#21>#38 laboris ullamco adipiscing 445.5
+#3>#8 adipiscing eiusmod dolor 2865.4
+#30>#32 tempor 1449.3 947.3 57.7
+bands: amet nostrud tempor tempor
+widest bundle of parallel lanes:

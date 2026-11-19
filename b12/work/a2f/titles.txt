@@ -1,0 +1,118 @@
+A
+A long block title that covers the first member and more
+A long block title that covers the whole first row
+A nested block whose title is far wider than its single member
+Alpha
+Alpha one
+Auth
+B
+Back
+Beta
+Beta one
+Billing
+Build pipeline
+C
+Catalog
+Checkout
+Customer
+Data tier
+Delivery
+Downstream
+Edge and shared services
+Edge and shared services with a long title
+Edge tier with a long title that runs along the flow
+Email
+Empty-ish
+Front
+Ingress layer with a remarkably long block title
+Inner
+Inner A at the bottom
+Inner B at the top
+Inner source
+Inner target
+Intake
+LR with edge across border
+Left
+Logging
+Middle
+Monitoring
+Nothing here
+Observability
+Order processing
+Orders
+Other
+Outer
+P
+Payments
+Pipeline
+Platform
+Quality
+Right
+Second block whose title is also very long indeed
+Service
+Shipping
+Shop
+Source
+Source block
+Stages
+Storage block also carrying a fairly long title
+Storefront
+Storefront cluster
+TB inside LR, edge to block only
+Tall block
+Target
+Upstream
+Work area
+Workers
+adipiscing
+adipiscing eiusmod
+aliqua magna tempor
+aliqua sit
+amet
+app zone
+block S
+block T
+consectetur ipsum
+consectetur nostrud lorem
+data zone
+do laboris elit
+do lorem
+dolor
+dolor lorem consectetur
+edge zone
+eiusmod sit nostrud
+elit
+elit sit sed labore
+incididunt
+incididunt do veniam
+incididunt eiusmod dolor incididunt
+incididunt veniam
+inner
+ipsum eiusmod labore magna
+ipsum nostrud eiusmod
+isolated
+isolated LR
+isolated with a lane
+jobs zone
+labore
+labore laboris
+labore ullamco
+laboris
+laboris nostrud labore
+laboris ullamco eiusmod aliqua
+lorem ipsum
+lorem labore
+magna
+magna do tempor
+members without edges
+ops zone
+outer
+second line of the title
+sed
+short
+sit
+sit veniam
+tempor lorem
+ullamco tempor magna
+veniam magna
+veniam sed

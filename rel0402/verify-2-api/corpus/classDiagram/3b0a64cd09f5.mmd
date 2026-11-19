@@ -1,0 +1,12 @@
+classDiagram
+    direction BT
+    class Node {
+      +Node next
+      +value int
+    }
+    Node --> Node : next
+    Node "1" o-- "*" Node : children
+    Tree *-- Node : root
+    Tree --> Node : cursor
+    Tree ..> Node : visits
+    Node <-- Tree : owner

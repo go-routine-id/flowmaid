@@ -1,0 +1,17 @@
+flowchart RL
+    N0([Fetch])
+    N1[(Validate)]
+    N2[Report]
+    N3{Done notify}
+    N4([Retry emit])
+    N5[Validate]
+    N0 -->|ok| N1
+    N0 --> N2
+    N2 --> N3
+    N1 --> N4
+    N3 --> N5
+    N1 --> N3
+    N2 --> N3
+    N3 ==> N2
+    N5 -.-> N4
+    N4 ==> N2

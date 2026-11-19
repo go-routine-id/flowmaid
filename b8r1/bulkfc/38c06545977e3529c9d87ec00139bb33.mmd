@@ -1,0 +1,10 @@
+flowchart LR
+  A[Alpha] -->|go| B[Beta] -->|on| C{OK?}
+  C -->|yes| D([Done])
+  C -->|no| A
+  B ==> E[(DB)]
+  E -.-> F[[Sub]]
+  F --> B
+  D --o G((end))
+  A --> D
+  A <--> E

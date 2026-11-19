@@ -1,0 +1,6 @@
+flowchart LR
+    subgraph Pipe [Build pipeline]
+        Lint --> Compile --> Test
+    end
+    Test --> Pipe
+    Pipe --> Deploy

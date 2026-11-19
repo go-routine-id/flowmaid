@@ -1,0 +1,16 @@
+flowchart BT
+    subgraph O[Payments]
+        subgraph G[Data ingestion workers]
+            m0[queue]
+            m1[db]
+            m2[x wide member node]
+        end
+        k[k]
+    end
+    m0 --> k
+    m1 --> k
+    m2 --> k
+    s0[src0] --> m2
+    s1[src1] --> m1
+    s2[src2] -- "lbl5" --> G
+    s2 --> O

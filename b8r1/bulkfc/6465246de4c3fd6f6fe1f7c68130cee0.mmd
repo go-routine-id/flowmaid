@@ -1,0 +1,21 @@
+flowchart TD
+    N0[Load parse]
+    N1(Fetch parse)
+    N2([Parse])
+    N3{Store}
+    N4(Load parse)
+    N5[Retry]
+    N6([Archive])
+    N7{Validate parse}
+    N8(Retry)
+    N0 -->|no| N1
+    N1 --> N2
+    N0 --> N3
+    N3 -->|ok| N4
+    N2 -->|yes| N5
+    N4 --> N6
+    N5 -->|ok| N7
+    N5 -->|next| N8
+    N7 -.-> N5
+    N2 -->|rollback| N0
+    N6 -->|rollback| N0

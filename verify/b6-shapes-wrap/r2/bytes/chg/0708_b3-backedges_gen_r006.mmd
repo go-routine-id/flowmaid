@@ -1,0 +1,14 @@
+flowchart LR
+    N0(Parse)
+    N1(Retry)
+    N2(Store)
+    N3{Emit}
+    N4[Load fetch]
+    N5(Fetch)
+    N0 -->|next| N1
+    N1 --> N2
+    N1 --> N3
+    N2 --> N4
+    N2 --> N5
+    N2 --> N3
+    N1 ==>|back| N0

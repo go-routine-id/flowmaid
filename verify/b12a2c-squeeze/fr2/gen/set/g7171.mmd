@@ -1,0 +1,41 @@
+flowchart RL
+  n1["auth split ingest"]
+  n2["auth"]
+  subgraph B0["Edge services"]
+    n3["mail"]
+    n4["ingest"]
+    n5["ship"]
+    subgraph B0s0["Analytics 0"]
+      n6["queue pack audit"]
+      n7["billing mail index"]
+      n8["audit"]
+    end
+    subgraph B0s1["Storefront 1"]
+      n9["mail"]
+      n10["auth"]
+      n11["merge"]
+    end
+  end
+  subgraph B1["Back office and finance"]
+    n12["cache mail ship"]
+  end
+  subgraph B2["Analytics"]
+    n13["billing audit mail"]
+    n14["report"]
+    n15["merge"]
+  end
+  n16["db"]
+  n9 --> n15
+  n3 --> n4
+  n5 ==>|index| n15
+  n2 -->|ingest| n3
+  n1 ==> n4
+  n6 -.-> n5
+  n8 --> n15
+  n2 --> n13
+  n15 -.->|ingest| n5
+  n4 -.-> n7
+  n8 ==>|db| n3
+  n12 --> n7
+  n5 ==> n12
+  n13 ==> n6

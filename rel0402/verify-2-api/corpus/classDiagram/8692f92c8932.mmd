@@ -1,0 +1,23 @@
+classDiagram
+  direction BT
+  class Hub {
+    +id int
+    +name String
+    +save() bool
+  }
+  class OrderService {
+    +run()
+    -state int
+  }
+  class Cart
+  class User {
+    +run()
+    -state int
+  }
+  class InventoryRepository
+  OrderService "1..*" <|-- "0..1" Hub : reads
+  Cart "1..*" <|-- "0..1" Hub : writes to the
+  PaymentGatewayAdapter "1..*" <|-- "0..1" Hub : owns
+  User "1..*" <|-- "0..1" Hub : is notified by
+  InventoryRepository "1..*" <|-- "0..1" Hub : has
+  Mailer "1..*" <|-- "0..1" Hub : reads

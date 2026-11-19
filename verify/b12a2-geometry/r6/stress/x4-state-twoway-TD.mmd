@@ -1,0 +1,16 @@
+stateDiagram-v2
+direction TB
+[*] --> Idle
+state Idle {
+  [*] --> Waiting
+  Waiting --> Polling : tick
+}
+state Busy {
+  direction TB
+  [*] --> Working
+  Working --> Saving : done
+  Working --> Failed : error
+}
+Idle --> Busy : start
+Busy --> Idle : finish
+Busy --> [*]

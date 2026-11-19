@@ -1,0 +1,10 @@
+classDiagram
+A <|-- B : uses
+B "1" *-- "*" C : has many of
+C --|> D : owns
+B -- E
+C ..> F : uses
+C "1" --|> "*" G
+D *-- D : d0
+D ..> D
+D *-- D : d2

@@ -1,0 +1,11 @@
+flowchart LR
+  n1 o--o n3
+  n3 e1@-->|yes| n2
+  e1@{ curve: cardinal }
+  n2 === n2
+  n1 --> n1
+  n1 ~~~ n2
+  n3 x--x n4
+  linkStyle 2 stroke-width:8px,stroke:#3a3
+  linkStyle 3 stroke-width:1px,stroke:#36c,stroke-dasharray:6 3
+  linkStyle 5 stroke-width:12px,stroke:#36c,stroke-dasharray:6 3

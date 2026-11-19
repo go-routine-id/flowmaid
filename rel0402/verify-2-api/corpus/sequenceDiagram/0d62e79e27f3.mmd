@@ -1,0 +1,13 @@
+---
+config:
+  sequence:
+    scopedFrames: true
+    mirrorActors: false
+---
+sequenceDiagram
+    participant A
+    participant B
+    A->>B: hi
+    loop retry
+        B->>B: check
+    end

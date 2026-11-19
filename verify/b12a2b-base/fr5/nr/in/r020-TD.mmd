@@ -1,0 +1,13 @@
+flowchart TD
+    subgraph G[WWW Mammoth Wombat Overview]
+        m0[auth service]
+        m1[db]
+    end
+    s0[src0] --> m0
+    s0 -- "lbl2" --> G
+    s1[src1] --> m1
+    s2[src2] --> m0
+    s2 --> G
+    s3[src3] --> m0
+    s4[src4] --> G
+    G --> z2[after]

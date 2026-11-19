@@ -1,0 +1,15 @@
+flowchart LR
+    subgraph O[Order processing]
+        subgraph G[Payments]
+            m0[db]
+            m1[queue]
+        end
+        k[k]
+    end
+    m1 --> k
+    s0[src0] --> m1
+    s0 --> G
+    s1[src1] -- "lbl1" --> G
+    s1 --> G
+    s2[src2] --> m1
+    m1 --> z[end]

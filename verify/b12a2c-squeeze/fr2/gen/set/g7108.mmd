@@ -1,0 +1,40 @@
+flowchart BT
+  n1["ingest<br/>auth"]
+  n2["billing"]
+  n3["db"]
+  subgraph B0["Back office and finance"]
+    n4["billing"]
+    n5["split"]
+    n6["audit"]
+  end
+  subgraph B1["Fulfilment desk"]
+    n7["merge"]
+    n8["db<br/>api"]
+    subgraph B1s0["Platform 0"]
+      n9["cache"]
+      n10["store<br/>audit"]
+      n11["pack"]
+    end
+  end
+  subgraph B2["Back office and finance"]
+    n12["store<br/>mail"]
+    n13["report"]
+    n14["merge"]
+    n15["ingest"]
+  end
+  n16["index billing audit"]
+  n1 --> n13
+  n12 -.-> n8
+  n8 --> n4
+  n13 --> n6
+  n10 -.-> B1
+  n1 ==> n15
+  n3 --> n14
+  n6 --> n5
+  n5 --> n14
+  n10 -->|api| n12
+  n11 --> n6
+  n8 --> n5
+  n8 --> n7
+  n12 --> n4
+  n5 --> n15

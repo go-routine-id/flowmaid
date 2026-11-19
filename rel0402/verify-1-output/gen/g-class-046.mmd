@@ -1,0 +1,42 @@
+classDiagram
+C7 ..> C13
+C3 "1" ..|> "*" C14 : gamma
+C10 "1" o-- "*" C14
+C11 <--> C11 : x
+C15 "1" ..> "*" C5
+C1 "1" <|-- "*" C2
+C9 -- C16 : Long label here
+C4 -- C15
+C16 "1" <|-- "*" C13
+C7 ..|> C2 : a&b
+C9 ..> C0 : 日本語
+C4 <--> C12
+C11 ..|> C8 : gamma
+class C1 {
+  +int id
+  +name() String
+}
+class C5 {
+  +int id
+  +name() String
+}
+class C6 {
+  +int id
+  +name() String
+}
+class C11 {
+  +int id
+  +name() String
+}
+class C13 {
+  +int id
+  +name() String
+}
+class C15 {
+  +int id
+  +name() String
+}
+class C16 {
+  +int id
+  +name() String
+}

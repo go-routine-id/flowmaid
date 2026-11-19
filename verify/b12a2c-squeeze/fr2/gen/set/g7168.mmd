@@ -1,0 +1,42 @@
+flowchart RL
+  n1["index pack parse<br/>worker"]
+  n2["cache"]
+  subgraph B0["Ops"]
+    n3["search"]
+    n4["ship"]
+    n5["split"]
+  end
+  subgraph B1["Fulfilment desk"]
+    n6["billing"]
+    n7["pack mail index"]
+    n8["store"]
+  end
+  subgraph B2["Back office and finance"]
+    n9["pack"]
+    n10["merge report auth"]
+    n11["parse"]
+    subgraph B2s0["Platform 0"]
+      n12["queue"]
+      n13["store"]
+    end
+  end
+  n14["audit"]
+  n12 -.->|audit| n9
+  n5 --> B2s0
+  n13 --> n5
+  n11 --> n13
+  n5 --> n3
+  n12 --> n13
+  n7 -.-> n1
+  n1 --> n10
+  n3 -.->|audit| n12
+  n1 --> n5
+  n13 --> n6
+  n3 --> n14
+  n13 -->|billing| n9
+  n10 -->|cache| n13
+  n5 -->|index| n8
+  n8 ==>|pack| n10
+  n8 --> n13
+  n9 --> n11
+  n11 ==> n8

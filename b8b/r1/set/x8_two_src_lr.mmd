@@ -1,0 +1,15 @@
+flowchart LR
+  user[User]
+  subgraph front[Frontend]
+    f1[web app]
+    f2[asset builder]
+  end
+  subgraph back[Backend]
+    b1[api]
+    b2[worker]
+  end
+  user --> f1
+  user --> b1
+  f2 --> cdn[CDN]
+  b2 --> q[(queue)]
+  user --> help[help desk]

@@ -1,0 +1,8 @@
+stateDiagram-v2
+state c <<choice>>
+state d <<choice>>
+c --> d
+d --> c
+c --> c : self
+note right of c : on choice
+note left of d : on d

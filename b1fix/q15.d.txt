@@ -1,0 +1,308 @@
+bench-75	routed	alerts->dash overlap job3->logs 44px
+bench-75	routed	alerts->dash overlap objects->logs 68px
+bench-75	routed	alerts->gw ortho
+bench-75	routed	dash->ext lat_wiggle 4.3
+bench-75	routed	dash->user edge_gap gw->logs 6.8px
+bench-75	routed	dash->user ortho
+bench-75	routed	db->metrics lat_wiggle 115.0
+bench-75	routed	db->metrics ortho
+bench-75	routed	db->svc2 ortho
+bench-75	routed	gw->logs lat_wiggle 16.5
+bench-75	routed	gw->logs ortho
+bench-75	routed	gw->svc1 end_cross gw->logs at (228,533)
+bench-75	routed	gw->svc1 end_cross gw->svc4 at (224,532)
+bench-75	routed	gw->svc1 lat_wiggle 7.5
+bench-75	routed	gw->svc1 ortho
+bench-75	routed	gw->svc2 end_cross gw->svc6 at (227,565)
+bench-75	routed	gw->svc2 ortho
+bench-75	routed	gw->svc3 overlap alerts->gw 34px
+bench-75	routed	gw->svc4 lat_wiggle 104.5
+bench-75	routed	gw->svc4 ortho
+bench-75	routed	gw->svc4 touch gw->logs 1.9px
+bench-75	routed	gw->svc5 lat_wiggle 14.5
+bench-75	routed	gw->svc5 ortho
+bench-75	routed	gw->svc6 lat_wiggle 5.8
+bench-75	routed	gw->svc6 ortho
+bench-75	routed	job1->db overlap job2->db 98px
+bench-75	routed	job1->db overlap job3->db 130px
+bench-75	routed	job1->ext end_cross job3->ext at (1643,1142)
+bench-75	routed	job1->ext lat_wiggle 5.5
+bench-75	routed	job1->svc1 ortho
+bench-75	routed	job2->db overlap job3->db 50px
+bench-75	routed	job2->ext ortho
+bench-75	routed	job3->ext lat_wiggle 5.3
+bench-75	routed	job3->logs ortho
+bench-75	routed	lb->metrics lat_wiggle 256.5
+bench-75	routed	lb->metrics ortho
+bench-75	routed	lb->svc1 end_cross lb->svc2 at (330,644)
+bench-75	routed	lb->svc1 end_cross lb->svc2 at (339,644)
+bench-75	routed	lb->svc1 lat_wiggle 6.0
+bench-75	routed	lb->svc1 ortho
+bench-75	routed	lb->svc1 touch lb->svc2 0.0px
+bench-75	routed	lb->svc2 ortho
+bench-75	routed	lb->svc3 ortho
+bench-75	routed	lb->svc4 end_cross svc4->cache at (858,852)
+bench-75	routed	lb->svc4 end_cross svc4->cache at (863,858)
+bench-75	routed	lb->svc4 ortho
+bench-75	routed	lb->svc4 touch svc4->cache 0.0px
+bench-75	routed	lb->svc5 end_cross lb->metrics at (342,673)
+bench-75	routed	lb->svc5 ortho
+bench-75	routed	lb->svc6 ortho
+bench-75	routed	metrics->dash ortho
+bench-75	routed	objects->logs overlap job3->logs 74px
+bench-75	routed	objects->logs wiggle 3.0
+bench-75	routed	queue->job1 end_cross job1->svc1 at (1121,1728)
+bench-75	routed	queue->job3 ortho
+bench-75	routed	queue->metrics wiggle 3.0
+bench-75	routed	svc1->cache overlap svc2->db 56px
+bench-75	routed	svc1->db end_cross svc1->metrics at (426,495)
+bench-75	routed	svc1->db ortho
+bench-75	routed	svc1->db overlap svc5->db 332px
+bench-75	routed	svc1->logs lat_wiggle 5.5
+bench-75	routed	svc1->metrics lat_wiggle 12.5
+bench-75	routed	svc1->metrics ortho
+bench-75	routed	svc1->objects end_cross svc5->objects at (1247,1094)
+bench-75	routed	svc1->objects ortho
+bench-75	routed	svc1->objects overlap job1->svc1 16px
+bench-75	routed	svc1->objects overlap svc3->logs 28px
+bench-75	routed	svc1->queue overlap db->svc2 36px
+bench-75	routed	svc1->queue overlap svc2->cache 42px
+bench-75	routed	svc1->queue overlap svc3->queue 50px
+bench-75	routed	svc2->cache ortho
+bench-75	routed	svc2->db edge_chip data
+bench-75	routed	svc2->db ortho
+bench-75	routed	svc2->db overlap db->svc2 16px
+bench-75	routed	svc2->db overlap svc3->cache 52px
+bench-75	routed	svc2->db overlap svc5->cache 44px
+bench-75	routed	svc2->db overlap svc6->cache 38px
+bench-75	routed	svc2->logs overlap svc5->logs 378px
+bench-75	routed	svc2->logs overlap svc6->logs 216px
+bench-75	routed	svc2->queue overlap cache->svc4 40px
+bench-75	routed	svc2->queue overlap db->metrics 58px
+bench-75	routed	svc2->queue overlap svc4->cache 44px
+bench-75	routed	svc3->cache overlap db->svc2 38px
+bench-75	routed	svc3->db ortho
+bench-75	routed	svc3->db overlap svc6->db 98px
+bench-75	routed	svc3->objects ortho
+bench-75	routed	svc3->queue ortho
+bench-75	routed	svc4->logs lat_wiggle 11.0
+bench-75	routed	svc4->logs ortho
+bench-75	routed	svc4->logs overlap svc6->ext 20px
+bench-75	routed	svc4->metrics lat_wiggle 6.3
+bench-75	routed	svc5->cache overlap db->svc2 44px
+bench-75	routed	svc5->db edge_chip data
+bench-75	routed	svc5->db ortho
+bench-75	routed	svc5->db touch svc5->cache 2.6px
+bench-75	routed	svc5->logs lat_wiggle 4.6
+bench-75	routed	svc5->logs overlap svc6->logs 182px
+bench-75	routed	svc5->queue ortho
+bench-75	routed	svc6->cache edge_gap db->metrics 2.2px
+bench-75	routed	svc6->cache overlap db->svc2 40px
+bench-75	routed	svc6->cache touch db->metrics 2.2px
+bench-75	routed	svc6->db overlap job1->svc1 102px
+bench-75	routed	svc6->logs lat_wiggle 4.6
+bench-75	routed	svc6->queue ortho
+bench-75	routed	user->ext ortho
+bench-75	routed	user->lb ortho
+bench-75	static	alerts->dash overlap job3->logs 20px
+bench-75	static	alerts->gw edge_frame app
+bench-75	static	alerts->gw ortho
+bench-75	static	dash->ext ortho
+bench-75	static	dash->user ortho
+bench-75	static	db->metrics lat_wiggle 155.5
+bench-75	static	db->metrics ortho
+bench-75	static	gw->logs lat_wiggle 142.0
+bench-75	static	gw->logs ortho
+bench-75	static	gw->svc2 lat_wiggle 129.5
+bench-75	static	gw->svc4 ortho
+bench-75	static	job1->ext ortho
+bench-75	static	job1->svc1 ortho
+bench-75	static	job2->db ortho
+bench-75	static	job2->ext lat_wiggle 125.0
+bench-75	static	job2->objects ortho
+bench-75	static	job3->ext ortho
+bench-75	static	job3->logs ortho
+bench-75	static	lb->metrics edge_frame app
+bench-75	static	lb->metrics ortho
+bench-75	static	lb->svc1 overlap alerts->gw 28px
+bench-75	static	lb->svc2 ortho
+bench-75	static	lb->svc4 ortho
+bench-75	static	metrics->dash ortho
+bench-75	static	objects->logs ortho
+bench-75	static	queue->job1 ortho
+bench-75	static	queue->job2 ortho
+bench-75	static	queue->job3 ortho
+bench-75	static	svc1->cache end_cross svc1->objects at (451,495)
+bench-75	static	svc1->cache ortho
+bench-75	static	svc1->db ortho
+bench-75	static	svc1->db overlap svc1->objects 70px
+bench-75	static	svc1->db overlap svc5->logs 34px
+bench-75	static	svc1->logs lat_wiggle 97.5
+bench-75	static	svc1->logs ortho
+bench-75	static	svc1->metrics ortho
+bench-75	static	svc1->objects ortho
+bench-75	static	svc1->objects overlap job1->svc1 78px
+bench-75	static	svc1->objects overlap svc5->logs 36px
+bench-75	static	svc1->queue lat_wiggle 93.5
+bench-75	static	svc1->queue ortho
+bench-75	static	svc2->logs lat_wiggle 71.5
+bench-75	static	svc2->metrics ortho
+bench-75	static	svc2->queue ortho
+bench-75	static	svc3->cache ortho
+bench-75	static	svc3->db overlap job1->svc1 198px
+bench-75	static	svc3->db overlap svc5->db 188px
+bench-75	static	svc3->db overlap svc5->logs 42px
+bench-75	static	svc3->logs lat_wiggle 42.5
+bench-75	static	svc3->metrics ortho
+bench-75	static	svc3->objects ortho
+bench-75	static	svc3->queue edge_gap alerts->gw 7.0px
+bench-75	static	svc3->queue lat_wiggle 16.0
+bench-75	static	svc3->queue ortho
+bench-75	static	svc4->db ortho
+bench-75	static	svc4->logs ortho
+bench-75	static	svc4->metrics ortho
+bench-75	static	svc4->metrics overlap svc5->ext 16px
+bench-75	static	svc4->queue ortho
+bench-75	static	svc5->cache ortho
+bench-75	static	svc5->db ortho
+bench-75	static	svc5->ext edge_gap lb->metrics 7.2px
+bench-75	static	svc5->ext lat_wiggle 4.2
+bench-75	static	svc5->ext ortho
+bench-75	static	svc5->logs overlap job1->svc1 60px
+bench-75	static	svc5->objects ortho
+bench-75	static	svc5->queue ortho
+bench-75	static	svc6->cache ortho
+bench-75	static	svc6->db ortho
+bench-75	static	svc6->ext ortho
+bench-75	static	svc6->logs ortho
+bench-75	static	svc6->queue ortho
+bench-75	static	user->ext lat_wiggle 805.6
+dense-td	routed	n11->n37 overlap n25->n42 146px
+dense-td	routed	n11->n39 ortho
+dense-td	routed	n15->n38 overlap n25->n38 204px
+dense-td	routed	n15->n38 overlap n25->n42 386px
+dense-td	routed	n16->n17 overlap n22->n40 70px
+dense-td	routed	n16->n23 edge_frame g6
+dense-td	routed	n16->n23 edge_frame g7
+dense-td	routed	n16->n23 overlap n16->n29 666px
+dense-td	routed	n16->n23 overlap n22->n40 172px
+dense-td	routed	n16->n29 edge_frame g7
+dense-td	routed	n16->n29 overlap n22->n40 156px
+dense-td	routed	n16->n31 end_cross n21->n16 at (2349,1081)
+dense-td	routed	n16->n31 overlap n21->n16 30px
+dense-td	routed	n16->n32 ortho
+dense-td	routed	n16->n35 ortho
+dense-td	routed	n16->n37 ortho
+dense-td	routed	n16->n41 ortho
+dense-td	routed	n16->n44 edge_gap n20->n37 6.6px
+dense-td	routed	n16->n44 ortho
+dense-td	routed	n20->n37 ortho
+dense-td	routed	n22->n40 edge_frame g1
+dense-td	routed	n22->n40 edge_frame g4
+dense-td	routed	n22->n40 edge_frame g6
+dense-td	routed	n22->n40 edge_frame g7
+dense-td	routed	n25->n38 edge_frame g1
+dense-td	routed	n25->n38 edge_frame g2
+dense-td	routed	n25->n38 edge_frame g3
+dense-td	routed	n25->n42 edge_frame g1
+dense-td	routed	n25->n42 edge_frame g2
+dense-td	routed	n25->n42 edge_frame g3
+dense-td	routed	n25->n42 overlap n25->n38 198px
+dense-td	routed	n28->n42 edge_frame g1
+dense-td	routed	n28->n42 edge_frame g2
+dense-td	routed	n28->n42 edge_frame g3
+dense-td	routed	n28->n42 overlap n11->n37 238px
+dense-td	routed	n28->n42 overlap n15->n38 188px
+dense-td	routed	n28->n42 overlap n25->n42 306px
+dense-td	routed	n29->n38 edge_frame g1
+dense-td	routed	n29->n38 edge_frame g2
+dense-td	routed	n29->n38 edge_frame g3
+dense-td	routed	n29->n38 ortho
+dense-td	routed	n29->n38 overlap n15->n38 86px
+dense-td	routed	n29->n38 overlap n25->n38 114px
+dense-td	routed	n31->n16 ortho
+dense-td	routed	n31->n38 edge_frame g1
+dense-td	routed	n31->n38 edge_frame g2
+dense-td	routed	n31->n38 edge_frame g3
+dense-td	routed	n31->n38 overlap n25->n38 1286px
+dense-td	routed	n31->n38 overlap n29->n38 122px
+dense-td	routed	n33->n16 wiggle 3.5
+dense-td	routed	n36->n16 ortho
+dense-td	routed	n4->n30 edge_frame g4
+dense-td	routed	n4->n43 ortho
+dense-td	routed	n43->n16 ortho
+dense-td	routed	n45->g8 edge_frame g1
+dense-td	routed	n45->g8 edge_frame g5
+dense-td	routed	n45->g8 edge_frame g6
+dense-td	routed	n45->g8 edge_frame g7
+dense-td	routed	n46->g9 ortho
+dense-td	routed	n5->n44 lat_wiggle 83.7
+dense-td	routed	n5->n44 ortho
+dense-td	routed	n5->n7 edge_frame g4
+dense-td	routed	n5->n7 wiggle 3.2
+dense-td	static	n11->n37 overlap n25->n42 144px
+dense-td	static	n11->n39 ortho
+dense-td	static	n15->n38 overlap n25->n42 396px
+dense-td	static	n16->n17 overlap n22->n40 76px
+dense-td	static	n16->n23 edge_frame g6
+dense-td	static	n16->n23 edge_frame g7
+dense-td	static	n16->n23 overlap n22->n40 188px
+dense-td	static	n16->n29 edge_frame g7
+dense-td	static	n16->n29 ortho
+dense-td	static	n16->n31 ortho
+dense-td	static	n16->n32 ortho
+dense-td	static	n16->n35 ortho
+dense-td	static	n16->n37 overlap n22->n40 98px
+dense-td	static	n16->n40 ortho
+dense-td	static	n16->n41 ortho
+dense-td	static	n16->n43 ortho
+dense-td	static	n16->n44 ortho
+dense-td	static	n20->n37 ortho
+dense-td	static	n21->n16 own_frame g4 31px
+dense-td	static	n22->n40 edge_frame g1
+dense-td	static	n22->n40 edge_frame g4
+dense-td	static	n22->n40 edge_frame g6
+dense-td	static	n22->n40 edge_frame g7
+dense-td	static	n25->n38 edge_frame g1
+dense-td	static	n25->n38 edge_frame g2
+dense-td	static	n25->n38 edge_frame g3
+dense-td	static	n25->n38 ortho
+dense-td	static	n25->n42 edge_frame g1
+dense-td	static	n25->n42 edge_frame g2
+dense-td	static	n25->n42 edge_frame g3
+dense-td	static	n28->n42 edge_frame g1
+dense-td	static	n28->n42 edge_frame g2
+dense-td	static	n28->n42 edge_frame g3
+dense-td	static	n28->n42 ortho
+dense-td	static	n28->n42 overlap n11->n37 70px
+dense-td	static	n28->n42 overlap n15->n38 144px
+dense-td	static	n28->n42 overlap n25->n42 198px
+dense-td	static	n28->n42 overlap n29->n38 70px
+dense-td	static	n28->n42 overlap n31->n38 200px
+dense-td	static	n29->n38 edge_frame g1
+dense-td	static	n29->n38 edge_frame g2
+dense-td	static	n29->n38 edge_frame g3
+dense-td	static	n29->n38 ortho
+dense-td	static	n29->n38 overlap n15->n38 22px
+dense-td	static	n29->n38 overlap n25->n42 14px
+dense-td	static	n31->n16 lat_wiggle 18.2
+dense-td	static	n31->n16 ortho
+dense-td	static	n31->n38 edge_frame g1
+dense-td	static	n31->n38 edge_frame g2
+dense-td	static	n31->n38 edge_frame g3
+dense-td	static	n31->n38 overlap n29->n38 40px
+dense-td	static	n33->n16 wiggle 3.3
+dense-td	static	n36->n16 lat_wiggle 47.1
+dense-td	static	n4->n30 edge_frame g4
+dense-td	static	n4->n43 ortho
+dense-td	static	n43->n16 ortho
+dense-td	static	n45->g8 edge_frame g1
+dense-td	static	n45->g8 edge_frame g5
+dense-td	static	n45->g8 edge_frame g6
+dense-td	static	n45->g8 edge_frame g7
+dense-td	static	n45->g8 ortho
+dense-td	static	n46->g9 ortho
+dense-td	static	n5->n44 lat_wiggle 76.1
+dense-td	static	n5->n7 edge_frame g4
+dense-td	static	n8->n42 end_cross n28->n42 at (3967,1599)
+dense-td	static	n8->n42 overlap n28->n42 74px

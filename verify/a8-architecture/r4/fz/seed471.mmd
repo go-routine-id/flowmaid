@@ -1,0 +1,25 @@
+architecture-beta
+    group g0(disk)[Private API]
+    group g1(monitoring)[Observability]
+    group g2(internet)[Data]
+    service s0(internet)[Q 0] in g1
+    service s1(internet)[Authentication and Authorization Service 1] in g0
+    service s2(server)[Svc 2] in g0
+    service s3(monitoring)[Web App 3] in g0
+    service s4(disk)[Web App 4] in g1
+    service s5(monitoring)[Q 5]
+    service s6(server)[Q 6]
+    service s7(database)[Authentication and Authorization Service 7] in g0
+    service s8(cloud)[Web App 8] in g1
+    s2{group}:B -[x]- T:s8
+    s5:T <--> B:s1
+    s6:L <--> R:s0
+    s8:R <--> L:s1
+    s4:L -[publishes order events]-> T:s6
+    s8:R -[reads config]-> R:s6
+    s7:B -[reads config]-> L:s8
+    s2{group}:T -[reads config]-> B:s0
+    s8:B <-[reads config]-> T:s0
+    s1:T <--> B:s8{group}
+    s1:R --> L:s0
+    s5:T -- L:s3

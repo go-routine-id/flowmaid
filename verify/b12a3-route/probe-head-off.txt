@@ -1,0 +1,202 @@
+v1-hubblocks	block=true	frames=62	parallel=0	finite=0	detached=0	sharp=14	pick=0	nondet=0	member_out=0	canvas=0	hash=bcdfe3c4939580f6	route_hash=abf54a62f1cc1a51
+    v1-hubblocks drag a3 by (-150.0, 80.0): a2->C sharp turn at (182.0, 578.0) (cos 0.00)
+    v1-hubblocks drag b1 by (0.0, -1.0): B->c1 sharp turn at (182.0, 675.0) (cos 0.00)
+    v1-hubblocks drag b1 by (60.0, 25.0): B->c1 sharp turn at (182.0, 675.0) (cos 0.00)
+    v1-hubblocks drag b1 by (-150.0, 80.0): B->c1 sharp turn at (182.0, 675.0) (cos 0.00)
+    v1-hubblocks drag b1 by (0.0, 220.0): B->c1 sharp turn at (182.0, 675.0) (cos 0.00)
+    v1-hubblocks drag b2 by (60.0, 25.0): B->c1 sharp turn at (182.0, 675.0) (cos 0.00)
+    v1-hubblocks drag b2 by (-150.0, 80.0): B->c1 sharp turn at (182.0, 675.0) (cos 0.00)
+    v1-hubblocks drag b3 by (1.0, 0.0): B->c1 sharp turn at (182.0, 675.0) (cos 0.00)
+    v1-hubblocks drag b3 by (60.0, 25.0): B->c1 sharp turn at (182.0, 675.0) (cos 0.00)
+    v1-hubblocks drag b3 by (-150.0, 80.0): B->c1 sharp turn at (242.0, 675.0) (cos 0.00)
+    v1-hubblocks drag b3 by (0.0, 220.0): b2->b3 sharp turn at (479.0, 642.0) (cos 0.00)
+    v1-hubblocks drag b4 by (1.0, 0.0): B->c1 sharp turn at (182.0, 675.0) (cos 0.00)
+    v1-hubblocks drag b4 by (0.0, -1.0): B->c1 sharp turn at (182.0, 675.0) (cos 0.00)
+    v1-hubblocks drag b4 by (0.0, 220.0): a3->b4 sharp turn at (479.0, 752.0) (cos 0.00)
+v2-lr-styles	block=true	frames=56	parallel=0	finite=0	detached=0	sharp=37	pick=0	nondet=0	member_out=0	canvas=0	hash=c98c018010a56e10	route_hash=5b478720262f9b98
+    v2-lr-styles scene: S1->L sharp turn at (655.0, 288.0) (cos 0.00)
+    v2-lr-styles drag U by (1.0, 0.0): S1->L sharp turn at (655.0, 288.0) (cos 0.00)
+    v2-lr-styles drag U by (0.0, -1.0): S1->L sharp turn at (655.0, 288.0) (cos 0.00)
+    v2-lr-styles drag U by (60.0, 25.0): S1->L sharp turn at (655.0, 288.0) (cos 0.00)
+    v2-lr-styles drag U by (-150.0, 80.0): S1->L sharp turn at (655.0, 288.0) (cos 0.00)
+    v2-lr-styles drag U by (0.0, 220.0): S1->L sharp turn at (655.0, 288.0) (cos 0.00)
+    v2-lr-styles drag W by (1.0, 0.0): S1->L sharp turn at (655.0, 288.0) (cos 0.00)
+    v2-lr-styles drag W by (0.0, -1.0): S1->L sharp turn at (655.0, 288.0) (cos 0.00)
+    v2-lr-styles drag W by (60.0, 25.0): S1->L sharp turn at (655.0, 288.0) (cos 0.00)
+    v2-lr-styles drag W by (-150.0, 80.0): S1->L sharp turn at (655.0, 288.0) (cos 0.00)
+    v2-lr-styles drag W by (0.0, 220.0): S1->L sharp turn at (655.0, 288.0) (cos 0.00)
+    v2-lr-styles drag M by (1.0, 0.0): S1->L sharp turn at (655.0, 288.0) (cos 0.00)
+    v2-lr-styles drag M by (0.0, -1.0): S1->L sharp turn at (655.0, 288.0) (cos 0.00)
+    v2-lr-styles drag M by (60.0, 25.0): S1->L sharp turn at (655.0, 288.0) (cos 0.00)
+    v2-lr-styles drag M by (-150.0, 80.0): S1->L sharp turn at (655.0, 288.0) (cos 0.00)
+    v2-lr-styles drag M by (0.0, 220.0): S1->L sharp turn at (655.0, 288.0) (cos 0.00)
+    v2-lr-styles drag S2 by (1.0, 0.0): S1->L sharp turn at (655.0, 288.0) (cos 0.00)
+    v2-lr-styles drag S2 by (0.0, -1.0): S1->L sharp turn at (655.0, 288.0) (cos 0.00)
+    v2-lr-styles drag S2 by (60.0, 25.0): S1->L sharp turn at (655.0, 288.0) (cos 0.00)
+    v2-lr-styles drag S2 by (0.0, 220.0): S1->L sharp turn at (655.0, 288.0) (cos 0.00)
+    v2-lr-styles drag S3 by (1.0, 0.0): S1->L sharp turn at (655.0, 288.0) (cos 0.00)
+    v2-lr-styles drag S3 by (1.0, 0.0): S1->Mx sharp turn at (642.0, 489.0) (cos 0.00)
+    v2-lr-styles drag S3 by (0.0, -1.0): S1->L sharp turn at (655.0, 288.0) (cos 0.00)
+    v2-lr-styles drag S3 by (0.0, -1.0): S1->Mx sharp turn at (642.0, 489.0) (cos 0.00)
+    v2-lr-styles drag S3 by (60.0, 25.0): S1->L sharp turn at (655.0, 288.0) (cos 0.00)
+    v2-lr-styles drag S3 by (0.0, 220.0): S1->L sharp turn at (655.0, 288.0) (cos 0.00)
+    v2-lr-styles drag S3 by (0.0, 220.0): S1->Mx sharp turn at (642.0, 489.0) (cos 0.00)
+    v2-lr-styles drag Mx by (1.0, 0.0): S1->L sharp turn at (655.0, 288.0) (cos 0.00)
+    v2-lr-styles drag Mx by (0.0, -1.0): S1->L sharp turn at (655.0, 288.0) (cos 0.00)
+    v2-lr-styles drag Mx by (60.0, 25.0): S1->L sharp turn at (655.0, 288.0) (cos 0.00)
+    v2-lr-styles drag Mx by (-150.0, 80.0): S1->L sharp turn at (655.0, 288.0) (cos 0.00)
+    v2-lr-styles drag Mx by (0.0, 220.0): S1->L sharp turn at (655.0, 288.0) (cos 0.00)
+    v2-lr-styles drag e1 by (1.0, 0.0): S1->L sharp turn at (655.0, 288.0) (cos 0.00)
+    v2-lr-styles drag e1 by (0.0, -1.0): S1->L sharp turn at (655.0, 288.0) (cos 0.00)
+    v2-lr-styles drag e1 by (60.0, 25.0): S1->L sharp turn at (655.0, 288.0) (cos 0.00)
+    v2-lr-styles drag e1 by (-150.0, 80.0): S1->L sharp turn at (655.0, 288.0) (cos 0.00)
+    v2-lr-styles drag e1 by (0.0, 220.0): S1->L sharp turn at (655.0, 288.0) (cos 0.00)
+v3-state	block=true	frames=68	parallel=0	finite=0	detached=0	sharp=3	pick=0	nondet=0	member_out=0	canvas=0	hash=12d27ded052f3d91	route_hash=ae80c4f7dfd98222
+    v3-state drag Loading by (0.0, 220.0): Ready->Loading sharp turn at (249.0, 610.0) (cos -0.00)
+    v3-state drag Edit by (-150.0, 80.0): View->Edit sharp turn at (57.0, 989.0) (cos 0.00)
+    v3-state drag Edit by (-150.0, 80.0): Edit->View sharp turn at (212.0, 1073.0) (cos 0.00)
+    v3-state: to_mermaid round trip differs
+v4-fanin-nested	block=true	frames=50	parallel=0	finite=0	detached=0	sharp=5	pick=0	nondet=0	member_out=0	canvas=0	hash=84669dbee133a413	route_hash=52cc8ee33fd3ddb2
+    v4-fanin-nested drag T by (0.0, 220.0): p5->T sharp turn at (84.0, 641.0) (cos 0.00)
+    v4-fanin-nested drag q1 by (1.0, 0.0): p1->T sharp turn at (258.0, 474.0) (cos 0.00)
+    v4-fanin-nested drag q1 by (0.0, -1.0): p1->T sharp turn at (258.0, 474.0) (cos 0.00)
+    v4-fanin-nested drag q1 by (60.0, 25.0): p1->T sharp turn at (258.0, 474.0) (cos 0.00)
+    v4-fanin-nested drag q1 by (-150.0, 80.0): p1->T sharp turn at (258.0, 474.0) (cos 0.00)
+blocks-overview	block=true	frames=128	parallel=0	finite=0	detached=0	sharp=0	pick=0	nondet=0	member_out=0	canvas=0	hash=3eded870336540ff	route_hash=c668403a9e11b587
+hub5	block=true	frames=68	parallel=0	finite=0	detached=0	sharp=4	pick=0	nondet=0	member_out=0	canvas=0	hash=9ef198256ff69306	route_hash=1230d43977f3b96a
+    hub5 drag HUB by (1.0, 0.0): HUB->e1 sharp turn at (363.0, 40.0) (cos 0.00)
+    hub5 drag HUB by (-150.0, 80.0): HUB->c1 sharp turn at (283.0, 118.0) (cos 0.00)
+    hub5 drag HUB by (-150.0, 80.0): b2->d1 sharp turn at (199.0, 692.0) (cos 0.00)
+    hub5 drag d2 by (60.0, 25.0) [route]: HUB->e1 sharp turn at (363.0, 40.0) (cos 0.00)
+cycle2	block=true	frames=26	parallel=0	finite=0	detached=0	sharp=3	pick=0	nondet=0	member_out=0	canvas=0	hash=54bb194d4aaee263	route_hash=e2049149ba1898e5
+    cycle2 drag a2 by (60.0, 25.0): b2->a2 sharp turn at (92.0, 396.0) (cos -0.00)
+    cycle2 drag b1 by (0.0, -1.0): b1->a1 sharp turn at (108.0, 138.0) (cos -0.00)
+    cycle2 drag b1 by (60.0, 25.0) [route]: b1->a1 sharp turn at (178.0, 126.0) (cos -0.00)
+nested-cases	block=true	frames=62	parallel=0	finite=0	detached=0	sharp=11	pick=44	nondet=0	member_out=0	canvas=0	hash=1d08acf68f086940	route_hash=3b91fe8fcecb16d2
+    nested-cases scene: pick at (179.30085358796293, 222.55439814814818) on o1->x1 got nothing
+    nested-cases route@scene: x2->o1 sharp turn at (238.0, 186.0) (cos -0.00)
+    nested-cases drag start by (1.0, 0.0): pick at (179.30085358796293, 222.55439814814818) on o1->x1 got nothing
+    nested-cases drag start by (0.0, -1.0): pick at (179.30085358796293, 222.55439814814818) on o1->x1 got nothing
+    nested-cases drag start by (60.0, 25.0): pick at (179.30085358796293, 222.55439814814818) on o1->x1 got nothing
+    nested-cases drag start by (60.0, 25.0) [route]: x2->o1 sharp turn at (238.0, 186.0) (cos -0.00)
+    nested-cases drag start by (-150.0, 80.0): pick at (179.30085358796293, 222.55439814814818) on o1->x1 got nothing
+    nested-cases drag start by (0.0, 220.0): pick at (179.30085358796293, 222.55439814814818) on o1->x1 got nothing
+    nested-cases drag o1 by (1.0, 0.0): x2->o1 sharp turn at (238.0, 186.0) (cos -0.00)
+    nested-cases drag o1 by (0.0, -1.0): x2->o1 sharp turn at (238.0, 185.0) (cos -0.00)
+    nested-cases drag o1 by (-150.0, 80.0): pick at (178.0542679398148, 423.31811342592596) on o1->x1 got nothing
+    nested-cases drag i1 by (1.0, 0.0): hub->e1 sharp turn at (272.0, 97.0) (cos 0.00)
+    nested-cases drag i1 by (1.0, 0.0): pick at (179.30085358796293, 222.55439814814818) on o1->x1 got nothing
+    nested-cases drag i1 by (0.0, -1.0): hub->e1 sharp turn at (272.0, 97.0) (cos 0.00)
+    nested-cases drag i1 by (0.0, -1.0): pick at (179.30085358796293, 222.55439814814818) on o1->x1 got nothing
+    nested-cases drag i1 by (60.0, 25.0): pick at (179.30085358796293, 222.55439814814818) on o1->x1 got nothing
+    nested-cases drag i1 by (-150.0, 80.0): hub->e1 sharp turn at (272.0, 97.0) (cos 0.00)
+    nested-cases drag i1 by (-150.0, 80.0): pick at (179.30085358796293, 222.55439814814818) on o1->x1 got nothing
+    nested-cases drag i1 by (0.0, 220.0): hub->e1 sharp turn at (272.0, 97.0) (cos 0.00)
+    nested-cases drag i1 by (0.0, 220.0): pick at (179.30085358796293, 222.55439814814818) on o1->x1 got nothing
+    nested-cases drag i2 by (1.0, 0.0): pick at (179.30085358796293, 222.55439814814818) on o1->x1 got nothing
+    nested-cases drag i2 by (0.0, -1.0): pick at (179.30085358796293, 222.55439814814818) on o1->x1 got nothing
+    nested-cases drag i2 by (60.0, 25.0): pick at (179.30085358796293, 222.55439814814818) on o1->x1 got nothing
+    nested-cases drag i2 by (-150.0, 80.0): pick at (179.30085358796293, 222.55439814814818) on o1->x1 got nothing
+    nested-cases drag i2 by (0.0, 220.0): pick at (179.30085358796293, 222.55439814814818) on o1->x1 got nothing
+    nested-cases drag e1 by (1.0, 0.0): pick at (179.30085358796293, 222.55439814814818) on o1->x1 got nothing
+    nested-cases drag e1 by (0.0, -1.0): pick at (179.30085358796293, 222.55439814814818) on o1->x1 got nothing
+    nested-cases drag e1 by (60.0, 25.0): pick at (179.30085358796293, 222.55439814814818) on o1->x1 got nothing
+    nested-cases drag e1 by (-150.0, 80.0): pick at (179.30085358796293, 222.55439814814818) on o1->x1 got nothing
+    nested-cases drag e1 by (0.0, 220.0): pick at (179.30085358796293, 222.55439814814818) on o1->x1 got nothing
+    nested-cases drag o2 by (1.0, 0.0): pick at (179.30085358796293, 222.55439814814818) on o1->x1 got nothing
+    nested-cases drag o2 by (0.0, -1.0): pick at (179.30085358796293, 222.55439814814818) on o1->x1 got nothing
+    nested-cases drag o2 by (60.0, 25.0): pick at (179.30085358796293, 222.55439814814818) on o1->x1 got nothing
+    nested-cases drag o2 by (-150.0, 80.0): pick at (179.30085358796293, 222.55439814814818) on o1->x1 got nothing
+    nested-cases drag o2 by (0.0, 220.0): pick at (179.30085358796293, 222.55439814814818) on o1->x1 got nothing
+    nested-cases drag x1 by (60.0, 25.0): pick at (179.45276331018516, 222.2690502025463) on o1->x1 got nothing
+    nested-cases drag x1 by (60.0, 25.0) [route]: pick at (179.45276331018516, 222.2690502025463) on o1->x1 got nothing
+    nested-cases drag x1 by (-150.0, 80.0): x2->o1 sharp turn at (289.0, 713.0) (cos -0.00)
+    nested-cases drag x2 by (1.0, 0.0): pick at (179.30085358796293, 222.55439814814818) on o1->x1 got nothing
+    nested-cases drag x2 by (0.0, -1.0): pick at (179.30085358796293, 222.55439814814818) on o1->x1 got nothing
+subgraph	block=true	frames=50	parallel=0	finite=0	detached=0	sharp=0	pick=0	nondet=0	member_out=0	canvas=0	hash=dfbc843140e31efe	route_hash=c2b3405641c3465c
+advanced	block=true	frames=86	parallel=0	finite=0	detached=0	sharp=79	pick=20	nondet=0	member_out=0	canvas=0	hash=b859914f818125e3	route_hash=7e45c2bc32a5ac96
+    advanced scene: Gate->Cache sharp turn at (409.0, 663.0) (cos 0.00)
+    advanced route@scene: Gate->Cache sharp turn at (409.0, 663.0) (cos 0.00)
+    advanced route@scene: pick at (246.25000000000006, 992.5) on Users->Mon got nothing
+    advanced drag Dev by (1.0, 0.0): Gate->Cache sharp turn at (409.0, 663.0) (cos 0.00)
+    advanced drag Dev by (0.0, -1.0): Gate->Cache sharp turn at (409.0, 663.0) (cos 0.00)
+    advanced drag Dev by (60.0, 25.0): Gate->Cache sharp turn at (409.0, 663.0) (cos 0.00)
+    advanced drag Dev by (60.0, 25.0) [route]: Gate->Cache sharp turn at (409.0, 663.0) (cos 0.00)
+    advanced drag Dev by (60.0, 25.0) [route]: pick at (246.25000000000006, 992.5) on Users->Mon got nothing
+    advanced drag Dev by (-150.0, 80.0): Gate->Cache sharp turn at (409.0, 663.0) (cos 0.00)
+    advanced drag Dev by (0.0, 220.0): Gate->Cache sharp turn at (409.0, 663.0) (cos 0.00)
+    advanced drag Build by (1.0, 0.0): Gate->Cache sharp turn at (409.0, 663.0) (cos 0.00)
+    advanced drag Build by (0.0, -1.0): Gate->Cache sharp turn at (409.0, 663.0) (cos 0.00)
+    advanced drag Build by (60.0, 25.0): Gate->Cache sharp turn at (409.0, 663.0) (cos 0.00)
+    advanced drag Build by (60.0, 25.0) [route]: Gate->Cache sharp turn at (409.0, 663.0) (cos 0.00)
+    advanced drag Build by (60.0, 25.0) [route]: pick at (246.25000000000006, 992.5) on Users->Mon got nothing
+    advanced drag Build by (-150.0, 80.0): Gate->Cache sharp turn at (409.0, 663.0) (cos 0.00)
+    advanced drag Build by (0.0, 220.0): Gate->Cache sharp turn at (409.0, 663.0) (cos 0.00)
+    advanced drag Scan by (1.0, 0.0): Gate->Cache sharp turn at (409.0, 663.0) (cos 0.00)
+    advanced drag Scan by (0.0, -1.0): Gate->Cache sharp turn at (409.0, 663.0) (cos 0.00)
+    advanced drag Scan by (60.0, 25.0): Gate->Cache sharp turn at (409.0, 663.0) (cos 0.00)
+    advanced drag Scan by (60.0, 25.0) [route]: Gate->Cache sharp turn at (409.0, 663.0) (cos 0.00)
+    advanced drag Scan by (60.0, 25.0) [route]: pick at (246.25000000000006, 992.5) on Users->Mon got nothing
+    advanced drag Scan by (-150.0, 80.0): Gate->Cache sharp turn at (409.0, 663.0) (cos 0.00)
+    advanced drag Scan by (0.0, 220.0): Gate->Cache sharp turn at (409.0, 663.0) (cos 0.00)
+    advanced drag Reg by (1.0, 0.0): Gate->Cache sharp turn at (409.0, 663.0) (cos 0.00)
+    advanced drag Reg by (0.0, -1.0): Gate->Cache sharp turn at (409.0, 663.0) (cos 0.00)
+    advanced drag Reg by (60.0, 25.0): Gate->Cache sharp turn at (409.0, 663.0) (cos 0.00)
+    advanced drag Reg by (60.0, 25.0) [route]: Gate->Cache sharp turn at (409.0, 663.0) (cos 0.00)
+    advanced drag Reg by (60.0, 25.0) [route]: pick at (246.25000000000006, 992.5) on Users->Mon got nothing
+    advanced drag Reg by (-150.0, 80.0): Gate->Cache sharp turn at (409.0, 663.0) (cos 0.00)
+    advanced drag Reg by (0.0, 220.0): Gate->Cache sharp turn at (409.0, 663.0) (cos 0.00)
+    advanced drag Gate by (1.0, 0.0): Gate->Cache sharp turn at (410.0, 663.0) (cos 0.00)
+    advanced drag Gate by (0.0, -1.0): Gate->Cache sharp turn at (409.0, 663.0) (cos 0.00)
+    advanced drag Gate by (60.0, 25.0) [route]: pick at (246.25000000000006, 992.5) on Users->Mon got nothing
+    advanced drag Auth by (1.0, 0.0): Gate->Cache sharp turn at (409.0, 663.0) (cos 0.00)
+    advanced drag Auth by (0.0, -1.0): Gate->Cache sharp turn at (409.0, 663.0) (cos 0.00)
+    advanced drag Auth by (60.0, 25.0): Gate->Cache sharp turn at (409.0, 663.0) (cos 0.00)
+    advanced drag Auth by (60.0, 25.0) [route]: pick at (246.25000000000006, 992.5) on Users->Mon got nothing
+    advanced drag Auth by (-150.0, 80.0): Gate->Cache sharp turn at (409.0, 663.0) (cos 0.00)
+    advanced drag Auth by (0.0, 220.0): Gate->Cache sharp turn at (409.0, 663.0) (cos 0.00)
+state	block=true	frames=92	parallel=0	finite=0	detached=0	sharp=2	pick=0	nondet=0	member_out=0	canvas=0	hash=c748f15a61a10a69	route_hash=544376b008d871f6
+    state drag __start_root by (0.0, 220.0): __start_root->Idle sharp turn at (278.0, 172.0) (cos -0.00)
+    state drag Rejected by (0.0, 220.0): Rejected->Idle sharp turn at (391.0, 665.0) (cos 0.00)
+    state: to_mermaid round trip differs
+fanout-frames	block=true	frames=134	parallel=0	finite=0	detached=0	sharp=225	pick=0	nondet=0	member_out=0	canvas=0	hash=8d1c23c47809e4a8	route_hash=b66722e53768efdc
+    fanout-frames scene: n0->n21 sharp turn at (108.0, 2264.0) (cos 0.00)
+    fanout-frames scene: n0->g2 sharp turn at (258.0, 1215.0) (cos 0.00)
+    fanout-frames route@scene: n0->g2 sharp turn at (258.0, 1215.0) (cos 0.00)
+    fanout-frames drag n0 by (1.0, 0.0): n0->g2 sharp turn at (259.0, 1215.0) (cos 0.00)
+    fanout-frames drag n0 by (0.0, -1.0): n0->g2 sharp turn at (258.0, 1214.0) (cos 0.00)
+    fanout-frames drag n0 by (0.0, 220.0): n0->g6 sharp turn at (244.0, 1462.0) (cos 0.00)
+    fanout-frames drag n1 by (1.0, 0.0): n0->n21 sharp turn at (108.0, 2264.0) (cos 0.00)
+    fanout-frames drag n1 by (1.0, 0.0): n0->g2 sharp turn at (258.0, 1215.0) (cos 0.00)
+    fanout-frames drag n1 by (0.0, -1.0): n0->n21 sharp turn at (108.0, 2264.0) (cos 0.00)
+    fanout-frames drag n1 by (0.0, -1.0): n0->g2 sharp turn at (258.0, 1215.0) (cos 0.00)
+    fanout-frames drag n1 by (60.0, 25.0): n0->n21 sharp turn at (108.0, 2264.0) (cos 0.00)
+    fanout-frames drag n1 by (60.0, 25.0): n0->g2 sharp turn at (258.0, 1215.0) (cos 0.00)
+    fanout-frames drag n1 by (60.0, 25.0) [route]: n0->g2 sharp turn at (263.0, 1215.0) (cos 0.00)
+    fanout-frames drag n1 by (-150.0, 80.0): n0->n21 sharp turn at (108.0, 2264.0) (cos 0.00)
+    fanout-frames drag n1 by (-150.0, 80.0): n0->g2 sharp turn at (258.0, 1215.0) (cos 0.00)
+    fanout-frames drag n1 by (0.0, 220.0): n0->n21 sharp turn at (108.0, 2264.0) (cos 0.00)
+    fanout-frames drag n1 by (0.0, 220.0): n0->g2 sharp turn at (258.0, 1215.0) (cos 0.00)
+    fanout-frames drag n2 by (1.0, 0.0): n0->n21 sharp turn at (108.0, 2264.0) (cos 0.00)
+    fanout-frames drag n2 by (1.0, 0.0): n0->g2 sharp turn at (258.0, 1215.0) (cos 0.00)
+    fanout-frames drag n2 by (0.0, -1.0): n0->n21 sharp turn at (108.0, 2264.0) (cos 0.00)
+    fanout-frames drag n2 by (0.0, -1.0): n0->g2 sharp turn at (258.0, 1215.0) (cos 0.00)
+    fanout-frames drag n2 by (60.0, 25.0): n0->n21 sharp turn at (108.0, 2264.0) (cos 0.00)
+    fanout-frames drag n2 by (60.0, 25.0): n0->g2 sharp turn at (258.0, 1215.0) (cos 0.00)
+    fanout-frames drag n2 by (60.0, 25.0) [route]: n0->g2 sharp turn at (258.0, 1215.0) (cos 0.00)
+    fanout-frames drag n2 by (-150.0, 80.0): n0->n21 sharp turn at (108.0, 2264.0) (cos 0.00)
+    fanout-frames drag n2 by (-150.0, 80.0): n0->g2 sharp turn at (258.0, 1215.0) (cos 0.00)
+    fanout-frames drag n2 by (0.0, 220.0): n0->n21 sharp turn at (108.0, 2264.0) (cos 0.00)
+    fanout-frames drag n2 by (0.0, 220.0): n0->g2 sharp turn at (258.0, 1215.0) (cos 0.00)
+    fanout-frames drag n3 by (1.0, 0.0): n0->n21 sharp turn at (108.0, 2264.0) (cos 0.00)
+    fanout-frames drag n3 by (1.0, 0.0): n0->g2 sharp turn at (258.0, 1215.0) (cos 0.00)
+    fanout-frames drag n3 by (0.0, -1.0): n0->n21 sharp turn at (108.0, 2264.0) (cos 0.00)
+    fanout-frames drag n3 by (0.0, -1.0): n0->g2 sharp turn at (258.0, 1215.0) (cos 0.00)
+    fanout-frames drag n3 by (60.0, 25.0): n0->n21 sharp turn at (108.0, 2264.0) (cos 0.00)
+    fanout-frames drag n3 by (60.0, 25.0): n0->g2 sharp turn at (258.0, 1215.0) (cos 0.00)
+    fanout-frames drag n3 by (60.0, 25.0) [route]: n0->g2 sharp turn at (258.0, 1215.0) (cos 0.00)
+    fanout-frames drag n3 by (-150.0, 80.0): n0->n21 sharp turn at (108.0, 2264.0) (cos 0.00)
+    fanout-frames drag n3 by (-150.0, 80.0): n0->g2 sharp turn at (258.0, 1215.0) (cos 0.00)
+    fanout-frames drag n3 by (0.0, 220.0): n0->n21 sharp turn at (108.0, 2264.0) (cos 0.00)
+    fanout-frames drag n3 by (0.0, 220.0): n0->g2 sharp turn at (258.0, 1215.0) (cos 0.00)
+    fanout-frames drag n4 by (1.0, 0.0): n0->n21 sharp turn at (108.0, 2264.0) (cos 0.00)

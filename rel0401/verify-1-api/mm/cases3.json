@@ -1,0 +1,1 @@
+["classDiagram\nclass A, B", "classDiagram\nclass A,B", "classDiagram\nclass A~T~\nA~T~ --> B", "classDiagram\nclass `A`.B {\n}"]

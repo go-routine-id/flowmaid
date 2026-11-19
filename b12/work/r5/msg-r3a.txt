@@ -1,0 +1,65 @@
+fix(blocks): the structural defects of verify round 2 - a block's own edges drawn inside it, lanes clear of what stands beside a block, steps out of foreign title strips (B12.4, B12.6 fix round 3 #2, #3, #4; lead's note after verify#2, item 1)
+
+Three defects no later geometry item would fix, each behind the block
+layout (`blocks` of the layout, `Ctx::blocks`); the default build is
+byte-identical (identity.tsv gains only the new fixture's row,
+recorded with the switch off; its SVG equals the start binary's).
+
+- An edge between two members of one block is drawn inside that block
+  (verifier #3: blocks/nested-chain `a -> c2` 177 px outside `Outer`;
+  generated g126, g059, g195). The router takes such an edge round a
+  nested block's title chip, out past the side walls of the blocks
+  between; its search priced the walls' bands but not the way out.
+  `scene::embrace_own_edges` (spec 2.7 F3 over the drawn paths) grows
+  the frame both ends belong to across the flow over the drawn path,
+  by LANE_PAD, after the edge stages - only where the added strip holds
+  nothing foreign (node, frame, line or label of an edge with no end
+  inside, a line within CHIP_SEP of the moved title chip); then the
+  canvas is refitted. own_frame_x on the four inputs 1 -> 0. (Tried
+  first and dropped: pricing px outside the home frame in the router's
+  search. It kept g059 and g195 home but sent g126's edge round the
+  whole block, 5 crossings, and nested-chain still left: its only way
+  inside runs on the nested frames' borders.)
+- A block's lanes keep short of what stands beside the block (verifier
+  #4: bulk state diagram 5a10594f, a state of the outer composite drawn
+  inside the nested composite's frame, transitions through it). The
+  frame grows over its own back-edge lanes on every row of the block,
+  but the lane plan saw only the rows of the lane's band.
+  `layout::lane_corridor` bounds a lane beside its block's members by
+  the nearest node outside the block on any of the block's rows (with
+  the frame gap and the lane's pad), and `lanes::lane_within` keeps the
+  lane inside those bounds (open bounds: exactly `lane_at` as before).
+  node_frame 1 -> 0, edge_frame_pairs 2 -> 0 on the bulk input.
+- A step past a block keeps out of its title strip (dense-td `n46 ->
+  g9`, 1 300 px along inside `g1`'s strip: xframe_runs 1 -> 0).
+  `ortho::plan_jog` moves a step that lies inside a frame holding
+  neither end (deeper than the border's own band) to the nearer side of
+  that frame where its room allows. The narrower form of the rule taken
+  out in 3ae7829: steps in a border's band are left to the walls as
+  before, which keeps quality/fanout-frames at 0 crossings (with the
+  band included the step 1.5 px past a frame border moved ahead of its
+  neighbours and crossed one).
+- The turned-blocks work of a295de7 (a whole block's turned edges take
+  a track of their gap) is checked here: its test passes in all four
+  directions, the verifier's y2 inputs read xframe_runs 0 (TD and LR).
+
+New fixture tests/fixtures/blocks/lane-beside.mmd (synthetic; its
+BLOCK_CEILINGS row holds the start's values: the start draws the same
+defect). New tests, all on the drawn scene:
+an_edge_between_members_of_a_block_is_drawn_inside_it (nested-chain,
+four directions), a_blocks_lanes_keep_short_of_what_stands_beside_it,
+a_step_past_a_block_keeps_out_of_its_title_strip; the generated sweep
+counts own_frame_x among its hard zeros (48 on 29 diagrams as blocks,
+unchanged: the own-frame cases are gone; blocks still add some on 9,
+eight of them two note links sharing a port, B12.14).
+
+Suite-on, static: local acceptance crossings unchanged (analog 15, v2
+15, perms 15/22/15/15/17, public fixture 6 x5, bench-75 247, dense-lr
+17, dense-td 68); must-fails 5 -> 3 (dense-td xframe_runs gone;
+bench-75 2 and notes/fork-twins 1 left). Repository fixtures: hard
+zeros 23 -> 10 against the start (blocks/nested-chain 0). Suite-on
+failing tests: the same ten library tests and six quality gates as
+before the round, none new. No snapshot or gate changes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

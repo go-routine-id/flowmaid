@@ -1,0 +1,12 @@
+flowchart LR
+    u([visitor]) -- open page --> w
+    subgraph EDGE[Front door services with a rather long title]
+        w[web]
+        c[cache]
+    end
+    w -- lookup --> c
+    c -- miss path --> db
+    subgraph DATA[Data]
+        db[(store)]
+    end
+    db -- reply --> u

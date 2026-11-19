@@ -1,0 +1,26 @@
+sequenceDiagram
+participant P0 as delta
+actor P1 as delta
+actor P2 as delta
+participant P3 as gamma
+P3-->P3: alpha
+P1->>P1: self delta
+P0-)P2: x
+activate P2
+P2->>P3: act
+deactivate P2
+P0-)P3: <b>bold</b>
+P1-)P1: x
+Note over P0,P3: Long label here
+loop x
+P1->P1: delta
+alt gamma
+end
+P3->>P0: 日本語
+P3-)P2: <b>bold</b>
+end
+P2-xP2: delta
+P2-->>P0: x
+Note left of P1: <b>bold</b>
+P1--xP2: beta
+P2-)P2: alpha

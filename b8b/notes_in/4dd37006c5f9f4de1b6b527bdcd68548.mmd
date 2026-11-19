@@ -1,0 +1,14 @@
+stateDiagram-v2
+state "Äpfel 🍎 ünïcødé" as U
+state "日本語の状態" as J
+state c <<choice>>
+[*] --> U
+U --> c
+c --> J : はい ✓
+c --> U : いいえ ✗
+c --> J : ε → ∞
+note right of U : 注意 ⚠ ñ
+note left of J
+  多行
+  ノート 🎉
+end note

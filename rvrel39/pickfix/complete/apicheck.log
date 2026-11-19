@@ -1,0 +1,8 @@
+empty: (0, 0, 0, 5.0, 20.0)
+debug: Scene { nodes: [], edges: [], clusters: [], width: 5.0, height: 20.0, plain_crossings: false }
+as built:            (None, [], None)  generic to_svg arcs 0
+generic painter on the arch scene: masks 1 mask attrs 1
+clone + in-place:    (None, [], None)
+rebuilt from empty:  (Some(8), [Edge(8)], Some(Edge(8)))  generic to_svg arcs 2
+architecture::to_svg of the rebuilt scene identical: true (arcs 0); pick on it: (Some(8), [Edge(8)], Some(Edge(8)))
+git edges 4 picks at each edge's middle: [Some(0), Some(1), None, None]

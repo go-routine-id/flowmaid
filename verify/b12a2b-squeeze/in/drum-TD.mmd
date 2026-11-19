@@ -1,0 +1,20 @@
+flowchart TD
+    subgraph APP[Application]
+        a[api gateway] --> b[orders service]
+        a --> c[users service]
+        a --> e[search service]
+    end
+    subgraph DATA[Data stores]
+        db1[(orders)]
+        db2[(users)]
+        db3[(search index)]
+    end
+    b --> db1
+    c --> db2
+    e --> db3
+    b --> db2
+    c -.-> db1
+    e --> db1
+    x[batch job] --> db3
+    x --> db2
+    y[admin] --> APP

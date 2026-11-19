@@ -1,0 +1,16 @@
+flowchart TD
+  s[Source] e1@--> t1[Target one]
+  s e2@--> t2[Target two]
+  s e3@--> t3[Target three]
+  s e4@--> t4[Target four]
+  s e5@<--> t5[Target five]
+  t1 e6@--> t5
+  t4 e7@--> s
+  e1@{ curve: step }
+  e2@{ curve: linear }
+  e3@{ curve: natural }
+  e4@{ curve: stepAfter }
+  e5@{ curve: monotoneY }
+  e6@{ curve: cardinal }
+  e7@{ curve: bumpX }
+  linkStyle default stroke-width:22px

@@ -1,0 +1,25 @@
+sequenceDiagram
+autonumber
+participant P0 as a&b
+actor P1 as x
+participant P2 as alpha
+participant P3 as x
+actor P4 as 日本語
+participant P5 as <b>bold</b>
+actor P6 as Long label here
+P3-)P1: Long label here
+P2->>P2: self 日本語
+activate P2
+P2->>P3: act
+deactivate P2
+P5--)P6: a&b
+activate P4
+P4->>P5: act
+deactivate P4
+P6->>P6: self beta
+P4->>P6: <b>bold</b>
+Note over P0,P6: a&b
+P0->>P0: self delta
+P1-xP1: beta
+Note over P0,P6: beta
+P1--)P2: a&b

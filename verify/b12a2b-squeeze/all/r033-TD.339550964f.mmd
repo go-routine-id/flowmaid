@@ -1,0 +1,14 @@
+flowchart TD
+    subgraph G[Payments]
+        m0[y]
+        m1[queue]
+    end
+    s0[src0] -- "lbl3" --> m1
+    s1[src1] --> m0
+    s1 -- "lbl8" --> G
+    s2[src2] --> m0
+    s2 --> G
+    s3[src3] --> G
+    s3 --> G
+    s4[src4] --> m0
+    m1 --> z[end]

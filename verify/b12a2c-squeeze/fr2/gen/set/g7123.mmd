@@ -1,0 +1,37 @@
+flowchart LR
+  n1["report billing notify"]
+  subgraph B0["Ops"]
+    n2["ingest"]
+  end
+  subgraph B1["Back office and finance"]
+    n3["queue cache merge"]
+    subgraph B1s0["Fulfilment desk 0"]
+      n4["auth"]
+    end
+    subgraph B1s1["Analytics 1"]
+      n5["api"]
+    end
+  end
+  subgraph B2["Fulfilment desk"]
+    n6["ingest<br/>store"]
+    n7["search"]
+    n8["billing<br/>ship"]
+    n9["worker"]
+    subgraph B2s0["Data tier 0"]
+      n10["merge"]
+      n11["queue notify search"]
+    end
+  end
+  n12["store"]
+  n4 --> n5
+  n10 ==> n6
+  n2 -.->|ship| n9
+  n11 --> n10
+  n7 --> n8
+  n9 --> n10
+  n6 --> B1
+  n10 --> n11
+  n12 --> n3
+  n2 --> n4
+  n8 -.->|pack| n12
+  n2 --> B2

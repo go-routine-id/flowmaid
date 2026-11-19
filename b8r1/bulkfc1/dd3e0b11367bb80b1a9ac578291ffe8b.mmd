@@ -1,0 +1,23 @@
+flowchart RL
+    N0(Load notify)
+    N1([Emit])
+    N2([Load])
+    N3[Queue]
+    N4([Report fetch])
+    N5([Queue queue])
+    N6([Notify done])
+    N7[Fetch check]
+    N8(Retry retry)
+    N9([Store load])
+    N0 --> N1
+    N1 --> N2
+    N1 --> N3
+    N3 --> N4
+    N4 -->|next| N5
+    N4 --> N6
+    N5 -->|next| N7
+    N7 --> N8
+    N8 --> N9
+    N7 -->|back| N2
+    N5 -.-> N0
+    N6 -.-> N1

@@ -1,0 +1,28 @@
+%%{
+  init: {
+    'theme': 'forest',
+    'themeVariables': { 'primaryColor': '#1a237e', 'primaryBorderColor': '#ff0000' }
+  }
+}%%
+stateDiagram-v2
+  [*] --> Idle
+  Idle --> Busy : start
+  state Busy {
+    [*] --> Working
+    Working --> Waiting : io
+    Waiting --> Working : done
+  }
+  Busy --> Check
+  state Check <<choice>>
+  Check --> Idle : ok
+  Check --> Error : fail
+  state fork1 <<fork>>
+  Error --> fork1
+  fork1 --> Log
+  fork1 --> Alert
+  note right of Error : something broke
+  note left of Idle
+    resting
+  end note
+  Log --> [*]
+  Alert --> [*]

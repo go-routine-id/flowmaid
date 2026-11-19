@@ -1,0 +1,11 @@
+flowchart LR
+  a1[A one] --> b1[B one] & b2[B two] & b3[B three] & b4[B four]
+  a2[A two] -.-> b1 & b2 & b3 & b4
+  a3[A three] ==> b1 & b2 & b3 & b4
+  a4[A four] --> b4 & b3 & b2 & b1
+  b1 --> c1[C one]
+  b4 --> c1
+  b2 -.->|dotted label| c2[C two]
+  b3 ==>|thick| c2
+  a1 --> c2
+  a4 -.-> c1

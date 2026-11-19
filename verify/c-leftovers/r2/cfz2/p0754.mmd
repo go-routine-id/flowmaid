@@ -1,0 +1,12 @@
+classDiagram
+A <|-- B
+B *-- C : has many of
+B ..|> D
+C ..|> E
+E ..> E
+E *-- E
+class C {
+ +int id
+ +run() void
+ +stop()
+}

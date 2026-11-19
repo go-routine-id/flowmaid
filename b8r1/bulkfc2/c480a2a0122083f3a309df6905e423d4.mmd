@@ -1,0 +1,20 @@
+flowchart RL
+  subgraph F0 [Frame 0]
+    direction LR
+    n0>Node 0]
+    n2([Node 2 with a longer label])
+  end
+  subgraph F1 [Frame 1]
+    n1{Node 1}
+    n6((Node 6))
+  end
+  n1 --x n4
+  n0 <-.-> F0
+  n6 <--> n5
+  n3 <-.-> n1
+  n3 --- n2
+  n1 --> F1
+  n1 --x n6
+  linkStyle 0 stroke:#3a3,stroke-width:3px
+  linkStyle 6 stroke:#c33,stroke-width:5px
+  linkStyle 1 stroke:#c33,stroke-width:5px

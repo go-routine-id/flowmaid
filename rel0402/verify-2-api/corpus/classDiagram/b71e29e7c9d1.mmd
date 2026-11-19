@@ -1,0 +1,36 @@
+classDiagram
+direction RL
+A "1" ..|> "*" B : has many of
+A "1" ..> "*" C
+A ..|> D : uses
+C o-- E
+B "1" ..|> "*" F : owns
+A "1" ..> "*" G
+B -- C
+B --|> D
+C <|-- G
+D --> D
+D o-- D
+A --> A : a0
+A ..> A : a1
+A --> A
+B ..> B : b0
+B ..> B : b1
+B o-- B : b2
+B --> B : b3
+B *-- B : b4
+B --> B
+C ..> C : c0
+C --> C
+C o-- C : c2
+C --> C : c3
+C *-- C : c4
+C *-- C : c5
+C --> C
+C *-- C : c7
+C *-- C : c8
+class G {
+ +int id
+ +run() void
+ +stop()
+}

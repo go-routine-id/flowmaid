@@ -1,0 +1,52 @@
+flowchart LR
+  subgraph A[Block A title]
+    an0[A 0]
+    an1[A 1]
+    an2[A 2]
+    an3[A 3]
+    subgraph Ax[Block Ax title]
+      axn0[Ax 0]
+      axn1[Ax 1]
+      axn2[Ax 2]
+      subgraph Axx[Block Axx title]
+        axxn0[Axx 0]
+        axxn1[Axx 1]
+        axxn2[Axx 2]
+      end
+    end
+  end
+  subgraph B[Block B title]
+    bn0[B 0]
+    bn1[B 1]
+    subgraph Bx[Block Bx title]
+      bxn0[Bx 0]
+      bxn1[Bx 1]
+      bxn2[Bx 2]
+    end
+  end
+  f0([free f0])
+  f1([free f1])
+  f2([free f2])
+  an0 --> an1
+  an1 --> an2
+  an2 --> an3
+  an0 --> an3
+  axn1 --> axn2
+  axn0 --> axn2
+  axxn0 --> axxn1
+  axxn1 --> axxn2
+  axxn0 --> axxn2
+  bn0 --> bn1
+  Bx --> A
+  axn1 -.->|retry| axxn1
+  bxn2 --> Ax
+  Ax --> B
+  an3 ==>|retry| axn0
+  f0 ==> Axx
+  bn1 -->|retry| bn0
+  an1 ==> f1
+  an0 -->|sync| axxn0
+  Bx --> axxn0
+  A ==> Bx
+  an3 --> axxn0
+  f2 ==>|no| Ax

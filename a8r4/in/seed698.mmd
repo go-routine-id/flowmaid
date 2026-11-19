@@ -1,0 +1,30 @@
+architecture-beta
+    group g0(disk)[Private API]
+    group g1(monitoring)[WWW]
+    group g2(nonsense)[Frontend]
+    group g3(cloud)[Backend Services]
+    service s0(monitoring)[Web App 0] in g3
+    service s1(monitoring)[Authentication and Authorization Service 1]
+    service s2(server)[Web App 2] in g0
+    service s3(server)[PostgreSQL Primary 3] in g1
+    service s4(nonsense)[Authentication and Authorization Service 4] in g2
+    service s5(disk)[Svc 5] in g0
+    service s6(server)[Web App 6] in g3
+    service s7(disk)[Web App 7] in g2
+    service s8(nonsense)[Web App 8] in g2
+    service s9(disk)[Svc 9] in g2
+    service s10(nonsense)[Svc 10] in g3
+    service s11(cloud)[Authentication and Authorization Service 11] in g2
+    junction s12 in g1
+    s6:R <-[replicates to standby]-> R:s10
+    s6:B -- T:s10
+    s3:L <--> T:s11
+    s2:R -[replicates to standby]- L:s11
+    s6:B -[reads config]- R:s10
+    s11{group}:B <--> T:s10
+    s5:R -[replicates to standby]-> L:s0
+    s1:B -- T:s4
+    s8:L -- R:s9
+    s4:L --> L:s6
+    s5{group}:B -[calls]-> L:s7{group}
+    s9{group}:L -[calls]- B:s3

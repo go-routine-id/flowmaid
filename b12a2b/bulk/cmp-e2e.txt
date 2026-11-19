@@ -1,0 +1,38 @@
+== bulkst
+static x_drawn 307->307 chip_crowd 777->777 fan_x 96->96 lateral_x 18->18 side_ends 64->64 ortho_edges 6788->6789 bends_max 5678->5678 defects 269->269 edge_chip 6->6 edge_frame_pairs 0->0 overlap_pairs 86->86
+  files changed: 1
+    71613f05faeebcf912f6f0ffac871956 ortho_edges 5->6
+routed x_drawn 459->459 chip_crowd 799->799 fan_x 166->166 lateral_x 135->135 side_ends 119->119 ortho_edges 6760->6760 bends_max 5796->5796 defects 298->298 edge_chip 20->20 edge_frame_pairs 8->8 overlap_pairs 85->85
+  files changed: 0
+missing 0
+== bulkfc
+static x_drawn 86300->86297 chip_crowd 657->661 fan_x 1249->1249 lateral_x 183->172 side_ends 355->340 ortho_edges 9246->9246 bends_max 4356->4356 defects 37638->37638 edge_chip 47->46 edge_frame_pairs 0->0 overlap_pairs 34579->34579
+  files changed: 19
+    1c32c3b8cf5dce0acece6d786682109d chip_crowd 1->2
+    356e2985355d168641a97b7fed82085e chip_crowd 2->3 lateral_x 1->0 side_ends 1->0
+    393085c6ce533b6f80717871c7a203d2 x_drawn 2->1 side_ends 1->0 bends_max 5->4 min_edge_gap 27.43->34.34
+    3b44da064af675cc01b0fa3bda01035d edge_chip 1->0
+    4560c8b3b7d7bb2e963f2ac3083df37b lateral_x 2->1 side_ends 1->0
+    531fdd2d91af85907775981ce8e57a50 lateral_x 1->0 side_ends 1->0 bends_max 1->2
+    54b7113da619ee37bd18fd808fc5a597 chip_crowd 1->2 bends_max 2->3
+    56c22a78ffa4daff9141d7aea0922104 lateral_x 1->0 side_ends 1->0
+    60d1b3611f9d76ab3b8258e4bb7a1b14 min_edge_gap 12.50->14
+    7daf7454a96370655e47e05709a5e9e6 lateral_x 1->0 side_ends 1->0 bends_max 3->2
+    94d1b8f874c5ffeef2f9288538969a86 lateral_x 2->1 side_ends 1->0
+    c70bb46969642419637d9ebfb61b348c lateral_x 2->1 side_ends 1->0
+    caeb8214ad3efb3ac4b0603cfd722cb4 side_ends 1->0
+    cc2248abe16e4a2010d671c73a577d3c lateral_x 1->0 side_ends 1->0 bends_max 2->4 min_edge_gap 17.62->40
+    d0787a7a8a24221cae17b95dd0809eae min_edge_gap 12.50->14
+    e08d964a2b23b2f8df472bd24b5135d5 lateral_x 1->0 side_ends 1->0 bends_max 3->2
+    e50bf6bb41479f0f9cf22ad26211ade5 lateral_x 1->0 side_ends 1->0
+    effc8147d97533a29c56be9cf6163c2d x_drawn 3->2 lateral_x 1->0 side_ends 1->0 bends_max 3->2
+    fc95285f16d2077b3b46a5cab0f46af0 x_drawn 1->0 chip_crowd 0->1 side_ends 2->0
+routed x_drawn 98425->98425 chip_crowd 690->690 fan_x 1708->1708 lateral_x 544->544 side_ends 582->582 ortho_edges 8182->8182 bends_max 3712->3712 defects 31932->31932 edge_chip 90->90 edge_frame_pairs 210->210 overlap_pairs 28304->28304
+  files changed: 0
+missing 0
+== all
+static x_drawn 294->294 chip_crowd 81->81 fan_x 5->5 lateral_x 13->13 side_ends 46->46 ortho_edges 1686->1686 bends_max 1590->1590 defects 40->40 edge_chip 3->3 edge_frame_pairs 0->0 overlap_pairs 9->9
+  files changed: 0
+routed x_drawn 422->422 chip_crowd 78->78 fan_x 76->76 lateral_x 48->48 side_ends 59->59 ortho_edges 1687->1687 bends_max 1627->1627 defects 73->73 edge_chip 5->5 edge_frame_pairs 13->13 overlap_pairs 27->27
+  files changed: 0
+missing 0

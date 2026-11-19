@@ -1,0 +1,52 @@
+fix(layout): hub-fed subgraphs sit wholly below their hub; large graphs keep source-order cycle breakers (B8b P1-P5; §2.9, M11, B2)
+
+P1 (B8 verify #1, cases a and b). seat_loose_parts read a box's first row
+off the members that link out of it, so a source member linking onward
+(f182's n13) stayed level with the hub and dragged the frame across the
+hub's row and edges; and narrowing's stacking hubs joined every member to
+the hub, sending edge-less members back to layer 0 (s4, s10).
+seat_box_sources replaces it: a box's first row is the row below its
+topmost feeder outside every box; its source members (edge-less, internal
+chains, onward-linking) are floored there by a min-node per box, and a box
+a seated source links into follows it (a max-node over the follower's
+first-row members). Stackings/wraps (rank_only[drawn..]) rank but neither
+feed nor de-source. Left alone: boxes fed only from other boxes (dense-td/
+dense-lr: seating re-laid them, +27 % crossings, route() +40 %), a source
+leading to an entry, cycle-breaker ends from outside, conditional links
+that would close a cycle, and any box whose seating would move a node
+outside it and its followers (dense-lr: 25 of 54 nodes) or leave a member
+above its first row. Lead note cards are placed after the seating.
+f182: static 7 -> 0 defects, frame strikes 4 -> 0; s4 TB tiers below the
+load balancer (static 0 -> 1: a dotted line clipping a frame corner and
+title where the way round is a 20 px channel, the router's deliberate
+narrow-channel trade); s10 static/routed 1/0 -> 0/0. Bulk 5 337 inputs:
+68 ordinary changed flowchart/state drawings, static defects 135 -> 46,
+routed 136 -> 58, edges through frames 72 -> 20 (8 worse, 36 better),
+crossings 279 -> 205. No corpus, example or fixture output changes; no
+class diagram changes.
+
+P2. The syn200/syn400 regression came from B8 r1's two-walk cycle
+breakers, not narrow(): the shallower layering read as a ribbon and was
+packed. Graphs over WALK_MAX_ELEMENTS (400) keep the source-order walk
+(syn200/syn400 byte-identical to 0.34.0); narrow()'s hit clause now
+weighs a node hit as NARROW_HIT_COST = 2 crossings (dense-td's n45
+robustness and bench-75 shuffle robustness kept).
+
+P3: class b97cff8a's diagonal comes from class.rs' orthogonaliser finding
+no route in the dense bundle, not local; CHANGELOG now states 0.35.0
+re-laid 34 class diagrams. P4: the n45 test doc now says 56 positions,
+4 249 - 4 492 px (+5.7 %). P5: new fixture notes/routed-around.mmd keeps
+a router-drawn note link (dn290) in
+note_links_hold_their_ends_and_corners_in_scene_route_and_drag.
+
+Tests: a_hub_fed_box_sits_below_its_hub, a_stacked_box_keeps_its_loose_
+members_below_the_hub, large_graphs_keep_source_order_cycle_breakers;
+a_box_seats_its_loose_parts_on_its_top_layer comments updated (asserts
+unchanged). lr_colliding_labels_grow_their_gap_only_to_the_widest_one is
+rewritten on purpose: its STANDBY box (fed by laptop, source tunnel) now
+sits in its own column between laptop and PROD, as mermaid draws it, so
+the test checks those three columns and the gap after laptop. No snapshot
+or quality gate changed.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

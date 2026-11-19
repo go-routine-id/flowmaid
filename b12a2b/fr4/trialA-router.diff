@@ -1,0 +1,86 @@
+diff --git a/src/router.rs b/src/router.rs
+index 845afed..4a2d1f8 100644
+--- a/src/router.rs
++++ b/src/router.rs
+@@ -876,17 +876,30 @@ impl World {
+             && o.3 - o.1 <= ROUTE_MAX_EXTENT
+     }
+ 
+-    /// The solid obstacles for node clearance `clear`: every node, and
+-    /// every title chip at a clearance scaled the same way.
+-    fn solids(&self, clear: f64) -> Vec<(R, f64)> {
++    /// The solid obstacles for node clearance `clear` of an edge with
++    /// `ends`: every node, and every title chip at a clearance scaled the
++    /// same way, with the title's ink past it where the world holds it
++    /// ([`World::inks_for`]).
++    fn solids(&self, clear: f64, ends: (EndRef, EndRef)) -> Vec<(R, f64)> {
+         let chip = CHIP_CLEAR * clear / ROUTE_CLEAR;
+         self.nodes
+             .iter()
+             .map(|&(r, _)| (r, clear))
+             .chain(self.chips.iter().map(|&r| (r, chip)))
++            .chain(self.inks_for(ends).map(|r| (r, chip)))
+             .collect()
+     }
+ 
++    /// The titles' ink past their chips ([`World::inks`]) an edge with
++    /// `ends` keeps off: every frame's but those it ends on
++    /// ([`World::ink_of`]).
++    fn inks_for(&self, ends: (EndRef, EndRef)) -> impl Iterator<Item = R> + '_ {
++        (0..self.inks.len()).filter_map(move |k| {
++            let own = [ends.0, ends.1].contains(&EndRef::Frame(k));
++            self.ink_of(k, own)
++        })
++    }
++
+     /// The ink past frame `k`'s chip ([`World::inks`]) as a path that
+     /// ends on frame `k` itself (`own`) or not sees it: none for the
+     /// frame's own pin. A pin on the frame's title side ends on its
+@@ -912,6 +925,7 @@ impl World {
+             .enumerate()
+             .all(|(v, &(r, _))| own_loop(v) || !inside(r, p))
+             && self.chips.iter().all(|&r| !inside(r, p))
++            && self.inks_for(info.ends).all(|r| !inside(r, p))
+             && info
+                 .blocked_frames
+                 .iter()
+@@ -1521,6 +1535,7 @@ fn detour(
+         .iter()
+         .map(|&(r, _)| grow(r, NODE_SEP))
+         .chain(w.chips.iter().map(|&r| grow(r, CHIP_SEP)))
++        .chain(w.inks_for(info.ends).map(|r| grow(r, CHIP_SEP)))
+         .chain(blocked.iter().map(|&f| grow(w.frames[f], FRAME_SEP)))
+         .map(tr)
+         .collect();
+@@ -1981,12 +1996,13 @@ impl Lattice {
+         o: R,
+         acc: &mut Accepted,
+         me: usize,
++        ends: (EndRef, EndRef),
+         blocked: &[usize],
+         tracks: bool,
+         work: &mut Work,
+     ) -> Option<Lattice> {
+         let solids: Vec<(R, f64)> = w
+-            .solids(clear)
++            .solids(clear, ends)
+             .into_iter()
+             .filter(|&(r, c)| overlaps(grow(r, c), o))
+             .collect();
+@@ -3164,6 +3180,7 @@ fn route_edge(
+                 win,
+                 env.acc,
+                 me,
++                info.ends,
+                 &info.blocked_frames,
+                 env.tracks,
+                 env.work,
+@@ -5265,7 +5282,7 @@ pub(crate) fn repair(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
+     // TD's `shopper --> cdn` in through its frame's lateral wall, and
+     // drawn BT `cart --> pager` round into pager's side across `ship -->
+     // pager`; quality/dense-td drawn TD gained a side end.
+-    let mut w = World::new(g, sc, false);
++    let mut w = World::new(g, sc, cx.blocks);
+     if !w.sane() {
+         return;
+     }

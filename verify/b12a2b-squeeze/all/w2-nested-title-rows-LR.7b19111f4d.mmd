@@ -1,0 +1,15 @@
+flowchart LR
+    src1[ingest one] --> i1
+    src2[ingest two] --> i1
+    src3[ingest three] --> OUT
+    subgraph OUT[Outer platform with quite a long title]
+        subgraph INN[Inner Monitoring Workloads]
+            i1[collector]
+            i2[store]
+            i1 --> i2
+        end
+        o1[router]
+        o1 --> i1
+    end
+    i2 --> sink[Dashboard]
+    src1 --> o1

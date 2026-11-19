@@ -1,0 +1,30 @@
+infra-overview-v2	static	DNS->TR2 band DNS->PSPROD 1086px
+infra-overview-v2	static	DNS->TR2 band DNS->TR1 328px
+infra-overview-v2	static	DNS->TR2 band ARGO->TG 222px
+infra-overview-v2	static	DNS->PSPROD band DNS->TR1 170px
+infra-overview-v2	static	DNS->PSPROD band DRAPP->TG 822px
+infra-overview-v2	static	DNS->DRAPP band DNS->PSDEV 138px
+infra-overview-v2	static	DNS->DRAPP band DNS->TR1 170px
+infra-overview-v2	static	DNS->PSDEV band DNS->SITE 392px
+infra-overview-v2	static	DNS->TR1 band ARGO->TG 188px
+infra-overview-v2	static	DRAPP->TG band ARGO->TG 112px
+infra-overview-v2	static	ARGO->TG band PSPROD->TG 152px
+infra-overview-v2	static	ARGO->TG band DRAPP->PG 216px
+infra-overview-v2	static	PSPROD->TG band LANE->OAI 108px
+infra-overview-v2	static	LANE->OAI band LANE->AZ 102px
+infra-overview-v2	static	LANES4->GITLAB band PSPROD->GITLAB 258px
+infra-overview-v2	static	R2->STG band R2->PROD 134px
+infra-overview-v2	static	T1->DNS lbl_edge U1->DNS
+infra-overview-v2	static	T1->DNS lbl_edge U2->DNS
+infra-overview-v2	static	DNS->DRAPP lbl_edge DRAPP->TG
+infra-overview-v2	static	R2->STG lat_wiggle 358.5
+infra-overview-v2	static	R2->PROD lat_wiggle 154.4
+infra-overview-v2	static	LANE->AZ lateral_x PROD R
+infra-overview-v2	static	ARGO->GITLAB side_ends ARGO
+infra-overview-v2	static	ARGO->GITLAB side_ends GITLAB
+infra-overview-v2	static	T1->DNS chip_crowd 0.0px
+infra-overview-v2	static	DNS->DRAPP chip_crowd 0.0px
+infra-overview-v2	static	DNS->PSDEV chip_crowd 10.2px
+infra-overview-v2	static	DNS->SITE chip_crowd 6.7px
+infra-overview-v2	static	DRAPP->TG chip_crowd 10.2px
+infra-overview-v2	static	R2->DR chip_crowd 7.3px

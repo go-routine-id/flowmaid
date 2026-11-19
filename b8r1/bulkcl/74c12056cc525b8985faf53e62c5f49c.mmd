@@ -1,0 +1,19 @@
+classDiagram
+direction TB
+S0 "1" --> "0..*" Hub : uses0
+S1 "1" --> "0..*" Hub : uses1
+S2 "1" --> "0..*" Hub : uses2
+S3 "1" --> "0..*" Hub : uses3
+S4 "1" --> "0..*" Hub : uses4
+S5 "1" --> "0..*" Hub : uses5
+S6 "1" --> "0..*" Hub : uses6
+S7 "1" --> "0..*" Hub : uses7
+S8 "1" --> "0..*" Hub : uses8
+S9 "1" --> "0..*" Hub : uses9
+S10 "1" --> "0..*" Hub : uses10
+S11 "1" --> "0..*" Hub : uses11
+Hub --> Hub : self
+Hub <|-- Sub1
+Hub <|-- Sub2
+note for Hub "central"
+note "free floating"

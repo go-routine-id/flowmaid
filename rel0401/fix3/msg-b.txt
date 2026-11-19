@@ -1,0 +1,14 @@
+fix(class): a stray-dot error quotes the name without its one-line body
+
+Verifier finding (fix round 2, non-blocking): `class A. {}` gave
+"'A. {}' is no class name". The name the error quotes is now cut at a
+generic, label, `:::` style or `{` only where the stray dot lies before
+that mark, and trimmed: `class A. {}` gives "'A.' is no class name",
+and `class A~T.` / `class A[x.`, whose dot follows an unclosed generic
+or label, quote the whole 'A~T.' / 'A[x.' instead of just 'A'.
+Acceptance is unchanged; mermaid 12.2 (mermaid.parse in chromium)
+rejects all five forms the new test checks (`class A. {}`, `class A..
+{}`, `class A.B. {}`, `class A~T.`, `class A[x.`).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

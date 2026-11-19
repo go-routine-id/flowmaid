@@ -1,0 +1,19 @@
+flowchart LR
+    subgraph O[Édition générale des données]
+        subgraph G[Payments]
+            m0[db]
+            m1[ledger]
+        end
+        k[k]
+    end
+    m0 --> k
+    m1 --> k
+    s0[src0] --> G
+    s1[src1] --> O
+    s2[src2] --> O
+    s2 --> G
+    s3[src3] -- "lbl8" --> G
+    s4[src4] --> O
+    s4 --> m0
+    m1 --> z[end]
+    G --> z2[after]

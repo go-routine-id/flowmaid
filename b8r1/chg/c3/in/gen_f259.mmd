@@ -1,0 +1,56 @@
+flowchart LR
+  n0["ullamco magna laboris elit"]
+  subgraph g0["aliqua"]
+    direction TB
+    n1[("consectetur sit")]
+    n2("magna dolor<br/>adipiscing magna dolor<br/>elit incididunt aliqua sit")
+    n1 --> n2
+  end
+  subgraph g1["laboris incididunt"]
+    direction TB
+    n3["tempor do nostrud<br/>magna lorem<br/>incididunt"]
+    n4(["labore<br/>aliqua<br/>incididunt lorem eiusmod ut"])
+    n5["do labore dolor<br/>ipsum ullamco<br/>labore ut"]
+    n6(["incididunt eiusmod eiusmod<br/>do incididunt incididunt laboris"])
+  end
+  subgraph g2["ut dolor ut lorem laboris incididunt ut veniam sed"]
+    n7[("amet veniam dolor veniam<br/>incididunt elit<br/>adipiscing amet")]
+    n8["consectetur<br/>ipsum ut adipiscing<br/>incididunt"]
+    n9("ipsum adipiscing sed")
+    n10[("magna eiusmod lorem<br/>incididunt<br/>aliqua aliqua")]
+    n11(["sed eiusmod do adipiscing<br/>nostrud ut<br/>consectetur sed incididunt ullamco"])
+    n7 --> n8
+  end
+  subgraph g3["laboris adipiscing laboris do adipiscing"]
+    direction TB
+    n12("elit sit")
+    n13[("lorem sed magna adipiscing<br/>laboris nostrud<br/>nostrud")]
+    n14("sed<br/>do ut nostrud dolor")
+    n15["ullamco amet sed<br/>incididunt lorem magna<br/>labore eiusmod adipiscing tempor"]
+    n16("ut elit adipiscing consectetur<br/>elit ullamco lorem")
+    n17(["aliqua magna consectetur"])
+  end
+  subgraph g4["tempor magna sit ipsum elit ut"]
+    direction TB
+    n18(["sed dolor<br/>nostrud ut labore aliqua"])
+    n19(["sit eiusmod nostrud<br/>magna elit amet magna"])
+    n20("elit lorem")
+    n21[("labore consectetur amet do<br/>incididunt eiusmod laboris")]
+    n22(["aliqua eiusmod<br/>adipiscing ut amet<br/>ipsum"])
+    n23[("adipiscing ut<br/>adipiscing eiusmod incididunt sit")]
+    n18 --> n19
+  end
+  subgraph g5["sit ut ut labore adipiscing tempor incididunt sed nostrud sit"]
+    direction TB
+    n24["veniam consectetur<br/>do sit"]
+  end
+  n25(["aliqua<br/>elit aliqua<br/>veniam magna adipiscing"])
+  n26(["sed ut consectetur<br/>adipiscing elit<br/>adipiscing ut"])
+  n0 ==> g0
+  n0 -.-> g1
+  n0 -.-> n7
+  n0 --> n14
+  n0 --> g4
+  n0 ==> g5
+  n0 --> n25
+  n0 --> n26

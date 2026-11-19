@@ -1,0 +1,67 @@
+flowchart TD
+  s0["metric notify cart"]
+  s1["index"]
+  subgraph g0["cart cart user zone"]
+    direction LR
+    m0["db report search"]
+    m1["ship pay"]
+    m2["user"]
+    m3["queue trace"]
+    m0 --> m1
+    m0 --> m2
+    m2 --> m3
+  end
+  subgraph g1["search search zone"]
+    m4["store store report"]
+    m5["web notify"]
+    m6["cart store"]
+    m7["web cache auth"]
+    m4 --> m5
+    m5 --> m6
+    m4 --> m7
+  end
+  subgraph g2["cache zone"]
+    direction LR
+    m8["user index"]
+    m9["metric notify store"]
+    m10["trace user"]
+    m11["billing"]
+    m8 --> m9
+    m9 --> m10
+    m8 --> m11
+  end
+  subgraph g3["store zone"]
+    direction TB
+    m12["user"]
+    m13["notify queue user"]
+    m14["web api api"]
+    m12 --> m13
+  end
+  subgraph g4["report zone"]
+    m15["order auth pay"]
+    m16["web"]
+    m17["web"]
+    m18["auth queue"]
+    m19["log ship metric"]
+    m15 --> m16
+    m16 --> m17
+    m15 --> m18
+  end
+  subgraph g5["billing zone"]
+    direction LR
+    m20["log metric"]
+    m21["notify auth"]
+    m22["search auth order"]
+    m23["trace db"]
+    m20 --> m21
+    m21 --> m22
+    m20 --> m23
+  end
+  s0 --> g0
+  s0 --> g1
+  s0 --> g2
+  s0 --> m12
+  s0 --> m15
+  s1 --> g5
+  m16 --> m9
+  m12 --> m15

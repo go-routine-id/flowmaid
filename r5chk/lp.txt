@@ -1,0 +1,143 @@
+l1-two-labelled-loops-td static: edges 4 (graph 4), worst waypoint turn 0.0 deg [], picks 40 misses 0 
+l1-two-labelled-loops-td routed: edges 4 (graph 4), worst waypoint turn 0.0 deg [], picks 40 misses 0 
+l1-two-labelled-loops-td static: loop 1 on B (56x38 at 61,145) ends (89, 129) (89, 145) off-border 0.0 0.0 ok
+l1-two-labelled-loops-td static: loop 2 on B (56x38 at 61,145) ends (89, 145) (89, 161) off-border 0.0 0.0 ok
+l1-two-labelled-loops-td routed: loop 1 on B (56x38 at 61,145) ends (89, 129) (89, 145) off-border 0.0 0.0 ok
+l1-two-labelled-loops-td routed: loop 2 on B (56x38 at 61,145) ends (89, 145) (89, 161) off-border 0.0 0.0 ok
+l1-two-labelled-loops-td partial: edges 4 (graph 4), worst waypoint turn 0.0 deg [], picks 43 misses 0 
+l1-two-labelled-loops-td dragged: edges 4 (graph 4), worst waypoint turn 0.0 deg [], picks 43 misses 0 
+l1-two-labelled-loops-td dragged: loop 1 on B (56x38 at 61,145) ends (89, 129) (89, 145) off-border 0.0 0.0 ok
+l1-two-labelled-loops-td dragged: loop 2 on B (56x38 at 61,145) ends (89, 145) (89, 161) off-border 0.0 0.0 ok
+l1-two-labelled-loops-td: worst route_partial 0.15 ms, worst route 0.12 ms
+l1-two-labelled-loops-td: to_mermaid md5-ish len 123
+l2-state-two-self static: edges 6 (graph 6), worst waypoint turn 0.0 deg [], picks 62 misses 0 
+l2-state-two-self routed: edges 6 (graph 6), worst waypoint turn 0.0 deg [], picks 62 misses 0 
+l2-state-two-self static: loop 2 on Active (71x38 at 63,255) ends (99, 239) (99, 255) off-border 0.0 0.0 ok
+l2-state-two-self static: loop 3 on Active (71x38 at 63,255) ends (99, 255) (99, 271) off-border 0.0 0.0 ok
+l2-state-two-self routed: loop 2 on Active (71x38 at 63,255) ends (99, 239) (99, 255) off-border 0.0 0.0 ok
+l2-state-two-self routed: loop 3 on Active (71x38 at 63,255) ends (99, 255) (99, 271) off-border 0.0 0.0 ok
+l2-state-two-self partial: edges 6 (graph 6), worst waypoint turn 0.0 deg [], picks 65 misses 0 
+l2-state-two-self dragged: edges 6 (graph 6), worst waypoint turn 0.0 deg [], picks 65 misses 0 
+l2-state-two-self dragged: loop 2 on Active (71x38 at 63,255) ends (99, 239) (99, 255) off-border 0.0 0.0 ok
+l2-state-two-self dragged: loop 3 on Active (71x38 at 63,255) ends (99, 255) (99, 271) off-border 0.0 0.0 ok
+l2-state-two-self: worst route_partial 0.28 ms, worst route 0.25 ms
+l2-state-two-self: to_mermaid md5-ish len 272
+l3-one-labelled-one-plain static: edges 4 (graph 4), worst waypoint turn 0.0 deg [], picks 40 misses 0 
+l3-one-labelled-one-plain routed: edges 4 (graph 4), worst waypoint turn 0.0 deg [], picks 40 misses 0 
+l3-one-labelled-one-plain static: loop 1 on B (54x38 at 55,145) ends (82, 129) (82, 145) off-border 0.0 0.0 ok
+l3-one-labelled-one-plain static: loop 2 on B (54x38 at 55,145) ends (82, 145) (82, 161) off-border 0.0 0.0 ok
+l3-one-labelled-one-plain routed: loop 1 on B (54x38 at 55,145) ends (82, 129) (82, 145) off-border 0.0 0.0 ok
+l3-one-labelled-one-plain routed: loop 2 on B (54x38 at 55,145) ends (82, 145) (82, 161) off-border 0.0 0.0 ok
+l3-one-labelled-one-plain partial: edges 4 (graph 4), worst waypoint turn 0.0 deg [], picks 43 misses 0 
+l3-one-labelled-one-plain dragged: edges 4 (graph 4), worst waypoint turn 0.0 deg [], picks 43 misses 0 
+l3-one-labelled-one-plain dragged: loop 1 on B (54x38 at 55,145) ends (82, 129) (82, 145) off-border 0.0 0.0 ok
+l3-one-labelled-one-plain dragged: loop 2 on B (54x38 at 55,145) ends (82, 145) (82, 161) off-border 0.0 0.0 ok
+l3-one-labelled-one-plain: worst route_partial 0.07 ms, worst route 0.05 ms
+l3-one-labelled-one-plain: to_mermaid md5-ish len 88
+l4-two-labelled-loops-lr static: edges 4 (graph 4), worst waypoint turn 0.0 deg [], picks 40 misses 0 
+l4-two-labelled-loops-lr routed: edges 4 (graph 4), worst waypoint turn 0.0 deg [], picks 40 misses 0 
+l4-two-labelled-loops-lr static: loop 1 on B (56x38 at 178,47) ends (162, 66) (178, 66) off-border 0.0 0.0 ok
+l4-two-labelled-loops-lr static: loop 2 on B (56x38 at 178,47) ends (178, 66) (194, 66) off-border 0.0 0.0 ok
+l4-two-labelled-loops-lr routed: loop 1 on B (56x38 at 178,47) ends (162, 66) (178, 66) off-border 0.0 0.0 ok
+l4-two-labelled-loops-lr routed: loop 2 on B (56x38 at 178,47) ends (178, 66) (194, 66) off-border 0.0 0.0 ok
+l4-two-labelled-loops-lr partial: edges 4 (graph 4), worst waypoint turn 0.0 deg [], picks 40 misses 0 
+l4-two-labelled-loops-lr dragged: edges 4 (graph 4), worst waypoint turn 0.0 deg [], picks 40 misses 0 
+l4-two-labelled-loops-lr dragged: loop 1 on B (56x38 at 178,47) ends (162, 66) (178, 66) off-border 0.0 0.0 ok
+l4-two-labelled-loops-lr dragged: loop 2 on B (56x38 at 178,47) ends (178, 66) (194, 66) off-border 0.0 0.0 ok
+l4-two-labelled-loops-lr: worst route_partial 0.17 ms, worst route 0.14 ms
+l4-two-labelled-loops-lr: to_mermaid md5-ish len 123
+s1-loop-lanes-lr static: edges 11 (graph 11), worst waypoint turn 90.0 deg [8 F->B at (626.64, 105.0)], picks 122 misses 0 
+s1-loop-lanes-lr routed: edges 11 (graph 11), worst waypoint turn 90.0 deg [8 F->B at (626.64, 105.0)], picks 121 misses 0 
+s1-loop-lanes-lr static: loop 1 on B (104x38 at 202,91) ends (194, 110) (210, 110) off-border 0.0 0.0 ok
+s1-loop-lanes-lr static: loop 7 on F (66x38 at 680,91) ends (672, 110) (688, 110) off-border 0.0 0.0 ok
+s1-loop-lanes-lr routed: loop 1 on B (104x38 at 202,91) ends (194, 110) (210, 110) off-border 0.0 0.0 ok
+s1-loop-lanes-lr routed: loop 7 on F (66x38 at 680,91) ends (672, 110) (688, 110) off-border 0.0 0.0 ok
+s1-loop-lanes-lr partial: edges 11 (graph 11), worst waypoint turn 90.0 deg [8 F->B at (626.64, 105.0)], picks 122 misses 0 
+s1-loop-lanes-lr dragged: edges 11 (graph 11), worst waypoint turn 90.0 deg [8 F->B at (626.64, 105.0)], picks 121 misses 0 
+s1-loop-lanes-lr dragged: loop 1 on B (104x38 at 202,91) ends (194, 110) (210, 110) off-border 0.0 0.0 ok
+s1-loop-lanes-lr dragged: loop 7 on F (66x38 at 680,91) ends (672, 110) (688, 110) off-border 0.0 0.0 ok
+s1-loop-lanes-lr: worst route_partial 0.51 ms, worst route 0.43 ms
+s1-loop-lanes-lr: to_mermaid md5-ish len 291
+s10-labelled-parallel static: edges 5 (graph 5), worst waypoint turn 0.0 deg [], picks 68 misses 0 
+s10-labelled-parallel routed: edges 5 (graph 5), worst waypoint turn 0.0 deg [], picks 68 misses 0 
+s10-labelled-parallel partial: edges 5 (graph 5), worst waypoint turn 0.0 deg [], picks 56 misses 0 
+s10-labelled-parallel dragged: edges 5 (graph 5), worst waypoint turn 0.0 deg [], picks 56 misses 0 
+s10-labelled-parallel: worst route_partial 0.27 ms, worst route 0.26 ms
+s10-labelled-parallel: to_mermaid md5-ish len 159
+skip /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b3-backedges/r5/in/s11-class-loops.mmd
+s2-loop-lanes-rl static: edges 9 (graph 9), worst waypoint turn 90.0 deg [8 E->A at (108.70000000000005, 106.0)], picks 101 misses 0 
+s2-loop-lanes-rl routed: edges 9 (graph 9), worst waypoint turn 90.0 deg [8 E->A at (108.70000000000002, 106.0)], picks 106 misses 0 
+s2-loop-lanes-rl static: loop 1 on B (69x38 at 315,91) ends (323, 110) (307, 110) off-border 0.0 0.0 ok
+s2-loop-lanes-rl static: loop 6 on E (61x38 at 58,91) ends (66, 110) (50, 110) off-border 0.0 0.0 ok
+s2-loop-lanes-rl routed: loop 1 on B (69x38 at 315,91) ends (323, 110) (307, 110) off-border 0.0 0.0 ok
+s2-loop-lanes-rl routed: loop 6 on E (61x38 at 58,91) ends (66, 110) (50, 110) off-border 0.0 0.0 ok
+s2-loop-lanes-rl partial: edges 9 (graph 9), worst waypoint turn 90.0 deg [8 E->A at (108.70000000000002, 96.0)], picks 102 misses 0 
+s2-loop-lanes-rl dragged: edges 9 (graph 9), worst waypoint turn 90.0 deg [8 E->A at (108.70000000000002, 106.0)], picks 101 misses 0 
+s2-loop-lanes-rl dragged: loop 1 on B (69x38 at 315,91) ends (323, 110) (307, 110) off-border 0.0 0.0 ok
+s2-loop-lanes-rl dragged: loop 6 on E (61x38 at 58,91) ends (66, 110) (50, 110) off-border 0.0 0.0 ok
+s2-loop-lanes-rl: worst route_partial 0.27 ms, worst route 0.27 ms
+s2-loop-lanes-rl: to_mermaid md5-ish len 215
+s3-twins-far static: edges 10 (graph 10), worst waypoint turn 90.0 deg [7 H->A at (569.75, 204.0)], picks 116 misses 0 
+s3-twins-far routed: edges 10 (graph 10), worst waypoint turn 90.0 deg [7 H->A at (569.75, 204.0)], picks 114 misses 0 
+s3-twins-far partial: edges 10 (graph 10), worst waypoint turn 90.0 deg [7 H->A at (569.75, 204.0)], picks 114 misses 0 
+s3-twins-far dragged: edges 10 (graph 10), worst waypoint turn 90.0 deg [7 H->A at (569.75, 204.0)], picks 114 misses 0 
+s3-twins-far: worst route_partial 0.30 ms, worst route 0.30 ms
+s3-twins-far: to_mermaid md5-ish len 276
+s4-twins-bt-rl static: edges 7 (graph 7), worst waypoint turn 90.0 deg [2 Q->R at (61.69999999999999, 269.0)], picks 76 misses 0 
+s4-twins-bt-rl routed: edges 7 (graph 7), worst waypoint turn 90.0 deg [2 Q->R at (80.44999999999999, 269.0)], picks 70 misses 0 
+s4-twins-bt-rl static: loop 6 on X (54x38 at 80,47) ends (107, 55) (107, 39) off-border 0.0 0.0 ok
+s4-twins-bt-rl routed: loop 6 on X (54x38 at 80,47) ends (107, 55) (107, 39) off-border 0.0 0.0 ok
+s4-twins-bt-rl partial: edges 7 (graph 7), worst waypoint turn 90.0 deg [2 Q->R at (61.69999999999999, 269.0)], picks 80 misses 0 
+s4-twins-bt-rl dragged: edges 7 (graph 7), worst waypoint turn 90.0 deg [2 Q->R at (80.44999999999999, 269.0)], picks 80 misses 0 
+s4-twins-bt-rl dragged: loop 6 on X (54x38 at 80,47) ends (107, 55) (107, 39) off-border 0.0 0.0 ok
+s4-twins-bt-rl: worst route_partial 0.61 ms, worst route 0.50 ms
+s4-twins-bt-rl: to_mermaid md5-ish len 269
+s5-state-twins static: edges 11 (graph 6), worst waypoint turn 90.0 deg [1 Failed->Idle at (227.23279436239545, 502.0)], picks 124 misses 0 
+s5-state-twins routed: edges 11 (graph 6), worst waypoint turn 90.0 deg [1 Failed->Idle at (227.23279436239545, 502.0)], picks 120 misses 0 
+s5-state-twins static: loop 2 on Failed (72x38 at 203,541) ends (239, 533) (239, 549) off-border 0.0 0.0 ok
+s5-state-twins routed: loop 2 on Failed (72x38 at 203,541) ends (239, 533) (239, 549) off-border 0.0 0.0 ok
+s5-state-twins partial: edges 11 (graph 6), worst waypoint turn 90.0 deg [1 Failed->Idle at (227.23279436239545, 502.0)], picks 127 misses 0 
+s5-state-twins dragged: edges 11 (graph 6), worst waypoint turn 90.0 deg [1 Failed->Idle at (227.23279436239545, 502.0)], picks 123 misses 0 
+s5-state-twins dragged: loop 2 on Failed (72x38 at 203,541) ends (239, 533) (239, 549) off-border 0.0 0.0 ok
+s5-state-twins: worst route_partial 1.64 ms, worst route 1.56 ms
+s5-state-twins: to_mermaid md5-ish len 531
+s6-curves-back static: edges 7 (graph 7), worst waypoint turn 90.0 deg [4 E->B at (107.6, 400.0)], picks 80 misses 0 
+s6-curves-back routed: edges 7 (graph 7), worst waypoint turn 90.0 deg [4 E->B at (107.6, 400.0)], picks 80 misses 0 
+s6-curves-back partial: edges 7 (graph 7), worst waypoint turn 90.0 deg [4 E->B at (107.6, 400.0)], picks 72 misses 0 
+s6-curves-back dragged: edges 7 (graph 7), worst waypoint turn 90.0 deg [4 E->B at (137.6, 400.0)], picks 83 misses 0 
+s6-curves-back: worst route_partial 0.39 ms, worst route 0.27 ms
+s6-curves-back: to_mermaid md5-ish len 224
+s7-nested-own-frame static: edges 8 (graph 8), worst waypoint turn 90.0 deg [2 a3->a1 at (199.35, 336.0)], picks 82 misses 0 
+s7-nested-own-frame routed: edges 8 (graph 8), worst waypoint turn 90.0 deg [2 a3->a1 at (159.35, 336.0)], picks 90 misses 0 
+s7-nested-own-frame static: loop 6 on c (55x38 at 179,571) ends (207, 563) (207, 579) off-border 0.0 0.0 ok
+s7-nested-own-frame routed: loop 6 on c (55x38 at 179,571) ends (207, 563) (207, 579) off-border 0.0 0.0 ok
+s7-nested-own-frame partial: edges 8 (graph 8), worst waypoint turn 90.0 deg [2 a3->a1 at (159.35, 336.0)], picks 83 misses 0 
+s7-nested-own-frame dragged: edges 8 (graph 8), worst waypoint turn 90.0 deg [2 a3->a1 at (159.35, 336.0)], picks 90 misses 0 
+s7-nested-own-frame dragged: loop 6 on c (55x38 at 179,571) ends (207, 563) (207, 579) off-border 0.0 0.0 ok
+s7-nested-own-frame: worst route_partial 1.54 ms, worst route 0.39 ms
+s7-nested-own-frame: to_mermaid md5-ish len 363
+s8-twin-long-gap-lr static: edges 9 (graph 9), worst waypoint turn 90.0 deg [8 B1->A at (97.39999999999998, 40.0)], picks 98 misses 0 
+s8-twin-long-gap-lr routed: edges 9 (graph 9), worst waypoint turn 90.0 deg [8 B1->A at (99.8, 58.0)], picks 111 misses 0 
+s8-twin-long-gap-lr partial: edges 9 (graph 9), worst waypoint turn 0.0 deg [], picks 134 misses 0 
+s8-twin-long-gap-lr dragged: edges 9 (graph 9), worst waypoint turn 0.0 deg [], picks 134 misses 0 
+s8-twin-long-gap-lr: worst route_partial 0.47 ms, worst route 0.40 ms
+s8-twin-long-gap-lr: to_mermaid md5-ish len 269
+s9-multi-loops static: edges 8 (graph 8), worst waypoint turn 0.0 deg [], picks 90 misses 0 
+s9-multi-loops routed: edges 8 (graph 8), worst waypoint turn 0.0 deg [], picks 91 misses 0 
+s9-multi-loops static: loop 1 on A (77x38 at 67,145) ends (105, 129) (105, 140) off-border 0.0 0.0 ok
+s9-multi-loops static: loop 2 on A (77x38 at 67,145) ends (105, 140) (105, 150) off-border 0.0 0.0 ok
+s9-multi-loops static: loop 3 on A (77x38 at 67,145) ends (105, 150) (105, 161) off-border 0.0 0.0 ok
+s9-multi-loops static: loop 7 on B (91x38 at 142,243) ends (188, 235) (188, 251) off-border 0.0 0.0 ok
+s9-multi-loops routed: loop 1 on A (77x38 at 67,145) ends (105, 129) (105, 140) off-border 0.0 0.0 ok
+s9-multi-loops routed: loop 2 on A (77x38 at 67,145) ends (105, 140) (105, 150) off-border 0.0 0.0 ok
+s9-multi-loops routed: loop 3 on A (77x38 at 67,145) ends (105, 150) (105, 161) off-border 0.0 0.0 ok
+s9-multi-loops routed: loop 7 on B (91x38 at 142,243) ends (188, 235) (188, 251) off-border 0.0 0.0 ok
+s9-multi-loops partial: edges 8 (graph 8), worst waypoint turn 0.0 deg [], picks 90 misses 0 
+s9-multi-loops dragged: edges 8 (graph 8), worst waypoint turn 0.0 deg [], picks 91 misses 0 
+s9-multi-loops dragged: loop 1 on A (77x38 at 67,145) ends (105, 129) (105, 140) off-border 0.0 0.0 ok
+s9-multi-loops dragged: loop 2 on A (77x38 at 67,145) ends (105, 140) (105, 150) off-border 0.0 0.0 ok
+s9-multi-loops dragged: loop 3 on A (77x38 at 67,145) ends (105, 150) (105, 161) off-border 0.0 0.0 ok
+s9-multi-loops dragged: loop 7 on B (91x38 at 142,243) ends (188, 235) (188, 251) off-border 0.0 0.0 ok
+s9-multi-loops: worst route_partial 2.54 ms, worst route 2.20 ms
+s9-multi-loops: to_mermaid md5-ish len 219
+TOTAL FAILS 0

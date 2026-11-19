@@ -1,0 +1,12 @@
+on s1-gap-nested x=2 fan=0 efp=0 ovl=0 hz=1.03
+on s2-title-pin x=2 fan=0 efp=0 ovl=0 hz=0.06
+on s3-direct-sibling x=0 fan=0 efp=0 ovl=0 hz=1
+on s4-state x=1 fan=0 efp=0 ovl=0 hz=0.19
+on s5-lr-hub x=0 fan=0 efp=0 ovl=0 hz=0.12
+on s6-neutral-rev x=1 fan=0 efp=0 ovl=0 hz=1.03
+on y1-link-sides x=2 fan=0 efp=0 ovl=0 hz=2
+on y2-turned-blocks x=1 fan=0 efp=0 ovl=0 hz=0.04
+on y2b-turned-blocks-lr x=0 fan=0 efp=0 ovl=1 hz=0.14
+on y3-free-pins x=1 fan=1 efp=0 ovl=0 hz=3
+on y4-state-turned x=0 fan=0 efp=0 ovl=0 hz=0.2
+on y5-nested-links x=0 fan=0 efp=0 ovl=0 hz=1.05

@@ -1,0 +1,12 @@
+flowchart TD
+  s[Start] --> a1
+  s --> b1
+  s --> x["X one<br/>two<br/>three<br/>four<br/>five<br/>six"]
+  x -->|from the tall outside node| a2
+  x --> b2
+  subgraph A [Short block]
+    a1[a one] --> a2[a two] --> a3[a three]
+  end
+  subgraph B [Tall block]
+    b1["b one<br/>two<br/>three<br/>four<br/>five<br/>six"] --> b2[b two]
+  end

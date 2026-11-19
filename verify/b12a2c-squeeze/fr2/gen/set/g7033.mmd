@@ -1,0 +1,36 @@
+flowchart TD
+  n1["queue"]
+  subgraph B0["Ops"]
+    n2["parse"]
+    n3["db"]
+    n4["split"]
+    n5["ship"]
+  end
+  subgraph B1["Platform"]
+    n6["merge"]
+    n7["index"]
+    n8["ship"]
+    n9["mail"]
+    subgraph B1s0["Data tier 0"]
+      n10["ship"]
+      n11["store<br/>cache"]
+      n12["mail"]
+    end
+  end
+  n13["audit"]
+  n12 --> n4
+  n8 -.-> n4
+  n4 --> n11
+  n12 ==>|billing| n5
+  n7 --> n5
+  n8 --> n9
+  n5 --> n2
+  n11 --> n8
+  n4 ==> n12
+  n12 --> n9
+  n9 --> n7
+  n11 -->|notify| n10
+  n2 --> n6
+  n5 --> n6
+  n12 -.-> n2
+  n6 -->|notify| n4

@@ -1,0 +1,18 @@
+flowchart TD
+  n1["auth"]
+  n2["notify"]
+  subgraph B0["Analytics"]
+    n3["merge store audit"]
+  end
+  subgraph B1["Ops"]
+    n4["notify"]
+    n5["worker"]
+  end
+  n6["report worker worker"]
+  n7["split"]
+  n6 -->|worker| n1
+  n2 -.->|notify| n6
+  n6 -->|worker| n4
+  n4 ==> n7
+  n6 --> n2
+  n1 --> n7

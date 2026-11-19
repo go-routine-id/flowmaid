@@ -1,0 +1,22 @@
+
+running 1 test
+test router::tests::fixture_drag_perf_guard ... dense-lr: route_partial worst 6.10 ms (node 50); route() worst 10.54 ms (node 14), 3 frames over 8 ms (route() reported, not asserted)
+dense-td: route_partial worst 9.48 ms (node 17); route() worst 14.63 ms (node 6), 162 frames over 8 ms (route() reported, not asserted)
+
+thread 'router::tests::fixture_drag_perf_guard' (4358) panicked at src/router.rs:6702:13:
+dense-td route_partial: 9.48 ms
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: flowmaid::router::tests::fixture_drag_perf_guard
+   3: <flowmaid::router::tests::fixture_drag_perf_guard::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+FAILED
+
+failures:
+
+failures:
+    router::tests::fixture_drag_perf_guard
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1218 filtered out; finished in 56.37s
+

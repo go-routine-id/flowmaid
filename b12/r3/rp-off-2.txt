@@ -1,0 +1,7 @@
+dense-lr: route_partial worst 6.00 ms (node 14); route() worst 10.30 ms (node 14), 2 frames over 8 ms (route() reported, not asserted)
+dense-td: route_partial worst 6.98 ms (node 17); route() worst 12.64 ms (node 33), 81 frames over 8 ms (route() reported, not asserted)
+bench-75: route_partial worst 7.95 ms (node 10); route() worst 15.67 ms (node 5), 240 frames over 8 ms (route() reported, not asserted)
+blocks/blocks-overview: route_partial worst 5.79 ms (node 10); route() worst 6.61 ms (node 10), 0 frames over 8 ms (route() reported, not asserted)
+fan-40-labelled: route_partial worst 18.27 ms (node 0); route() worst 18.50 ms (node 0), 188 frames over 8 ms (route() reported, not asserted)
+parallel-labelled: route_partial worst 18.13 ms (node 0); route() worst 20.68 ms (node 0), 15 frames over 8 ms (route() reported, not asserted)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1218 filtered out; finished in 125.75s

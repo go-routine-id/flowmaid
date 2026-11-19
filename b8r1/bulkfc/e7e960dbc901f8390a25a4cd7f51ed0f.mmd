@@ -1,0 +1,15 @@
+flowchart RL
+    N0([Archive notify])
+    N1([Notify store])
+    N2[Parse]
+    N3[Check report]
+    N4{Check}
+    N5(Retry)
+    N6(Done)
+    N0 -->|yes| N1
+    N1 --> N2
+    N1 --> N3
+    N3 --> N4
+    N2 --> N5
+    N4 --> N6
+    N5 -->|again| N0

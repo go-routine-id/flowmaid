@@ -1,0 +1,11 @@
+flowchart LR
+  S[Source] --> H[Hub]
+  S --> X[Side]
+  H --> L1[One] & L2[Two] & L3[Three] & L4[Four] & L5[Five] & L6[Six] & L7[Seven]
+  X --> L1
+  X --> L7
+  X -.-> L4
+  H -- audit --> Y[Audit]
+  X --> Y
+  L1 & L3 & L5 --> Z[Sink]
+  Y ==> Z

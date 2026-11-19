@@ -1,0 +1,32 @@
+fix(state): a note link's elbow never crosses one of the state's transitions
+
+`direction LR; [*] --> S; S --> T1; S --> T2; S --> T3; T1 --> S : back;
+note right of S : busy state; note left of T2 : t2 note`: the card for
+`note right of S` lands a layer on, past S's own fan, with T2 below it.
+The facing-side elbow (f50fe3e) left S's bottom and rounded into the
+card, crossing the S -> T2 transition, which runs between them. The
+elbow guard only looked for boxes near the elbow, not strokes.
+
+note_elbow now also takes every other edge's chord (the segment
+between its ends' centres, edge_chords; none for a self-loop or an
+invisible link) and keeps the ordinary link when either leg of the
+elbow properly crosses one. The static scene and route / route_partial
+pass the same chords in flow coordinates, so dragging gives the same
+answer. Chords are only built when the graph has a note card, so
+flowcharts and note-less state diagrams do no extra work.
+
+Test: a_note_card_beside_its_state_links_from_the_facing_side now also
+covers busy.mmd: S's note link crosses no other edge in scene, route
+and route_partial (the card dragged). It fails without the fix ("the
+link crosses S -> T2").
+
+No snapshot or quality gate changed. The 25-file corpus renders as
+before this commit (flowcharts byte-identical to the baseline); of the
+verifier's 30 A3 repro inputs only busy changes. Not fixed: with three
+transitions to one state (twins3) the middle label still lies over a
+neighbour's line; the three lines run about 14px apart, too close for
+any label between them, and spacing them wider means a port-stage
+rule for parallel ends that flowcharts share.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

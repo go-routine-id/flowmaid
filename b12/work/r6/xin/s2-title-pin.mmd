@@ -1,0 +1,28 @@
+flowchart TD
+  U([user]) --> GW
+  REG[(registry)] ==>|deploy| ORD
+  REG ==>|deploy| PAY
+  subgraph EDGE[Edge and shared services with a long title]
+    GW[gateway]
+    LB[balancer]
+    MAIL[mail relay]
+  end
+  subgraph ORD[Order processing]
+    Q[[queue]]
+    W1[worker]
+    W2[shipper]
+    Q --> W1
+    Q --> W2
+  end
+  subgraph PAY[Payments cluster]
+    CH[charge]
+    LG[(ledger)]
+    CH --> LG
+  end
+  GW --> LB
+  LB -->|hooks| Q
+  LB --> CH
+  W1 -->|pay| CH
+  W2 -.->|tracking| MAIL
+  CH -.->|receipt| MAIL
+  PAY -->|settled| ORD

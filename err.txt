@@ -1,0 +1,14 @@
+
+thread 'main' (17117) panicked at src/scene.rs:761:5:
+assertion `left == right` failed: number of sizes must match number of nodes
+  left: 2
+ right: 1
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: core::panicking::assert_failed_inner
+   3: core::panicking::assert_failed::<usize, usize>
+   4: flowmaid::scene::scene_sized
+   5: flowmaid::render::render_class_with
+   6: flowmaid::main
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.

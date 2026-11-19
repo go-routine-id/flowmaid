@@ -1,0 +1,45 @@
+classDiagram
+direction RL
+C6 *-- C4
+C1 <--> C2 : x
+C0 --> C1
+C4 ..|> C4
+C6 o-- C2
+C0 o-- C5
+C4 o-- C2
+C6 *-- C5
+C3 <--> C6
+C2 <--> C5 : Customer Order
+C5 "1" *-- "*" C4 : x
+C4 <--> C2
+C2 "1" o-- "*" C3 : delta
+C1 <|-- C0
+C5 -- C5 : alpha
+C0 "1" *-- "*" C5
+C6 o-- C3
+C3 -- C2
+C3 <|-- C1
+C1 o-- C2 : Long label here
+C0 <--> C3
+C2 <|-- C4
+C2 *-- C6
+C1 -- C2
+C6 ..> C2
+C1 -- C4
+C1 --> C3 : gamma
+C0 ..|> C3
+C6 "1" *-- "*" C5
+C5 o-- C1
+C3 --> C3
+C5 "1" o-- "*" C6
+C5 -- C2
+C0 <--> C0 : Customer Order
+C0 o-- C3 : x
+C6 ..> C3 : beta
+C1 <--> C0 : alpha
+C6 "1" *-- "*" C4 : x
+note for C3 "beta"
+class C1 {
+  +int id
+  +name() String
+}

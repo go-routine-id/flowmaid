@@ -1,0 +1,21 @@
+architecture-beta
+    group g0(server)[Observability]
+    group g1(cloud)[Data Storage Layer] in g0
+    group g2(disk)[Ops]
+    service s0(disk)[Service 0] in g2
+    service s1(cloud)[Service 1]
+    service s2(server)[Service 2] in g1
+    service s3(database)[Service 3] in g1
+    service s4(cloud)[Service 4]
+    service s5(server)[Service 5] in g1
+    service s6(database)[Service 6] in g0
+    service s7(monitoring)[Service 7] in g0
+    service s8(cloud)[Service 8] in g2
+    service s9(server)[Service 9]
+    service s10(server)[Service 10] in g1
+    service s11(disk)[Service 11] in g2
+    service s12(database)[Service 12] in g0
+    service s13(internet)[Service 13]
+    service s14(cloud)[Service 14]
+    s8:R --> L:s3
+    s7:R -- L:s13

@@ -1,0 +1,21 @@
+flowchart RL
+    N0([Notify report])
+    N1([Fetch])
+    N2(Validate load)
+    N3[Done queue]
+    N4((Validate))
+    N5[(Retry queue)]
+    N6(Done done)
+    N7([Notify archive])
+    N8(Notify)
+    N9(Retry)
+    N0 --> N1
+    N0 --> N2
+    N1 --> N3
+    N3 --> N4
+    N4 --> N5
+    N4 -->|next| N6
+    N5 --> N7
+    N7 -->|fail| N8
+    N7 -->|yes| N9
+    N9 ==>|rollback| N4

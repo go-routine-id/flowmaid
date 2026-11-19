@@ -1,0 +1,7 @@
+flowchart LR
+  A[Client] -->|request| B[Gateway]
+  B -->|route| C[Service]
+  C -->|query| D[(Database)]
+  D -->|rows| C
+  C -->|reply| A
+  linkStyle default stroke:#5577aa,stroke-width:2px

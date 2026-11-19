@@ -1,0 +1,10 @@
+stateDiagram-v2
+direction LR
+[*] --> Box
+state Box {
+  [*] --> D1
+  D1 --> D2
+  note left of D2 : deep note
+}
+Box --> Done
+Done --> [*]

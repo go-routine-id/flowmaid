@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# iter.sh <label> [env...]: build the working tree's suite-on CLI + quality example (incremental, target-on),
+# run the local cells (fmrun) and the direction copies (qrun) into r3/runs/<label>, compare with base-157117e.
+# Extra args are exported as environment for the runs (experiment knobs).
+set -uo pipefail
+R3=/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/r3
+T=$R3/../tools-a2b
+L=${1:?label}; shift
+for kv in "$@"; do export "$kv"; done
+out=$R3/runs/$L; mkdir -p $out/bin
+( cd /home/user/flowmaid && RUSTFLAGS='--cfg flowmaid_blocks' CARGO_TARGET_DIR=$R3/target-on CARGO_BUILD_JOBS=2 \
+  cargo build --release -q --example quality --bin flowmaid ) || exit 1
+cp $R3/target-on/release/flowmaid $R3/target-on/release/examples/quality $out/bin/
+echo "rustflags=--cfg flowmaid_blocks" > $out/bin/BUILD-INFO
+$T/fmrun.sh $out/bin $out > $out/fmrun.log 2>&1
+$T/qrun.sh $out/bin $out > $out/qrun.log 2>&1
+python3 $T/cells.py $T/base-157117e $out --quiet > $out/cells.txt 2>&1
+python3 $T/qcmp.py $T/base-157117e $out --quiet > $out/dirs.txt 2>&1
+tail -3 $out/fmrun.log
+cat $out/cells.txt | head -40
+cat $out/dirs.txt | head -60

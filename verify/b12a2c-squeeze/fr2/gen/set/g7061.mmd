@@ -1,0 +1,20 @@
+flowchart BT
+  n1["pack"]
+  subgraph B0["Storefront"]
+    n2["report"]
+    n3["parse pack queue<br/>auth"]
+  end
+  subgraph B1["Storefront"]
+    n4["pack billing index"]
+    n5["mail"]
+    n6["mail worker mail"]
+  end
+  n7["billing"]
+  n2 -->|worker| n5
+  n7 -.-> n5
+  n3 --> n4
+  n2 --> n3
+  n1 --> n2
+  n7 -.-> n1
+  n4 --> n2
+  n3 --> B1

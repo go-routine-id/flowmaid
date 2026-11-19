@@ -1,0 +1,8 @@
+architecture-beta
+    group g0(disk)[Data Storage Layer]
+    service s0(disk)[Service 0] in g0
+    service s1(database)[Service 1] in g0
+    service s2(disk)[Service 2] in g0
+    s0:B --> T:s1
+    s0:R --> L:s2
+    s0:R -- R:s2

@@ -1,0 +1,14 @@
+flowchart TD
+    subgraph A[Inventory management]
+        a0[a0 wide node]
+        a1[a1]
+    end
+    subgraph B[Inventory management backend]
+        b0[b0 wide node]
+        b1[b1]
+    end
+    a0 --> b1
+    a1 -- "x" --> b0
+    p[p] --> A
+    p --> a1
+    q[q] --> B

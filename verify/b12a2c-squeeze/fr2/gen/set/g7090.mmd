@@ -1,0 +1,28 @@
+flowchart RL
+  n1["report"]
+  n2["parse"]
+  n3["parse notify ship"]
+  subgraph B0["Core"]
+    n4["parse"]
+    subgraph B0s0["Ops 0"]
+      n5["auth"]
+    end
+  end
+  subgraph B1["Storefront"]
+    n6["split"]
+    n7["pack"]
+    n8["pack"]
+  end
+  n9["ingest<br/>index"]
+  n9 -.-> n5
+  n8 -.-> n4
+  n7 -->|ingest| n2
+  n8 --> n1
+  n2 --> n9
+  n8 -.-> n5
+  n5 --> n3
+  n6 -->|store| n3
+  n2 ==> n7
+  n8 -->|split| n3
+  n2 -.->|cache| n3
+  n3 ==>|api| n9

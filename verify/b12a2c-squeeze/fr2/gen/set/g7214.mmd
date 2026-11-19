@@ -1,0 +1,41 @@
+flowchart BT
+  n1["db"]
+  n2["ingest"]
+  n3["cache mail store"]
+  subgraph B0["Back office and finance"]
+    n4["store"]
+    n5["store"]
+    n6["auth"]
+    n7["audit store api"]
+    subgraph B0s0["Data tier 0"]
+      n8["report"]
+      n9["notify"]
+    end
+  end
+  subgraph B1["Platform"]
+    n10["db"]
+    n11["store"]
+    n12["ship"]
+  end
+  subgraph B2["Analytics"]
+    n13["search"]
+    n14["store db worker"]
+  end
+  n15["store"]
+  n1 -->|notify| n13
+  n11 --> n12
+  n10 ==>|notify| n7
+  n2 --> n14
+  n13 -.-> n7
+  n4 -->|cache| n12
+  n9 -->|mail| n2
+  n14 -->|worker| n11
+  n8 --> n2
+  n12 --> n7
+  n1 ==> n9
+  n7 --> n5
+  n1 -->|pack| n14
+  n6 ==>|notify| n12
+  n6 ==> n1
+  n11 ==> n1
+  n11 ==> B0

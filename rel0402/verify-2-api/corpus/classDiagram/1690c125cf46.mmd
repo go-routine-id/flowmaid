@@ -1,0 +1,16 @@
+classDiagram
+A ..|> B
+B "1" ..> "*" C
+B <|-- D
+B <|-- E
+D "1" --> "*" D : d0
+D --> D : d1
+E --> E
+E o-- E : e1
+E ..> E : e2
+E *-- E
+class B {
+ +int id
+ +run() void
+ +stop()
+}

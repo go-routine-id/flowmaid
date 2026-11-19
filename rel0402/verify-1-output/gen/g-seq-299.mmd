@@ -1,0 +1,48 @@
+sequenceDiagram
+autonumber
+participant P0 as a&b
+participant P1 as Customer Order
+participant P2 as alpha
+participant P3 as x
+actor P4 as a&b
+actor P5 as Customer Order
+participant P6 as <b>bold</b>
+actor P7 as <b>bold</b>
+P5--)P4: alpha
+P0--)P2: alpha
+activate P1
+P1->>P6: act
+deactivate P1
+P2->>P2: self beta
+P5--xP3: Customer Order
+Note over P0,P7: gamma
+Note left of P3: delta
+alt x
+Note over P0,P7: a&b
+P3->>P3: self x
+P2-)P2: Customer Order
+P7-xP2: delta
+P0-->P1: <b>bold</b>
+P3->>P3: self x
+P2--xP2: beta
+P5-)P7: gamma
+activate P5
+P5->>P6: act
+deactivate P5
+end
+P0-->>P6: 日本語
+Note over P0,P7: alpha
+P4--)P0: 日本語
+Note over P4: beta
+P0-->>P3: Customer Order
+P6--)P7: gamma
+Note over P2: alpha
+P3-)P4: <b>bold</b>
+P4-)P1: <b>bold</b>
+P0->>P3: 日本語
+P1->>P1: self alpha
+P0-->P5: delta
+activate P0
+P0->>P5: act
+deactivate P0
+P7-->P5: delta

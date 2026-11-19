@@ -1,0 +1,17 @@
+flowchart LR
+    N0([Parse retry])
+    N1(Emit)
+    N2{Notify parse}
+    N3(Check)
+    N4{{Retry}}
+    N5{Validate retry}
+    N0 --> N1
+    N0 --> N2
+    N2 --> N3
+    N3 --> N4
+    N2 -->|next| N5
+    N1 --> N2
+    N2 --> N4
+    N3 --> N4
+    N4 -.-> N1
+    N3 -.-> N2

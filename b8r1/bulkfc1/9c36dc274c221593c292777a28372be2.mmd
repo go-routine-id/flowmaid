@@ -1,0 +1,11 @@
+flowchart TD
+  subgraph top [Top tier]
+    A[Gateway service] --> B[Auth]
+    A ==> Q[Job queue]
+  end
+  B --> C[Users DB]
+  Q --> W1[Worker 1]
+  Q --> W2[Worker 2]
+  W1 --> C
+  W2 --> C
+  C -->|report| M[Monitor]

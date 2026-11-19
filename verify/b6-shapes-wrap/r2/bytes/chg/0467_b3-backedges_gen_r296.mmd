@@ -1,0 +1,15 @@
+flowchart RL
+    N0([Parse])
+    N1([Store archive])
+    N2{{Fetch store}}
+    N3[Emit]
+    N4{Retry fetch}
+    N0 -->|no| N1
+    N0 --> N2
+    N2 --> N3
+    N3 -->|ok| N4
+    N0 --> N4
+    N0 --> N1
+    N2 --> N3
+    N1 -.-> N0
+    N4 -.-> N2

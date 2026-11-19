@@ -1,0 +1,9 @@
+architecture-beta
+    service a(server)[Alpha]
+    service b(database)[Beta]
+    service c(disk)[Gamma]
+    service d(internet)[Delta with a fairly long label that must wrap]
+    a:T -[upward label at top]-> B:b
+    a:L -[left side chip label]-> R:c
+    c:T -[x]- B:d
+    b:L -[very long edge label text here]- T:c

@@ -1,0 +1,13 @@
+stateDiagram-v2
+direction RL
+[*] --> f
+state f <<fork>>
+f --> Q0
+f --> Q1
+f --> B0
+state B0 {
+  direction TB
+  B0_0 --> B0_1 : a longer label here
+  B0_1 --> B0_2
+}
+note left of f : forks here

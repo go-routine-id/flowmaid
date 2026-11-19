@@ -1,0 +1,15 @@
+flowchart RL
+    N0{Notify}
+    N1([Archive fetch])
+    N2[Validate validate]
+    N3([Store retry])
+    N4[Check]
+    N5{Check}
+    N0 --> N1
+    N1 -->|next| N2
+    N1 -->|ok| N3
+    N2 --> N4
+    N3 --> N5
+    N2 --> N3
+    N2 --> N0
+    N5 --> N2

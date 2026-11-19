@@ -1,0 +1,49 @@
+flowchart LR
+  n1["notify<br/>notify"]
+  subgraph B0["Fulfilment desk"]
+    n2["api"]
+    n3["worker"]
+    n4["billing"]
+    n5["mail"]
+  end
+  subgraph B1["Data tier"]
+    n6["audit"]
+    n7["queue"]
+    n8["pack"]
+    n9["mail index billing"]
+  end
+  subgraph B2["Ingest"]
+    n10["worker audit ingest"]
+    n11["ship"]
+    n12["api worker billing"]
+  end
+  subgraph B3["Edge services"]
+    n13["queue"]
+    n14["pack worker audit"]
+    n15["split"]
+  end
+  n16["ingest api search"]
+  n17["parse"]
+  n13 --> n11
+  n3 ==> n6
+  n8 -.-> n4
+  n14 --> n15
+  n15 --> n13
+  n15 -.->|report| n11
+  n5 -.-> n11
+  n7 -->|merge| n5
+  n16 --> n12
+  n10 -.->|billing| n11
+  n16 ==> n14
+  n2 -->|pack| n17
+  n3 -->|pack| n7
+  n8 --> n3
+  n15 --> n1
+  n1 ==>|audit| n17
+  n9 -.-> n1
+  n2 -.-> n15
+  n13 ==> n10
+  n8 -.-> n5
+  n15 -.->|split| n6
+  n17 --> n14
+  n10 --> n13

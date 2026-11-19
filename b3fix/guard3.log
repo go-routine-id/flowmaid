@@ -1,0 +1,73 @@
+== fmt
+== clippy
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 7.79s
+== test
+FAILED: cargo test --all-targets
+test timeline::tests::periods_are_bold_and_events_regular ... ok
+test timeline::tests::periods_before_the_first_section_are_kept_with_neutral_ticks ... ok
+test timeline::tests::scene_fits_everything_inside_the_canvas ... ok
+test timeline::tests::section_labels_read_on_every_accent ... ok
+test timeline::tests::sectionless_timeline_has_no_header_band ... ok
+test timeline::tests::task_lines_never_cross_event_text ... ok
+test timeline::tests::tick_is_painted_over_its_task_line ... ok
+test timeline::tests::title_keeps_a_gap_above_the_first_band ... ok
+test timeline::tests::title_section_and_direction_are_parsed ... ok
+test timeline::tests::to_svg_draws_sections_periods_and_events ... ok
+test timeline::tests::wide_section_names_fit_their_band ... ok
+test scene::tests::squared_ends_face_the_curve_and_keep_near_it_on_every_fixture ... ok
+test scene::tests::routing_stays_finite_for_any_node_sizes_and_coincident_centres ... ok
+test scene::tests::glyph_fan_in_never_panics_when_ports_fill_the_side has been running for over 60 seconds
+test scene::tests::glyph_fan_in_never_panics_when_ports_fill_the_side ... ok
+
+failures:
+
+---- scene::tests::a_very_wide_strokes_head_keeps_its_tip_on_the_end_point stdout ----
+
+thread 'scene::tests::a_very_wide_strokes_head_keeps_its_tip_on_the_end_point' (19603) panicked at src/scene.rs:12417:25:
+40px routed e2 c->a end: tip (102.96739939365574, 105.63721700317005) vs end (103.31370625045969, 106.0) (0.50 px off)
+flowchart TD
+  subgraph S [Frame]
+    a[Alpha] --> b[Beta]
+    b --> c[Gamma]
+  end
+  c --> a
+  c -->|back| top[Top node]
+  top --> a
+  top e2@--> c
+  e2@{ curve: step }
+  b --> b
+  linkStyle 2 stroke-width:{w}px,stroke:#d55
+  linkStyle 3 stroke-width:18px
+  linkStyle 5 stroke-width:12px,stroke:#55d
+  linkStyle 6 stroke-width:10px
+
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: flowmaid::scene::tests::a_very_wide_strokes_head_keeps_its_tip_on_the_end_point
+             at ./src/scene.rs:12417:25
+   3: flowmaid::scene::tests::a_very_wide_strokes_head_keeps_its_tip_on_the_end_point::{closure#0}
+             at ./src/scene.rs:12336:65
+   4: <flowmaid::scene::tests::a_very_wide_strokes_head_keeps_its_tip_on_the_end_point::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+   5: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+
+failures:
+    scene::tests::a_very_wide_strokes_head_keeps_its_tip_on_the_end_point
+
+test result: FAILED. 906 passed; 1 failed; 5 ignored; 0 measured; 0 filtered out; finished in 93.82s
+
+error: test failed, to rerun pass `--lib`
+== doctest
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.30s
+== msrv
+    Finished dev [unoptimized + debuginfo] target(s) in 4.19s
+== wasm
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.88s
+== rustdoc
+GUARD: FAILURES

@@ -1,0 +1,442 @@
+name	engine	dir	W	H	area	aspect	fill	nodes	edges	frames	top_frames	compact_mean	compact_max	compact_max_id	span_max	span_max_id	sib_pairs	sib_side	sib_stacked	sib_stagger	sib_side_linked	frame_overlap	frame_foreign_nodes	xframe_runs	xframe_len	xframe_edges	node_hits	crossings	hops	edge_len	edge_len_n	straight_max	straight_max_edge	bends	lanes_max	lane_gap_min	lbl_n	lbl_off_mean	lbl_off_max	lbl_endpx_mean	lbl_endpx_max	lbl_detach_max	lbl_lbl	lbl_node	lbl_struck	lbl_gap_min	lbl_crowd	membership	edge_ends	warn	lateral_x	lateral_edges	flow_x	bends_max	bends_max_edge	detour_max	detour_max_edge	lbl_in_end	lbl_own_gap_max	breadth	bands_n	bands	band_sets
+bench-75	fm	LR	2418	1254	3032172	1.93	0.017	21	75	5	5	21.15	71.64	edge	0.153	ops	10	0	10	0	0	0	0	0	0	0	0	204	112	68183	1373.8	1796	user>ext	381	12	6.0	0	NA	NA	NA	NA	NA	0	0	0	NA	0	struct	struct	0	2	2	127	12	svc3>metrics	1.43	gw>logs	0	NA	1254	7	user / edge / app / data / jobs / ops / ext	user / edge / app / data / jobs / ops / ext
+== bench-75 [fm] 2418 x 1254, dir LR, membership struct, edge ends struct
+ frames:
+  id    parent  x       y      w      h      members  node_area  compact  span   foreign_nodes
+  edge  -       174.3   138.8  286    1028   2        4104       71.6     0.118  0            
+  app   -       597.8   91.8   88.8   941    6        13862.4    6.028    0.037  0            
+  data  -       1161.6  297.2  104.7  451    4        10301.8    4.584    0.043  0            
+  ops   -       1803.1  588.2  369.5  540.5  4        10051      19.9     0.153  0            
+  jobs  -       1416.3  335.8  86.8   280.5  3        6703.2     3.632    0.036  0
+ sibling pairs:
+  a     b     kind     flow_overlap  linked
+  edge  app   stacked  -137.5        edge  
+  edge  data  stacked  -701.3        -     
+  edge  ops   stacked  -1342.8       edge  
+  edge  jobs  stacked  -956          -     
+  app   data  stacked  -475          edge  
+  app   ops   stacked  -1116.5       edge  
+  app   jobs  stacked  -729.7        edge  
+  data  ops   stacked  -536.8        edge  
+  data  jobs  stacked  -150          edge  
+  ops   jobs  stacked  -300          edge
+ edges:
+  edge            len     straight_max  bends  detour  hops  xframe_runs  xframe_len  node_hits  lateral_x  flow_x  ends         
+  user>gw         414.0   279.7         3      0.982   0     0            0           0          0          1       struct/struct
+  user>lb         710.9   332.1         6      0.989   1     0            0           0          0          1       struct/struct
+  gw>lb           205.1   62.1          2      0.965   0     0            0           0          0          0       struct/struct
+  gw>svc1         940.7   470.4         7      1.036   0     0            0           0          1          1       struct/struct
+  lb>svc1         587.1   388.0         2      0.993   0     0            0           0          0          2       struct/struct
+  gw>svc2         364.0   364.0         0      1.000   0     0            0           0          0          2       struct/struct
+  lb>svc2         218.1   75.8          2      0.967   0     0            0           0          0          2       struct/struct
+  gw>svc3         563.6   302.3         2      0.993   2     0            0           0          0          2       struct/struct
+  lb>svc3         258.0   75.8          4      0.972   0     0            0           0          0          2       struct/struct
+  gw>svc4         592.3   225.4         4      0.987   2     0            0           0          0          2       struct/struct
+  lb>svc4         454.4   229.3         3      0.984   0     0            0           0          0          2       struct/struct
+  gw>svc5         802.0   403.7         3      0.995   1     0            0           0          0          2       struct/struct
+  lb>svc5         472.4   251.9         3      0.984   0     0            0           0          0          2       struct/struct
+  gw>svc6         670.3   243.1         4      0.989   1     0            0           0          0          2       struct/struct
+  lb>svc6         550.2   370.1         2      0.993   0     0            0           0          0          2       struct/struct
+  svc1>db         981.4   290.9         8      0.985   3     0            0           0          0          2       struct/struct
+  svc1>cache      1066.3  383.0         9      0.979   4     0            0           0          0          2       struct/struct
+  svc1>queue      797.8   241.1         6      0.988   1     0            0           0          0          2       struct/struct
+  svc2>db         526.7   235.6         2      0.987   2     0            0           0          0          2       struct/struct
+  svc2>cache      537.0   313.2         3      0.986   3     0            0           0          0          2       struct/struct
+  svc2>queue      670.9   471.3         2      0.994   3     0            0           0          0          2       struct/struct
+  svc3>db         637.2   301.1         3      0.997   2     0            0           0          0          2       struct/struct
+  svc3>cache      718.9   385.0         5      0.982   3     0            0           0          0          2       struct/struct
+  svc3>queue      512.6   255.3         3      0.991   1     0            0           0          0          2       struct/struct
+  svc4>db         757.9   303.3         6      0.988   0     0            0           0          0          2       struct/struct
+  svc4>cache      675.4   360.2         5      0.997   1     0            0           0          0          2       struct/struct
+  svc4>queue      914.4   289.3         8      0.984   0     0            0           0          0          2       struct/struct
+  svc5>db         862.5   238.3         7      0.985   2     0            0           0          0          2       struct/struct
+  svc5>cache      963.5   301.0         8      0.985   2     0            0           0          0          2       struct/struct
+  svc5>queue      717.6   262.1         5      0.989   0     0            0           0          0          2       struct/struct
+  svc6>db         871.9   416.0         5      0.985   0     0            0           0          0          2       struct/struct
+  svc6>cache      784.8   531.8         2      0.997   0     0            0           0          1          1       struct/struct
+  svc6>queue      1029.0  312.8         9      0.985   0     0            0           0          0          2       struct/struct
+  svc1>objects    666.3   324.3         4      0.989   1     0            0           0          0          2       struct/struct
+  svc3>objects    581.4   313.4         3      0.987   2     0            0           0          0          2       struct/struct
+  svc5>objects    602.3   287.0         3      0.988   1     0            0           0          0          2       struct/struct
+  svc1>logs       1826.7  641.7         11     1.082   2     0            0           0          0          2       struct/struct
+  svc2>logs       1337.4  651.3         8      1.144   7     0            0           0          0          2       struct/struct
+  svc3>logs       1661.8  423.8         10     1.219   6     0            0           0          0          2       struct/struct
+  svc4>logs       1395.4  957.4         4      0.994   3     0            0           0          0          2       struct/struct
+  svc5>logs       1545.6  1110.2        3      0.995   6     0            0           0          0          2       struct/struct
+  svc6>logs       1496.6  1007.4        3      0.993   0     0            0           0          0          2       struct/struct
+  svc1>metrics    2013.0  829.8         11     1.107   1     0            0           0          0          2       struct/struct
+  svc2>metrics    1392.4  834.7         5      1.080   6     0            0           0          0          2       struct/struct
+  svc3>metrics    1876.2  444.8         12     1.275   6     0            0           0          0          2       struct/struct
+  svc4>metrics    1247.3  1020.4        4      0.994   3     0            0           0          0          2       struct/struct
+  metrics>alerts  286.0   177.1         4      0.975   0     0            0           0          0          0       struct/struct
+  alerts>dash     245.0   132.0         3      0.970   0     0            0           0          0          0       struct/struct
+  logs>dash       403.8   165.5         3      0.981   0     0            0           0          0          0       struct/struct
+  metrics>dash    259.2   143.6         2      0.972   0     0            0           0          0          0       struct/struct
+  queue>job1      242.0   101.6         2      0.970   0     0            0           0          0          2       struct/struct
+  job1>db         379.8   162.4         3      0.981   0     0            0           0          0          2       struct/struct
+  job1>ext        1239.1  540.1         7      1.278   3     0            0           0          0          1       struct/struct
+  queue>job2      178.3   125.3         1      -       1     0            0           0          0          2       struct/struct
+  job2>db         301.9   84.0          4      0.976   1     0            0           0          0          2       struct/struct
+  job2>ext        1212.2  514.8         9      1.360   3     0            0           0          0          1       struct/struct
+  queue>job3      255.4   76.6          3      0.972   0     0            0           0          0          2       struct/struct
+  job3>db         218.5   93.9          3      0.967   1     0            0           0          0          2       struct/struct
+  job3>ext        964.9   530.8         6      1.194   4     0            0           0          0          1       struct/struct
+  alerts>gw       2257.6  1242.4        7      1.075   1     0            0           0          0          2       struct/struct
+  dash>user       2440.8  1318.1        11     1.146   0     0            0           0          0          1       struct/struct
+  job1>svc1       962.0   325.1         8      0.984   1     0            0           0          0          2       struct/struct
+  db>svc2         532.2   272.7         2      0.998   3     0            0           0          0          2       struct/struct
+  svc6>ext        2291.5  662.4         9      1.125   0     0            0           0          0          1       struct/struct
+  svc5>ext        2241.7  1277.9        9      1.118   2     0            0           0          0          1       struct/struct
+  cache>svc4      675.4   331.2         5      0.997   1     0            0           0          0          2       struct/struct
+  objects>logs    915.8   276.4         7      1.060   4     0            0           0          0          2       struct/struct
+  db>metrics      773.7   286.5         8      1.076   2     0            0           0          0          2       struct/struct
+  queue>metrics   855.1   276.0         6      1.013   2     0            0           0          0          2       struct/struct
+  gw>logs         2365.9  1215.7        10     1.428   1     0            0           0          0          2       struct/struct
+  lb>metrics      2157.2  1172.7        6      1.305   1     0            0           0          0          2       struct/struct
+  user>ext        3023.3  1796.2        10     1.143   0     0            0           0          0          0       struct/struct
+  job2>objects    270.6   126.1         3      0.973   1     0            0           0          0          2       struct/struct
+  job3>logs       384.7   205.1         3      0.981   2     0            0           0          0          2       struct/struct
+  dash>ext        377.4   221.0         3      0.980   0     0            0           0          0          1       struct/struct
+ crossings of the border of a frame that holds exactly one end:
+  edge           frame  side  kind     at             
+  user>gw        edge   L     flow     (174.3,674.2)  
+  user>lb        edge   L     flow     (174.3,577.2)  
+  gw>svc1        edge   T     lateral  (373.6,138.8)  
+  gw>svc1        app    L     flow     (597.8,147.2)  
+  lb>svc1        edge   R     flow     (460.3,161.2)  
+  lb>svc1        app    L     flow     (597.8,161.2)  
+  gw>svc2        edge   R     flow     (460.3,669.3)  
+  gw>svc2        app    L     flow     (597.8,669.3)  
+  lb>svc2        edge   R     flow     (460.3,589.2)  
+  lb>svc2        app    L     flow     (597.8,654.8)  
+  gw>svc3        edge   R     flow     (460.3,459.8)  
+  gw>svc3        app    L     flow     (597.8,459.8)  
+  lb>svc3        edge   R     flow     (460.3,579.2)  
+  lb>svc3        app    L     flow     (597.8,473.8)  
+  gw>svc4        edge   R     flow     (460.3,915.2)  
+  gw>svc4        app    L     flow     (597.8,915.2)  
+  lb>svc4        edge   R     flow     (460.3,599.2)  
+  lb>svc4        app    L     flow     (597.8,901.2)  
+  gw>svc5        edge   R     flow     (460.3,235.2)  
+  gw>svc5        app    L     flow     (597.8,235.2)  
+  lb>svc5        edge   R     flow     (460.3,569.2)  
+  lb>svc5        app    L     flow     (597.8,249.2)  
+  gw>svc6        edge   R     flow     (460.3,1003.2) 
+  gw>svc6        app    L     flow     (597.8,1003.2) 
+  lb>svc6        edge   R     flow     (460.3,989.2)  
+  lb>svc6        app    L     flow     (597.8,989.2)  
+  svc1>db        app    R     flow     (686.6,194.8)  
+  svc1>db        data   L     flow     (1161.6,570.8) 
+  svc1>cache     app    R     flow     (686.6,217.0)  
+  svc1>cache     data   L     flow     (1161.6,596.2) 
+  svc1>queue     app    R     flow     (686.6,182.2)  
+  svc1>queue     data   L     flow     (1161.6,468.8) 
+  svc2>db        app    R     flow     (686.6,646.8)  
+  svc2>db        data   L     flow     (1161.6,622.2) 
+  svc2>cache     app    R     flow     (686.6,666.8)  
+  svc2>cache     data   L     flow     (1161.6,710.2) 
+  svc2>queue     app    R     flow     (686.6,498.8)  
+  svc2>queue     data   L     flow     (1161.6,498.8) 
+  svc3>db        app    R     flow     (686.6,481.8)  
+  svc3>db        data   L     flow     (1161.6,612.2) 
+  svc3>cache     app    R     flow     (686.6,636.6)  
+  svc3>cache     data   L     flow     (1161.6,693.4) 
+  svc3>queue     app    R     flow     (686.6,471.8)  
+  svc3>queue     data   L     flow     (1161.6,488.8) 
+  svc4>db        app    R     flow     (686.6,880.2)  
+  svc4>db        data   L     flow     (1161.6,642.2) 
+  svc4>cache     app    R     flow     (686.6,896.8)  
+  svc4>cache     data   L     flow     (1161.6,720.2) 
+  svc4>queue     app    R     flow     (686.6,867.8)  
+  svc4>queue     data   L     flow     (1161.6,527.8) 
+  svc5>db        app    R     flow     (686.6,270.2)  
+  svc5>db        data   L     flow     (1161.6,583.2) 
+  svc5>cache     app    R     flow     (686.6,282.8)  
+  svc5>cache     data   L     flow     (1161.6,671.2) 
+  svc5>queue     app    R     flow     (686.6,253.8)  
+  svc5>queue     data   L     flow     (1161.6,478.8) 
+  svc6>db        app    R     flow     (686.6,968.2)  
+  svc6>db        data   L     flow     (1161.6,680.2) 
+  svc6>cache     app    R     flow     (686.6,985.8)  
+  svc6>cache     data   B     lateral  (1213.9,748.2) 
+  svc6>queue     app    R     flow     (686.6,943.2)  
+  svc6>queue     data   L     flow     (1161.6,540.2) 
+  svc1>objects   app    R     flow     (686.6,165.8)  
+  svc1>objects   data   L     flow     (1161.6,342.2) 
+  svc3>objects   app    R     flow     (686.6,461.8)  
+  svc3>objects   data   L     flow     (1161.6,370.2) 
+  svc5>objects   app    R     flow     (686.6,243.8)  
+  svc5>objects   data   L     flow     (1161.6,356.2) 
+  svc1>logs      app    R     flow     (686.6,145.8)  
+  svc1>logs      ops    L     flow     (1803.1,678.8) 
+  svc2>logs      app    R     flow     (686.6,676.8)  
+  svc2>logs      ops    L     flow     (1803.1,656.2) 
+  svc3>logs      app    R     flow     (686.6,324.2)  
+  svc3>logs      ops    L     flow     (1803.1,615.9) 
+  svc4>logs      app    R     flow     (686.6,916.8)  
+  svc4>logs      ops    L     flow     (1803.1,662.2) 
+  svc5>logs      app    R     flow     (686.6,233.8)  
+  svc5>logs      ops    L     flow     (1803.1,636.6) 
+  svc6>logs      app    R     flow     (686.6,999.8)  
+  svc6>logs      ops    L     flow     (1803.1,691.2) 
+  svc1>metrics   app    R     flow     (686.6,135.8)  
+  svc1>metrics   ops    L     flow     (1803.1,739.2) 
+  svc2>metrics   app    R     flow     (686.6,855.1)  
+  svc2>metrics   ops    L     flow     (1803.1,800.8) 
+  svc3>metrics   app    R     flow     (686.6,451.8)  
+  svc3>metrics   ops    L     flow     (1803.1,751.9) 
+  svc4>metrics   app    R     flow     (686.6,926.8)  
+  svc4>metrics   ops    L     flow     (1803.1,810.8) 
+  queue>job1     data   R     flow     (1266.3,468.8) 
+  queue>job1     jobs   L     flow     (1416.3,394.8) 
+  job1>db        data   R     flow     (1266.3,612.2) 
+  job1>db        jobs   L     flow     (1416.3,408.8) 
+  job1>ext       jobs   R     flow     (1503.1,394.8) 
+  queue>job2     data   R     flow     (1266.3,478.8) 
+  queue>job2     jobs   L     flow     (1416.3,482.8) 
+  job2>db        data   R     flow     (1266.3,622.2) 
+  job2>db        jobs   L     flow     (1416.3,496.8) 
+  job2>ext       jobs   R     flow     (1503.1,482.8) 
+  queue>job3     data   R     flow     (1266.3,488.8) 
+  queue>job3     jobs   L     flow     (1416.3,576.2) 
+  job3>db        data   R     flow     (1266.3,632.2) 
+  job3>db        jobs   L     flow     (1416.3,590.2) 
+  job3>ext       jobs   R     flow     (1503.1,576.2) 
+  alerts>gw      edge   R     flow     (460.3,1144.0) 
+  alerts>gw      ops    L     flow     (1803.1,1059.2)
+  dash>user      ops    L     flow     (1803.1,1095.8)
+  job1>svc1      app    R     flow     (686.6,155.8)  
+  job1>svc1      jobs   L     flow     (1416.3,380.8) 
+  db>svc2        app    R     flow     (686.6,656.8)  
+  db>svc2        data   L     flow     (1161.6,632.2) 
+  svc6>ext       app    R     flow     (686.6,1013.8) 
+  svc5>ext       app    R     flow     (686.6,223.8)  
+  cache>svc4     app    R     flow     (686.6,906.8)  
+  cache>svc4     data   L     flow     (1161.6,730.2) 
+  objects>logs   data   R     flow     (1266.3,349.2) 
+  objects>logs   ops    L     flow     (1803.1,644.2) 
+  db>metrics     data   R     flow     (1266.3,642.2) 
+  db>metrics     ops    L     flow     (1803.1,790.8) 
+  queue>metrics  data   R     flow     (1266.3,498.8) 
+  queue>metrics  ops    L     flow     (1803.1,780.8) 
+  gw>logs        edge   R     flow     (460.3,1052.8) 
+  gw>logs        ops    L     flow     (1803.1,703.8) 
+  lb>metrics     edge   R     flow     (460.3,1075.8) 
+  lb>metrics     ops    L     flow     (1803.1,1075.8)
+  job2>objects   data   R     flow     (1266.3,363.2) 
+  job2>objects   jobs   L     flow     (1416.3,468.8) 
+  job3>logs      ops    L     flow     (1803.1,650.2) 
+  job3>logs      jobs   R     flow     (1503.1,590.2) 
+  dash>ext       ops    R     flow     (2172.6,867.8)
+ runs through a frame holding neither end:
+  (none)
+ crossings:
+  a              b              x       y     
+  user>lb        gw>svc1        206.3   577.2 
+  user>lb        gw>svc3        234.3   577.2 
+  user>lb        gw>svc5        220.3   577.2 
+  lb>svc1        gw>svc3        419.3   459.8 
+  lb>svc1        gw>svc5        419.3   235.2 
+  gw>svc2        lb>svc4        522.8   669.3 
+  gw>svc2        lb>svc6        438.3   669.3 
+  gw>svc2        lb>metrics     419.3   669.2 
+  gw>svc3        lb>svc5        522.8   459.8 
+  gw>svc4        lb>svc6        438.3   915.2 
+  gw>svc4        lb>metrics     419.3   915.2 
+  gw>svc6        lb>metrics     419.3   1003.2
+  svc1>db        svc2>queue     937.8   498.8 
+  svc1>db        svc3>queue     937.8   488.7 
+  svc1>db        svc4>queue     1000.3  570.8 
+  svc1>db        svc5>queue     937.8   254.1 
+  svc1>db        svc6>queue     1037.9  570.8 
+  svc1>db        svc3>objects   937.8   461.7 
+  svc1>db        svc5>objects   937.8   243.8 
+  svc1>db        svc3>logs      937.8   324.2 
+  svc1>db        svc5>logs      937.8   233.8 
+  svc1>db        svc3>metrics   937.8   451.6 
+  svc1>db        svc5>ext       775.3   194.8 
+  svc1>cache     svc2>db        1174.4  622.2 
+  svc1>cache     svc2>queue     687.1   498.8 
+  svc1>cache     svc3>db        687.1   481.8 
+  svc1>cache     svc3>db        850.3   595.8 
+  svc1>cache     svc3>db        1174.4  612.2 
+  svc1>cache     svc3>queue     687.1   471.8 
+  svc1>cache     svc4>db        1174.4  642.2 
+  svc1>cache     svc4>queue     1000.3  595.8 
+  svc1>cache     svc5>db        687.1   270.2 
+  svc1>cache     svc5>cache     687.1   282.8 
+  svc1>cache     svc5>cache     875.3   595.8 
+  svc1>cache     svc5>queue     687.1   253.8 
+  svc1>cache     svc6>db        1204.4  679.9 
+  svc1>cache     svc6>queue     1037.8  595.8 
+  svc1>cache     svc3>objects   687.1   461.8 
+  svc1>cache     svc5>objects   687.1   243.8 
+  svc1>cache     svc3>logs      687.1   324.2 
+  svc1>cache     svc5>logs      687.0   233.8 
+  svc1>cache     svc3>metrics   687.1   451.8 
+  svc1>cache     db>svc2        1174.4  632.2 
+  svc1>cache     svc5>ext       686.9   223.8 
+  svc1>queue     svc3>objects   963.5   461.7 
+  svc1>queue     svc5>objects   962.8   244.1 
+  svc1>queue     svc3>logs      962.8   324.2 
+  svc1>queue     svc5>logs      962.8   233.8 
+  svc1>queue     svc3>metrics   963.0   451.6 
+  svc1>queue     svc5>ext       775.3   182.2 
+  svc2>db        svc3>cache     687.1   646.8 
+  svc2>db        svc4>queue     1000.3  622.2 
+  svc2>db        svc5>cache     875.4   646.6 
+  svc2>db        svc6>queue     1037.8  622.2 
+  svc2>cache     svc3>cache     687.1   666.8 
+  svc2>cache     svc3>cache     800.3   693.2 
+  svc2>cache     svc4>db        1050.3  710.2 
+  svc2>cache     svc4>queue     1000.3  710.2 
+  svc2>cache     svc6>db        1134.6  710.2 
+  svc2>cache     svc6>queue     1037.8  710.2 
+  svc2>queue     svc3>db        850.3   498.8 
+  svc2>queue     svc3>cache     656.2   499.2 
+  svc2>queue     svc5>db        925.3   498.8 
+  svc2>queue     svc5>cache     875.3   498.8 
+  svc3>db        svc4>queue     1000.3  612.2 
+  svc3>db        svc5>cache     875.3   607.2 
+  svc3>db        svc6>queue     1037.8  612.2 
+  svc3>cache     svc4>db        1050.3  693.2 
+  svc3>cache     svc4>queue     1000.3  693.2 
+  svc3>cache     svc6>db        1134.9  693.2 
+  svc3>cache     svc6>queue     1037.8  693.2 
+  svc3>cache     svc2>logs      687.1   676.8 
+  svc3>cache     svc2>logs      787.8   693.2 
+  svc3>cache     db>svc2        687.1   656.8 
+  svc3>queue     svc5>db        925.3   488.7 
+  svc3>queue     svc5>cache     875.3   488.6 
+  svc4>db        svc5>cache     1050.3  671.2 
+  svc4>db        svc6>queue     1037.8  879.8 
+  svc4>db        svc2>logs      1050.3  768.2 
+  svc4>db        svc2>metrics   1050.3  855.2 
+  svc4>cache     svc6>db        1134.6  720.2 
+  svc4>cache     svc6>queue     1037.8  891.8 
+  svc4>cache     svc2>logs      1075.3  768.2 
+  svc4>cache     svc2>metrics   1075.3  855.2 
+  svc4>queue     svc5>db        1000.3  583.2 
+  svc4>queue     svc5>cache     1000.3  671.2 
+  svc4>queue     svc2>logs      1000.3  768.2 
+  svc4>queue     svc2>metrics   1000.0  855.2 
+  svc4>queue     db>svc2        1000.3  632.2 
+  svc5>db        svc6>queue     1037.8  583.2 
+  svc5>db        svc3>objects   925.3   461.7 
+  svc5>db        svc3>logs      925.3   324.2 
+  svc5>db        svc3>metrics   925.3   451.6 
+  svc5>cache     svc6>db        1187.1  680.2 
+  svc5>cache     svc6>queue     1037.8  671.2 
+  svc5>cache     svc3>objects   875.3   461.7 
+  svc5>cache     svc3>logs      875.3   324.2 
+  svc5>cache     svc3>metrics   875.3   451.6 
+  svc5>cache     db>svc2        875.5   651.8 
+  svc5>queue     svc3>objects   950.4   461.7 
+  svc5>queue     svc3>logs      950.3   324.2 
+  svc5>queue     svc3>metrics   950.3   451.6 
+  svc6>db        svc2>logs      1134.6  768.2 
+  svc6>db        svc4>logs      1134.6  916.8 
+  svc6>db        svc2>metrics   1134.6  855.2 
+  svc6>db        svc4>metrics   1134.6  926.8 
+  svc6>db        cache>svc4     1134.6  730.2 
+  svc6>cache     svc2>logs      1213.9  768.2 
+  svc6>cache     svc4>logs      1213.9  916.8 
+  svc6>cache     svc2>metrics   1213.9  855.2 
+  svc6>cache     svc4>metrics   1213.9  926.8 
+  svc6>queue     svc2>logs      1037.8  768.2 
+  svc6>queue     svc4>logs      1037.7  916.8 
+  svc6>queue     svc2>metrics   1037.8  855.2 
+  svc6>queue     svc4>metrics   1037.5  926.8 
+  svc6>queue     db>svc2        1037.8  632.2 
+  svc6>queue     cache>svc4     1037.8  901.8 
+  svc1>objects   svc3>logs      1012.9  324.2 
+  svc1>objects   svc5>logs      1012.8  233.8 
+  svc1>objects   svc3>metrics   1012.8  244.0 
+  svc1>objects   svc5>ext       775.3   165.8 
+  svc5>objects   svc3>logs      975.3   324.2 
+  svc5>objects   svc3>metrics   987.8   356.0 
+  svc1>logs      svc2>logs      1597.9  678.8 
+  svc1>logs      svc3>logs      1517.6  289.8 
+  svc1>logs      svc4>logs      1648.0  678.8 
+  svc1>logs      svc5>logs      1517.6  233.8 
+  svc1>logs      svc1>metrics   1685.4  678.8 
+  svc1>logs      svc3>metrics   1517.6  244.0 
+  svc1>logs      svc3>metrics   1547.9  673.8 
+  svc1>logs      job1>ext       1517.6  394.8 
+  svc1>logs      job2>ext       1517.6  482.8 
+  svc1>logs      job3>ext       1517.6  576.2 
+  svc1>logs      svc5>ext       1517.4  99.8  
+  svc1>logs      objects>logs   1517.6  315.8 
+  svc1>logs      job3>logs      1517.6  590.2 
+  svc2>logs      svc1>metrics   1685.4  656.2 
+  svc2>logs      svc3>metrics   1597.9  751.7 
+  svc2>logs      cache>svc4     1087.8  768.2 
+  svc2>logs      db>metrics     1289.3  768.2 
+  svc2>logs      queue>metrics  1314.4  768.2 
+  svc3>logs      svc5>logs      1800.2  615.8 
+  svc3>logs      svc1>metrics   1685.4  610.8 
+  svc3>logs      svc3>metrics   987.8   324.2 
+  svc3>logs      svc3>metrics   1547.9  289.8 
+  svc3>logs      job1>ext       1560.4  289.8 
+  svc3>logs      job2>ext       1656.8  315.5 
+  svc3>logs      job3>ext       1656.9  491.0 
+  svc3>logs      job1>svc1      1401.8  289.8 
+  svc4>logs      svc1>metrics   1685.4  662.2 
+  svc4>logs      svc2>metrics   1647.9  854.9 
+  svc4>logs      svc3>metrics   1647.9  751.7 
+  svc4>logs      db>metrics     1647.9  825.2 
+  svc4>logs      queue>metrics  1647.9  780.8 
+  svc5>logs      svc1>metrics   1685.4  233.8 
+  svc5>logs      job1>ext       1799.9  252.2 
+  svc5>logs      job2>ext       1800.1  320.5 
+  svc5>logs      job3>ext       1800.1  496.0 
+  svc5>logs      job1>svc1      1062.8  233.8 
+  svc6>logs      svc1>metrics   1697.9  739.1 
+  svc6>logs      svc2>metrics   1697.9  795.8 
+  svc6>logs      svc3>metrics   1697.9  751.8 
+  svc6>logs      svc4>metrics   1697.9  926.1 
+  svc6>logs      db>metrics     1697.9  790.8 
+  svc6>logs      queue>metrics  1697.9  780.8 
+  svc1>metrics   job1>ext       1685.4  252.2 
+  svc1>metrics   job2>ext       1685.4  315.5 
+  svc1>metrics   job3>ext       1685.4  496.0 
+  svc1>metrics   svc5>ext       1685.4  99.8  
+  svc1>metrics   objects>logs   1685.4  644.2 
+  svc1>metrics   gw>logs        1722.9  739.2 
+  svc1>metrics   job3>logs      1685.4  650.2 
+  svc2>metrics   cache>svc4     1087.8  855.2 
+  svc2>metrics   gw>logs        1722.9  800.8 
+  svc3>metrics   job1>ext       1547.9  394.7 
+  svc3>metrics   job2>ext       1547.9  482.8 
+  svc3>metrics   job3>ext       1547.9  576.2 
+  svc3>metrics   job1>svc1      1062.8  244   
+  svc3>metrics   objects>logs   1547.9  315.8 
+  svc3>metrics   gw>logs        1722.9  751.8 
+  svc3>metrics   job3>logs      1547.9  590.2 
+  svc4>metrics   gw>logs        1722.9  810.9 
+  queue>job1     job2>objects   1297.7  468.2 
+  job1>db        queue>job2     1326.8  478.8 
+  job1>db        queue>job3     1326.8  488.9 
+  job1>db        queue>metrics  1314.3  612.1 
+  job1>db        job2>objects   1326.8  468.7 
+  job1>ext       objects>logs   1560.4  315.8 
+  job2>db        queue>job3     1351.8  576.1 
+  job2>db        queue>metrics  1314.3  622.2 
+  job2>ext       objects>logs   1610.4  482.7 
+  job3>db        queue>metrics  1314.3  632.2 
+  job3>ext       objects>logs   1610.4  491.0 
+  alerts>gw      svc6>ext       1735.4  1110.6
+  alerts>gw      lb>metrics     1855.7  1059.2
+  alerts>gw      lb>metrics     1735.4  1076.0
+  dash>user      svc6>ext       1760.4  1149.3
+  job1>svc1      svc5>ext       775.3   155.8 
+  job1>svc1      objects>logs   1401.8  315.8 
+  svc6>ext       gw>logs        924.1   1052.8
+  svc6>ext       lb>metrics     924.1   1076.0
+  db>metrics     gw>logs        1722.9  790.8 
+  queue>metrics  gw>logs        1722.9  780.8 
+  gw>logs        lb>metrics     419.4   1047.8
+ labels:
+  (none)
+ bands: user / edge / app / data / jobs / ops / ext
+ widest bundle of parallel lanes: 12 at x=711,y=855..1014

@@ -1,0 +1,65 @@
+diff --git a/src/class.rs b/src/class.rs
+index adab6c6..6a6c585 100644
+--- a/src/class.rs
++++ b/src/class.rs
+@@ -390,7 +390,7 @@ pub fn route_partial(
+     let canvas = (base.scene.origin, base.scene.width, base.scene.height);
+     let sc = crate::scene::route_kept(&b.g, &all, &b.sizes, &refs, canvas);
+     let mut cs = assemble_keeping(d, b, sc, Mode::Routed, Some((&base.scene, &kept)));
+-    let (origin, width, height) = top_left_canvas(&cs.scene);
++    let (origin, width, height) = crate::scene::frame_canvas(&cs.scene);
+     (cs.scene.origin, cs.scene.width, cs.scene.height) = (origin, width, height);
+     // A kept relationship's cardinalities stay where `base` has them
+     // (also a kept one of `base`'s own base, so frames chain); the
+diff --git a/src/er.rs b/src/er.rs
+index 14b7085..226894c 100644
+--- a/src/er.rs
++++ b/src/er.rs
+@@ -312,7 +312,7 @@ pub fn route_partial(
+     for e in &mut scene.edges {
+         e.paint_width = Some(LINE_W);
+     }
+-    let (origin, width, height) = top_left_canvas(&scene);
++    let (origin, width, height) = crate::scene::frame_canvas(&scene);
+     (scene.origin, scene.width, scene.height) = (origin, width, height);
+     ErScene {
+         scene,
+diff --git a/src/scene.rs b/src/scene.rs
+index a156bd7..2ed2a2e 100644
+--- a/src/scene.rs
++++ b/src/scene.rs
+@@ -5439,6 +5439,34 @@ pub(crate) fn top_left_canvas(sc: &Scene) -> ((f64, f64), f64, f64) {
+     )
+ }
+ 
++/// [`top_left_canvas`] for a class or ER drag frame (`route_partial`),
++/// grown up and left over a routed line too: [`grow_scene`] bounds a
++/// line by its curve's control points, not by the waypoints it is drawn
++/// through, so a line the router runs round the top or left of the
++/// boxes can pass the canvas corner [`top_left_canvas`] gives (`route`
++/// draws it so, cut off at the `viewBox`, as in 0.40.1). Where the ink
++/// of a drawn line ([`grow_canvas`], which the far sides are grown by
++/// in `edgepass::refit`) passes that corner by as much as shows
++/// ([`offset_shows`]), the corner goes to [`MARGIN`] before it; ink on
++/// the canvas leaves it as [`top_left_canvas`] has it.
++pub(crate) fn frame_canvas(sc: &Scene) -> ((f64, f64), f64, f64) {
++    let ((ox, oy), w, h) = top_left_canvas(sc);
++    let mut bb = Bbox::new();
++    grow_canvas(&mut bb, &sc.nodes, &sc.edges, &sc.clusters);
++    if !bb.0.is_finite() {
++        return ((ox, oy), w, h);
++    }
++    let past = |o: f64, min: f64| {
++        if min < o && offset_shows(o - min) {
++            min - MARGIN
++        } else {
++            o
++        }
++    };
++    let (nx, ny) = (past(ox, bb.0), past(oy, bb.2));
++    ((nx, ny), w + (ox - nx), h + (oy - ny))
++}
++
+ pub(crate) fn shift_scene(sc: &mut Scene, dx: f64, dy: f64) {
+     for n in &mut sc.nodes {
+         n.x += dx;

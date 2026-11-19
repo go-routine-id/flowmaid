@@ -1,0 +1,31 @@
+architecture-beta
+    group g0(server)[Data Storage Layer]
+    group g1(nonsense)[Edge]
+    service s0(database)[Q 0] in g1
+    service s1(nonsense)[Svc 1] in g1
+    service s2(cloud)[Web App 2]
+    service s3(nonsense)[Authentication and Authorization Service 3]
+    service s4(nonsense)[Web App 4]
+    service s5(monitoring)[Web App 5]
+    service s6(database)[Svc 6] in g0
+    service s7(monitoring)[Web App 7] in g1
+    service s8(disk)[Svc 8] in g0
+    service s9(nonsense)[Authentication and Authorization Service 9] in g0
+    service s10(disk)[PostgreSQL Primary 10]
+    service s11(monitoring)[Svc 11] in g1
+    junction s12 in g0
+    junction s13 in g0
+    s0:T -[REST over https]- B:s1
+    s2:L --> R:s0
+    s12:R --> L:s4
+    s12:R -[x]- B:s13
+    s1:B -[publishes order events]-> T:s7
+    s5:T -[replicates to standby]-> B:s2
+    s3:R -- L:s1
+    s1:L --> R:s7
+    s2:L -[reads config]-> R:s7{group}
+    s11:L -- T:s7
+    s0:L -[sync]-> R:s7
+    s0:B -- T:s2
+    s11:R -- B:s12
+    s13:R <-[x]-> T:s2

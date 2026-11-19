@@ -1,0 +1,15 @@
+stateDiagram-v2
+  direction LR
+  state Alpha {
+    [*] --> a1
+    state AlphaIn {
+      [*] --> x1
+      x1 --> x2
+    }
+    a1 --> AlphaIn
+  }
+  state Beta {
+    [*] --> b1
+  }
+  Alpha --> Beta : forward move
+  Beta --> Alpha : go back

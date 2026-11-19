@@ -1,0 +1,13 @@
+stateDiagram-v2
+direction LR
+[*] --> A
+state K0 {
+  [*] --> K0_0
+}
+state K1 {
+  [*] --> K1_0
+  K1_0 --> K1_1
+}
+A --> K0
+K0 --> K1
+K1 --> K0 : back

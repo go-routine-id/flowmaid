@@ -1,0 +1,18 @@
+flowchart BT
+    subgraph O[Data ingestion workers]
+        subgraph G[Shipping and returns desk]
+            m0[w]
+            m1[charge]
+            m2[auth service]
+        end
+        k[k]
+    end
+    m1 --> k
+    m2 --> k
+    s0[src0] --> m0
+    s1[src1] -- "lbl6" --> O
+    s2[src2] --> m2
+    s3[src3] --> G
+    s3 --> G
+    m2 --> z[end]
+    G --> z2[after]

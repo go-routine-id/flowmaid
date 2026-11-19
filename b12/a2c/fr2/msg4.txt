@@ -1,0 +1,28 @@
+feat(blocks): X4 levels sibling frames at any depth, outermost first (b12a2c-squeeze fix round 2, item 4: X4 siblings at any depth)
+
+B12 X4 levels the sibling frames of a band; 22dac44 did it for top-level
+blocks only, because levelling nested siblings lengthened dense-td drawn
+TD's parallel runs (`band_len` +242). Under the rules of 630096c (a block
+its own links take room from stays on its layer lines) dense-td's nested
+blocks are held, so the nested half changes no repository drawing.
+
+`level_sibling_frames` now groups sibling blocks by depth, parent and
+first row and deals them outermost first: a parent moved carries its
+children, which then level among themselves. Membership is a block
+anywhere on a node's cluster path (a nested block's members, not only a
+top-level one's), in the hold rules and in the move.
+
+Two blocks inside one parent, a short first and a tall last member
+beside a tall first and a short last member, started 20 px apart and
+read as interleaved; they start level now in all four directions, inside
+their parent.
+
+Test: blockcheck::nested_sibling_frames_start_level_too (TD, BT, LR, RL:
+frames level and inside their parent; fails without the change).
+
+Checks against the previous commit: every cell, gate message and
+direction copy unchanged, as are the verifier's generated sets. Default
+build byte-identical. No snapshot or gate changed. Guard green.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

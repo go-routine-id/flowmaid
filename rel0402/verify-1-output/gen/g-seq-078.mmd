@@ -1,0 +1,30 @@
+sequenceDiagram
+participant P0 as gamma
+P0--)P0: alpha
+activate P0
+P0->>P0: act
+deactivate P0
+P0-)P0: <b>bold</b>
+Note left of P0: gamma
+P0-->>P0: Long label here
+alt <b>bold</b>
+end
+Note right of P0: beta
+activate P0
+P0->>P0: act
+deactivate P0
+P0--xP0: Customer Order
+P0-->>P0: 日本語
+P0-->P0: Customer Order
+par beta
+P0-->P0: Customer Order
+P0--)P0: x
+end
+par Long label here
+P0--)P0: x
+P0-xP0: gamma
+Note left of P0: delta
+par x
+and alpha
+end
+end

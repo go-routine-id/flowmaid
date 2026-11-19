@@ -1,0 +1,25 @@
+flowchart RL
+  subgraph F0 [Frame 0]
+    direction TB
+    n8{{Node 8}}
+    n11[(Node 11 with a longer label)]
+  end
+  subgraph F1 [Frame 1]
+    n1[[Node 1]]
+    n9>Node 9]
+  end
+  n10 x--x n3
+  n0 x--x n5
+  n8 <--> n0
+  n0 ==>|thick lbl| n8
+  n6 -.-> n0
+  n4 --o n6
+  n3 -.->|dot| n12
+  n12 -.-> n3
+  n2 -.->|dot| n9
+  n4 --o F1
+  n11 <--> n5
+  n2 --- n8
+  n6 -->|lbl| n1
+  n6 x--x n2
+  linkStyle 6 stroke:#c33,stroke-width:3px

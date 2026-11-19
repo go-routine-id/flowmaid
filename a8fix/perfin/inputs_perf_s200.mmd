@@ -1,0 +1,516 @@
+architecture-beta
+    group g0(disk)[Observability]
+    group g1(cloud)[Edge]
+    group g2(server)[Data]
+    group g3(internet)[Data Storage Layer]
+    group g4(server)[Observability]
+    group g5(server)[Frontend]
+    group g6(server)[Backend Services]
+    group g7(server)[Data]
+    group g8(disk)[Edge]
+    group g9(server)[Data Storage Layer]
+    group g10(monitoring)[Data Storage Layer]
+    group g11(database)[Data Storage Layer]
+    group g12(internet)[Backend Services]
+    group g13(internet)[Observability]
+    group g14(monitoring)[Edge]
+    service s0(cloud)[Service 0]
+    service s1(disk)[Service 1] in g13
+    service s2(disk)[Service 2]
+    service s3(database)[Service 3] in g4
+    service s4(internet)[Service 4]
+    service s5(server)[Service 5] in g9
+    service s6(database)[Service 6] in g1
+    service s7(disk)[Service 7] in g11
+    service s8(disk)[Service 8] in g4
+    service s9(cloud)[Service 9]
+    service s10(internet)[Service 10] in g14
+    service s11(monitoring)[Service 11] in g2
+    service s12(cloud)[Service 12] in g5
+    service s13(monitoring)[Service 13] in g11
+    service s14(internet)[Service 14] in g7
+    service s15(database)[Service 15] in g14
+    service s16(internet)[Service 16] in g6
+    service s17(internet)[Service 17]
+    service s18(internet)[Service 18] in g8
+    service s19(monitoring)[Service 19] in g7
+    service s20(disk)[Service 20] in g12
+    service s21(monitoring)[Service 21] in g5
+    service s22(server)[Service 22]
+    service s23(monitoring)[Service 23] in g11
+    service s24(server)[Service 24] in g12
+    service s25(database)[Service 25] in g14
+    service s26(monitoring)[Service 26]
+    service s27(cloud)[Service 27]
+    service s28(disk)[Service 28] in g3
+    service s29(database)[Service 29]
+    service s30(internet)[Service 30] in g11
+    service s31(disk)[Service 31]
+    service s32(cloud)[Service 32]
+    service s33(server)[Service 33] in g3
+    service s34(disk)[Service 34] in g3
+    service s35(database)[Service 35] in g8
+    service s36(internet)[Service 36] in g14
+    service s37(internet)[Service 37] in g12
+    service s38(server)[Service 38] in g7
+    service s39(internet)[Service 39] in g2
+    service s40(internet)[Service 40] in g9
+    service s41(cloud)[Service 41]
+    service s42(database)[Service 42]
+    service s43(monitoring)[Service 43] in g14
+    service s44(monitoring)[Service 44] in g4
+    service s45(server)[Service 45] in g8
+    service s46(cloud)[Service 46] in g13
+    service s47(internet)[Service 47] in g10
+    service s48(disk)[Service 48]
+    service s49(cloud)[Service 49] in g9
+    service s50(disk)[Service 50]
+    service s51(internet)[Service 51] in g3
+    service s52(monitoring)[Service 52]
+    service s53(monitoring)[Service 53] in g9
+    service s54(cloud)[Service 54]
+    service s55(disk)[Service 55] in g5
+    service s56(disk)[Service 56] in g0
+    service s57(disk)[Service 57] in g14
+    service s58(monitoring)[Service 58] in g13
+    service s59(database)[Service 59] in g9
+    service s60(monitoring)[Service 60] in g2
+    service s61(server)[Service 61] in g1
+    service s62(disk)[Service 62] in g4
+    service s63(monitoring)[Service 63] in g9
+    service s64(monitoring)[Service 64] in g11
+    service s65(internet)[Service 65]
+    service s66(monitoring)[Service 66] in g6
+    service s67(internet)[Service 67] in g4
+    service s68(monitoring)[Service 68] in g3
+    service s69(cloud)[Service 69] in g12
+    service s70(database)[Service 70] in g13
+    service s71(server)[Service 71]
+    service s72(server)[Service 72]
+    service s73(cloud)[Service 73] in g4
+    service s74(disk)[Service 74] in g4
+    service s75(server)[Service 75] in g1
+    service s76(database)[Service 76] in g11
+    service s77(disk)[Service 77] in g9
+    service s78(disk)[Service 78]
+    service s79(cloud)[Service 79] in g9
+    service s80(database)[Service 80]
+    service s81(database)[Service 81]
+    service s82(monitoring)[Service 82] in g13
+    service s83(cloud)[Service 83]
+    service s84(database)[Service 84] in g0
+    service s85(server)[Service 85] in g6
+    service s86(monitoring)[Service 86]
+    service s87(disk)[Service 87] in g6
+    service s88(monitoring)[Service 88]
+    service s89(disk)[Service 89] in g7
+    service s90(server)[Service 90] in g12
+    service s91(internet)[Service 91] in g14
+    service s92(server)[Service 92] in g3
+    service s93(cloud)[Service 93] in g5
+    service s94(internet)[Service 94] in g9
+    service s95(internet)[Service 95] in g7
+    service s96(database)[Service 96] in g0
+    service s97(cloud)[Service 97] in g9
+    service s98(server)[Service 98] in g13
+    service s99(monitoring)[Service 99]
+    service s100(server)[Service 100] in g8
+    service s101(monitoring)[Service 101] in g11
+    service s102(server)[Service 102]
+    service s103(database)[Service 103] in g8
+    service s104(internet)[Service 104] in g6
+    service s105(cloud)[Service 105] in g4
+    service s106(database)[Service 106] in g10
+    service s107(server)[Service 107] in g2
+    service s108(database)[Service 108] in g14
+    service s109(disk)[Service 109] in g7
+    service s110(monitoring)[Service 110] in g5
+    service s111(database)[Service 111] in g1
+    service s112(server)[Service 112] in g8
+    service s113(cloud)[Service 113] in g3
+    service s114(server)[Service 114] in g3
+    service s115(internet)[Service 115] in g12
+    service s116(monitoring)[Service 116] in g0
+    service s117(database)[Service 117] in g8
+    service s118(disk)[Service 118] in g5
+    service s119(database)[Service 119]
+    service s120(database)[Service 120] in g8
+    service s121(cloud)[Service 121] in g5
+    service s122(server)[Service 122] in g12
+    service s123(internet)[Service 123]
+    service s124(disk)[Service 124]
+    service s125(disk)[Service 125] in g8
+    service s126(database)[Service 126] in g2
+    service s127(disk)[Service 127]
+    service s128(database)[Service 128] in g13
+    service s129(server)[Service 129] in g12
+    service s130(database)[Service 130] in g0
+    service s131(disk)[Service 131] in g10
+    service s132(server)[Service 132] in g7
+    service s133(internet)[Service 133] in g5
+    service s134(disk)[Service 134] in g10
+    service s135(database)[Service 135]
+    service s136(server)[Service 136] in g10
+    service s137(monitoring)[Service 137] in g4
+    service s138(database)[Service 138] in g7
+    service s139(cloud)[Service 139] in g4
+    service s140(database)[Service 140] in g5
+    service s141(database)[Service 141] in g12
+    service s142(server)[Service 142] in g11
+    service s143(server)[Service 143] in g5
+    service s144(database)[Service 144] in g4
+    service s145(disk)[Service 145] in g7
+    service s146(server)[Service 146] in g6
+    service s147(server)[Service 147] in g7
+    service s148(database)[Service 148]
+    service s149(internet)[Service 149]
+    service s150(database)[Service 150] in g13
+    service s151(database)[Service 151] in g14
+    service s152(disk)[Service 152] in g0
+    service s153(cloud)[Service 153] in g5
+    service s154(disk)[Service 154] in g10
+    service s155(server)[Service 155] in g7
+    service s156(disk)[Service 156] in g12
+    service s157(internet)[Service 157] in g6
+    service s158(cloud)[Service 158] in g6
+    service s159(disk)[Service 159]
+    service s160(database)[Service 160] in g13
+    service s161(cloud)[Service 161] in g9
+    service s162(internet)[Service 162] in g9
+    service s163(database)[Service 163] in g1
+    service s164(database)[Service 164] in g11
+    service s165(internet)[Service 165]
+    service s166(database)[Service 166] in g11
+    service s167(server)[Service 167] in g7
+    service s168(cloud)[Service 168] in g0
+    service s169(disk)[Service 169] in g8
+    service s170(database)[Service 170] in g2
+    service s171(internet)[Service 171]
+    service s172(disk)[Service 172] in g8
+    service s173(server)[Service 173]
+    service s174(internet)[Service 174] in g0
+    service s175(disk)[Service 175] in g6
+    service s176(server)[Service 176] in g11
+    service s177(disk)[Service 177] in g10
+    service s178(cloud)[Service 178]
+    service s179(internet)[Service 179] in g2
+    service s180(disk)[Service 180] in g8
+    service s181(monitoring)[Service 181]
+    service s182(database)[Service 182]
+    service s183(cloud)[Service 183] in g3
+    service s184(database)[Service 184]
+    service s185(internet)[Service 185] in g3
+    service s186(cloud)[Service 186] in g2
+    service s187(database)[Service 187] in g10
+    service s188(cloud)[Service 188] in g3
+    service s189(database)[Service 189] in g9
+    service s190(database)[Service 190] in g0
+    service s191(disk)[Service 191]
+    service s192(disk)[Service 192] in g8
+    service s193(server)[Service 193] in g1
+    service s194(server)[Service 194] in g7
+    service s195(server)[Service 195]
+    service s196(monitoring)[Service 196]
+    service s197(server)[Service 197]
+    service s198(database)[Service 198] in g0
+    service s199(disk)[Service 199]
+    s163:T --> B:s0
+    s115:T --> B:s74
+    s149:T -- L:s139
+    s132:B -- B:s62
+    s149:L --> R:s198
+    s146:B -- T:s50
+    s75:T -- R:s63
+    s186:T -- R:s112
+    s113:R -- R:s106
+    s44:T --> B:s37
+    s30:L --> R:s51
+    s89:L -- R:s18
+    s34:R --> L:s160
+    s38:L -- T:s11
+    s5:B --> T:s34
+    s183:R -- T:s148
+    s196:B -- T:s70
+    s1:B --> T:s183
+    s81:R --> L:s75
+    s60:L -- B:s43
+    s9:T -- B:s38
+    s167:B -- T:s89
+    s101:B --> T:s29
+    s23:B -- T:s166
+    s96:L -- L:s124
+    s163:L --> R:s145
+    s5:B --> T:s199
+    s96:R -- L:s45
+    s64:R -- T:s97
+    s69:R -- L:s164
+    s42:R -- L:s168
+    s198:T -- R:s142
+    s187:R --> L:s34
+    s153:B --> L:s49
+    s5:L -- R:s55
+    s104:T --> R:s141
+    s168:L -- R:s132
+    s8:B --> T:s14
+    s185:R -- L:s159
+    s184:B -- L:s79
+    s68:T --> B:s50
+    s39:B --> T:s89
+    s131:B --> T:s186
+    s194:L -- R:s92
+    s2:L -- R:s177
+    s29:T --> B:s167
+    s14:B -- T:s62
+    s129:B -- T:s35
+    s159:B -- T:s103
+    s42:B -- T:s90
+    s82:L --> R:s188
+    s181:B --> T:s105
+    s59:T --> B:s43
+    s92:R --> L:s61
+    s124:T -- B:s38
+    s114:T -- B:s37
+    s117:R -- L:s127
+    s92:B --> T:s157
+    s7:B -- T:s49
+    s32:B -- T:s25
+    s23:T --> B:s141
+    s132:T --> T:s46
+    s96:L -- R:s60
+    s137:R -- L:s127
+    s130:B -- T:s35
+    s49:L -- R:s192
+    s32:L --> R:s119
+    s169:L --> T:s127
+    s194:R -- L:s68
+    s12:T --> T:s186
+    s62:T -- R:s33
+    s24:T --> B:s194
+    s59:R --> L:s62
+    s63:L --> R:s115
+    s11:L -- R:s117
+    s88:R -- B:s196
+    s44:B --> T:s45
+    s7:L -- R:s16
+    s148:R --> L:s69
+    s191:L -- R:s26
+    s147:T --> B:s88
+    s151:L -- R:s135
+    s8:L -- R:s118
+    s190:R --> L:s24
+    s133:L --> R:s112
+    s153:L --> R:s186
+    s152:T -- B:s34
+    s88:B --> T:s144
+    s151:T --> B:s142
+    s151:L -- R:s61
+    s113:L -- R:s77
+    s59:T -- B:s81
+    s128:L -- R:s187
+    s6:R -- L:s63
+    s162:L -- R:s44
+    s162:L --> L:s5
+    s119:L -- R:s32
+    s176:R -- L:s128
+    s185:R -- L:s82
+    s88:B -- T:s17
+    s80:R -- L:s192
+    s111:R --> L:s105
+    s90:B --> T:s168
+    s8:B --> T:s113
+    s84:B --> T:s134
+    s108:B -- T:s39
+    s197:B --> T:s89
+    s140:T -- L:s171
+    s99:T -- B:s2
+    s171:T --> B:s38
+    s102:L --> R:s132
+    s143:L --> B:s175
+    s45:T -- B:s123
+    s75:L --> R:s27
+    s55:R --> L:s96
+    s71:L --> L:s57
+    s6:R -- L:s24
+    s35:B -- B:s0
+    s193:L -- T:s43
+    s149:T -- B:s134
+    s28:B --> T:s67
+    s191:R -- L:s69
+    s67:B --> B:s81
+    s38:T -- B:s153
+    s28:T -- T:s121
+    s97:R --> T:s194
+    s136:T -- B:s183
+    s184:L -- B:s95
+    s51:T -- T:s106
+    s132:R -- L:s133
+    s186:T --> R:s122
+    s153:R --> L:s133
+    s24:R -- T:s125
+    s181:B --> T:s56
+    s110:R -- L:s84
+    s8:B -- T:s77
+    s15:T --> B:s22
+    s95:T --> B:s166
+    s85:R --> L:s16
+    s13:B -- T:s59
+    s50:L -- T:s49
+    s23:B --> T:s136
+    s29:L -- R:s147
+    s165:L -- L:s156
+    s49:L --> L:s116
+    s62:L --> R:s198
+    s28:T --> B:s186
+    s140:L -- R:s156
+    s130:R -- L:s176
+    s103:T --> B:s3
+    s121:R --> L:s20
+    s5:T --> L:s45
+    s193:T -- R:s73
+    s90:T --> B:s55
+    s33:T --> R:s116
+    s125:R --> B:s20
+    s13:R -- B:s112
+    s108:B --> T:s199
+    s91:B -- T:s16
+    s69:B --> T:s184
+    s198:R --> T:s199
+    s34:R --> L:s194
+    s137:R -- L:s163
+    s148:R --> L:s184
+    s34:B -- L:s36
+    s4:L --> R:s127
+    s134:R -- L:s166
+    s119:R --> L:s29
+    s162:T --> B:s95
+    s104:B -- T:s77
+    s54:T --> B:s173
+    s28:L -- R:s136
+    s120:T -- B:s159
+    s73:T -- B:s124
+    s179:L -- R:s80
+    s178:L -- T:s88
+    s186:R --> L:s13
+    s71:B --> T:s87
+    s21:B --> T:s121
+    s155:L --> R:s138
+    s48:B --> T:s16
+    s165:B -- T:s186
+    s198:L -- R:s93
+    s48:L --> L:s157
+    s126:B -- L:s2
+    s28:B --> T:s83
+    s108:R -- L:s122
+    s145:L -- R:s162
+    s20:L -- R:s192
+    s67:T --> B:s17
+    s188:L --> R:s191
+    s63:B -- T:s155
+    s186:B -- L:s25
+    s40:R --> L:s93
+    s129:B --> T:s136
+    s25:T -- B:s100
+    s46:T -- B:s12
+    s87:R --> L:s118
+    s84:T -- B:s147
+    s197:R -- L:s92
+    s4:L --> R:s7
+    s79:L --> R:s29
+    s82:L -- R:s17
+    s103:T -- R:s115
+    s167:T -- L:s24
+    s92:T --> B:s195
+    s193:T --> B:s56
+    s144:R --> L:s193
+    s186:B -- T:s156
+    s87:L --> R:s37
+    s194:R -- T:s100
+    s46:R --> L:s92
+    s191:L -- R:s9
+    s184:L --> B:s70
+    s18:R -- L:s135
+    s166:L --> R:s196
+    s74:R -- L:s121
+    s120:B --> T:s127
+    s169:L -- R:s194
+    s16:T --> B:s22
+    s71:L --> R:s151
+    s186:T --> B:s111
+    s30:T -- L:s70
+    s37:L -- R:s133
+    s3:R --> L:s80
+    s199:T --> B:s149
+    s185:R --> L:s0
+    s142:L -- R:s184
+    s23:T --> R:s151
+    s31:L --> R:s49
+    s127:B --> L:s142
+    s179:B -- T:s116
+    s103:T --> B:s179
+    s82:L -- R:s14
+    s158:R -- L:s77
+    s8:L --> R:s98
+    s55:R -- L:s7
+    s96:R --> L:s68
+    s168:R -- L:s180
+    s160:R -- T:s112
+    s49:R -- B:s167
+    s90:B --> T:s124
+    s41:R -- L:s39
+    s192:R -- L:s43
+    s189:T --> B:s165
+    s46:L --> R:s140
+    s24:B -- T:s6
+    s30:L --> R:s84
+    s132:L --> T:s41
+    s75:L -- R:s15
+    s129:T -- B:s46
+    s141:T --> B:s117
+    s112:T --> T:s93
+    s182:T -- B:s48
+    s57:L --> T:s91
+    s55:B --> T:s80
+    s184:B --> L:s88
+    s122:B -- T:s177
+    s86:L -- R:s152
+    s64:L -- R:s29
+    s1:B -- L:s35
+    s13:B -- T:s157
+    s168:B --> T:s67
+    s129:R --> L:s56
+    s93:R -- R:s54
+    s36:T -- B:s145
+    s172:T -- B:s41
+    s98:T --> R:s47
+    s24:B --> T:s171
+    s50:R --> L:s190
+    s122:B --> T:s179
+    s120:B -- T:s91
+    s38:T --> L:s118
+    s78:R -- L:s101
+    s76:L --> R:s21
+    s9:T --> B:s46
+    s34:L -- R:s180
+    s97:T -- B:s69
+    s122:L --> R:s8
+    s21:T --> B:s109
+    s44:B --> T:s151
+    s156:B --> R:s117
+    s135:L --> R:s51
+    s184:L --> R:s70
+    s129:R -- T:s13
+    s80:T -- B:s121
+    s171:L --> B:s102
+    s112:B --> L:s2
+    s116:T --> B:s30
+    s63:B -- L:s98
+    s81:L -- R:s96
+    s6:T --> B:s28
+    s53:B --> T:s115
+    s24:R -- L:s184
+    s128:R --> T:s189
+    s31:L --> R:s182
+    s4:B -- B:s10
+    s74:R -- T:s120
+    s89:R --> L:s18
+    s40:R -- B:s4

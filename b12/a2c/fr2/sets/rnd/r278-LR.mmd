@@ -1,0 +1,13 @@
+flowchart LR
+    subgraph G[Payments]
+        m0[charge]
+        m1[queue]
+        m2[queue]
+        m0 --> m1
+    end
+    s0[src0] --> m1
+    s1[src1] --> G
+    s2[src2] --> G
+    s3[src3] --> G
+    m2 --> z[end]
+    G --> z2[after]

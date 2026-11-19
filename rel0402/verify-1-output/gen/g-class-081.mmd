@@ -1,0 +1,31 @@
+classDiagram
+C0 "1" <|-- "*" C6
+C4 <|-- C11
+C0 <|-- C6 : alpha
+C6 "1" -- "*" C5
+C7 --> C11
+C10 ..> C2
+C4 "1" ..> "*" C2 : 日本語
+C5 o-- C6
+note "gamma"
+note "delta"
+class C2 {
+  +int id
+  +name() String
+}
+class C3 {
+  +int id
+  +name() String
+}
+class C4 {
+  +int id
+  +name() String
+}
+class C5 {
+  +int id
+  +name() String
+}
+class C10 {
+  +int id
+  +name() String
+}

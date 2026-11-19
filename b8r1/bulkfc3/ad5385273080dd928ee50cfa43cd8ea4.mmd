@@ -1,0 +1,23 @@
+flowchart RL
+    N0{Load retry}
+    N1([Done])
+    N2([Store])
+    N3{Queue}
+    N4[Parse validate]
+    N5([Report])
+    N6[Notify archive]
+    N7{Notify}
+    N8(Notify)
+    N9([Parse])
+    N0 --> N1
+    N0 -->|ok| N2
+    N2 --> N3
+    N2 --> N4
+    N3 --> N5
+    N3 --> N6
+    N4 --> N7
+    N7 --> N8
+    N8 --> N9
+    N5 -->|rollback| N1
+    N7 --> N1
+    N6 -->|rollback| N2

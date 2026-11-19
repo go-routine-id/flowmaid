@@ -1,0 +1,6 @@
+architecture-beta
+    service s0(internet)[Service 0]
+    service s1(monitoring)[Service 1]
+    service s2(server)[Service 2]
+    s2:B -- T:s1
+    s0:R --> L:s1

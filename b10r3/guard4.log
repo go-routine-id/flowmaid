@@ -1,0 +1,73 @@
+== fmt
+== clippy
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 6.47s
+== test
+FAILED: cargo test --all-targets
+static	lat_wiggles	15.0000
+static	lat_backtrack	1862.2250
+static	own_frame_x	0.0000
+static	own_frame_len	0.0000
+static	band_pairs	124.0000
+static	band_len	71354.0000
+static	ink	0.1166
+static	idiom_ortho	185.0000
+static	idiom_scubic	0.0000
+static	idiom_spline	0.0000
+static	idiom_bow	0.0000
+static	x_drawn	428.0000
+static	end_kink	0.0000
+static	ink_out	0.0000
+routed	end_tilt	0.0000
+routed	end_tilt_max	0.5626
+routed	end_gaps	0.0000
+routed	end_gap_max	0.0483
+routed	lat_wiggles	5.0000
+routed	lat_backtrack	432.7500
+routed	own_frame_x	0.0000
+routed	own_frame_len	0.0000
+routed	band_pairs	139.0000
+routed	band_len	69108.0000
+routed	ink	0.1125
+routed	idiom_ortho	185.0000
+routed	idiom_scubic	0.0000
+routed	idiom_spline	0.0000
+routed	idiom_bow	0.0000
+routed	x_drawn	494.0000
+routed	end_kink	0.0000
+routed	ink_out	0.0000
+
+thread 'defect_baseline_gate' (12694) panicked at tests/quality.rs:802:5:
+defect baseline regressions:
+static band_len 71354.00 > ceiling 71210
+routed band_len 69108.00 > ceiling 68660
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: quality::defect_baseline_gate
+             at ./tests/quality.rs:802:5
+   3: quality::defect_baseline_gate::{closure#0}
+             at ./tests/quality.rs:753:26
+   4: <quality::defect_baseline_gate::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+   5: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+
+failures:
+    a_one_px_drag_leaves_unrelated_edges_put
+    defect_baseline_gate
+
+test result: FAILED. 11 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.26s
+
+error: test failed, to rerun pass `--test quality`
+== doctest
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.37s
+== msrv
+    Finished dev [unoptimized + debuginfo] target(s) in 2.63s
+== wasm
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.13s
+== rustdoc
+GUARD: FAILURES

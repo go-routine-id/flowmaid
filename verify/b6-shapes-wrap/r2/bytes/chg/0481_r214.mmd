@@ -1,0 +1,25 @@
+flowchart LR
+    N0(Validate)
+    N1{Store}
+    N2([Queue])
+    N3[Queue report]
+    N4[Retry queue]
+    N5(Report queue)
+    N6{{Archive}}
+    N7([Check])
+    N8([Fetch])
+    N9[Emit]
+    N0 -->|ok| N1
+    N1 --> N2
+    N2 --> N3
+    N2 --> N4
+    N4 -->|fail| N5
+    N3 --> N6
+    N5 -->|yes| N7
+    N5 --> N8
+    N7 --> N9
+    N1 --> N2
+    N3 --> N8
+    N5 -.->|again| N4
+    N6 -->|rollback| N5
+    N5 ==>|retry| N4

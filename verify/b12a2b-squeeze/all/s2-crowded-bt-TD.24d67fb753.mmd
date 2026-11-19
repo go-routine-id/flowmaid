@@ -1,0 +1,15 @@
+flowchart TD
+  P1[Producer one] -->|push| M
+  P2[Producer two] -->|pull| M
+  P3[Producer three] --> M
+  O[Ops] ==> OBS
+  subgraph OBS [Observability and alerting]
+    M[Metrics] --> D[Dashboards]
+    L[Logs]
+  end
+  P1 --> L
+  subgraph APP [Application tier]
+    W[Web] --> API[API]
+  end
+  API --> M
+  W -.-> OBS

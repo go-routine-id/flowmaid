@@ -1,0 +1,15 @@
+architecture-beta
+    group g0(monitoring)[Data Storage Layer]
+    group g1(database)[Edge]
+    service s0(monitoring)[Service 0] in g1
+    service s1(database)[Service 1] in g0
+    service s2(database)[Service 2] in g0
+    service s3(cloud)[Service 3]
+    service s4(cloud)[Service 4] in g1
+    service s5(server)[Service 5] in g0
+    service s6(internet)[Service 6] in g0
+    service s7(database)[Service 7] in g0
+    service s8(server)[Service 8] in g0
+    service s9(server)[Service 9] in g0
+    service s10(monitoring)[Service 10] in g0
+    s4:L -- R:s5

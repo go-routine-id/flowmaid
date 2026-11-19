@@ -1,0 +1,17 @@
+flowchart LR
+  top[Top] --> A
+  top -.-> D
+  subgraph A[Wide band block]
+    a1 --> a2
+    a1 --> a3
+    a1 --> a4
+    a1 --> a5
+  end
+  subgraph B[Middle]
+    b1 --> b2
+  end
+  A --> B
+  subgraph D[Deep]
+    d1 --> d2
+  end
+  B --> C[mid node] --> D

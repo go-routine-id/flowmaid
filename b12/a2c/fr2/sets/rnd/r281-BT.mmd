@@ -1,0 +1,10 @@
+flowchart BT
+    subgraph G[Shipping and returns desk]
+        m0[w]
+        m1[auth service]
+    end
+    s0[src0] --> m1
+    s0 --> G
+    s1[src1] --> G
+    s1 --> G
+    s2[src2] --> m0

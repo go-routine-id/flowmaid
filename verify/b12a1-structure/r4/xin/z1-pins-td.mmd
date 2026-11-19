@@ -1,0 +1,21 @@
+flowchart TD
+  subgraph SRC[Producers]
+    p1[Ingest] 
+    p2[Batch loader]
+    p3[Stream tap]
+  end
+  subgraph POOL[Worker pool]
+    w1[Worker one]
+    w2[Worker two]
+  end
+  subgraph SINK[Storage]
+    s1[(Lake)]
+    s2[(Warehouse)]
+  end
+  p3 --> POOL
+  p1 --> POOL
+  p2 --> POOL
+  POOL --> s2
+  POOL --> s1
+  w1 --> w2
+  ext[External cron] --> POOL

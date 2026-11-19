@@ -1,0 +1,11 @@
+flowchart LR
+    subgraph G[Core]
+        m0[charge]
+        m1[auth service]
+        m2[ledger]
+    end
+    s0[src0] --> m1
+    s0 -- "lbl1" --> m1
+    s1[src1] -- "lbl2" --> m2
+    m2 --> z[end]
+    G --> z2[after]

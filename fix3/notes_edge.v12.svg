@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="523" height="368" viewBox="0 0 523 368" font-family="Helvetica, Arial, sans-serif" font-size="14" role="img" aria-label="State diagram">
+<title>State diagram</title>
+<rect width="523" height="368" fill="#ffffff"/>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 1 L 9 5 L 0 9 z" fill="#44507a"/></marker></defs>
+<path d="M 191.4 53.2 C 191.4 89.6, 224.8 89.6, 224.8 126.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>start → A</title></path>
+<path d="M 220.8 164.0 C 220.8 194.0, 103.0 194.0, 103.0 224.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>A → B</title></path>
+<path d="M 234.8 164.0 C 234.8 194.0, 207.9 194.0, 207.9 224.0" fill="none" stroke="#44507a" stroke-width="1.7" stroke-dasharray="5 4"><title>A → note</title></path>
+<path d="M 254.8 164.0 C 254.8 194.0, 284.5 194.0, 284.5 224.0" fill="none" stroke="#44507a" stroke-width="1.7" stroke-dasharray="5 4"><title>A → note</title></path>
+<path d="M 273.4 66.0 C 273.4 96.0, 254.8 96.0, 254.8 126.0" fill="none" stroke="#44507a" stroke-width="1.7" stroke-dasharray="5 4"><title>note → A</title></path>
+<path d="M 88.0 262.0 C 88.0 292.0, 88.0 292.0, 88.0 322.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>B → end</title></path>
+<path d="M 432.9 66.0 C 432.9 96.0, 432.9 96.0, 432.9 126.0" fill="none" stroke="#44507a" stroke-width="1.7" stroke-dasharray="5 4"><title>Unknown → note</title></path>
+<path d="M 88.0 66.0 L 88.0 79.2 C 88.0 92.3, 88.0 118.7, 88.0 145.0 C 88.0 171.3, 88.0 197.7, 88.0 210.8 L 88.0 224.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>F1 → B</title></path>
+<g><title>start</title>
+<circle cx="188.2" cy="47.0" r="7.0" fill="#44507a" stroke="#44507a" stroke-width="1.6"/>
+<text x="188.2" y="47.0" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<g><title>A</title>
+<rect x="212.8" y="126.0" width="54.0" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="239.8" y="145.0" dy="0.33em" text-anchor="middle" fill="#232840">A</text>
+</g>
+<g><title>B</title>
+<rect x="61.0" y="224.0" width="54.0" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="88.0" y="243.0" dy="0.33em" text-anchor="middle" fill="#232840">B</text>
+</g>
+<g><title>first</title>
+<rect x="165.0" y="224.0" width="54.9" height="38.0" rx="3.0" fill="#fff8c5" stroke="#9c8a2c" stroke-width="1.6"/>
+<text x="192.4" y="243.0" dy="0.33em" text-anchor="middle" fill="#232840">first</text>
+</g>
+<g><title>second</title>
+<rect x="269.9" y="224.0" width="77.2" height="38.0" rx="3.0" fill="#fff8c5" stroke="#9c8a2c" stroke-width="1.6"/>
+<text x="308.5" y="243.0" dy="0.33em" text-anchor="middle" fill="#232840">second</text>
+</g>
+<g><title>third on A</title>
+<rect x="245.2" y="28.0" width="92.7" height="38.0" rx="3.0" fill="#fff8c5" stroke="#9c8a2c" stroke-width="1.6"/>
+<text x="291.5" y="47.0" dy="0.33em" text-anchor="middle" fill="#232840">third on A</text>
+</g>
+<g><title>end</title>
+<circle cx="88.0" cy="331.0" r="9.0" fill="#ffffff" stroke="#44507a" stroke-width="1.6"/>
+<circle cx="88.0" cy="331.0" r="5.0" fill="#44507a" stroke="#44507a" stroke-width="1.6"/>
+<text x="88.0" y="331.0" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<g><title>Unknown</title>
+<rect x="387.9" y="28.0" width="90.0" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="432.9" y="47.0" dy="0.33em" text-anchor="middle" fill="#232840">Unknown</text>
+</g>
+<g><title>creates a state</title>
+<rect x="370.9" y="126.0" width="124.0" height="38.0" rx="3.0" fill="#fff8c5" stroke="#9c8a2c" stroke-width="1.6"/>
+<text x="432.9" y="145.0" dy="0.33em" text-anchor="middle" fill="#232840">creates a state</text>
+</g>
+<g><title>floating</title>
+<rect x="49.1" y="28.0" width="77.8" height="38.0" rx="3.0" fill="#fff8c5" stroke="#9c8a2c" stroke-width="1.6"/>
+<text x="88.0" y="47.0" dy="0.33em" text-anchor="middle" fill="#232840">floating</text>
+</g>
+</svg>

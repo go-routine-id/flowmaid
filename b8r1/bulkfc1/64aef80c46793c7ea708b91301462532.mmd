@@ -1,0 +1,32 @@
+flowchart TD
+  n0[Node 0]
+  n1[Node 1]
+  n2[Node 2]
+  n3[Node 3]
+  n4[Node 4]
+  n5[Node 5]
+  n1 e0@<--> n3
+  e0@{ curve: step }
+  n0 e1@==> n2
+  e1@{ curve: stepBefore }
+  n2 e2@--> n5
+  e2@{ curve: stepBefore }
+  n5 e3@--> n0
+  e3@{ curve: natural }
+  n0 e4@<--> n2
+  e4@{ curve: linear }
+  n1 e5@==> n2
+  e5@{ curve: linear }
+  n1 e6@<--> n4
+  e6@{ curve: linear }
+  n2 e7@<--> n4
+  e7@{ curve: stepAfter }
+  n3 e8@--> n2
+  e8@{ curve: stepAfter }
+  n2 e9@--> n4
+  e9@{ curve: natural }
+  n1 e10@<--> n4
+  e10@{ curve: natural }
+  n4 e11@--> n0
+  e11@{ curve: natural }
+  linkStyle default stroke-width:16px

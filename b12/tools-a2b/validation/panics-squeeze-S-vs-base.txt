@@ -1,0 +1,182 @@
+[gates] tests 1208 / 1211; failing 14 -> 15
+  == a_one_px_drag_leaves_unrelated_edges_put: message lines worse 2, better 0
+     + NEW     quality/dense-lr: 1 > 0 drag jumps
+     + NEW       drag n22: n12 -> n44 21.5
+  == block_fixtures_are_not_drawn_worse: message lines worse 0, better 5
+     - gone    notes/wide-frames static: defects = 1 > ceiling 0
+     - gone    notes/wide-frames static: hard zeros = 2 > ceiling 0
+     - gone    notes/wide-frames routed: defects = 3 > ceiling 0
+     - gone    notes/wide-frames routed: hard zeros = 5 > ceiling 0
+     - gone    blocks/nested-cases routed: hard zeros = 1 > ceiling 0
+  NEWLY FAILING blockcheck::a_hub_fan_leaves_in_target_order
+      panicked at src/blockcheck.rs
+      assertion `left == right` failed: blocks/blocks-overview routed
+        left: 1
+       right: 0
+  NEWLY FAILING blockcheck::a_two_way_pair_between_blocks_keeps_its_steps_in_one_channel (new test)
+      panicked at src/blockcheck.rs
+      assertion `left == right` failed: LR
+        left: (1, 0)
+       right: (0, 0)
+  == channels_keep_edges_apart_and_off_chips: message lines worse 0, better 1
+     ~ better static edge_chip 3  ->  static edge_chip 2
+  == comb::tests::a_hubs_fan_is_a_comb_in_scene_and_route: message lines worse 0, better 1
+     ~ better left: 32  ->  left: 22
+  == defect_baseline_gate: message lines worse 6, better 1
+     ~ WORSE  static lat_wiggles 33.00 > ceiling 15  ->  static lat_wiggles 42.00 > ceiling 15
+     ~ WORSE  static lat_backtrack 10599.64 > ceiling 1870  ->  static lat_backtrack 13682.65 > ceiling 1870
+     ~ WORSE  static band_pairs 204.00 > ceiling 132  ->  static band_pairs 207.00 > ceiling 132
+     ~ WORSE  static band_len 91602.00 > ceiling 74730  ->  static band_len 98168.00 > ceiling 74730
+     ~ WORSE  routed lat_wiggles 23.00 > ceiling 5  ->  routed lat_wiggles 24.00 > ceiling 5
+     ~ WORSE  routed lat_backtrack 3856.27 > ceiling 425  ->  routed lat_backtrack 4753.93 > ceiling 425
+     ~ better routed fan_x 64.00 > ceiling 13  ->  routed fan_x 54.00 > ceiling 13
+  == ports::tests::a_nearly_straight_pair_is_drawn_straight: message lines worse 0, better 1
+     ~ better (302.425, 602.944271909073) (92.35, 730.0)  ->  (302.42499999999995, 602.944271909073) (92.35, 730.0)
+  == quality_gate: message lines worse 2, better 1
+     ~ WORSE  dense-td routed: edge_node_pairs = 1 > ceiling 0  ->  dense-td routed: edge_node_pairs = 2 > ceiling 0
+     ~ WORSE  dense-td routed: edge_node_x = 1 > ceiling 0  ->  dense-td routed: edge_node_x = 2 > ceiling 0
+     ~ better dense-td routed: min_edge_gap = 0.60 < floor 12  ->  dense-td routed: min_edge_gap = 0.94 < floor 12
+  newly passing render::tests::advanced_showcase_parses_and_renders
+  == scene::tests::a_composite_edge_to_its_own_state_drops_straight_from_the_border: message lines worse 0, better 1
+     ~ better SceneEdge { from: "C0", to: "C0i1", bezier: [(73.6, 466.0), (73.6, 556.5), (87.6, 556.5), (87.6, 630.0)], waypoints: [(73.6, 466.0), (73.6, 549.5), (73.6, 556.5), (80.6, 556.5), (87.6, 556.5), (87.6, 563.5), (87.6, 630.0)], kind: Arrow, ends: EdgeEnds { start: None, end: None }, meta: EdgeMeta { id: None, animation: None, curve: None, style: LinkStyle { stroke: None, stroke_width: None, stroke_dasharray: None, fill: None, color: None } }, label: None, paint_width: None }  ->  SceneEdge { from: "C0", to: "C0i1", bezier: [(72.35, 466.0), (72.35, 556.5), (58.787499999999994, 556.5), (58.787499999999994, 630.0)], waypoints: [(72.35, 466.0), (72.35, 549.71875), (72.35, 556.5), (65.56875, 556.5), (58.787499999999994, 556.5), (58.787499999999994, 563.28125), (58.787499999999994, 630.0)], kind: Arrow, ends: EdgeEnds { start: None, end: None }, meta: EdgeMeta { id: None, animation: None, curve: None, style: LinkStyle { stroke: None, stroke_width: None, stroke_dasharray: None, fill: None, color: None } }, label: None, paint_width: None }
+  == scene::tests::note_links_hold_their_ends_and_corners_in_scene_route_and_drag: message lines worse 1, better 1
+     + NEW     straight-link: no link compared
+     - gone    routed-around: dn290's link is no router path
+  == scene::tests::note_links_match_between_scene_and_route: message lines worse 0, better 1
+     ~ better assertion `left == right` failed: __note_18 -> T0: [(588.525, 570.5), (588.525, 570.5), (346.775, 675.0), (346.775, 675.0)] vs [(588.525, 570.5), (588.525, 570.5), (359.775, 694.0), (359.775, 694.0)]  ->  assertion `left == right` failed: __note_18 -> T0: [(557.75, 570.5), (557.75, 570.5), (331.3875, 675.0), (331.3875, 675.0)] vs [(557.75, 570.5), (557.75, 570.5), (344.3875, 694.0), (344.3875, 694.0)]
+  info stdout a_one_px_drag_leaves_unrelated_edges_put: 2 cells changed
+       quality/dense-lr: # drag jumps #1: 0 -> 1  higher (worse?)
+       quality/dense-td: # drag jumps #1: 3 -> 0  lower
+  info new test blockcheck::a_block_is_squeezed_to_its_content: ok
+  info new test blockcheck::a_spine_inside_a_block_is_straight: ok
+  info stdout defect_baseline_gate: 32 cells changed
+       routed band_len: 60222.0000 -> 54094.0000  lower
+       routed band_pairs: 138.0000 -> 130.0000  lower
+       routed bends_max: 13.0000 -> 15.0000  higher (worse?)
+       routed chip_crowd: 12.0000 -> 15.0000  higher (worse?)
+       routed compact_mean: 5.0780 -> 5.1061  higher (worse?)
+       routed detour_max: 2.2419 -> 2.1389  lower
+       routed edge_len: 197457.2127 -> 192257.0138  lower
+       routed fan_x: 64.0000 -> 54.0000  lower
+       routed ink: 0.1104 -> 0.1096  lower
+       routed lat_backtrack: 3856.2750 -> 4753.9304  higher (worse?)
+       routed lat_wiggles: 23.0000 -> 24.0000  higher (worse?)
+       routed lateral_x: 48.0000 -> 47.0000  lower
+       routed lbl_end_mean: 180.6571 -> 178.2971  lower
+       routed sib_stagger: 2.0000 -> 0.0000  lower
+       routed up_lanes: 4.0000 -> 3.0000  lower
+       routed x_drawn: 379.0000 -> 375.0000  lower
+       static band_len: 91602.0000 -> 98168.0000  higher (worse?)
+       static band_pairs: 204.0000 -> 207.0000  higher (worse?)
+       static chip_crowd: 17.0000 -> 15.0000  lower
+       static chip_gap_min: 3.5538 -> 0.0000  lower (worse?)
+       static compact_mean: 7.2604 -> 7.3071  higher (worse?)
+       static detour_max: 2.2989 -> 2.4895  higher (worse?)
+       static edge_len: 210412.5656 -> 214209.1780  higher (worse?)
+       static ink: 0.1139 -> 0.1130  lower
+       static lat_backtrack: 10599.6366 -> 13682.6469  higher (worse?)
+       static lat_wiggles: 33.0000 -> 42.0000  higher (worse?)
+       static lateral_x: 13.0000 -> 10.0000  lower
+       static lbl_end_mean: 222.1354 -> 217.1090  lower
+       static pin_corner: 1.0000 -> 0.0000  lower
+       static sib_stagger: 2.0000 -> 0.0000  lower
+       static x_drawn: 263.0000 -> 267.0000  higher (worse?)
+       static xhops: 198.0000 -> 197.0000  lower
+  info stdout quality_gate: 96 cells changed
+       dense-lr routed band_len: 10918.00 -> 11000.00  higher (worse?)
+       dense-lr routed band_pairs: 20.00 -> 21.00  higher (worse?)
+       dense-lr routed compact_mean: 9.81 -> 9.91  higher (worse?)
+       dense-lr routed edge_len: 49710.89 -> 49724.30  higher (worse?)
+       dense-lr routed hug_len: 951.72 -> 1008.81  higher (worse?)
+       dense-lr routed hug_max: 448.23 -> 506.16  higher (worse?)
+       dense-lr routed lbl_end_mean: 347.81 -> 343.01  lower
+       dense-lr routed sib_stagger: 2.00 -> 0.00  lower
+       dense-lr static band_len: 15284.00 -> 14942.00  lower
+       dense-lr static bends_max: 13.00 -> 12.00  lower
+       dense-lr static chip_gap_min: 4.29 -> 0.00  lower (worse?)
+       dense-lr static compact_mean: 10.49 -> 10.59  higher (worse?)
+       dense-lr static detour_max: 1.74 -> 1.75  higher (worse?)
+       dense-lr static edge_edge_x: 17.00 -> 18.00  higher (worse?)
+       dense-lr static edge_len: 50203.41 -> 50219.11  higher (worse?)
+       dense-lr static lat_backtrack: 1249.23 -> 1253.67  higher (worse?)
+       dense-lr static lbl_edge: 0.00 -> 2.00  higher (worse?)
+       dense-lr static lbl_end_mean: 371.00 -> 373.72  higher (worse?)
+       dense-lr static overlap_len: 108.00 -> 78.00  lower
+       dense-lr static overlap_max: 84.00 -> 56.00  lower
+       dense-lr static sib_stagger: 2.00 -> 0.00  lower
+       dense-lr static tight_len: 692.00 -> 700.00  higher (worse?)
+       dense-lr static x_drawn: 17.00 -> 18.00  higher (worse?)
+       dense-lr static xhops: 12.00 -> 11.00  lower
+       dense-td routed area_per_node: 175527.58 -> 183414.40  higher (worse?)
+       dense-td routed band_len: 20272.00 -> 14086.00  lower
+       dense-td routed band_pairs: 35.00 -> 26.00  lower
+       dense-td routed bends_max: 13.00 -> 15.00  higher (worse?)
+       dense-td routed border_len: 730.25 -> 1037.84  higher (worse?)
+       dense-td routed border_runs: 3.00 -> 6.00  higher (worse?)
+       dense-td routed center_off: 0.01 -> 0.02  higher (worse?)
+       dense-td routed chip_crowd: 7.00 -> 10.00  higher (worse?)
+       dense-td routed chip_gap_min: 0.00 -> 3.17  higher
+       dense-td routed compact_max: 12.03 -> 12.72  higher (worse?)
+       dense-td routed compact_mean: 8.72 -> 8.78  higher (worse?)
+       dense-td routed defects: 18 -> 28  higher (worse?)
+       dense-td routed detour_max: 2.24 -> 2.14  lower
+       dense-td routed edge_edge_x: 99.00 -> 98.00  lower
+       dense-td routed edge_frame_pairs: 12.00 -> 23.00  higher (worse?)
+       dense-td routed edge_frame_x: 6.00 -> 8.00  higher (worse?)
+       dense-td routed edge_len: 71718.96 -> 66615.39  lower
+       dense-td routed edge_node_pairs: 1.00 -> 2.00  higher (worse?)
+       dense-td routed edge_node_x: 1.00 -> 2.00  higher (worse?)
+       dense-td routed end_gap_max: 0.01 -> 0.00  lower
+       dense-td routed fan_x: 34.00 -> 24.00  lower
+       dense-td routed height: 2206.93 -> 2252.29  higher (worse?)
+       dense-td routed hug_len: 2898.63 -> 1188.10  lower
+       dense-td routed hug_max: 652.14 -> 454.73  lower
+       dense-td routed hug_runs: 9.00 -> 10.00  higher (worse?)
+       dense-td routed lat_backtrack: 1210.65 -> 2108.31  higher (worse?)
+       dense-td routed lat_wiggles: 5.00 -> 6.00  higher (worse?)
+       dense-td routed lateral_x: 23.00 -> 22.00  lower
+       dense-td routed lbl_edge: 4.00 -> 0.00  lower
+       dense-td routed lbl_end_mean: 470.06 -> 460.70  lower
+       dense-td routed min_edge_gap: 0.60 -> 0.94  higher
+       dense-td routed min_node_gap: 11.40 -> 11.70  higher
+       dense-td routed ortho_edges: 39.00 -> 40.00  higher (worse?)
+       dense-td routed overlap_len: 1118.00 -> 530.00  lower
+       dense-td routed overlap_max: 574.00 -> 458.00  lower
+       dense-td routed overlap_pairs: 5.00 -> 3.00  lower
+       dense-td routed span_max: 0.34 -> 0.35  higher (worse?)
+       dense-td routed tight_len: 3950.00 -> 4448.00  higher (worse?)
+       dense-td routed tight_pairs: 12.00 -> 11.00  lower
+       dense-td routed up_lanes: 2.00 -> 1.00  lower
+       dense-td routed width: 3658.60 -> 3746.00  higher (worse?)
+       dense-td routed x_drawn: 107.00 -> 103.00  lower
+       dense-td static area_per_node: 180862.59 -> 195743.21  higher (worse?)
+       dense-td static aspect: 1.71 -> 1.77  higher (worse?)
+       dense-td static band_len: 42878.00 -> 49806.00  higher (worse?)
+       dense-td static band_pairs: 55.00 -> 58.00  higher (worse?)
+       dense-td static center_off: 0.02 -> 0.05  higher (worse?)
+       dense-td static chip_crowd: 9.00 -> 7.00  lower
+       dense-td static chip_gap_min: 3.55 -> 3.04  lower (worse?)
+       dense-td static compact_max: 12.03 -> 12.72  higher (worse?)
+       dense-td static compact_mean: 9.05 -> 9.23  higher (worse?)
+       dense-td static detour_max: 2.30 -> 2.49  higher (worse?)
+       dense-td static edge_chip: 3.00 -> 2.00  lower
+       dense-td static edge_edge_x: 42.00 -> 44.00  higher (worse?)
+       dense-td static edge_len: 82766.71 -> 86657.66  higher (worse?)
+       dense-td static height: 2206.93 -> 2252.29  higher (worse?)
+       dense-td static lat_backtrack: 7061.71 -> 10140.28  higher (worse?)
+       dense-td static lat_wiggles: 11.00 -> 20.00  higher (worse?)
+       dense-td static lateral_x: 6.00 -> 3.00  lower
+       dense-td static lbl_end_mean: 739.32 -> 706.43  lower
+       dense-td static min_node_gap: 18.75 -> 18.49  lower (worse?)
+       dense-td static pin_corner: 1.00 -> 0.00  lower
+       dense-td static span_max: 0.34 -> 0.35  higher (worse?)
+       dense-td static tight_len: 2064.00 -> 2194.00  higher (worse?)
+       dense-td static width: 3769.80 -> 3997.80  higher (worse?)
+       dense-td static x_drawn: 42.00 -> 45.00  higher (worse?)
+       fanout-frames routed band_len: 3148.00 -> 3124.00  lower
+       fanout-frames routed edge_len: 4520.93 -> 4410.89  lower
+       fanout-frames routed tight_len: 170.00 -> 160.00  lower
+       fanout-frames static band_len: 3386.00 -> 3366.00  lower
+       fanout-frames static edge_len: 4703.86 -> 4593.83  lower
+       fanout-frames static tight_len: 170.00 -> 160.00  lower
+panics: WORSE (13)

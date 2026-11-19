@@ -1,0 +1,10 @@
+flowchart LR
+    subgraph Pipe [Build pipeline]
+        Lint --> Compile --> Test
+        Test -->|retry| Compile
+        Kick[Trigger]
+    end
+    Kick -->|start| Pipe
+    Pipe --> Deploy
+    Deploy -.->|rollback| Pipe
+    Test --> Pipe

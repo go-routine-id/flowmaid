@@ -1,0 +1,24 @@
+flowchart TD
+  subgraph api [API tier]
+    gw[Gateway]
+    auth[Auth]
+  end
+  subgraph data [Data tier]
+    db[(Postgres)]
+    cache[(Redis)]
+    q[[Queue]]
+    s3[(Blob)]
+  end
+  subgraph work [Workers]
+    w1[Worker 1]
+    w2[Worker 2]
+    w3[Worker 3]
+  end
+  gw --> auth
+  gw --> db & cache & q & s3
+  auth --> db & cache
+  q --> w1 & w2 & w3
+  w1 --> db
+  w2 --> s3
+  w3 -.-> cache
+  w1 & w2 & w3 --> gw

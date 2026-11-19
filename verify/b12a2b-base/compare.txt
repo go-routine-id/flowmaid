@@ -1,0 +1,68 @@
+compare.sh: baseline /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/tools-a2b/base-7122a53
+            candidate /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a2b-base/cand-head
+
+== 1. local inputs, per cell (LIVE judge)
+[local static A2] 444 / 444 cells; must-fail 89 -> 87; worse 0 (new 0, worse inside failing 0, changed 0, missing 0); gone 2, better inside failing 10; info: target new 0 / gone 0 / worse 0, drift inside passing 6
+  gone         infra-overview-v2 lateral_x 1 -> 0 (must <= 0)
+  gone         hub5 lateral_x 3 -> 0 (must <= 0)
+  better       blocks-overview lateral_x 3 -> 1 (must <= 0)
+  better       blocks-overview-edges-reversed lateral_x 3 -> 1 (must <= 0)
+  better       blocks-overview-edges-rotated lateral_x 3 -> 1 (must <= 0)
+  better       blocks-overview-actors-reversed lateral_x 3 -> 1 (must <= 0)
+  better       blocks-overview-subgraphs-reversed lateral_x 3 -> 1 (must <= 0)
+  better       blocks-overview lbl_crowd 2 -> 1 (must <= 0)
+  better       blocks-overview-edges-reversed lbl_crowd 2 -> 1 (must <= 0)
+  better       blocks-overview-edges-rotated lbl_crowd 2 -> 1 (must <= 0)
+  better       blocks-overview-actors-reversed lbl_crowd 2 -> 1 (must <= 0)
+  better       blocks-overview-subgraphs-reversed lbl_crowd 2 -> 1 (must <= 0)
+  drift        infra-overview-v2 bends 72 -> 76 (must <= 114)
+  drift        blocks-overview edge_len 15483 -> 15621 (must <= 20125)
+  drift        blocks-overview-edges-reversed edge_len 15483 -> 15621 (must <= 18290)
+  drift        blocks-overview-edges-rotated edge_len 15483 -> 15621 (must <= 20125)
+  drift        blocks-overview-actors-reversed edge_len 15483 -> 15621 (must <= 20125)
+  drift        blocks-overview-subgraphs-reversed edge_len 15483 -> 15621 (must <= 20125)
+[local routed] 62 / 62 cells; must-fail 37 -> 37; worse 0 (new 0, worse inside failing 0, changed 0, missing 0); gone 0, better inside failing 0; info: target new 0 / gone 0 / worse 0, drift inside passing 0
+cells: no worse
+
+== 2. suite-on gate messages
+[gates] tests 1208 / 1213; failing 14 -> 14
+  info new test blockcheck::a_frames_pins_and_its_title_rows_entries_take_columns_apart: ok
+  info new test blockcheck::a_title_rows_first_free_entry_clears_the_chip_ring: ok
+  info new test blockcheck::a_two_way_pair_between_blocks_keeps_its_steps_in_one_channel: ok
+  info stdout defect_baseline_gate: 2 cells changed
+       static edge_len: 210412.5656 -> 210412.3217  lower
+       static lbl_end_mean: 222.1354 -> 222.1808  higher (worse?)
+  info new test ortho::tests::a_displaced_column_is_found_in_one_pass_and_always_ends: ok
+  info stdout quality_gate: 2 cells changed
+       dense-td static edge_len: 82766.71 -> 82766.47  lower
+       dense-td static lbl_end_mean: 739.32 -> 739.59  higher (worse?)
+  info new test router::tests::a_leg_a_clearance_inside_a_frame_wall_rides_it_only_outside_a_block_layout: ok
+panics: no worse
+
+== 3. direction copies (332 + 32, static and routed)
+[dirs static] 332 copies  defects 41->41 (+0/-0)  x_drawn 1283->1283 (+0/-0)  lateral_x 216->192 (+0/-14)  fan_x 30->30 (+0/-0)  edge_chip 8->8 (+0/-0)  side_ends 231->208 (+0/-13)  min_edge_gap down 1
+    WORSE min_edge_gap drop > 0.5 px (1): blocks.swimlane-nested-TD 40->25
+    info min_node_gap: total 8404.39->8413.18, up 1 / down 0 (worse on 0, better on 1)
+    info end_tilt_max: total 435.3->435.33, up 1 / down 0 (worse on 1, better on 0): blocks.blocks-overview-subgraphs-reversed-TD 0->0.03
+    info lat_wiggles: total 325->323, up 0 / down 2 (worse on 0, better on 2)
+    info lat_backtrack: total 47068.9->46994.4, up 1 / down 2 (worse on 1, better on 2): quality.dense-td-BT 7266.94->7267.44
+    info band_pairs: total 1018->1027, up 10 / down 2 (worse on 10, better on 2): blocks.blocks-overview-TD 2->3; blocks.blocks-overview-actors-reversed-TD 2->3; blocks.blocks-overview-bt-TD 2->3; blocks.blocks-overview-edges-reversed-TD 2->3; blocks.blocks-overview-edges-rotated-TD 2->3; blocks.blocks-overview-lr-TD 2->3 ...
+    info band_len: total 388664->389476, up 10 / down 3 (worse on 10, better on 3): blocks.blocks-overview-TD 462->564; blocks.blocks-overview-actors-reversed-TD 462->564; blocks.blocks-overview-bt-TD 462->564; blocks.blocks-overview-edges-reversed-TD 448->550; blocks.blocks-overview-edges-rotated-TD 448->550; blocks.blocks-overview-lr-TD 462->564 ...
+    info xhops: total 1004->996, up 0 / down 8 (no direction)
+    info edge_len: total 1.90436e+06->1.90551e+06, up 33 / down 36 (worse on 33, better on 36): blocks.blocks-overview-BT 15979->15979.2; blocks.blocks-overview-TD 15639.1->15783.3; blocks.blocks-overview-actors-reversed-BT 15979->15979.2; blocks.blocks-overview-actors-reversed-TD 15639.1->15783.3; blocks.blocks-overview-bt-BT 15979->15979.2; blocks.blocks-overview-bt-TD 15639.1->15783.3 ...
+    info bends_max: total 1380->1383, up 3 / down 0 (worse on 3, better on 0): blocks.hub5-TD 5->6; blocks.lr-BT 3->4; blocks.swim-nested-TD 1->2
+    info detour_max: total 323.07->322.72, up 0 / down 3 (worse on 0, better on 3)
+    info lbl_end_mean: total 31784.8->31825.2, up 24 / down 10 (worse on 24, better on 10): blocks.blocks-overview-BT 244.07->244.08; blocks.blocks-overview-actors-reversed-BT 244.07->244.08; blocks.blocks-overview-bt-BT 244.07->244.08; blocks.blocks-overview-edges-reversed-BT 244.07->244.08; blocks.blocks-overview-edges-rotated-BT 244.07->244.08; blocks.blocks-overview-lr-BT 244.07->244.08 ...
+    info chip_crowd: total 272->265, up 2 / down 9 (worse on 2, better on 9): blocks.wide-stroke-BT 0->1; quality.dense-lr-TD 3->4
+    info chip_gap_min: total 8965.68->8981.63, up 18 / down 6 (worse on 6, better on 18): blocks.cycle2-tie-TD 39.52->39.27; blocks.reqresp-BT 9.8->9.77; blocks.reqresp-TD 28.88->28.62; blocks.reqresp22-BT 9.8->9.77; blocks.wide-stroke-BT 36->8.98; blocks.wide-stroke-TD 11.22->10.97
+[dirs routed] 332 copies  defects 169->169 (+0/-0)  x_drawn 1997->1997 (+0/-0)  lateral_x 418->418 (+0/-0)  fan_x 183->183 (+0/-0)  edge_chip 78->78 (+0/-0)  side_ends 361->361 (+0/-0)  min_edge_gap down 0
+    info ends_apart: total 890->878, up 0 / down 12 (worse on 0, better on 12)
+[dirsx static] 32 copies  defects 0->0 (+0/-0)  x_drawn 1->1 (+0/-0)  lateral_x 1->1 (+0/-0)  fan_x 0->0 (+0/-0)  edge_chip 0->0 (+0/-0)  side_ends 2->2 (+0/-0)  min_edge_gap down 0
+    info edge_len: total 40177.6->40177.2, up 1 / down 2 (worse on 1, better on 2): examples.advanced-BT 3019.21->3019.26
+[dirsx routed] 32 copies  defects 0->0 (+0/-0)  x_drawn 1->1 (+0/-0)  lateral_x 1->1 (+0/-0)  fan_x 0->0 (+0/-0)  edge_chip 0->0 (+0/-0)  side_ends 2->2 (+0/-0)  min_edge_gap down 0
+dirs: WORSE (1)
+
+VERDICT cells:  no worse
+VERDICT panics: no worse
+VERDICT dirs:   WORSE
+VERDICT: WORSE

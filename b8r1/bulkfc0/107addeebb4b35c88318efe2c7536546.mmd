@@ -1,0 +1,9 @@
+flowchart LR
+  A[Short] --> B[A much wider node here]
+  B -->|ok| C[Mid]
+  C --> D[Tall node<br/>with<br/>three lines]
+  D -->|yes please continue| E[End]
+  D -->|no| F[Abort]
+  A --> G[Side]
+  G --> E
+  F --> E

@@ -1,0 +1,48 @@
+erDiagram
+  E0 {
+    int id PK
+    string name
+  }
+  E1 {
+    int id PK
+    string name
+  }
+  E2 {
+    int id PK
+    string name
+  }
+  E3 {
+    int id PK
+    string name
+  }
+  E4 {
+    int id PK
+    string name
+  }
+  E5 {
+    int id PK
+    string name
+  }
+  E6 {
+    int id PK
+    string name
+  }
+  E7 {
+    int id PK
+    string name
+  }
+  E8 {
+    int id PK
+    string name
+  }
+  E2 }o--|| E1 : "rel0"
+  E2 }o..o{ E3 : "rel1"
+  E3 }|..|{ E0 : "rel2"
+  E2 ||--|| E4 : "rel3"
+  E0 }|..|{ E2 : "rel4"
+  E8 |o--o| E5 : "rel5"
+  E5 }o..o{ E2 : "rel6"
+  E8 }|..|{ E0 : "rel7"
+  E8 }|..|{ E6 : "rel8"
+  E6 ||--o{ E8 : "rel9"
+  E7 ||--o{ E6 : "rel10"

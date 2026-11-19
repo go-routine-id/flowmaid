@@ -1,0 +1,11 @@
+flowchart RL
+  subgraph F0 [Frame 0]
+    n2[/Node 2/]
+    n0(Node 0 with a longer label)
+  end
+  n1 <==> F0
+  n4 -.->|dot| n4
+  n0 ==> n2
+  n4 -->|lbl| n3
+  n2 <--> n4
+  n3 --> n2

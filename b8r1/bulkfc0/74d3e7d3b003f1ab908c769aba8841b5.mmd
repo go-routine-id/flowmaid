@@ -1,0 +1,22 @@
+flowchart TD
+    N0([Check])
+    N1[Store]
+    N2([Store])
+    N3(Done validate)
+    N4[Store]
+    N5([Load retry])
+    N6[Retry retry]
+    N7{Parse store}
+    N8([Notify])
+    N9[Archive fetch]
+    N0 --> N1
+    N1 --> N2
+    N2 --> N3
+    N3 --> N4
+    N4 -->|yes| N5
+    N3 --> N6
+    N6 --> N7
+    N7 --> N8
+    N8 -->|no| N9
+    N4 --> N0
+    N5 -->|rollback| N2

@@ -1,0 +1,32 @@
+flowchart BT
+  n1["index"]
+  subgraph B0["Storefront"]
+    n2["pack"]
+    n3["billing cache worker<br/>audit"]
+  end
+  subgraph B1["Edge services"]
+    n4["merge"]
+  end
+  subgraph B2["Analytics"]
+    n5["auth"]
+    n6["ingest"]
+    n7["auth"]
+  end
+  subgraph B3["Ingest"]
+    n8["api api parse"]
+  end
+  n9["search"]
+  n10["notify"]
+  n9 ==>|report| n7
+  n4 --> n5
+  n8 --> n6
+  n8 --> B0
+  n10 -.-> n2
+  n10 --> n1
+  n5 -->|db| n9
+  n3 --> n9
+  n7 -.-> B1
+  n6 --> n10
+  n2 --> n7
+  n10 --> n8
+  n7 -->|queue| n1

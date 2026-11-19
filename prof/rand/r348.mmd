@@ -1,0 +1,30 @@
+flowchart TD
+  H0 -->|a much longer label here| N6
+  H0 ==> N4
+  H0 -.->|x| N2
+  H0 ==>|express| N5
+  H0 --- N2
+  H0 ==> N0
+  H0 --> N2
+  H0 --- N5
+  H0 -->|no| N4
+  H0 -->|no| N5
+  H0 -.->|no| N3
+  H1 ==> N3
+  H1 ---|no| N6
+  H1 -.->|retry| N0
+  H1 ---|no| N0
+  H1 --> N6
+  H1 ==> N2
+  H1 -.->|a much longer label here| N4
+  H1 -.->|yes| N4
+  H1 ==>|a much longer label here| N3
+  H1 -->|express| N4
+  H2 ==>|ok| N1
+  H2 ==>|x| N4
+  H2 ---|express| N2
+  N4 --> N4
+  N3 -->|express| N5
+  N6 -->|retry| N1
+  N2 -->|x| N1
+  N5 --> N3

@@ -1,0 +1,51 @@
+r003: note edge 7 S0->__note_10 scene vs route differ by 11.4 (wps 0 vs 0)
+r031: note edge 12 S0->__note_16 scene vs route differ by 10.2 (wps 0 vs 0)
+r036: note edge 7 __note_9->T1 scene vs route differ by 14.3 (wps 0 vs 0)
+r038: drag card __note_17 by 1px: edge 13 __note_17->T0 jumps 9.7
+r038: note edge 13 __note_17->T0 scene vs route differ by 14.6 (wps 0 vs 0)
+r059: drag card __note_11 by 1px: edge 8 S0->__note_11 jumps 63.4
+r059: note edge 8 S0->__note_11 scene vs route differ by 63.4 (wps 0 vs 0)
+r069: drag card __note_10 by 1px: edge 7 __note_10->T0 jumps 62.9
+r077: drag card __note_13 by 1px: edge 9 __note_13->T0 jumps 8.4
+r077: note edge 9 __note_13->T0 scene vs route differ by 11.4 (wps 0 vs 0)
+r085: note edge 7 __note_9->T0 scene vs route differ by 14.3 (wps 0 vs 0)
+r092: drag card __note_7 by 1px: edge 5 __note_7->C0i0 jumps 56.1
+r111: drag card __note_14 by 1px: edge 10 S0->__note_14 jumps 63.4
+r111: note edge 10 S0->__note_14 scene vs route differ by 63.4 (wps 0 vs 0)
+r113: note edge 13 S0->__note_17 scene vs route differ by 12.6 (wps 0 vs 0)
+r128: note edge 13 __note_17->T1 scene vs route differ by 14.3 (wps 0 vs 0)
+r131: note edge 15 __note_19->T2 scene vs route differ by 11.4 (wps 0 vs 0)
+r137: drag card __note_10 by 1px: edge 8 __note_10->T0 jumps 62.9
+r137: drag card __note_11 by 1px: edge 9 S0->__note_11 jumps 12.1
+r139: drag card __note_7 by 1px: edge 5 C0i2->__note_7 jumps 61.6
+r139: note edge 5 C0i2->__note_7 scene vs route differ by 61.2 (wps 0 vs 0)
+r183: drag card __note_7 by 1px: edge 5 C0i0->__note_7 jumps 56.1
+r186: drag card __note_7 by 1px: edge 5 C0i1->__note_7 jumps 97.5
+r186: note edge 5 C0i1->__note_7 scene vs route differ by 97.5 (wps 0 vs 0)
+r190: drag card __note_10 by 1px: edge 7 S0->__note_10 jumps 10.7
+r190: note edge 7 S0->__note_10 scene vs route differ by 20.3 (wps 0 vs 0)
+r194: note edge 7 S0->__note_10 scene vs route differ by 14.5 (wps 0 vs 0)
+r202: drag card __note_18 by 1px: edge 15 __note_18->T1 jumps 56.0
+r209: note edge 4 __note_7->T0 scene vs route differ by 19.8 (wps 0 vs 0)
+r211: drag card __note_16 by 1px: edge 13 S0->__note_16 jumps 12.1
+r212: note edge 9 __note_11->T0 scene vs route differ by 14.3 (wps 0 vs 0)
+r213: note edge 11 __note_14->T0 scene vs route differ by 14.3 (wps 0 vs 0)
+r213: note edge 13 S0->__note_16 scene vs route differ by 10.5 (wps 0 vs 0)
+r226: drag card __note_13 by 1px: edge 9 __note_13->T1 jumps 10.1
+r226: drag card __note_7 by 1px: edge 5 __note_7->C0i3 jumps 94.2
+r226: note edge 5 __note_7->C0i3 scene vs route differ by 93.8 (wps 0 vs 0)
+r228: note edge 9 S0->__note_11 scene vs route differ by 10.5 (wps 0 vs 0)
+r238: note edge 6 __note_11->T2 scene vs route differ by 11.4 (wps 0 vs 0)
+r246: note edge 13 S0->__note_16 scene vs route differ by 12.6 (wps 0 vs 0)
+r247: note edge 8 S0->__note_12 scene vs route differ by 14.3 (wps 0 vs 0)
+r252: drag card __note_8 by 1px: edge 6 __note_8->C0i0 jumps 68.0
+r269: drag card __note_10 by 1px: edge 5 S0->__note_10 jumps 10.1
+r269: note edge 5 S0->__note_10 scene vs route differ by 19.8 (wps 0 vs 0)
+r278: note edge 11 __note_14->T0 scene vs route differ by 14.3 (wps 0 vs 0)
+r278: note edge 12 S0->__note_15 scene vs route differ by 10.5 (wps 0 vs 0)
+r285: drag card __note_7 by 1px: edge 5 C0i1->__note_7 jumps 68.5
+r285: note edge 5 C0i1->__note_7 scene vs route differ by 68.1 (wps 0 vs 0)
+r291: drag card __note_9 by 1px: edge 6 S0->__note_9 jumps 10.3
+r291: note edge 6 S0->__note_9 scene vs route differ by 19.7 (wps 0 vs 0)
+r294: note edge 8 __note_11->T2 scene vs route differ by 14.3 (wps 0 vs 0)
+r297: note edge 12 S0->__note_18 scene vs route differ by 14.5 (wps 0 vs 0)

@@ -1,0 +1,13 @@
+flowchart RL
+  hub{{Hub}} --> a[Alpha] & b[Beta] & c[Gamma] & d[Delta] & e[Epsilon]
+  a --> t[(Target)]
+  e --> t
+  hub --> t
+  c -.-> t
+  src1[Source 1] --> hub
+  src2[Source 2] --> hub
+  src3[Source 3] --> hub
+  src4[Source 4] --> hub
+  src1 --> a
+  src4 --> e
+  src2 -->|skip| t

@@ -1,0 +1,98 @@
+compare.sh: baseline /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/tools-a2b/cand-d99c073
+            candidate /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/a2c/fr2/c-cr2
+
+== 1. local inputs, per cell (LIVE judge)
+[local static A2] 444 / 444 cells; must-fail 86 -> 70; worse 0 (new 0, worse inside failing 0, changed 0, missing 0); gone 16, better inside failing 8; info: target new 0 / gone 0 / worse 1, drift inside passing 5
+  gone         infra-overview lbl_in_end 1 -> 0 (must <= 0)
+  gone         perm-a-edges-reversed lbl_in_end 1 -> 0 (must <= 0)
+  gone         perm-b-subgraphs-reversed lbl_in_end 1 -> 0 (must <= 0)
+  gone         perm-c-actors-reversed lbl_in_end 1 -> 0 (must <= 0)
+  gone         perm-d-edges-rotated lbl_in_end 1 -> 0 (must <= 0)
+  gone         perm-e-one-more-inner-edge lbl_in_end 1 -> 0 (must <= 0)
+  gone         blocks-overview sib_stagger 1 -> 0 (must <= 0)
+  gone         blocks-overview-edges-reversed sib_stagger 1 -> 0 (must <= 0)
+  gone         blocks-overview-edges-rotated sib_stagger 1 -> 0 (must <= 0)
+  gone         blocks-overview-actors-reversed sib_stagger 1 -> 0 (must <= 0)
+  gone         blocks-overview-subgraphs-reversed sib_stagger 1 -> 0 (must <= 0)
+  gone         blocks-overview lbl_crowd 2 -> 0 (must <= 0)
+  gone         blocks-overview-edges-reversed lbl_crowd 2 -> 0 (must <= 0)
+  gone         blocks-overview-edges-rotated lbl_crowd 2 -> 0 (must <= 0)
+  gone         blocks-overview-actors-reversed lbl_crowd 2 -> 0 (must <= 0)
+  gone         blocks-overview-subgraphs-reversed lbl_crowd 2 -> 0 (must <= 0)
+  better       infra-overview lbl_crowd 4 -> 2 (must <= 0)
+  better       infra-overview-v2 lbl_crowd 4 -> 2 (must <= 1)
+  better       infra-overview-v2 lbl_endpx_mean 381 -> 361 (must <= 329)
+  better       perm-a-edges-reversed lbl_crowd 4 -> 2 (must <= 0)
+  better       perm-b-subgraphs-reversed lbl_crowd 8 -> 4 (must <= 0)
+  better       perm-c-actors-reversed lbl_crowd 4 -> 2 (must <= 0)
+  better       perm-d-edges-rotated lbl_crowd 4 -> 2 (must <= 0)
+  better       perm-e-one-more-inner-edge lbl_crowd 5 -> 2 (must <= 0)
+  target-worse infra-overview lbl_off_mean 0.149 -> 0.158 (must <= 0.2)
+  drift        blocks-overview edge_len 15528 -> 15549 (must <= 20125)
+  drift        blocks-overview-edges-reversed edge_len 15528 -> 15549 (must <= 18290)
+  drift        blocks-overview-edges-rotated edge_len 15528 -> 15549 (must <= 20125)
+  drift        blocks-overview-actors-reversed edge_len 15528 -> 15549 (must <= 20125)
+  drift        blocks-overview-subgraphs-reversed edge_len 15528 -> 15549 (must <= 20125)
+[local routed] 62 / 62 cells; must-fail 19 -> 18; worse 0 (new 0, worse inside failing 0, changed 0, missing 0); gone 1, better inside failing 0; info: target new 0 / gone 0 / worse 0, drift inside passing 0
+  gone         perm-b-subgraphs-reversed lbl_crowd 8 -> 4 (must <= 5)
+cells: no worse
+
+== 2. suite-on gate messages
+[gates] tests 1246 / 1252; failing 8 -> 8
+  info new test blockcheck::a_block_its_links_take_room_from_stays_on_its_layer_lines: ok
+  info new test blockcheck::a_chip_kept_off_its_end_blocks_stays_on_its_line: ok
+  info new test blockcheck::sibling_frames_of_a_band_start_level_and_keep_their_size: ok
+  info stdout defect_baseline_gate: 6 cells changed
+       routed chip_crowd: 16.0000 -> 9.0000  lower
+       routed chip_gap_min: 3.5538 -> 4.0000  higher
+       routed lbl_end_mean: 229.4426 -> 226.8593  lower
+       static chip_crowd: 17.0000 -> 10.0000  lower
+       static chip_gap_min: 3.5538 -> 4.2233  higher
+       static lbl_end_mean: 222.1808 -> 219.5975  lower
+  info new test labels::tests::a_label_leaves_its_end_block_for_no_spot_farther_from_an_end: ok
+  info new test labels::tests::a_labels_spots_keep_off_its_end_blocks: ok
+  info stdout quality_gate: 12 cells changed
+       dense-lr routed chip_crowd: 5.00 -> 3.00  lower
+       dense-lr routed chip_gap_min: 4.29 -> 4.22  lower (worse?)
+       dense-lr routed lbl_end_mean: 371.00 -> 369.06  lower
+       dense-lr static chip_crowd: 5.00 -> 3.00  lower
+       dense-lr static chip_gap_min: 4.29 -> 4.22  lower (worse?)
+       dense-lr static lbl_end_mean: 371.00 -> 369.06  lower
+       dense-td routed chip_crowd: 9.00 -> 4.00  lower
+       dense-td routed chip_gap_min: 3.55 -> 6.39  higher
+       dense-td routed lbl_end_mean: 739.59 -> 726.03  lower
+       dense-td static chip_crowd: 9.00 -> 4.00  lower
+       dense-td static chip_gap_min: 3.55 -> 6.39  higher
+       dense-td static lbl_end_mean: 739.59 -> 726.03  lower
+  info new test scene::tests::a_block_layouts_hop_feet_are_written_on_their_line: ok
+panics: no worse
+
+== 3. direction copies (332 + 32, static and routed)
+[dirs static] 332 copies  defects 41->41 (+0/-0)  x_drawn 1283->1283 (+0/-0)  lateral_x 201->201 (+0/-0)  fan_x 30->30 (+0/-0)  edge_chip 8->8 (+0/-0)  side_ends 216->216 (+0/-0)  min_edge_gap down 0
+    info xhops: total 1000->1015, up 16 / down 1 (no direction)
+    info sib_stagger: total 40->24, up 0 / down 16 (worse on 0, better on 16)
+    info edge_len: total 1.90489e+06->1.90512e+06, up 16 / down 0 (worse on 16, better on 0): blocks.blocks-overview-BT 15990.3->15998.9; blocks.blocks-overview-TD 15690.2->15711.2; blocks.blocks-overview-actors-reversed-BT 15990.3->15998.9; blocks.blocks-overview-actors-reversed-TD 15690.2->15711.2; blocks.blocks-overview-bt-BT 15990.3->15998.9; blocks.blocks-overview-bt-TD 15690.2->15711.2 ...
+    info lbl_end_mean: total 31852.5->31742.9, up 27 / down 71 (worse on 27, better on 71): blocks.cycle2-BT 127.12->131.08; blocks.cycle2-LR 114.17->125.46; blocks.cycle2-RL 114.17->125.46; blocks.lr-TD 118.67->119.06; blocks.ratio2x4-BT 81.01->82.34; blocks.ratio2x4-LR 60.3->70.8 ...
+    info chip_crowd: total 275->144, up 1 / down 75 (worse on 1, better on 75): blocks.cycle2-TD 0->1
+    info chip_gap_min: total 8900.11->9206.26, up 48 / down 10 (worse on 10, better on 48): blocks.cycle2-TD 34.04->8.9; blocks.ratio2x4-TD 11.48->10.26; blocks.ratio4-TD 11.48->10.26; blocks.ratio4mask-TD 11.48->10.26; notes.fork-twins-BT 10.26->10.25; notes.fork-twins-TD 10.26->10.25 ...
+[dirs routed] 332 copies  defects 41->41 (+0/-0)  x_drawn 1285->1285 (+0/-0)  lateral_x 201->201 (+0/-0)  fan_x 32->32 (+0/-0)  edge_chip 8->8 (+0/-0)  side_ends 216->216 (+0/-0)  min_edge_gap down 0
+    info xhops: total 1002->1017, up 16 / down 1 (no direction)
+    info sib_stagger: total 40->24, up 0 / down 16 (worse on 0, better on 16)
+    info edge_len: total 1.90422e+06->1.90445e+06, up 16 / down 0 (worse on 16, better on 0): blocks.blocks-overview-BT 15990.3->15998.9; blocks.blocks-overview-TD 15690.2->15711.2; blocks.blocks-overview-actors-reversed-BT 15990.3->15998.9; blocks.blocks-overview-actors-reversed-TD 15690.2->15711.2; blocks.blocks-overview-bt-BT 15990.3->15998.9; blocks.blocks-overview-bt-TD 15690.2->15711.2 ...
+    info lbl_end_mean: total 31790.8->31681.1, up 27 / down 71 (worse on 27, better on 71): blocks.cycle2-BT 127.12->131.08; blocks.cycle2-LR 114.17->125.46; blocks.cycle2-RL 114.17->125.46; blocks.lr-TD 118.67->119.06; blocks.ratio2x4-BT 81.01->82.34; blocks.ratio2x4-LR 60.3->70.8 ...
+    info chip_crowd: total 269->138, up 1 / down 75 (worse on 1, better on 75): blocks.cycle2-TD 0->1
+    info chip_gap_min: total 8915.19->9221.34, up 48 / down 10 (worse on 10, better on 48): blocks.cycle2-TD 34.04->8.9; blocks.ratio2x4-TD 11.48->10.26; blocks.ratio4-TD 11.48->10.26; blocks.ratio4mask-TD 11.48->10.26; notes.fork-twins-BT 10.26->10.25; notes.fork-twins-TD 10.26->10.25 ...
+[dirsx static] 32 copies  defects 0->0 (+0/-0)  x_drawn 1->1 (+0/-0)  lateral_x 1->1 (+0/-0)  fan_x 0->0 (+0/-0)  edge_chip 0->0 (+0/-0)  side_ends 2->2 (+0/-0)  min_edge_gap down 0
+    info lbl_end_mean: total 2463.22->2480.97, up 1 / down 0 (worse on 1, better on 0): examples.advanced-RL 75.81->93.56
+    info chip_crowd: total 9->8, up 0 / down 1 (worse on 0, better on 1)
+    info chip_gap_min: total 905.86->920.2, up 1 / down 0 (worse on 0, better on 1)
+[dirsx routed] 32 copies  defects 0->0 (+0/-0)  x_drawn 1->1 (+0/-0)  lateral_x 1->1 (+0/-0)  fan_x 0->0 (+0/-0)  edge_chip 0->0 (+0/-0)  side_ends 2->2 (+0/-0)  min_edge_gap down 0
+    info lbl_end_mean: total 2465.8->2483.55, up 1 / down 0 (worse on 1, better on 0): examples.advanced-RL 75.81->93.56
+    info chip_crowd: total 9->8, up 0 / down 1 (worse on 0, better on 1)
+    info chip_gap_min: total 912.7->927.04, up 1 / down 0 (worse on 0, better on 1)
+dirs: no worse
+
+VERDICT cells:  no worse
+VERDICT panics: no worse
+VERDICT dirs:   no worse
+VERDICT: no worse

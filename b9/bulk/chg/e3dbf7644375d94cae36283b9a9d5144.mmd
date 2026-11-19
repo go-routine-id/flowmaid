@@ -1,0 +1,32 @@
+stateDiagram-v2
+direction TB
+[*] --> S0
+state C0 {
+  [*] --> C0i0
+  C0i0 --> C0i1
+  C0i0 --> C0i2 : e2
+  C0i0 --> C0i3 : e3
+  note left of C0i3 : n300
+  note right of C0i1 : n944
+}
+state C1 {
+  direction LR
+  [*] --> C1i0
+  C1i0 --> C1i1 : e1
+  C1i1 --> C1i2 : e2
+  C1i0 --> C1i3 : e3
+  state C1ch <<choice>>
+  C1i0 --> C1ch
+  C1ch --> C1i1 : y
+  C1ch --> C1i0 : n
+  note left of C1i0 : n523
+  note right of C1i0 : n5
+  note right of C1i3 : n965
+}
+S0 --> C0 : go1
+C0 --> C1
+C0 --> T0
+C0 --> C0 : back
+note right of C0 : m703
+note right of S0 : m369
+note right of C1 : m799

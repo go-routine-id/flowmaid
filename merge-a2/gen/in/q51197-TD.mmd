@@ -1,0 +1,22 @@
+flowchart TD
+    subgraph G0[Data ingestion workers 0]
+        g0m0[g0m0]
+        g0m1[g0m1]
+        g0m2[g0m2]
+    end
+    subgraph G1[Billing and invoices 1]
+        subgraph H1[inner 1]
+            g1m0[g1m0]
+            g1m1[g1m1]
+        end
+    end
+    g0m0 -- l5 --> g0m1
+    g1m0 -.-> g0m0
+    g0m1 --> g1m0
+    o0 -.-> g0m1
+    g0m0 ==> g0m2
+    o0 --> g0m0
+    g1m1 ==> g0m2
+    g0m0 --> g1m1
+    g0m0 -- l3 --> G0
+    g1m1 --> G0

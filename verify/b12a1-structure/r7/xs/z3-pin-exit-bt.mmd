@@ -1,0 +1,12 @@
+flowchart BT
+    hub[Hub service] --> a[Stage A]
+    a --> b[Stage B]
+    src[Source] --> G
+    subgraph G[A rather long title of the target block]
+        m[Member one]
+        k[Member two]
+        m --> k
+    end
+    b --> m
+    m --> hub
+    hub --> k

@@ -1,0 +1,26 @@
+architecture-beta
+    group g0(disk)[Edge]
+    group g1(database)[Backend Services]
+    group g2(server)[Frontend]
+    group g3(disk)[Ops]
+    service s0(cloud)[Service 0] in g1
+    service s1(monitoring)[Service 1] in g3
+    service s2(server)[Service 2] in g1
+    service s3(internet)[Service 3] in g0
+    service s4(disk)[Service 4] in g3
+    service s5(database)[Service 5] in g2
+    service s6(cloud)[Service 6] in g0
+    service s7(database)[Service 7]
+    service s8(database)[Service 8]
+    service s9(database)[Service 9] in g1
+    service s10(disk)[Service 10]
+    service s11(disk)[Service 11] in g0
+    service s12(database)[Service 12] in g1
+    service s13(database)[Service 13] in g1
+    service s14(database)[Service 14]
+    s0:R -- L:s12
+    s0:B -- L:s13
+    s13:B --> L:s11
+    s12:R --> L:s9
+    s10:R -- L:s7
+    s1:B --> T:s0

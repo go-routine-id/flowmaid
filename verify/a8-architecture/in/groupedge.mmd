@@ -1,0 +1,11 @@
+architecture-beta
+    group groupOne(cloud)[Group One]
+    group groupTwo(cloud)[Group Two]
+    service server(server)[Server] in groupOne
+    service other(disk)[Other] in groupOne
+    service subnet(internet)[Subnet] in groupTwo
+    service gw(lock)[Gateway] in groupTwo
+
+    server{group}:B --> T:subnet{group}
+    server:R -- L:other
+    subnet:R -- L:gw

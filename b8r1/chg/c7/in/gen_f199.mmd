@@ -1,0 +1,60 @@
+flowchart TD
+  n0["do lorem magna<br/>sed elit nostrud"]
+  subgraph g0["lorem aliqua nostrud incididunt aliqua elit magna amet"]
+    direction LR
+    n1[("lorem incididunt adipiscing<br/>sed do dolor")]
+    n2["consectetur ut"]
+    n3["ipsum<br/>nostrud dolor lorem eiusmod<br/>amet nostrud"]
+    n4["consectetur<br/>veniam"]
+  end
+  subgraph g1["sed amet aliqua incididunt ut magna ipsum labore ipsum"]
+    direction LR
+    n5[("ipsum tempor do")]
+    n6(["do sed<br/>elit tempor lorem incididunt"])
+    n7["do do elit"]
+  end
+  subgraph g2["aliqua ipsum ullamco ut tempor consectetur do"]
+    n8(["eiusmod<br/>veniam veniam amet<br/>ullamco nostrud"])
+    n9("incididunt<br/>adipiscing amet lorem<br/>elit")
+    n10("sit eiusmod dolor incididunt<br/>incididunt ipsum amet")
+    n11["amet ullamco"]
+    n12("magna tempor labore<br/>tempor dolor")
+    n13["incididunt<br/>aliqua ipsum tempor"]
+    n8 --> n9
+  end
+  subgraph g3["eiusmod nostrud lorem laboris veniam adipiscing"]
+    direction TB
+    n14("eiusmod eiusmod aliqua veniam")
+    n15[("adipiscing dolor veniam ut<br/>adipiscing")]
+    n16[("magna labore lorem<br/>dolor")]
+    n17["veniam sit<br/>elit ullamco<br/>adipiscing"]
+    n18[("incididunt tempor veniam<br/>amet dolor nostrud<br/>magna")]
+  end
+  subgraph g4["dolor do veniam do dolor dolor"]
+    direction LR
+    n19[("amet sed aliqua<br/>amet tempor sit ipsum")]
+    n20(["sit do incididunt<br/>consectetur lorem<br/>ullamco laboris laboris"])
+    n21[("elit elit<br/>ullamco sed lorem<br/>ipsum")]
+  end
+  subgraph g5["elit sit"]
+    n22(["ipsum ipsum ullamco ullamco"])
+    n23(["consectetur labore ipsum<br/>veniam sit"])
+    n24("amet do<br/>do nostrud aliqua<br/>sed")
+    n25("amet ipsum ut<br/>nostrud sit amet ullamco")
+  end
+  subgraph g6["sed labore"]
+    direction LR
+    n26["elit veniam tempor adipiscing<br/>nostrud<br/>adipiscing aliqua laboris labore"]
+    n27(["eiusmod adipiscing consectetur amet<br/>nostrud laboris"])
+    n28("aliqua do magna<br/>labore amet ut amet")
+    n29[("incididunt labore ipsum veniam")]
+  end
+  n30(["ipsum ut nostrud veniam<br/>aliqua do ut<br/>labore"])
+  n0 --> g0
+  n0 --> g1
+  n0 ==> g2
+  n0 --> n18
+  n0 ==> g4
+  n0 -.-> g5
+  n0 ==> g6
+  n0 --> n30

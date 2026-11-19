@@ -1,0 +1,10 @@
+[package]
+name = "probe3"
+version = "0.1.0"
+edition = "2021"
+[profile.release]
+debug = 1
+
+[dependencies]
+flowmaid = { path = "/home/user/flowmaid" }
+[workspace]

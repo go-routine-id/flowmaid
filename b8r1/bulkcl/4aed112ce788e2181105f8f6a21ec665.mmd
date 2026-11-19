@@ -1,0 +1,12 @@
+classDiagram
+    direction BT
+    class Vehicle {
+        <<abstract>>
+        +String make
+        +drive()*
+    }
+    Vehicle <|-- Car
+    Vehicle <|-- Truck
+    Car *-- Engine : has
+    Truck *-- Engine
+    Car o-- Wheel : 4

@@ -1,0 +1,12 @@
+flowchart BT
+    subgraph G[MMMM WWWW QQQQ]
+        m0[w]
+        m1[auth service]
+    end
+    s0[src0] --> m0
+    s1[src1] --> G
+    s1 --> m0
+    s2[src2] --> m0
+    s2 --> m0
+    s3[src3] --> m0
+    m1 --> z[end]

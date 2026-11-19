@@ -1,0 +1,22 @@
+flowchart LR
+    N0{Fetch parse}
+    N1(Retry archive)
+    N2([Store validate])
+    N3([Notify fetch])
+    N4([Load report])
+    N5([Validate check])
+    N6[Load]
+    N7[Queue]
+    N8([Queue archive])
+    N9([Validate])
+    N0 --> N1
+    N0 --> N2
+    N0 --> N3
+    N3 -->|next| N4
+    N2 --> N5
+    N5 --> N6
+    N6 --> N7
+    N7 --> N8
+    N8 --> N9
+    N2 ==>|retry| N0
+    N9 ==>|rollback| N0

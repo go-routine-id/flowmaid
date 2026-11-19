@@ -1,0 +1,56 @@
+classDiagram
+C0 ..> C15
+C4 -- C17 : alpha
+C3 ..|> C7 : x
+C29 <|-- C23
+C26 "1" ..> "*" C22
+C19 "1" ..|> "*" C7 : beta
+C18 ..|> C14
+C21 "1" <--> "*" C18
+C13 <--> C7
+C13 "1" <--> "*" C21
+C17 ..|> C3 : Long label here
+C11 --> C29
+C10 *-- C14
+C20 *-- C23 : x
+C13 "1" --> "*" C19
+C16 -- C5
+C14 ..|> C20
+C12 o-- C22
+note "delta"
+class C3 {
+  +int id
+  +name() String
+}
+class C5 {
+  +int id
+  +name() String
+}
+class C9 {
+  +int id
+  +name() String
+}
+class C11 {
+  +int id
+  +name() String
+}
+class C17 {
+  +int id
+  +name() String
+}
+class C21 {
+  +int id
+  +name() String
+}
+class C23 {
+  +int id
+  +name() String
+}
+class C26 {
+  +int id
+  +name() String
+}
+class C29 {
+  +int id
+  +name() String
+}

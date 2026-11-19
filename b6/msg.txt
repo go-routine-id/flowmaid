@@ -1,0 +1,57 @@
+feat(layout): long node labels wrap, balanced; diamonds never flatter than 1.6:1 (M7, §2.12, §2.14 #2-#3)
+
+What / why: plain node labels never wrapped, so long-labels was a 672 px
+strip with a 616 x 65 sliver of a diamond (mermaid: 358 px).
+
+- `layout::wrap_label` wraps a label that breaks none of its own lines
+  at the graph's width, at its spaces (never mid-word), into as few
+  lines as fit, evened out (`wrap::balanced`: fewest lines, narrowest
+  widest line, then the most even). A label with `<br/>` (or markdown
+  newlines, or `<b>`/`<i>` markup) keeps its lines: no mermaid towers.
+- Default `layout::WRAP_WIDTH` = 200 (mermaid's documented
+  `flowchart.wrappingWidth`). Mermaid 12.2.0 measured at 120 px of its
+  14 px text (flowmaid's estimate matches its widths within 0.5 px), but
+  at 120 / 150 the dense fixtures' 3-4-word labels wrap and dense-td's
+  layering flips (canvas 4249 -> 6687 px, x_drawn 93 -> 214; totals
+  x_drawn 505 -> 632-634, band_len 41k -> 81-84k). At 200: long-labels
+  672 -> 406 px wide; dense-td / fanout-frames / bench-75 unchanged,
+  dense-lr wraps one node (n32, 204 px) into two lines.
+- `%%{init: {"flowchart": {"wrappingWidth": N}}}%%` and
+  `config.flowchart.wrappingWidth` (frontmatter) set it, flowchart and
+  state alike (`parser::wrapping_width_directive`); `to_mermaid` writes a
+  configured width back. `Graph::wrapping_width` /
+  `set_wrapping_width` (`None` = never; class and ER graphs set it).
+- Layout only: `Node::label` and `to_mermaid` keep the source text;
+  `SceneNode::label` carries the drawn lines (hosts paint it) and the
+  node is sized for them via `layout::node_sizes` in scene / route /
+  route_partial / fold. `intrinsic_size` / `intrinsic_size_with` size at
+  the default width (an embedder's measure wraps by its own font);
+  new `intrinsic_size_wrapped` for a graph's width.
+- Markdown node labels wrap the same way at the same width (was a fixed
+  175 px greedy). The wrappers share `src/wrap.rs` (markdown, node labels
+  and journey/timeline's `wrap_text`, which stays greedy).
+- Diamonds: height >= width / 1.6 (`layout::DIAMOND_ASPECT_MAX`), and a
+  wrapping question takes a line more while that keeps the rhombus in
+  the cap at its text's height (long-labels: 4 even lines, 220 x 151).
+  `A{ok?}` stays 80 x 65; branch points keep their square.
+- Edge labels stay one line (see summary: mermaid wraps them at 200 px,
+  but flowmaid's chips are single-line through the label stage).
+
+Measured (corpus, vs the M6 commit): long-labels 672 x 429 -> 406 x 566;
+fanout's and shapes' diamonds 1.6:1 (fanout 17 px taller); dense-lr
+static hug_len -41 px, routed x_drawn 57 -> 53, min_edge_gap 9.63 ->
+9.53; every other file identical.
+
+Gates: GAP_FLOORS dense-lr static 9.6 -> 9.5 (the wrapped n32, above).
+Tests changed for intended output: markdown wrapping_is_balanced_and_
+never_splits_words (was ..._greedy_..., now at an explicit width),
+layout unlabelled_diamond_is_a_compact_choice (the cap), scene
+a_title_overflowing_its_frame_onto_the_canvas_stays_whole
+(wrappingWidth 2000 keeps its wide node on one line). New: plain_labels_wrap_balanced_and_only_in_the_layout,
+wrapping_width_is_read_from_the_source, diamonds_are_never_flatter_than_
+the_aspect_cap, long_labels_wrap_and_dense_labels_do_not_tower, wrap::
+tests. No snapshot changed.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5
+

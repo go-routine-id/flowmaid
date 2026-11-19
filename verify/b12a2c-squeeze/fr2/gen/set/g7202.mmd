@@ -1,0 +1,24 @@
+flowchart TD
+  n1["report"]
+  subgraph B0["Fulfilment desk"]
+    n2["notify"]
+    n3["index<br/>auth"]
+    n4["index"]
+  end
+  subgraph B1["Data tier"]
+    n5["billing"]
+    n6["index<br/>billing"]
+  end
+  n7["api queue pack"]
+  n8["worker"]
+  n2 --> n6
+  n2 -.->|ship| n1
+  n8 -->|mail| n3
+  n5 -->|ingest| n2
+  n6 -->|notify| n3
+  n6 --> n7
+  n8 -.->|parse| n2
+  n6 --> n5
+  n6 --> n2
+  n8 ==> B0
+  n1 --> n6

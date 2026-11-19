@@ -1,0 +1,41 @@
+flowchart BT
+  n1["db"]
+  n2["index"]
+  subgraph B0["Analytics"]
+    n3["audit<br/>api"]
+    n4["audit"]
+  end
+  subgraph B1["Back office and finance"]
+    n5["ingest"]
+    subgraph B1s0["Analytics 0"]
+      n6["split billing ingest"]
+    end
+  end
+  subgraph B2["Analytics"]
+    n7["db split split"]
+    n8["parse<br/>store"]
+    n9["split"]
+    n10["cache split billing<br/>mail"]
+  end
+  subgraph B3["Fulfilment desk"]
+    n11["parse"]
+  end
+  n12["report"]
+  n13["notify"]
+  n6 -.-> B3
+  n11 ==> n8
+  n1 -->|index| n2
+  n6 ==>|ingest| n13
+  n12 -->|index| n10
+  n11 ==> n3
+  n12 -->|pack| n13
+  n5 --> n13
+  n3 --> n11
+  n10 --> n13
+  n2 -.->|parse| n9
+  n3 -->|pack| n4
+  n7 --> n1
+  n13 --> n5
+  n8 ==> n2
+  n6 --> n8
+  n2 ==> n6

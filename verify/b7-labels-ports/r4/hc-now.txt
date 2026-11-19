@@ -1,0 +1,18 @@
+stress.mmd: route A->B 'parallel' clear 2.2
+stress.mmd: route A->B 'parallel' clear 2.2
+a11_nested_composite_notes.mmd.mmd: static c->I2 'retry' clear 2.3
+g0.mmd: static K0->B0 'g2' clear 2.0
+g106.mmd: static K0->B1 'g4' clear 1.8 | route K0NN_c->K0NN_0 'b' clear 1.9
+g112.mmd: static K1N->K1_2 'up' clear 2.0
+g130.mmd: static K1_c->K1_0 'a' clear 0.0
+g156.mmd: route B1->K0 'back' clear 0.0
+g17.mmd: static B0->K0 'back' clear 2.2
+g171.mmd: route B1->B0 'back' clear 2.2
+g172.mmd: static K1N->K1_0 'up' clear 2.0
+g39.mmd: static K0N->K0_0 'up' clear 2.0
+g54.mmd: static K0N_c->K0N_1 'a' clear 2.9
+g73.mmd: static K1->A 'back' clear 1.8
+g80.mmd: static K1->K0 'back' clear 0.0
+g9.mmd: static K0->B1 'g3' clear 2.6
+v4-td-styled.mmd: route B->C 'thick' clear 2.3
+TOTAL files 284 static 12 route 6

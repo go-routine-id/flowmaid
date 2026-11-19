@@ -1,0 +1,22 @@
+flowchart LR
+  n1["ingest"]
+  n2["parse<br/>index"]
+  n3["audit"]
+  subgraph B0["Platform"]
+    n4["mail"]
+  end
+  subgraph B1["Data tier"]
+    n5["parse"]
+    n6["index"]
+  end
+  n7["split report index"]
+  n8["audit"]
+  n8 --> n5
+  n1 -.-> n7
+  n4 ==> n7
+  n1 --> n6
+  n7 -->|ship| n4
+  n5 -->|audit| n2
+  n4 --> n5
+  n6 -->|pack| n4
+  n5 -.-> n1

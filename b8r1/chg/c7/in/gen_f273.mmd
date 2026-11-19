@@ -1,0 +1,60 @@
+flowchart LR
+  n0["do ullamco<br/>amet elit dolor<br/>aliqua dolor"]
+  subgraph g0["do amet ut tempor ullamco consectetur"]
+    direction LR
+    n1(["lorem do amet<br/>ut dolor"])
+    n2("amet tempor ipsum laboris<br/>elit veniam tempor labore")
+    n3("dolor ullamco")
+    n1 --> n2
+  end
+  subgraph g1["labore do ipsum do ut elit amet"]
+    direction TB
+    n4["incididunt do<br/>eiusmod eiusmod<br/>veniam"]
+    n5["consectetur nostrud aliqua<br/>laboris do lorem"]
+    n6(["labore lorem sed lorem<br/>labore tempor consectetur<br/>eiusmod laboris sit"])
+    n7["nostrud"]
+    n8["adipiscing"]
+    n9[("do aliqua ut incididunt")]
+  end
+  subgraph g2["aliqua lorem"]
+    direction TB
+    n10["veniam"]
+  end
+  subgraph g3["sit labore"]
+    n11[("dolor ullamco tempor<br/>do sit sed nostrud<br/>do eiusmod ut")]
+    n12(["ut ullamco"])
+    n13[("sit incididunt incididunt")]
+  end
+  subgraph g4["incididunt dolor"]
+    direction TB
+    n14["do laboris<br/>ut<br/>lorem tempor ullamco"]
+    n15("labore magna<br/>dolor incididunt aliqua tempor<br/>lorem")
+    n16(["do<br/>laboris nostrud lorem elit"])
+    n17(["ut consectetur<br/>nostrud lorem"])
+    n18("ut eiusmod<br/>elit aliqua<br/>consectetur sed")
+    n19(["ut labore eiusmod lorem<br/>dolor magna"])
+    n14 --> n15
+  end
+  subgraph g5["ut labore ipsum tempor nostrud aliqua do sit"]
+    n20(["tempor veniam<br/>labore labore<br/>incididunt lorem eiusmod ipsum"])
+    n21["ullamco incididunt dolor do<br/>incididunt eiusmod eiusmod<br/>tempor nostrud tempor veniam"]
+    n22("amet veniam<br/>dolor<br/>incididunt ullamco veniam")
+    n23["magna tempor ullamco"]
+    n24["amet magna labore<br/>eiusmod ut lorem incididunt<br/>incididunt"]
+  end
+  subgraph g6["dolor"]
+    direction TB
+    n25("tempor")
+    n26[("laboris laboris laboris<br/>aliqua ut incididunt<br/>sit eiusmod labore")]
+    n27(["laboris ut aliqua"])
+  end
+  n28(["ullamco labore ullamco lorem<br/>do"])
+  n0 --> g0
+  n0 ==> n5
+  n0 --> g2
+  n0 -.-> g3
+  n0 --> g4
+  n0 --> g5
+  n0 --> n26
+  n0 --> n28
+  n25 --> n3

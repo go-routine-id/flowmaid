@@ -1,0 +1,18 @@
+architecture-beta
+    group g0(monitoring)[Observability]
+    group g1(cloud)[Telemetry and Logging Platform]
+    service s0(nonsense)[Web App 0] in g1
+    service s1(database)[Authentication and Authorization Service 1] in g0
+    service s2(disk)[PostgreSQL Primary 2]
+    service s3(nonsense)[Web App 3] in g1
+    service s4(cloud)[PostgreSQL Primary 4]
+    service s5(cloud)[Svc 5] in g0
+    service s6(internet)[Svc 6] in g1
+    junction s7 in g1
+    junction s8 in g0
+    s7:R <-[replicates to standby]-> L:s3
+    s3:R <--> R:s7
+    s5:T -[sync]-> T:s3
+    s1:L --> R:s4
+    s3:L <-[replicates to standby]-> R:s4
+    s7:B -[x]- T:s8

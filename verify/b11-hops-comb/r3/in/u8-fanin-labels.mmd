@@ -1,0 +1,13 @@
+flowchart TD
+  a[Ingest A] -->|raw| m[Merge]
+  b[Ingest B] -->|clean| m
+  c[Ingest C] -->|late| m
+  d[Ingest D] -.->|dup| m
+  e[Ingest E] ==>|bulk| m
+  m -->|ok| o1[Out 1]
+  m -->|warn| o2[Out 2]
+  m -->|fail| o3[Out 3]
+  m -->|skip| o4[Out 4]
+  a --> o4
+  e --> o1
+  c -.-> o2

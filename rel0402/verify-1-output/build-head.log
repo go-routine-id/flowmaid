@@ -1,0 +1,6 @@
+   Compiling flowmaid v0.40.1 (/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0402/verify-1-output/head)
+    Finished `release` profile [optimized] target(s) in 1m 28s
+
+real	1m28.850s
+user	2m33.170s
+sys	0m2.166s

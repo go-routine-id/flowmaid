@@ -1,0 +1,47 @@
+flowchart RL
+  n1["db"]
+  n2["mail queue mail"]
+  subgraph B0["Analytics"]
+    n3["ingest audit split"]
+    n4["merge<br/>ingest"]
+    n5["report"]
+    n6["split"]
+  end
+  subgraph B1["Back office and finance"]
+    n7["search"]
+    n8["index"]
+    subgraph B1s0["Ingest 0"]
+      n9["index"]
+      n10["index"]
+    end
+  end
+  subgraph B2["Ops"]
+    n11["split"]
+    n12["split audit db<br/>parse"]
+    n13["billing split worker"]
+  end
+  subgraph B3["Back office and finance"]
+    n14["worker"]
+    n15["db"]
+    n16["mail"]
+    n17["cache notify ingest<br/>pack"]
+  end
+  n18["search queue search"]
+  n15 -.-> n1
+  n2 ==> n1
+  n15 -->|pack| n2
+  n9 --> n1
+  n2 -.-> n16
+  n8 --> n17
+  n1 ==> n3
+  n7 -.-> n10
+  n7 --> n18
+  n4 ==> n1
+  n9 -.->|notify| n16
+  n4 ==>|index| n12
+  n9 --> n18
+  n18 --> n1
+  n1 --> n11
+  n13 -.-> n12
+  n2 -.-> n15
+  n7 --> n4

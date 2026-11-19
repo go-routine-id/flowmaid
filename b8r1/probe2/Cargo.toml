@@ -1,0 +1,10 @@
+[package]
+name = "probe2"
+version = "0.1.0"
+edition = "2021"
+[profile.release]
+debug = 1
+
+[dependencies]
+flowmaid = { path = "/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b8r1/pre" }
+[workspace]

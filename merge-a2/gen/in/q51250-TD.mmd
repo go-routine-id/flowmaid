@@ -1,0 +1,23 @@
+flowchart TD
+    subgraph G0[Billing and invoices 0]
+        g0m0[g0m0]
+        g0m1[g0m1]
+    end
+    subgraph G1[Ops 1]
+        g1m0[g1m0]
+        g1m1[g1m1]
+    end
+    subgraph G2[Payments 2]
+        subgraph H2[inner 2]
+            g2m0[g2m0]
+            g2m1[g2m1]
+        end
+        g2m2[g2m2]
+    end
+    g1m0 ==> G1
+    g2m2 --> o1
+    o0 -.-> G2
+    g2m0 -- l6 --> g1m0
+    g1m0 --> G1
+    o0 -.-> g1m1
+    o1 --> g0m1

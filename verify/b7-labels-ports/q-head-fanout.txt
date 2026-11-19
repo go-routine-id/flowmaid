@@ -1,0 +1,28 @@
+   Q routed A->B1 end_kink end on B1 77.4deg
+   Q routed A->B1 tight A->B2 36px
+   Q routed A->B2 end_kink end on B2 63.7deg
+   Q routed A->B4 band A->B5 126px
+   Q routed A->B4 end_kink end on B4 63.7deg
+   Q routed A->B4 tight A->B5 66px
+   Q routed A->B5 end_kink end on B5 77.4deg
+   Q routed B1->C end_kink end on C 77.4deg
+   Q routed B1->C tight B2->C 34px
+   Q routed B2->C end_kink end on C 63.7deg
+   Q routed B4->C band B5->C 112px
+   Q routed B4->C end_kink end on C 63.7deg
+   Q routed B4->C tight B5->C 64px
+   Q routed B5->C end_kink end on C 77.4deg
+   Q static A->B1 end_kink end on B1 74.5deg
+   Q static A->B1 tight A->B2 46px
+   Q static A->B2 end_kink end on B2 59.3deg
+   Q static A->B4 band A->B5 112px
+   Q static A->B4 end_kink end on B4 59.3deg
+   Q static A->B4 tight A->B5 76px
+   Q static A->B5 end_kink end on B5 74.5deg
+   Q static B1->C end_kink end on C 74.4deg
+   Q static B1->C tight B2->C 46px
+   Q static B2->C end_kink end on C 59.2deg
+   Q static B4->C band B5->C 110px
+   Q static B4->C end_kink end on C 59.2deg
+   Q static B4->C tight B5->C 72px
+   Q static B5->C end_kink end on C 74.4deg

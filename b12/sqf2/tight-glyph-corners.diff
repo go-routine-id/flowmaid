@@ -1,0 +1,162 @@
+diff --git a/src/blockcheck.rs b/src/blockcheck.rs
+index 5da1bce..b8bf48c 100644
+--- a/src/blockcheck.rs
++++ b/src/blockcheck.rs
+@@ -3243,6 +3243,24 @@ fn a_waypoint_runs_last_leg_meets_its_head_square() {
+     }
+ }
+ 
++#[test]
++fn a_heads_base_lies_on_its_run_after_a_short_stub() {
++    // bench-75 as blocks (LR): a router reroute brought `svc1 --> logs`
++    // into `logs`' flank with a 12.5 px stub, and the corner's rounding
++    // took half of it: the head's base lay on the curve, 52 deg off the
++    // run (the static `DEFECT_BASELINE`'s `end_kink` 1, its one kink).
++    // The corner before a glyph now turns tight enough for the head.
++    let src = std::fs::read_to_string(concat!(
++        env!("CARGO_MANIFEST_DIR"),
++        "/tests/fixtures/quality/bench-75.mmd"
++    ))
++    .unwrap();
++    let rep = crate::levels::with_blocks(true, || crate::quality::measure_source(&src, false))
++        .expect("a flowchart");
++    assert!(rep.block_mode);
++    assert_eq!(rep.statik.end_kink, 0, "{:?}", rep.statik.details);
++}
++
+ #[test]
+ fn route_lays_a_run_on_its_ports_line_as_the_scene_does() {
+     // The public fixture drawn LR / RL as blocks: `route()` at the
+diff --git a/src/edgepass.rs b/src/edgepass.rs
+index 207127b..f75dced 100644
+--- a/src/edgepass.rs
++++ b/src/edgepass.rs
+@@ -473,6 +473,12 @@ fn stages(g: &Graph, sc: &mut Scene, mut cx: Ctx, mode: Mode) {
+     for (i, e) in sc.edges.iter_mut().enumerate() {
+         if cx.drawn.get(i).copied().unwrap_or(false) && !cx.fixed.get(i).copied().unwrap_or(false) {
+             crate::ports::reround(e);
++            // In a block layout's static scene a corner whose rounding
++            // reaches under an end glyph turns tighter, so the glyph sits
++            // on its run (`tight_glyph_corners`).
++            if cx.blocks {
++                tight_glyph_corners(e);
++            }
+         }
+     }
+     let budget = match mode {
+@@ -783,6 +789,66 @@ fn snap_ends(sc: &mut Scene, cx: &Ctx) {
+     }
+ }
+ 
++/// Room (px) past an end glyph's length ([`crate::scene::edge_head_len`])
++/// that [`tight_glyph_corners`] keeps straight before the glyph: its
++/// base then lies on the run, not on the corner's rounding.
++const GLYPH_RUN_SPARE: f64 = 1.0;
++
++/// In a block layout's static scene, the corner before an end glyph of
++/// a waypoint path turns no wider than leaves the glyph's length (and
++/// [`GLYPH_RUN_SPARE`]) of straight run before the end: a short final
++/// run (a router reroute's 12.5 px stub into a flank: bench-75 drawn LR
++/// as blocks, `svc1 --> logs`) took a rounding of half its length, which
++/// put the head's base on the curve and painted the head 52 deg off the
++/// run (the static `DEFECT_BASELINE`'s `end_kink`). The corner keeps its
++/// place; only its rounding points move in, the one before it as far as
++/// the one after when they stood alike. Only a path in the corner form
++/// ([`crate::ports::reround`]'s: end, rounding point, corner) and a run on
++/// an axis. Not in `route()`: there the tighter corner of bench-75's
++/// reroutes came onto another edge's corner (`overlap_pairs` +1 drawn
++/// LR and RL), where the static scene has none.
++fn tight_glyph_corners(e: &mut crate::scene::SceneEdge) {
++    let n = e.waypoints.len();
++    if e.paint_width.is_some() || n < 4 {
++        return;
++    }
++    let run_len = crate::scene::edge_head_len(e) + GLYPH_RUN_SPARE;
++    for (at_start, glyph) in [
++        (false, e.ends.end_marker(e.kind).is_some()),
++        (true, e.ends.start_marker(e.kind).is_some()),
++    ] {
++        if !glyph {
++            continue;
++        }
++        let idx = |k: usize| if at_start { k } else { n - 1 - k };
++        let w = &mut e.waypoints;
++        let (p, b, c, a) = (w[idx(0)], w[idx(1)], w[idx(2)], w[idx(3)]);
++        // End, rounding point and corner on one axis-aligned line, the
++        // point before the corner off it, across.
++        let on_x = (b.1 - p.1).abs() < 1e-6 && (c.1 - p.1).abs() < 1e-6;
++        let on_y = (b.0 - p.0).abs() < 1e-6 && (c.0 - p.0).abs() < 1e-6;
++        let off = if on_x {
++            (a.1 - c.1).abs() > 1e-6 && (a.0 - c.0).abs() < 1e-6
++        } else {
++            on_y && (a.0 - c.0).abs() > 1e-6 && (a.1 - c.1).abs() < 1e-6
++        };
++        if !(on_x || on_y) || !off {
++            continue;
++        }
++        let d = |u: Pt, v: Pt| (u.0 - v.0).hypot(u.1 - v.1);
++        let (run, after, before) = (d(c, p), d(c, b), d(c, a));
++        if run - after >= run_len || run <= run_len || after >= run || before <= 1e-6 {
++            continue;
++        }
++        let r = run - run_len;
++        let toward = |to: Pt, l: f64| (c.0 + (to.0 - c.0) / l * r, c.1 + (to.1 - c.1) / l * r);
++        w[idx(1)] = toward(b, after);
++        if (before - after).abs() <= 1e-6 {
++            w[idx(3)] = toward(a, before);
++        }
++    }
++}
++
+ /// How far (px) across its final run [`level_end_run`] carries that run
+ /// with a snapped end: a drum shoulder's nearest point lies a fraction
+ /// of a px off a run that meets the flank just below the lid.
+@@ -1342,6 +1408,48 @@ mod tests {
+         assert_eq!(w, slant);
+     }
+ 
++    #[test]
++    fn a_short_run_into_a_head_turns_a_tight_corner() {
++        // bench-75 drawn LR as blocks: `svc1 --> logs` comes along y =
++        // 615 and turns up into `logs`' bottom with a 12.5 px stub; the
++        // corner's rounding took half of it, so the head's base lay on
++        // the curve. The rounding points move in to leave the head's
++        // length (and the spare) straight; the corner stays.
++        let g = parse("flowchart TD\n    a --> b\n").unwrap();
++        let mut e = scene(&g).edges[0].clone();
++        e.waypoints = vec![
++            (1531.6, 615.0),
++            (1828.6, 615.0),
++            (1834.85, 615.0),
++            (1834.85, 608.75),
++            (1834.85, 602.5),
++        ];
++        tight_glyph_corners(&mut e);
++        let keep = crate::scene::edge_head_len(&e) + GLYPH_RUN_SPARE;
++        let w = &e.waypoints;
++        assert_eq!(w[2], (1834.85, 615.0), "{w:?}");
++        assert!((w[4].1 - w[3].1).abs() >= keep - 1e-9, "{w:?}");
++        assert!(((615.0 - w[3].1) - (w[2].0 - w[1].0)).abs() < 1e-9, "{w:?}");
++        // A run long enough for its head, or a start without a glyph,
++        // keeps its rounding.
++        let mut long = e.clone();
++        long.waypoints = vec![
++            (0.0, 0.0),
++            (40.0, 0.0),
++            (52.0, 0.0),
++            (52.0, 12.0),
++            (52.0, 60.0),
++        ];
++        let before = long.waypoints.clone();
++        tight_glyph_corners(&mut long);
++        assert_eq!(long.waypoints, before);
++        let mut start = e.clone();
++        start.waypoints.reverse();
++        let before = start.waypoints.clone();
++        tight_glyph_corners(&mut start);
++        assert_eq!(start.waypoints, before, "a plain start keeps its corner");
++    }
++
+     /// `finish` again on a finished scene changes nothing.
+     fn assert_idempotent(src: &str) {
+         let g = parse(src).unwrap();

@@ -1,0 +1,11 @@
+architecture-beta
+    group net(internet)[Network]
+    service lb(server)[Load Balancer] in net
+    junction j1 in net
+    service w1(server)[Worker 1]
+    service w2(server)[Worker 2]
+    service w3(server)[Worker 3]
+    lb:B -[fan out]- T:j1
+    j1:L -[left]-> R:w1
+    j1:B -[down]-> T:w2
+    j1:R -[right]-> L:w3

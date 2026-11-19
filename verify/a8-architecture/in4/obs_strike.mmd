@@ -1,0 +1,7 @@
+architecture-beta
+    service user(user)[Engineer]
+    group obs(server)[Observability]
+    service prom(monitoring)[Prometheus] in obs
+    service graf(chart)[Grafana] in obs
+    user:B --> T:prom
+    prom:R -- L:graf

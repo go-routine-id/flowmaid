@@ -1,0 +1,15 @@
+flowchart TD
+  s[Start] --> p1
+  t[Trigger] -->|kick off| i1
+  subgraph P [Platform]
+    p1["Platform<br/>bootstrap<br/>step"] --> p2[Configure]
+  end
+  subgraph O [Outer]
+    subgraph I [Inner stage]
+      i1[i one] -->|next| i2[i two]
+    end
+    i2 --> o3[o three]
+    o3 --> o4[o four]
+  end
+  p2 -->|ready| fin[Finish]
+  o4 -->|outer done| fin

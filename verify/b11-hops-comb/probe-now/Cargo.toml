@@ -1,0 +1,32 @@
+[package]
+name = "probe"
+version = "0.1.0"
+edition = "2021"
+[dependencies]
+flowmaid = { path = "/home/user/flowmaid" }
+[profile.release]
+debug = false
+[[bin]]
+name = "rp"
+path = "../probe-src/bin/rp.rs"
+[[bin]]
+name = "contract"
+path = "../probe-src/bin/contract.rs"
+[[bin]]
+name = "dbg"
+path = "../probe-src/bin/dbg.rs"
+[[bin]]
+name = "grid"
+path = "../probe-src/bin/grid.rs"
+[[bin]]
+name = "part"
+path = "../probe-src/bin/part.rs"
+[[bin]]
+name = "ends"
+path = "../probe-src/bin/ends.rs"
+[[bin]]
+name = "tie"
+path = "../probe-src/bin/tie.rs"
+[[bin]]
+name = "fuzz"
+path = "../probe-src/bin/fuzz.rs"

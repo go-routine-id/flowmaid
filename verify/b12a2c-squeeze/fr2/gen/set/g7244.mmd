@@ -1,0 +1,64 @@
+flowchart RL
+  n1["auth split ingest"]
+  n2["index"]
+  n3["pack"]
+  subgraph B0["Back office and finance"]
+    n4["split"]
+    n5["search"]
+    n6["split"]
+  end
+  subgraph B1["Back office and finance"]
+    n7["queue"]
+    n8["ship"]
+    n9["ingest ship auth"]
+    n10["ship mail search"]
+    subgraph B1s0["Fulfilment desk 0"]
+      n11["billing"]
+      n12["index"]
+      n13["billing"]
+    end
+    subgraph B1s1["Data tier 1"]
+      n14["api<br/>api"]
+    end
+  end
+  subgraph B2["Platform"]
+    n15["store"]
+    n16["worker<br/>ingest"]
+    subgraph B2s0["Fulfilment desk 0"]
+      n17["cache"]
+      n18["queue"]
+      n19["ingest"]
+    end
+    subgraph B2s1["Core 1"]
+      n20["billing"]
+      n21["parse"]
+      n22["db"]
+    end
+  end
+  n23["queue"]
+  n24["ingest store search"]
+  n16 --> n19
+  n23 --> n9
+  n6 -.->|merge| n16
+  n12 -.-> n9
+  n23 -.->|worker| n2
+  n9 -.-> n8
+  n10 --> n21
+  n11 ==> n16
+  n15 ==>|pack| n2
+  n12 --> n2
+  n19 -->|billing| n9
+  n2 ==> n14
+  n13 --> n10
+  n3 -->|ship| n15
+  n18 -.-> n17
+  n21 ==> n6
+  n23 -.-> n21
+  n7 --> n13
+  n11 -->|store| n5
+  n9 ==>|api| n18
+  n10 --> n11
+  n23 -->|merge| n4
+  n5 --> n8
+  n8 -->|ship| n23
+  n16 -->|report| n22

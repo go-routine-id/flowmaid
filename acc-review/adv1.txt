@@ -1,0 +1,19 @@
+config margin 24
+config lane_gap 36
+config node_gap_y 20
+config lane_pad_x 10
+config lane_pad_y 10
+config lane_title_h 30
+config order topology
+config bogus 1
+classDef k fill:#eee
+lane l "L" { a[A]; b[B] }
+lane m "M" {
+ c[C<br/>D]
+}
+class a,b k
+a:right --> c:top
+a -->|x<br/>y| b
+style a:right-->c:top color:#f00,stroke-width:2,dash:4 2,label-fill:#fff
+style c fill:#fff8e1,stroke:#000,stroke-width:2,color:#111
+# comment

@@ -1,0 +1,41 @@
+--- fixed/blockmetrics	2026-11-17 14:16:25.920219013 +0000
++++ fixed2/blockmetrics	2026-11-17 14:16:25.954452513 +0000
+@@ -479,8 +479,25 @@
+     k++;
+     // extend `cur` across a chain of bumps (hops may sit back to back) that
+     // is followed by the line carrying straight on
+-    while (cur.len >= 2 && k < segs.length) {
+-      const ux = (cur.bx - cur.ax) / cur.len, uy = (cur.by - cur.ay) / cur.len;
++    //
++    // A hop painted on the straight tail of a corner's cubic follows a curve
++    // sample of about 1 px, too short to give the line's direction (the live
++    // yardstick then never bridges it: 39 of the start's 587 hops). Take the
++    // direction from the last 2 px of the path before the hop when they lie
++    // within 0.3 px of one chord (design-a2b/bends.md, "hops on cubic tails").
++    let ref = null;
++    if (cur.len < 2) {
++      let L = cur.len, i = out.length - 2, ax = cur.ax, ay = cur.ay;
++      while (i >= 0 && L < 2 && Math.hypot(out[i].bx - ax, out[i].by - ay) < 1e-6) { L += out[i].len; ax = out[i].ax; ay = out[i].ay; i--; }
++      if (L >= 2) {
++        const cl = Math.hypot(cur.bx - ax, cur.by - ay), vx = (cur.bx - ax) / cl, vy = (cur.by - ay) / cl;
++        let ok = true;
++        for (let m = i + 1; m < out.length; m++) if (Math.abs((out[m].bx - ax) * vy - (out[m].by - ay) * vx) > 0.3) ok = false;
++        if (ok) ref = [vx, vy];
++      }
++    }
++    while ((cur.len >= 2 || ref) && k < segs.length) {
++      const ux = cur.len >= 2 ? (cur.bx - cur.ax) / cur.len : ref[0], uy = cur.len >= 2 ? (cur.by - cur.ay) / cur.len : ref[1];
+       let from = k, sx = cur.bx, sy = cur.by, n = 0, end = -1;
+       for (;;) {
+         const j = bumpEnd(cur, ux, uy, from, sx, sy);
+@@ -489,7 +506,9 @@
+         const nx = segs[j + 1];
+         if (nx && nx.len >= 1) {
+           const d = ((nx.bx - nx.ax) * ux + (nx.by - nx.ay) * uy) / nx.len;
+-          const offn = Math.abs((nx.bx - cur.ax) * uy - (nx.by - cur.ay) * ux);
++          // with a borrowed direction (`ref`, a few px of curve) judge where the line carries on from, not
++          // the far end of a long next segment, which a 0.5 deg error puts 0.3 px off after 35 px
++          const offn = ref && cur.len < 2 ? Math.abs((nx.ax - cur.ax) * uy - (nx.ay - cur.ay) * ux) : Math.abs((nx.bx - cur.ax) * uy - (nx.by - cur.ay) * ux);
+           if (d > 0.9995 && offn < 0.3) { end = j + 1; break; }
+         }
+         from = j + 1; sx = segs[j].bx; sy = segs[j].by;

@@ -1,0 +1,24 @@
+flowchart LR
+  n0[Node 0]
+  n1[Node 1]
+  n2[Node 2]
+  n3[Node 3]
+  n4[Node 4]
+  n5[Node 5]
+  n6[Node 6]
+  n7[Node 7]
+  n5 e0@==> n6
+  e0@{ curve: step }
+  n0 e1@--> n6
+  e1@{ curve: linear }
+  n7 e2@--> n1
+  e2@{ curve: step }
+  n3 e3@--> n1
+  e3@{ curve: stepBefore }
+  n3 e4@--> n1
+  e4@{ curve: stepBefore }
+  n4 e5@==> n2
+  e5@{ curve: stepAfter }
+  n5 e6@--> n0
+  e6@{ curve: stepBefore }
+  linkStyle default stroke-width:6px

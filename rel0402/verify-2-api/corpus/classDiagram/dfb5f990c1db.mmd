@@ -1,0 +1,20 @@
+classDiagram
+direction RL
+A o-- B
+B *-- C
+C *-- D
+D *-- E : has many of
+C "1" *-- "*" F : has many of
+C *-- G
+C -- H
+C --> C
+C --> C : c1
+C o-- C
+G o-- G
+G --> G : g1
+E "1" --> "*" E : e0
+class H {
+ +int id
+ +run() void
+ +stop()
+}

@@ -1,0 +1,17 @@
+flowchart TD
+    N0[Done]
+    N1(Archive emit)
+    N2[Retry parse]
+    N3{Report load}
+    N4[Load report]
+    N5(Load load)
+    N6(Emit notify)
+    N0 -->|no| N1
+    N1 --> N2
+    N2 --> N3
+    N1 --> N4
+    N2 -->|next| N5
+    N3 -->|yes| N6
+    N3 --> N6
+    N5 -.-> N1
+    N6 -.->|rollback| N0

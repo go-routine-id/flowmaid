@@ -1,0 +1,23 @@
+sequenceDiagram
+autonumber
+participant P0 as Customer Order
+actor P1 as gamma
+loop Customer Order
+Note left of P1: beta
+alt delta
+else alpha
+P0->P1: alpha
+end
+P0->>P0: self alpha
+P0--xP0: a&b
+end
+activate P1
+P1->>P0: act
+deactivate P1
+activate P0
+P0->>P1: act
+deactivate P0
+P1->>P1: self x
+Note over P0,P1: a&b
+par gamma
+end

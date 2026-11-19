@@ -1,0 +1,28 @@
+---
+config:
+  sequence:
+    scopedFrames: true
+---
+sequenceDiagram
+    participant A as Alice
+    participant B as Bob
+    participant C as Carol
+    participant D as Dave
+    A->>B: hello
+    loop every minute
+        B->>C: ping
+        opt sometimes
+            C->>C: think
+            Note right of C: hmm
+        end
+    end
+    alt ok
+        A->>B: fine
+    else long condition label that is wider than the frame
+        B->>A: nope
+    end
+    par alpha
+        C->>D: x
+    and beta
+        D->>C: y
+    end

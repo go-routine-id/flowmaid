@@ -1,0 +1,33 @@
+flowchart TB
+  H0 ==>|yes| N14
+  H0 -->|ok| N0
+  H0 -.->|gift wrap| N20
+  H0 ==>|a much longer label here| N13
+  H0 ---|ok| N7
+  H0 -.->|a much longer label here| N6
+  H0 ==>|retry| N23
+  H0 -.->|x| N19
+  N16 --> N18
+  N2 --> N10
+  N18 --> N21
+  N24 -->|no| N0
+  N16 --> N18
+  N21 -->|no| N21
+  N3 -->|no| N10
+  N16 -->|a much longer label here| N18
+  N2 --> N20
+  N25 --> N6
+  N22 --> N23
+  N15 -->|ok| N6
+  N13 --> N25
+  N18 -->|retry| N17
+  N22 -->|ok| N8
+  N7 -->|no| N18
+  N15 -->|retry| N5
+  N9 -->|express| N7
+  N0 --> N15
+  N5 --> N7
+  N7 --> N12
+  N20 --> N11
+  N8 -->|yes| N4
+  N13 --> N4

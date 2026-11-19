@@ -1,0 +1,14 @@
+stateDiagram-v2
+    [*] --> Idle
+    Idle : waiting for input
+    Idle --> Validating : submit
+    state Validating {
+        direction LR
+        [*] --> Syntax
+        Syntax --> Semantics : ok
+        Semantics --> [*]
+    }
+    state decide <<choice>>
+    Validating --> decide
+    decide --> Done : valid
+    Done --> [*]

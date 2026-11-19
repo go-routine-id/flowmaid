@@ -1,0 +1,14 @@
+flowchart BT
+    subgraph G[Core]
+        m0[db]
+        m1[x wide member node]
+        m2[db]
+    end
+    s0[src0] --> G
+    s0 --> m1
+    s1[src1] --> m2
+    s1 --> G
+    s2[src2] --> G
+    s2 --> m2
+    s3[src3] --> m0
+    m2 --> z[end]

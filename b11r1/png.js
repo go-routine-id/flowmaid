@@ -1,0 +1,13 @@
+// node png.js out.png scale a.svg [b.svg ...] : side by side
+const { chromium } = require('playwright'); const fs = require('fs');
+(async () => {
+  const [out, scale, ...svgs] = process.argv.slice(2);
+  const b = await chromium.launch(); const p = await b.newPage({ deviceScaleFactor: +scale, viewport: { width: 2400, height: 1200 } });
+  const cells = svgs.map((s, i) => {
+    let t = fs.readFileSync(s, 'utf8');
+    t = t.replace(/id="([^"]+)"/g, `id="c${i}_$1"`).replace(/url\(#([^)]+)\)/g, `url(#c${i}_$1)`).replace(/href="#([^"]+)"/g, `href="#c${i}_$1"`);
+    return `<td style="vertical-align:top;border:1px solid #c00;padding:0"><div style="font:10px sans-serif">${s.split('/').slice(-2).join('/')}</div>${t}</td>`;
+  });
+  await p.setContent(`<html><body style="margin:0;background:#fff"><table id=t cellspacing=4><tr>${cells.join('')}</tr></table></body></html>`);
+  await (await p.$('#t')).screenshot({ path: out }); await b.close();
+})();

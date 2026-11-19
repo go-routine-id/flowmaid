@@ -1,0 +1,63 @@
+flowchart LR
+  subgraph A[Block A title]
+    an0[A 0]
+    an1[A 1]
+    subgraph Ax[Block Ax title]
+      axn0[Ax 0]
+      axn1[Ax 1]
+      subgraph Axx[Block Axx title]
+        axxn0[Axx 0]
+        axxn1[Axx 1]
+        axxn2[Axx 2]
+        axxn3[Axx 3]
+        axxn4[Axx 4]
+      end
+    end
+  end
+  subgraph B[Block B title]
+    bn0[B 0]
+    bn1[B 1]
+  end
+  subgraph C[Block C title]
+    cn0[C 0]
+    cn1[C 1]
+    cn2[C 2]
+    cn3[C 3]
+    cn4[C 4]
+    subgraph Cx[Block Cx title]
+      cxn0[Cx 0]
+      cxn1[Cx 1]
+      cxn2[Cx 2]
+      cxn3[Cx 3]
+    end
+  end
+  f0([free f0])
+  f1([free f1])
+  f2([free f2])
+  f3([free f3])
+  an0 --> an1
+  axn0 --> axn1
+  axxn0 --> axxn1
+  axxn1 --> axxn2
+  cn1 --> cn2
+  cn2 --> cn3
+  cn3 --> cn4
+  cxn0 --> cxn1
+  cxn1 --> cxn2
+  cxn0 --> cxn3
+  cxn0 --> cn2
+  axn1 -.-> f1
+  an1 ==> Axx
+  an1 --> cn0
+  cn0 -->|no| bn0
+  C ==>|yes| an1
+  B --> axn0
+  cn4 ==> Cx
+  C --> f1
+  C --> Axx
+  cn4 --> cxn1
+  cxn0 ==>|yes| f0
+  cn3 --> A
+  axn1 -.->|retry| axxn4
+  Axx ==> f1
+  cn4 --> f3

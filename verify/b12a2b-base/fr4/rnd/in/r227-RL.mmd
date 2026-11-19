@@ -1,0 +1,14 @@
+flowchart RL
+    subgraph G[Order processing]
+        m0[w]
+        m1[w]
+        m0 --> m1
+    end
+    s0[src0] --> G
+    s0 --> G
+    s1[src1] --> G
+    s1 --> m1
+    s2[src2] --> G
+    s2 --> m0
+    s3[src3] --> G
+    s3 --> G

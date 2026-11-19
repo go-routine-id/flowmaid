@@ -1,0 +1,11 @@
+flowchart LR
+  A[Alpha] e1@-->|linear label here| B[Beta]
+  B e2@--o|circle end linear| C[Gamma]
+  C e3@<-->|both linear| D[Delta]
+  D -->|stepped long label text| E[Epsilon]
+  E e4@-.->|dotted linear| F[Zeta]
+  e1@{ curve: linear }
+  e2@{ curve: linear }
+  e3@{ curve: linear }
+  e4@{ curve: linear }
+  linkStyle 3 interpolate step

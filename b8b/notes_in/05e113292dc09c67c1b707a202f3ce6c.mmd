@@ -1,0 +1,11 @@
+stateDiagram-v2
+direction LR
+state forked <<fork>>
+state joined <<join>>
+[*] --> forked
+forked --> A
+forked --> B
+A --> joined
+B --> joined
+joined --> Done
+note right of forked : starts both

@@ -1,0 +1,42 @@
+block-mode inputs compared: 1077
+routed  defects  off 1116  prev-round 667  now 662
+routed  efp      off 548  prev-round 229  now 229
+routed  fan_x    off 397  prev-round 853  now 857
+routed  hard     off 494  prev-round 322  now 322
+routed  ovl      off 173  prev-round 236  now 231
+routed  x_drawn  off 5328  prev-round 4299  now 4302
+static  defects  off 1156  prev-round 370  now 346
+static  efp      off 535  prev-round 26  now 10
+static  fan_x    off 264  prev-round 457  now 458
+static  hard     off 568  prev-round 306  now 294
+static  ovl      off 140  prev-round 148  now 146
+static  x_drawn  off 4821  prev-round 3162  now 3169
+static fan_x worse than off on 78 better on 74
+static hard zeros added vs off on 63 inputs; kinds: {'wiggles': 2, 'shared_ports': 57, 'arrow_on_start': 41, 'own_frame_x': 2, 'edge_node_x': 4, 'frame_side': 2}
+of which with a kind other than shared ports / arrows on starts: 10
+   ('37eff8ba473fe055d44310729ef8bfb6', 0, 1, ['wiggles'])
+   ('ef19d4879d1414af5aec3f631e1ea76a', 0, 1, ['wiggles'])
+   ('0b968b60eebe180e40ebd4ccd7e74348', 0, 7, ['shared_ports', 'arrow_on_start', 'own_frame_x'])
+   ('1ba0374b9d6b3d49403c9da1fe754895', 1, 4, ['edge_node_x', 'shared_ports', 'arrow_on_start'])
+   ('26f9193712466af2eda6d571b16e3cdd', 1, 3, ['edge_node_x', 'shared_ports', 'arrow_on_start'])
+   ('28366b29ef23d8aa93446f894ec4b14c', 0, 1, ['edge_node_x'])
+   ('9e95ec04a2c71d40878e6dbbc63be785', 0, 1, ['own_frame_x'])
+   ('affa30369928c2fe493254c8a60f2034', 0, 1, ['frame_side'])
+   ('b91e41d7c47e2fec34176fa08e3a3616', 1, 3, ['shared_ports', 'arrow_on_start', 'frame_side'])
+   ('ce5ce689d3e7dc467271a444e0acf8ad', 0, 1, ['edge_node_x'])
+fan_x changed vs prev round on 9 up 6 (+6) down 3 (-5)
+   up ('fan_x', '1243c9e1fdb08d0ab90f28ea77deab34', 1.0, 0.0, 1.0)
+   up ('fan_x', '97e64015fd14498fafc1771fe2e0cc35', 0.0, 0.0, 1.0)
+   up ('fan_x', '1452324cd04d6c62f08635b9aebe3120', 1.0, 0.0, 1.0)
+   up ('fan_x', '3b99a43ad2816ec89e7a099058f583b2', 0.0, 1.0, 2.0)
+   up ('fan_x', '5a10594f237d4c76ced799448a2f5344', 1.0, 0.0, 1.0)
+   up ('fan_x', 'fa437d83b650f6133af34e703adb57a5', 0.0, 1.0, 2.0)
+x_drawn changed vs prev round on 12 up 8 (+11) down 4 (-4)
+   up ('x_drawn', '4d55b1704c3818a5eee563193dce2dd5', 13.0, 2.0, 5.0)
+   up ('x_drawn', '5a10594f237d4c76ced799448a2f5344', 2.0, 4.0, 6.0)
+   up ('x_drawn', '97e64015fd14498fafc1771fe2e0cc35', 9.0, 1.0, 2.0)
+   up ('x_drawn', '0b03ae2674f1b7591cc60ad306dff283', 1.0, 3.0, 4.0)
+   up ('x_drawn', '1452324cd04d6c62f08635b9aebe3120', 21.0, 3.0, 4.0)
+   up ('x_drawn', '3528a451820b5c9cf02e5a17de12e4a9', 5.0, 4.0, 5.0)
+   up ('x_drawn', '3b99a43ad2816ec89e7a099058f583b2', 0.0, 5.0, 6.0)
+   up ('x_drawn', 'fa437d83b650f6133af34e703adb57a5', 0.0, 1.0, 2.0)

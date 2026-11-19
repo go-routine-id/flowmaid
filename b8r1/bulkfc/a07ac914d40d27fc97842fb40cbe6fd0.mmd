@@ -1,0 +1,12 @@
+flowchart TD
+  S([Start the checkout process for the customer]) --> Q1{Cart empty?}
+  Q1 -->|yes| E[Show an empty cart message and suggest popular products]
+  Q1 -->|no| Q2{Is the shipping address inside a supported delivery region?}
+  Q2 -->|no| R[Ask for another address]
+  Q2 -->|yes| Q3{a much longer question}
+  Q3 --> Q4{OK?}
+  Q4 -->|retry| Q2
+  Q4 --> C((Done with a long circle label))
+  Q3 --> D{Supercalifragilisticexpialidocious}
+  D --> F{Antidisestablishmentarianism and more}
+  F --> C

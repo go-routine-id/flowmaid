@@ -1,0 +1,74 @@
+== fmt
+== clippy
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 20.70s
+== test
+FAILED: cargo test --all-targets
+test style::tests::theme_names_read_back_and_unknown_ones_are_none ... ok
+test style::tests::theme_variables_recolour_the_shared_roles ... ok
+test style::tests::themed_palettes_paint_nodes_alike ... ok
+test style::tests::wide_accent_cycle_is_distinct_and_extends_accent ... ok
+test timeline::tests::acc_statements_reach_the_svg ... ok
+test timeline::tests::axis_is_visible_and_task_lines_stay_pale ... ok
+test timeline::tests::breaks_are_folded_and_entities_stay_literal ... ok
+test timeline::tests::colon_without_whitespace_is_literal ... ok
+test timeline::tests::continuation_line_extends_previous_period ... ok
+test timeline::tests::indented_header_keeps_direction ... ok
+test timeline::tests::long_events_and_periods_wrap ... ok
+test timeline::tests::long_titles_fit_and_center_the_content ... ok
+test timeline::tests::parses_period_and_events_inline ... ok
+test timeline::tests::periods_are_bold_and_events_regular ... ok
+test timeline::tests::periods_before_the_first_section_are_kept_with_neutral_ticks ... ok
+test timeline::tests::scene_fits_everything_inside_the_canvas ... ok
+test timeline::tests::section_labels_read_on_every_accent ... ok
+test timeline::tests::sectionless_timeline_has_no_header_band ... ok
+test timeline::tests::task_lines_never_cross_event_text ... ok
+test timeline::tests::tick_is_painted_over_its_task_line ... ok
+test timeline::tests::title_keeps_a_gap_above_the_first_band ... ok
+test timeline::tests::title_section_and_direction_are_parsed ... ok
+test timeline::tests::to_svg_draws_sections_periods_and_events ... ok
+test timeline::tests::wide_section_names_fit_their_band ... ok
+test wrap::tests::balanced_keeps_the_line_count_and_evens_the_lines ... ok
+test wrap::tests::greedy_fills_lines_and_keeps_long_words_whole ... ok
+test wrap::tests::into_lines_agrees_with_the_full_search ... ok
+test scene::tests::colliding_label_placement_stays_near_linear ... FAILED
+test scene::tests::routing_stays_finite_for_any_node_sizes_and_coincident_centres ... ok
+test scene::tests::glyph_fan_in_never_panics_when_ports_fill_the_side has been running for over 60 seconds
+test scene::tests::glyph_fan_in_never_panics_when_ports_fill_the_side ... ok
+
+failures:
+
+---- scene::tests::colliding_label_placement_stays_near_linear stdout ----
+
+thread 'scene::tests::colliding_label_placement_stays_near_linear' (24573) panicked at src/scene.rs:12013:9:
+label placement took 23.737007389s
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: flowmaid::scene::tests::colliding_label_placement_stays_near_linear
+             at ./src/scene.rs:12013:9
+   3: flowmaid::scene::tests::colliding_label_placement_stays_near_linear::{closure#0}
+             at ./src/scene.rs:12000:53
+   4: <flowmaid::scene::tests::colliding_label_placement_stays_near_linear::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+   5: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+
+failures:
+    scene::tests::colliding_label_placement_stays_near_linear
+
+test result: FAILED. 985 passed; 1 failed; 5 ignored; 0 measured; 0 filtered out; finished in 137.21s
+
+error: test failed, to rerun pass `--lib`
+== doctest
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.56s
+== msrv
+    Finished dev [unoptimized + debuginfo] target(s) in 15.48s
+== wasm
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 7.28s
+== rustdoc
+GUARD: FAILURES
+exit=1

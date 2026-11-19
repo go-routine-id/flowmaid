@@ -1,0 +1,133 @@
+{
+ "tool": "hand-written",
+ "kind": "flowchart",
+ "direction": "LR",
+ "nodes": [
+  {
+   "id": "K1",
+   "label": "K1",
+   "shape": "Rect",
+   "sub": 3
+  },
+  {
+   "id": "P1",
+   "label": "P1",
+   "shape": "Rect",
+   "sub": 0
+  },
+  {
+   "id": "Q1",
+   "label": "Q1",
+   "shape": "Rect",
+   "sub": 1
+  },
+  {
+   "id": "R1",
+   "label": "R1",
+   "shape": "Rect",
+   "sub": 2
+  },
+  {
+   "id": "S",
+   "label": "S",
+   "shape": "Rect",
+   "sub": null
+  },
+  {
+   "id": "U",
+   "label": "U",
+   "shape": "Rect",
+   "sub": null
+  },
+  {
+   "id": "V",
+   "label": "V",
+   "shape": "Rect",
+   "sub": null
+  }
+ ],
+ "subgraphs": [
+  {
+   "id": "P",
+   "title": "P",
+   "parent": null,
+   "direction": null,
+   "nodes": [
+    1
+   ]
+  },
+  {
+   "id": "Q",
+   "title": "Q",
+   "parent": null,
+   "direction": null,
+   "nodes": [
+    2
+   ]
+  },
+  {
+   "id": "R",
+   "title": "R",
+   "parent": null,
+   "direction": null,
+   "nodes": [
+    3
+   ]
+  },
+  {
+   "id": "K",
+   "title": "K",
+   "parent": 0,
+   "direction": null,
+   "nodes": [
+    0
+   ]
+  }
+ ],
+ "edges": [
+  {
+   "from": {
+    "n": 5
+   },
+   "to": {
+    "n": 3
+   },
+   "label": null,
+   "kind": "Arrow",
+   "drawn": true
+  },
+  {
+   "from": {
+    "n": 0
+   },
+   "to": {
+    "n": 1
+   },
+   "label": null,
+   "kind": "Arrow",
+   "drawn": true
+  },
+  {
+   "from": {
+    "n": 2
+   },
+   "to": {
+    "n": 4
+   },
+   "label": null,
+   "kind": "Arrow",
+   "drawn": true
+  },
+  {
+   "from": {
+    "n": 4
+   },
+   "to": {
+    "s": 0
+   },
+   "label": "to P",
+   "kind": "Arrow",
+   "drawn": true
+  }
+ ]
+}

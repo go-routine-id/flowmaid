@@ -1,0 +1,4 @@
+dense-lr: route_partial worst 6.22 ms (node 14); route() worst 10.65 ms (node 14), 5 frames over 8 ms (route() reported, not asserted)
+dense-td: route_partial worst 9.42 ms (node 17); route() worst 14.02 ms (node 17), 96 frames over 8 ms (route() reported, not asserted)
+dense-td route_partial: 9.42 ms
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1218 filtered out; finished in 46.66s

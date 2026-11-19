@@ -1,0 +1,30 @@
+architecture-beta
+    group g0(nonsense)[Observability]
+    group g1(cloud)[Observability]
+    service s0(monitoring)[Q 0]
+    service s1(monitoring)[Svc 1] in g0
+    service s2(nonsense)[Svc 2] in g1
+    service s3(disk)[PostgreSQL Primary 3] in g0
+    service s4(server)[Svc 4] in g0
+    service s5(disk)[PostgreSQL Primary 5]
+    service s6(disk)[Q 6]
+    service s7(disk)[PostgreSQL Primary 7] in g1
+    service s8(server)[Q 8] in g0
+    service s9(disk)[Authentication and Authorization Service 9] in g0
+    service s10(database)[Authentication and Authorization Service 10] in g1
+    junction s11
+    junction s12
+    s6:R <--> L:s1
+    s4:T -- B:s1
+    s1:R --> L:s6
+    s5:R <--> L:s7
+    s6:B <--> T:s12
+    s10:B -[x]-> L:s3
+    s7:B <--> R:s1
+    s8:R -[publishes order events]-> R:s7
+    s6:R -[reads config]- B:s10
+    s9:R -- R:s6
+    s8:B --> L:s4
+    s7{group}:T -- B:s11
+    s12:L -[x]- R:s1
+    s12:L -- T:s0

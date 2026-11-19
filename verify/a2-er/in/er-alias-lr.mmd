@@ -1,0 +1,18 @@
+erDiagram
+    direction LR
+    p[Person] {
+        string firstName
+        string lastName
+        int age "years, may be null"
+    }
+    c["Customer Account"] {
+        int id PK
+        string email "unique, lower-cased before insert"
+    }
+    a[Address] {
+        int id PK
+        string street
+    }
+    p ||--o| c : owns
+    c |o--o{ a : "ships to"
+    p }|..|| a : "lives at"

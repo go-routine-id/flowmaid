@@ -1,0 +1,26 @@
+flowchart TD
+  subgraph F0 [Frame 0]
+    n0[(Node 0)]
+    n2{{Node 2 with a long label}}
+  end
+  subgraph F1 [Frame 1]
+    n3[Node 3]
+  end
+  n2 <--> n5
+  n6 o--o n5
+  n6 x--x|no| n0
+  n4 ===|a longer label| n1
+  n1 ---> n5
+  n4 --- n6
+  n5 --- n0
+  n1 <-.-> n7
+  n7 e8@<==> n7
+  e8@{ curve: basis }
+  n2 ===|a longer label| n0
+  n3 ~~~ n0
+  n1 ==> n6
+  n4 --- n7
+  linkStyle 0 stroke-width:20px
+  linkStyle 1 stroke-width:40px,stroke:#c33
+  linkStyle 7 interpolate step stroke-width:8px
+  linkStyle 8 stroke-width:16px,stroke:#c33

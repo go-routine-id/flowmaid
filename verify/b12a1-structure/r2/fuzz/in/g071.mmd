@@ -1,0 +1,91 @@
+flowchart TD
+  subgraph A[Block A title]
+    an0[A 0]
+    an1[A 1]
+    an2[A 2]
+    an3[A 3]
+    an4[A 4]
+  end
+  subgraph B[Block B title]
+    bn0[B 0]
+    bn1[B 1]
+  end
+  subgraph C[Block C title]
+    cn0[C 0]
+    cn1[C 1]
+    subgraph Cx[Block Cx title]
+      cxn0[Cx 0]
+      cxn1[Cx 1]
+      cxn2[Cx 2]
+      subgraph Cxx[Block Cxx title]
+        cxxn0[Cxx 0]
+        cxxn1[Cxx 1]
+        cxxn2[Cxx 2]
+        cxxn3[Cxx 3]
+      end
+    end
+  end
+  subgraph D[Block D title]
+    dn0[D 0]
+    dn1[D 1]
+    dn2[D 2]
+    dn3[D 3]
+    subgraph Dx[Block Dx title]
+      dxn0[Dx 0]
+      dxn1[Dx 1]
+      subgraph Dxx[Block Dxx title]
+        dxxn0[Dxx 0]
+        dxxn1[Dxx 1]
+        dxxn2[Dxx 2]
+        dxxn3[Dxx 3]
+      end
+    end
+  end
+  subgraph E[Block E title]
+    en0[E 0]
+    en1[E 1]
+  end
+  f0([free f0])
+  f1([free f1])
+  f2([free f2])
+  an0 --> an1
+  an1 --> an2
+  an2 --> an3
+  an3 --> an4
+  an0 --> an4
+  bn0 --> bn1
+  cn0 --> cn1
+  cxn1 --> cxn2
+  cxxn0 --> cxxn1
+  cxxn1 --> cxxn2
+  cxxn2 --> cxxn3
+  dn0 --> dn1
+  dn1 --> dn2
+  dn2 --> dn3
+  dxn0 --> dxn1
+  dxxn0 --> dxxn1
+  dxxn2 --> dxxn3
+  dxxn0 --> dxxn3
+  an1 --> Dx
+  D -.->|no| cxn1
+  cn1 --> cxn1
+  Cxx -->|sync| B
+  dn3 ==> cxxn3
+  f0 -.-> cn0
+  cxxn2 ==> bn1
+  cxn0 --> f2
+  bn0 -.-> dn2
+  an4 --> bn0
+  f0 --> cxxn0
+  dxxn2 --> E
+  dn1 -.-> Cx
+  bn1 ==> cxn0
+  E -.-> Cxx
+  cxxn1 --> f1
+  D --> cxxn2
+  dxn1 -.-> dn2
+  bn0 --> dn2
+  E -.-> bn0
+  en1 -->|retry| C
+  f2 --> en1
+  cxxn3 --> en1

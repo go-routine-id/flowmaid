@@ -1,0 +1,23 @@
+flowchart BT
+    N0[(Store validate)]
+    N1([Archive check])
+    N2[/Done validate/]
+    N3([Check])
+    N4{Archive}
+    N5(Store)
+    N6([Queue])
+    N7{Queue done}
+    N8(Archive load)
+    N9([Load])
+    N0 --> N1
+    N1 -->|fail| N2
+    N0 -->|yes| N3
+    N2 --> N4
+    N4 --> N5
+    N3 -->|ok| N6
+    N5 --> N7
+    N6 -->|ok| N8
+    N8 -->|no| N9
+    N6 -.->|rollback| N0
+    N8 --> N2
+    N4 -->|retry| N3

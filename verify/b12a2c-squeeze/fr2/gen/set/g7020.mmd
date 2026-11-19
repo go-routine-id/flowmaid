@@ -1,0 +1,44 @@
+flowchart TD
+  n1["mail split ingest"]
+  subgraph B0["Platform"]
+    n2["ship"]
+    n3["worker parse pack<br/>index"]
+    n4["mail"]
+    n5["cache"]
+  end
+  subgraph B1["Edge services"]
+    n6["db queue parse"]
+    n7["report"]
+    n8["split"]
+    n9["api"]
+    subgraph B1s0["Edge services 0"]
+      n10["merge"]
+      n11["billing cache ship"]
+    end
+    subgraph B1s1["Fulfilment desk 1"]
+      n12["ingest parse parse"]
+      n13["api"]
+      n14["ship"]
+    end
+  end
+  n15["split"]
+  n16["merge"]
+  n6 ==> n11
+  n14 -->|queue| n7
+  n1 -->|split| n14
+  n5 --> B1s0
+  n6 -->|pack| n7
+  n13 --> n10
+  n3 --> n15
+  n11 --> n14
+  n14 -->|mail| n8
+  n8 --> n10
+  n15 ==> n3
+  n1 ==> n2
+  n10 --> n3
+  n10 --> n8
+  n8 --> n6
+  n5 ==>|parse| n14
+  n15 -.->|billing| n6
+  n3 --> n10
+  n15 -.-> n8

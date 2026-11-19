@@ -1,0 +1,13 @@
+flowchart TD
+    subgraph A[Customer]
+        subgraph A1[Checkout]
+            x[cart]
+            y[receipt]
+        end
+        a[profile]
+    end
+    subgraph B[Shop]
+        b1[confirm]
+    end
+    x --> b1
+    b1 --> y

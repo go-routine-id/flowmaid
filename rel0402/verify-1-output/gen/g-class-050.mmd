@@ -1,0 +1,56 @@
+classDiagram
+C26 "1" *-- "*" C19
+C27 "1" o-- "*" C11
+C24 "1" -- "*" C7 : beta
+C17 -- C7
+C14 -- C13
+C9 *-- C20 : a&b
+C14 <|-- C25
+C6 "1" ..> "*" C22 : a&b
+C1 --> C23
+C4 -- C10
+C17 <|-- C22
+C4 "1" ..|> "*" C24
+C19 *-- C19
+C22 "1" <--> "*" C12
+C19 --> C7 : gamma
+C6 *-- C3
+C18 -- C21
+C28 "1" *-- "*" C18 : 日本語
+note for C14 "<b>bold</b>"
+class C1 {
+  +int id
+  +name() String
+}
+class C2 {
+  +int id
+  +name() String
+}
+class C5 {
+  +int id
+  +name() String
+}
+class C6 {
+  +int id
+  +name() String
+}
+class C9 {
+  +int id
+  +name() String
+}
+class C13 {
+  +int id
+  +name() String
+}
+class C14 {
+  +int id
+  +name() String
+}
+class C20 {
+  +int id
+  +name() String
+}
+class C22 {
+  +int id
+  +name() String
+}

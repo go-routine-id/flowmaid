@@ -1,0 +1,38 @@
+flowchart TD
+  subgraph A[Ingest tier]
+    subgraph AI[Collectors]
+      a1[collector one]
+      a2[collector two]
+      a3[collector three]
+      a4[collector four]
+    end
+    a5[scheduler]
+  end
+  subgraph B[Processing tier]
+    subgraph BI[Workers]
+      b1[parse]
+      b2[enrich]
+      b3[dedupe]
+      b4[index]
+    end
+    b5[audit log]
+  end
+  subgraph C[Serving tier]
+    c1[api]
+    c2[cache]
+  end
+  a1 --> b4
+  a1 --> b3
+  a2 --> b1
+  a2 --> b4
+  a3 --> b2
+  a3 --> b1
+  a4 --> b1
+  a4 -->|late data| b3
+  a5 --> b5
+  a5 --> b2
+  b1 --> c1
+  b4 --> c2
+  b5 -.-> c1
+  c1 -->|backfill| a5
+  c2 --> A

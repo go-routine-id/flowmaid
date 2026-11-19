@@ -1,0 +1,21 @@
+flowchart RL
+  subgraph F0 [Frame 0]
+    n7[Node 7]
+  end
+  subgraph F1 [Frame 1]
+    n1{{Node 1}}
+  end
+  n1 ==>|no| n0
+  n5 o--o n1
+  n4 ==>|x| n5
+  n7 -.->|a longer label| n4
+  n7 -->|a longer label| n2
+  n8 <-.-> n8
+  n4 -.- n2
+  n8 o--o n3
+  n3 -.- n7
+  n4 -.- n3
+  linkStyle 2 interpolate step stroke-width:2px
+  linkStyle 3 stroke-width:5px,stroke:#3a3
+  linkStyle 4 stroke-width:24px
+  linkStyle 8 stroke-width:30px

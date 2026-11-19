@@ -1,0 +1,23 @@
+flowchart TD
+    N0{Check load}
+    N1[Validate]
+    N2(Fetch emit)
+    N3([Fetch emit])
+    N4[Parse]
+    N5{Parse}
+    N6[/Queue archive/]
+    N7([Load])
+    N8{Load}
+    N9([Parse])
+    N0 -->|no| N1
+    N1 -->|ok| N2
+    N2 --> N3
+    N2 --> N4
+    N2 --> N5
+    N5 --> N6
+    N5 --> N7
+    N6 --> N8
+    N8 --> N9
+    N6 --> N8
+    N3 --> N9
+    N8 --> N0

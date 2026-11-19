@@ -1,0 +1,8 @@
+n070-TD.static.svg	a0 → b0: x	0.0
+n078-TD.static.svg	a1 → b1: x	0.0
+r042-TD.static.svg	s0 → m2: lbl2	0.0
+r170-TD.static.svg	s2 → G: lbl2	0.0
+r170-TD.static.svg	s4 → O: lbl2	0.0
+r183-TD.static.svg	s2 → G: lbl8	9.4
+v4-pin-and-labels-TD.static.svg	a1 → b1: ship	3.4
+v4-pin-and-labels-TD.static.svg	a1 → b2: audit	0.0

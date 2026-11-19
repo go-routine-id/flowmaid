@@ -1,0 +1,36 @@
+flowchart RL
+  n1["cache index mail"]
+  n2["pack worker api"]
+  subgraph B0["Core"]
+    n3["store"]
+    n4["notify search notify"]
+  end
+  subgraph B1["Ingest"]
+    n5["ship"]
+    n6["index<br/>cache"]
+    subgraph B1s0["Ops 0"]
+      n7["db"]
+    end
+    subgraph B1s1["Edge services 1"]
+      n8["mail"]
+      n9["ingest"]
+      n10["worker"]
+    end
+  end
+  n11["cache"]
+  n12["db"]
+  n1 --> B1
+  n8 --> n5
+  n6 ==> n11
+  n12 -->|db| n4
+  n2 --> n9
+  n6 -.->|ship| n5
+  n10 --> n2
+  n9 -.-> n8
+  n12 -.->|billing| n11
+  n7 -->|db| n10
+  n1 -->|queue| n8
+  n4 --> n1
+  n8 -.-> n1
+  n9 -->|ingest| n3
+  n2 --> B1s1

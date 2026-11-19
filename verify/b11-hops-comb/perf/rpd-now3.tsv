@@ -1,0 +1,5 @@
+file	frames	partial_worst	partial_mean	route_worst	route_mean
+bench-75	252	8.94	3.45	17.47	10.38
+dense-lr	624	9.20	2.08	13.72	4.74
+dense-td	552	7.33	2.48	12.52	7.08
+fanout-frames	264	3.28	0.31	3.46	0.43

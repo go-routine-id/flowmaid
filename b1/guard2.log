@@ -1,0 +1,50 @@
+== fmt
+FAILED: cargo fmt --check
+Diff in /home/user/flowmaid/src/advance.rs:7127:
+             .and_then(|r| r.split('"').next())
+             .expect("a marker");
+         let color = scene.style.edge_color.clone();
+[31m-        assert!(svg.contains(&crate::scene::arrow_marker_def(id, &color)), "{svg}");
+[m[32m+        assert!(
+[m[32m+            svg.contains(&crate::scene::arrow_marker_def(id, &color)),
+[m[32m+            "{svg}"
+[m[32m+        );
+[m         assert!(svg.contains("stroke-width=\"3.5\""), "{svg}");
+         for e in scene.edges.iter().filter(|e| e.kind.has_arrow()) {
+             let d = crate::scene::polyline_d_painted(&e.points, crate::scene::ARROW_TRIM);
+Diff in /home/user/flowmaid/src/scene.rs:8414:
+             // the marker's refX puts the tip back on the border.
+             let (end, before) = (pts[pts.len() - 1], pts[pts.len() - 2]);
+             assert!(before.0 == end.0 && before.1 < end.1, "{op}: {pts:?}");
+[31m-            assert!((end.1 + ARROW_TRIM - top).abs() < 0.11, "{op}: {end:?} vs {top}");
+[m[32m+            assert!(
+[m[32m+                (end.1 + ARROW_TRIM - top).abs() < 0.11,
+[m[32m+                "{op}: {end:?} vs {top}"
+[m[32m+            );
+[m             let refx: f64 = svg
+                 .split("<marker id=\"arrow\" viewBox=\"0 0 10 10\" refX=\"")
+                 .nth(1)
+Diff in /home/user/flowmaid/src/scene.rs:8463:
+         assert!(stubbed >= 2, "the fan's outer branches turn");
+         // A straight spine turns not at all: drawn whole.
+         let sc = scene(&parse("flowchart TD\nA --> B\n").unwrap());
+[31m-        assert_eq!(glyph_stubs(&sc.edges[0], &sc.edges[0].bezier), (false, false));
+[m[32m+        assert_eq!(
+[m[32m+            glyph_stubs(&sc.edges[0], &sc.edges[0].bezier),
+[m[32m+            (false, false)
+[m[32m+        );
+[m     }
+ 
+     #[test]
+== clippy
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 6.64s
+== test
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+== doctest
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.36s
+== msrv
+    Finished dev [unoptimized + debuginfo] target(s) in 11.54s
+== wasm
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.19s
+== rustdoc
+GUARD: FAILURES

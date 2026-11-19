@@ -1,0 +1,16 @@
+flowchart RL
+    N0[Archive store]
+    N1[Retry validate]
+    N2{Fetch}
+    N3[Check]
+    N4{Notify retry}
+    N5[Report load]
+    N6{Notify validate}
+    N0 --> N1
+    N1 -->|next| N2
+    N0 -->|fail| N3
+    N2 --> N4
+    N4 --> N5
+    N4 --> N6
+    N5 --> N4
+    N4 -.-> N3

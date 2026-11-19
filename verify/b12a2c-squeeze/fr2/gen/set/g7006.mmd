@@ -1,0 +1,26 @@
+flowchart BT
+  n1["api store report"]
+  n2["ship"]
+  subgraph B0["Analytics"]
+    n3["billing<br/>api"]
+    n4["pack<br/>api"]
+    n5["billing"]
+    n6["ingest<br/>merge"]
+    subgraph B0s0["Core 0"]
+      n7["ship"]
+    end
+  end
+  subgraph B1["Back office and finance"]
+    n8["db"]
+  end
+  n9["store"]
+  n10["search"]
+  n5 --> n7
+  n6 ==> n9
+  n5 --> n2
+  n6 -->|audit| n3
+  n10 -.-> n7
+  n3 ==> n7
+  n1 -->|db| n8
+  n8 -->|pack| n2
+  n5 ==> n4

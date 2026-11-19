@@ -1,0 +1,18 @@
+stateDiagram-v2
+direction LR
+state Left {
+  [*] --> a
+  a --> a2 : go
+}
+state Right {
+  direction TB
+  [*] --> b
+  b --> c : t1
+  c --> b : t2
+}
+Left --> Right : forward
+Right --> Left : back
+Right --> Done
+Left --> Done : abort
+note left of Right : first note
+note right of Left : second note

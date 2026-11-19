@@ -1,0 +1,33 @@
+flowchart TD
+  n1["api"]
+  n2["mail"]
+  n3["notify"]
+  subgraph B0["Storefront"]
+    n4["worker"]
+    n5["queue worker search"]
+    n6["pack"]
+    subgraph B0s0["Ingest 0"]
+      n7["search"]
+      n8["merge<br/>store"]
+    end
+  end
+  subgraph B1["Fulfilment desk"]
+    n9["index"]
+    n10["cache"]
+  end
+  n11["merge"]
+  n12["billing"]
+  n2 ==> n1
+  n10 --> n12
+  n5 --> n3
+  n5 --> n4
+  n3 --> n1
+  n2 --> n5
+  n3 ==> n10
+  n10 ==> n4
+  n4 ==> n9
+  n1 --> n12
+  n11 ==> n1
+  n12 -.->|audit| n9
+  n1 --> n4
+  n3 --> n8

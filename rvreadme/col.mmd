@@ -1,0 +1,46 @@
+flowchart LR
+hub["hub node with a long label"]
+subgraph g0["frame 0"]
+direction TB
+m0_0["member 0 of frame 0<br/>second line"]
+m0_1["member 1 of frame 0<br/>second line"]
+m0_2["member 2 of frame 0<br/>second line"]
+m0_3["member 3 of frame 0<br/>second line"]
+m0_4["member 4 of frame 0<br/>second line"]
+end
+subgraph g1["frame 1"]
+direction TB
+m1_0["member 0 of frame 1<br/>second line"]
+m1_1["member 1 of frame 1<br/>second line"]
+m1_2["member 2 of frame 1<br/>second line"]
+end
+subgraph g2["frame 2"]
+direction TB
+m2_0["member 0 of frame 2<br/>second line"]
+m2_1["member 1 of frame 2<br/>second line"]
+m2_2["member 2 of frame 2<br/>second line"]
+m2_3["member 3 of frame 2<br/>second line"]
+m2_4["member 4 of frame 2<br/>second line"]
+m2_5["member 5 of frame 2<br/>second line"]
+end
+subgraph g3["frame 3"]
+direction TB
+m3_0["member 0 of frame 3<br/>second line"]
+m3_1["member 1 of frame 3<br/>second line"]
+end
+subgraph g4["frame 4"]
+direction TB
+m4_0["member 0 of frame 4<br/>second line"]
+end
+subgraph g5["frame 5"]
+direction TB
+m5_0["member 0 of frame 5<br/>second line"]
+m5_1["member 1 of frame 5<br/>second line"]
+m5_2["member 2 of frame 5<br/>second line"]
+end
+hub --> g0
+hub --> g1
+hub --> g2
+hub --> g3
+hub --> g4
+hub --> g5

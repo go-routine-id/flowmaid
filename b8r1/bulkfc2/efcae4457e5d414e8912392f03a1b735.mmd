@@ -1,0 +1,14 @@
+flowchart BT
+    N0[Report load]
+    N1[Report validate]
+    N2[(Validate)]
+    N3{Store}
+    N4(Store emit)
+    N5[Archive]
+    N0 --> N1
+    N1 -->|no| N2
+    N0 --> N3
+    N3 -->|no| N4
+    N2 --> N5
+    N4 -.-> N0
+    N4 --> N2

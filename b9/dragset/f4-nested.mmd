@@ -1,0 +1,11 @@
+flowchart LR
+  subgraph outer
+    direction TB
+    subgraph inner
+      direction LR
+      a1 --> a2 --> a3
+    end
+    b1 --> b2
+  end
+  start --> outer
+  outer --> stop

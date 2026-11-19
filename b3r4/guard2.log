@@ -1,0 +1,95 @@
+== fmt
+== clippy
+FAILED: cargo clippy --all-targets -- -D warnings
+    Checking flowmaid v0.33.0 (/home/user/flowmaid)
+error: the use of negated comparison operators on partially ordered types produces code that is hard to read and refactor, please consider using the `partial_cmp` method instead, to make it clear that the two values could be incomparable
+    --> src/scene.rs:6441:23
+     |
+6441 |     if side == 0.0 || !(len > 0.0) || dir.0 == 0.0 {
+     |                       ^^^^^^^^^^^^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#neg_cmp_op_on_partial_ord
+     = note: `-D clippy::neg-cmp-op-on-partial-ord` implied by `-D warnings`
+     = help: to override `-D warnings` add `#[allow(clippy::neg_cmp_op_on_partial_ord)]`
+
+error: the use of negated comparison operators on partially ordered types produces code that is hard to read and refactor, please consider using the `partial_cmp` method instead, to make it clear that the two values could be incomparable
+    --> src/scene.rs:6459:8
+     |
+6459 |     if !(missing >= 1.0) {
+     |        ^^^^^^^^^^^^^^^^^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#neg_cmp_op_on_partial_ord
+
+error: could not compile `flowmaid` (lib) due to 2 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `flowmaid` (lib test) due to 2 previous errors
+== test
+FAILED: cargo test --all-targets
+static	lat_backtrack	1812.8216
+static	own_frame_x	0.0000
+static	own_frame_len	0.0000
+static	band_pairs	92.0000
+static	band_len	41432.0000
+static	ink	0.1154
+static	idiom_ortho	98.0000
+static	idiom_scubic	62.0000
+static	idiom_spline	23.0000
+static	idiom_bow	2.0000
+static	x_drawn	505.0000
+static	end_kink	55.0000
+static	ink_out	0.0000
+routed	end_tilt	11.0000
+routed	end_tilt_max	128.3675
+routed	end_gaps	11.0000
+routed	end_gap_max	4.6928
+routed	lat_wiggles	16.0000
+routed	lat_backtrack	696.0027
+routed	own_frame_x	0.0000
+routed	own_frame_len	0.0000
+routed	band_pairs	101.0000
+routed	band_len	47104.0000
+routed	ink	0.1157
+routed	idiom_ortho	81.0000
+routed	idiom_scubic	81.0000
+routed	idiom_spline	22.0000
+routed	idiom_bow	1.0000
+routed	x_drawn	508.0000
+routed	end_kink	71.0000
+routed	ink_out	0.0000
+
+thread 'defect_baseline_gate' (31313) panicked at tests/quality.rs:567:5:
+defect baseline regressions:
+static end_tilt 9.00 > ceiling 8
+static band_pairs 92.00 > ceiling 91
+static band_len 41432.00 > ceiling 41064
+static idiom_scubic 62.00 > ceiling 61
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: quality::defect_baseline_gate
+             at ./tests/quality.rs:567:5
+   3: quality::defect_baseline_gate::{closure#0}
+             at ./tests/quality.rs:518:26
+   4: <quality::defect_baseline_gate::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+   5: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+
+failures:
+    defect_baseline_gate
+
+test result: FAILED. 7 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.98s
+
+error: test failed, to rerun pass `--test quality`
+== doctest
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.35s
+== msrv
+    Finished dev [unoptimized + debuginfo] target(s) in 4.43s
+== wasm
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.22s
+== rustdoc
+GUARD: FAILURES

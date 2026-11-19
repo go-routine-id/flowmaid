@@ -1,0 +1,1 @@
+chain_200.mmd: n=200 canvas 121x34321 boxfill 9.7% root@(60,48) rel (0.50,0.00) trunks 135-135 spokes(all) 135-138 ratio 1.02 time 180.35ms

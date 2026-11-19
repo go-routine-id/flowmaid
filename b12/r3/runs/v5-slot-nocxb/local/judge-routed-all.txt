@@ -1,0 +1,63 @@
+ok            infra-overview                     xframe_runs              0  must <= 0         target <= -         [0.38 3, start 3, mermaid 0]  4.3 (h)
+ok            infra-overview-v2                  xframe_runs              0  must <= 0         target <= -         [0.38 2, start 2, mermaid 0]  4.3 (h)
+ok            perm-a-edges-reversed              xframe_runs              0  must <= 0         target <= -         [0.38 3, start 3, mermaid 0]  4.3 (h)
+ok            perm-b-subgraphs-reversed          xframe_runs              0  must <= 0         target <= -         [0.38 3, start 3, mermaid 0]  4.3 (h)
+ok            perm-c-actors-reversed             xframe_runs              0  must <= 0         target <= -         [0.38 3, start 3, mermaid 0]  4.3 (h)
+ok            perm-d-edges-rotated               xframe_runs              0  must <= 0         target <= -         [0.38 3, start 3, mermaid 0]  4.3 (h)
+ok            perm-e-one-more-inner-edge         xframe_runs              0  must <= 0         target <= -         [0.38 3, start 3, mermaid 0]  4.3 (h)
+ok            blocks-overview                    xframe_runs              0  must <= 0         target <= -         [0.38 2, start 2, mermaid 0]  4.3 (h)
+MUST FAIL     infra-overview                     lateral_x                7  must <= 0         target <= -         [0.38 22, start 22, mermaid 0]  4.3 (h)
+MUST FAIL     infra-overview-v2                  lateral_x                5  must <= 0         target <= -         [0.38 23, start 23, mermaid 0]  4.3 (h)
+MUST FAIL     perm-a-edges-reversed              lateral_x                8  must <= 0         target <= -         [0.38 23, start 23, mermaid 0]  4.3 (h)
+MUST FAIL     perm-b-subgraphs-reversed          lateral_x                7  must <= 0         target <= -         [0.38 22, start 22, mermaid 0]  4.3 (h)
+MUST FAIL     perm-c-actors-reversed             lateral_x                7  must <= 0         target <= -         [0.38 22, start 22, mermaid 0]  4.3 (h)
+MUST FAIL     perm-d-edges-rotated               lateral_x                7  must <= 0         target <= -         [0.38 22, start 22, mermaid 0]  4.3 (h)
+MUST FAIL     perm-e-one-more-inner-edge         lateral_x                8  must <= 0         target <= -         [0.38 22, start 22, mermaid 0]  4.3 (h)
+MUST FAIL     blocks-overview                    lateral_x                2  must <= 0         target <= -         [0.38 10, start 10, mermaid 0]  4.3 (h)
+MUST FAIL     infra-overview                     lbl_struck               3  must <= 0         target <= -         [0.38 1, start 1, mermaid 0]  4.3 (h)
+MUST FAIL     infra-overview-v2                  lbl_struck               5  must <= 0         target <= -         [0.38 2, start 2, mermaid 0]  4.3 (h)
+MUST FAIL     perm-a-edges-reversed              lbl_struck               3  must <= 0         target <= -         [0.38 0, start 0, mermaid 0]  4.3 (h)
+MUST FAIL     perm-b-subgraphs-reversed          lbl_struck               4  must <= 0         target <= -         [0.38 2, start 2, mermaid 0]  4.3 (h)
+MUST FAIL     perm-c-actors-reversed             lbl_struck               3  must <= 0         target <= -         [0.38 1, start 1, mermaid 0]  4.3 (h)
+MUST FAIL     perm-d-edges-rotated               lbl_struck               3  must <= 0         target <= -         [0.38 1, start 1, mermaid 0]  4.3 (h)
+MUST FAIL     perm-e-one-more-inner-edge         lbl_struck               3  must <= 0         target <= -         [0.38 1, start 1, mermaid 0]  4.3 (h)
+ok            blocks-overview                    lbl_struck               0  must <= 0         target <= -         [0.38 0, start 0, mermaid 0]  4.3 (h)
+ok            infra-overview                     lbl_crowd                7  must <= 7         target <= -         [0.38 7, start 7, mermaid 0]  4.3 (h): not above the reference's routed value
+ok            infra-overview-v2                  lbl_crowd                8  must <= 8         target <= -         [0.38 8, start 8, mermaid 1]  4.3 (h): not above the reference's routed value
+MUST FAIL     perm-a-edges-reversed              lbl_crowd                7  must <= 5         target <= -         [0.38 5, start 5, mermaid 0]  4.3 (h): not above the reference's routed value
+MUST FAIL     perm-b-subgraphs-reversed          lbl_crowd                7  must <= 5         target <= -         [0.38 5, start 5, mermaid 0]  4.3 (h): not above the reference's routed value
+ok            perm-c-actors-reversed             lbl_crowd                7  must <= 8         target <= -         [0.38 8, start 8, mermaid 0]  4.3 (h): not above the reference's routed value
+ok            perm-d-edges-rotated               lbl_crowd                7  must <= 7         target <= -         [0.38 7, start 7, mermaid 0]  4.3 (h): not above the reference's routed value
+ok            perm-e-one-more-inner-edge         lbl_crowd                4  must <= 7         target <= -         [0.38 7, start 7, mermaid 0]  4.3 (h): not above the reference's routed value
+ok            blocks-overview                    lbl_crowd                2  must <= 5         target <= -         [0.38 5, start 5, mermaid 0]  4.3 (h): not above the reference's routed value
+MUST FAIL     infra-overview                     crossings               27  must <= 24        target <= -         [0.38 26, start 25, mermaid 16]  4.3 (h): not above the reference's routed count and the static must + 4
+ok            infra-overview-v2                  crossings               20  must <= 20        target <= -         [0.38 21, start 20, mermaid 13]  4.3 (h): not above the reference's routed count and the static must + 4
+ok            blocks-overview                    crossings               10  must <= 11        target <= -         [0.38 17, start 17, mermaid 5]  4.3 (h): not above the reference's routed count and the static must + 4
+MUST FAIL     perm-a-edges-reversed              crossings               27  must <= 18        target <= -         [0.38 20, start 18, mermaid 7]  4.3 (h): not above the reference's routed count and the static must + 4
+MUST FAIL     perm-b-subgraphs-reversed          crossings               32  must <= 18        target <= -         [0.38 20, start 18, mermaid 19]  4.3 (h): not above the reference's routed count and the static must + 4
+MUST FAIL     perm-c-actors-reversed             crossings               27  must <= 24        target <= -         [0.38 26, start 25, mermaid 16]  4.3 (h): not above the reference's routed count and the static must + 4
+MUST FAIL     perm-d-edges-rotated               crossings               27  must <= 24        target <= -         [0.38 26, start 25, mermaid 19]  4.3 (h): not above the reference's routed count and the static must + 4
+ok            perm-e-one-more-inner-edge         crossings               26  must <= 26        target <= -         [0.38 28, start 27, mermaid 18]  4.3 (h): not above the reference's routed count and the static must + 4
+ok            blocks-overview-edges-reversed     crossings               10  must == = blocks-overview: 10 target == -         [0.38 11, start 11, mermaid 6]  B12.13: routed crossings of the public fixture equal across its permutations
+ok            blocks-overview-edges-rotated      crossings               10  must == = blocks-overview: 10 target == -         [0.38 23, start 23, mermaid 5]  B12.13: routed crossings of the public fixture equal across its permutations
+ok            blocks-overview-actors-reversed    crossings               10  must == = blocks-overview: 10 target == -         [0.38 11, start 11, mermaid 5]  B12.13: routed crossings of the public fixture equal across its permutations
+ok            blocks-overview-subgraphs-reversed crossings               10  must == = blocks-overview: 10 target == -         [0.38 15, start 14, mermaid 5]  B12.13: routed crossings of the public fixture equal across its permutations
+MUST FAIL     infra-bt                           lateral_x                6  must <= 0         target <= -         [0.38 25, start 25, mermaid 0]  4.3 (d): routed
+ok            infra-lr                           lateral_x                0  must <= 0         target <= -         [0.38 22, start 21, mermaid 0]  4.3 (d): routed
+MUST FAIL     infra-rl                           lateral_x                1  must <= 0         target <= -         [0.38 22, start 22, mermaid 0]  4.3 (d): routed
+MUST FAIL     blocks-overview-bt                 lateral_x                4  must <= 0         target <= -         [0.38 12, start 12, mermaid 0]  4.3 (d): routed
+MUST FAIL     blocks-overview-lr                 lateral_x                2  must <= 0         target <= -         [0.38 11, start 12, mermaid 0]  4.3 (d): routed
+MUST FAIL     blocks-overview-rl                 lateral_x                2  must <= 0         target <= -         [0.38 12, start 13, mermaid 0]  4.3 (d): routed
+MUST FAIL     hub5                               lateral_x                2  must <= 0         target <= -         [0.38 4, start 4, mermaid 0]  4.3 (d): routed
+MUST FAIL     cycle2                             lateral_x                3  must <= 0         target <= -         [0.38 6, start 6, mermaid 0]  4.3 (d): routed
+MUST FAIL     blocks-overview-edges-reversed     lateral_x                2  must <= 0         target <= -         [0.38 12, start 12, mermaid 0]  4.3 (d): routed
+MUST FAIL     blocks-overview-edges-rotated      lateral_x                2  must <= 0         target <= -         [0.38 14, start 14, mermaid 0]  4.3 (d): routed
+MUST FAIL     blocks-overview-actors-reversed    lateral_x                2  must <= 0         target <= -         [0.38 11, start 11, mermaid 0]  4.3 (d): routed
+MUST FAIL     blocks-overview-subgraphs-reversed lateral_x                2  must <= 0         target <= -         [0.38 12, start 12, mermaid 0]  4.3 (d): routed
+ok            bench-75                           lateral_x               17  must <= 61        target <= -         [0.38 61, start 61, mermaid 3]  4.3 (d): routed, not above the reference
+ok            dense-lr                           lateral_x               10  must <= 50        target <= -         [0.38 50, start 50, mermaid 0]  4.3 (d): routed, not above the reference
+ok            dense-td                           lateral_x               19  must <= 101       target <= -         [0.38 101, start 101, mermaid 1]  4.3 (d): routed, not above the reference
+MUST FAIL     bench-75                           xframe_runs              3  must <= 0         target <= -         [0.38 0, start 0, mermaid 0]  B12.13: routed runs through a foreign frame
+ok            dense-lr                           xframe_runs              0  must <= 7         target <= -         [0.38 8, start 7, mermaid 0]  B12.13: routed runs through a foreign frame
+ok            dense-td                           xframe_runs              5  must <= 13        target <= -         [0.38 13, start 13, mermaid 0]  B12.13: routed runs through a foreign frame
+judge: 62 checks on 95 diagram(s): 34 must-fail, 0 target missed

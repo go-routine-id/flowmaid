@@ -1,0 +1,14 @@
+stateDiagram-v2
+  [*] --> Idle
+  Idle --> Running
+  state Running {
+    Fetch --> Parse
+    Watchdog
+    Logger --> Parse
+  }
+  state Done {
+    Report
+    Cleanup
+  }
+  Running --> Done
+  Idle --> Report

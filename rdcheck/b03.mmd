@@ -1,0 +1,10 @@
+classDiagram
+    class Animal {
+        +String name
+        -int age
+        +move() void
+    }
+    Animal <|-- Dog
+    Animal "1" o-- "*" Toy : owns
+    Dog "1" --> "*" Toy : plays with
+    Cat ..> Toy : ignores

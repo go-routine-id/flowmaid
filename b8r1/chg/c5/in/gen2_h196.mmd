@@ -1,0 +1,39 @@
+flowchart LR
+  s0["notify user index"]
+  s1["ship"]
+  subgraph g0["trace user api zone"]
+    direction LR
+    m0["report"]
+  end
+  subgraph g1["store zone"]
+    direction LR
+    m1["user store"]
+    m2["db user"]
+  end
+  subgraph g2["user zone"]
+    direction TB
+    m3["trace search web"]
+    m4["log notify"]
+    m5["auth"]
+    m6["report order"]
+    m7["api"]
+    m3 --> m4
+    m4 --> m5
+    m3 --> m7
+  end
+  subgraph g3["web report trace zone"]
+    m8["api log"]
+    m9["notify"]
+    m10["trace billing"]
+    m8 --> m10
+  end
+  subgraph g4["report trace store zone"]
+    direction LR
+    m11["user pay"]
+  end
+  s1 --> g0
+  s1 --> m1
+  s0 --> m3
+  s0 --> g3
+  s1 --> m11
+  s0 --> L12["trace ship"]

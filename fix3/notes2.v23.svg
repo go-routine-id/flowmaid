@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="288" height="914" viewBox="0 0 288 914" font-family="Helvetica, Arial, sans-serif" font-size="14" role="img" aria-label="State diagram">
+<title>State diagram</title>
+<rect width="288" height="914" fill="#ffffff"/>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 1 L 9 5 L 0 9 z" fill="#44507a"/></marker></defs>
+<rect x="28.0" y="112.0" width="232.4" height="368.0" rx="8" fill="#f7f8fd" stroke="#c9cfe8" stroke-width="1.4"/>
+<rect x="28.0" y="512.0" width="221.3" height="290.0" rx="8" fill="#f7f8fd" stroke="#c9cfe8" stroke-width="1.4"/>
+<path d="M 132.6 166.0 C 132.6 209.0, 132.6 209.0, 132.6 252.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>start → fir</title></path>
+<path d="M 117.6 290.0 C 117.6 320.0, 84.0 320.0, 84.0 350.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>fir → sec</title></path>
+<path d="M 69.0 388.0 C 69.0 418.0, 69.0 418.0, 69.0 448.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>sec → end</title></path>
+<path d="M 147.6 290.0 C 147.6 320.0, 173.9 320.0, 173.9 350.0" fill="none" stroke="#44507a" stroke-width="1.7" stroke-dasharray="5 4"><title>fir → note</title></path>
+<path d="M 69.0 566.0 C 69.0 609.0, 69.0 609.0, 69.0 652.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>start → a</title></path>
+<path d="M 84.0 690.0 C 84.0 720.0, 123.1 720.0, 123.1 750.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>a → b</title></path>
+<path d="M 175.9 690.0 C 175.9 720.0, 153.1 720.0, 153.1 750.0" fill="none" stroke="#44507a" stroke-width="1.7" stroke-dasharray="5 4"><title>note → b</title></path>
+<path d="M 77.0 52.1 C 77.0 82.1, 125.6 82.1, 125.6 112.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>start → First</title></path>
+<path d="M 196.2 480.0 C 196.2 496.0, 196.2 496.0, 196.2 512.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>First → Second</title></path>
+<path d="M 171.8 66.0 C 171.8 89.0, 139.6 89.0, 139.6 112.0" fill="none" stroke="#44507a" stroke-width="1.7" stroke-dasharray="5 4"><title>note → First</title></path>
+<path d="M 131.1 802.0 C 131.1 831.0, 90.0 831.0, 90.0 860.1" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>Second → end</title></path>
+<path d="M 145.1 802.0 C 145.1 825.0, 173.1 825.0, 173.1 848.0" fill="none" stroke="#44507a" stroke-width="1.7" stroke-dasharray="5 4"><title>Second → note</title></path>
+<g><title>start</title>
+<circle cx="72.2" cy="47.0" r="7.0" fill="#44507a" stroke="#44507a" stroke-width="1.6"/>
+<text x="72.2" y="47.0" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<g><title>start</title>
+<circle cx="132.6" cy="159.0" r="7.0" fill="#44507a" stroke="#44507a" stroke-width="1.6"/>
+<text x="132.6" y="159.0" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<g><title>fir</title>
+<rect x="105.6" y="252.0" width="54.0" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="132.6" y="271.0" dy="0.33em" text-anchor="middle" fill="#232840">fir</text>
+</g>
+<g><title>sec</title>
+<rect x="42.0" y="350.0" width="54.0" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="69.0" y="369.0" dy="0.33em" text-anchor="middle" fill="#232840">sec</text>
+</g>
+<g><title>end</title>
+<circle cx="69.0" cy="457.0" r="9.0" fill="#ffffff" stroke="#44507a" stroke-width="1.6"/>
+<circle cx="69.0" cy="457.0" r="5.0" fill="#44507a" stroke="#44507a" stroke-width="1.6"/>
+<text x="69.0" y="457.0" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<g><title>inside note</title>
+<rect x="146.0" y="350.0" width="100.4" height="38.0" rx="3.0" fill="#fff8c5" stroke="#9c8a2c" stroke-width="1.6"/>
+<text x="196.2" y="369.0" dy="0.33em" text-anchor="middle" fill="#232840">inside note</text>
+</g>
+<g><title>composite note</title>
+<rect x="129.2" y="28.0" width="127.4" height="38.0" rx="3.0" fill="#fff8c5" stroke="#9c8a2c" stroke-width="1.6"/>
+<text x="192.9" y="47.0" dy="0.33em" text-anchor="middle" fill="#232840">composite note</text>
+</g>
+<g><title>start</title>
+<circle cx="69.0" cy="559.0" r="7.0" fill="#44507a" stroke="#44507a" stroke-width="1.6"/>
+<text x="69.0" y="559.0" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<g><title>a</title>
+<rect x="42.0" y="652.0" width="54.0" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="69.0" y="671.0" dy="0.33em" text-anchor="middle" fill="#232840">a</text>
+</g>
+<g><title>b</title>
+<rect x="111.1" y="750.0" width="54.0" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="138.1" y="769.0" dy="0.33em" text-anchor="middle" fill="#232840">b</text>
+</g>
+<g><title>end</title>
+<circle cx="84.2" cy="867.0" r="9.0" fill="#ffffff" stroke="#44507a" stroke-width="1.6"/>
+<circle cx="84.2" cy="867.0" r="5.0" fill="#44507a" stroke="#44507a" stroke-width="1.6"/>
+<text x="84.2" y="867.0" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<g><title>on the box</title>
+<rect x="143.2" y="848.0" width="97.5" height="38.0" rx="3.0" fill="#fff8c5" stroke="#9c8a2c" stroke-width="1.6"/>
+<text x="192.0" y="867.0" dy="0.33em" text-anchor="middle" fill="#232840">on the box</text>
+</g>
+<g><title>left of b</title>
+<rect x="157.0" y="652.0" width="78.3" height="38.0" rx="3.0" fill="#fff8c5" stroke="#9c8a2c" stroke-width="1.6"/>
+<text x="196.2" y="671.0" dy="0.33em" text-anchor="middle" fill="#232840">left of b</text>
+</g>
+<rect x="34.0" y="117.0" width="32.6" height="16" rx="4" fill="#f7f8fd" fill-opacity="0.9"/>
+<text x="38.0" y="129.0" font-size="12" font-weight="bold" fill="#6a7086">First</text>
+<rect x="34.0" y="517.0" width="49.1" height="16" rx="4" fill="#f7f8fd" fill-opacity="0.9"/>
+<text x="38.0" y="529.0" font-size="12" font-weight="bold" fill="#6a7086">Second</text>
+</svg>

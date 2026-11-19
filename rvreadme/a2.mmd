@@ -1,0 +1,12 @@
+architecture-beta
+    accTitle: Arch
+    accDescr: An arch
+    group outer(cloud)[Outer]
+    group inner[Inner] in outer
+    service a(server)[A] in inner
+    service b(database)[B] in outer
+    junction j
+    service c[C]
+    a:B -[calls]- T:b
+    b{group}:R --> L:j
+    j:R -- L:c

@@ -1,0 +1,13 @@
+diff --git a/src/lib.rs b/src/lib.rs
+index 69c7830..9f0d779 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -46,6 +46,8 @@ pub mod er;
+ pub mod fold;
+ pub mod gitgraph;
+ mod hops;
++#[cfg(test)]
++mod identity;
+ pub mod journey;
+ pub(crate) mod json;
+ mod labels;

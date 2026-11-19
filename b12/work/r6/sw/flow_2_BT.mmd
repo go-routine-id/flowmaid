@@ -1,0 +1,56 @@
+flowchart BT
+    subgraph B0[Block 0]
+        b0n0
+        b0n1
+        b0n2
+        b0n3
+        subgraph B2[Block 2]
+            b2n0
+        end
+    end
+    subgraph B1[Block 1]
+        b1n0
+        b1n1
+        subgraph B3[Block 3]
+            b3n0
+        end
+    end
+    subgraph B4[Block 4]
+        b4n0
+        b4n1
+        b4n2
+        subgraph B5[Block 5]
+            b5n0
+            b5n1
+            b5n2
+            b5n3
+        end
+    end
+    b3n0 ==> b0n2
+    b0n2 --> b3n0
+    b4n0 -.-> b3n0
+    b0n0 -->|step| b0n3
+    b5n1 --> b3n0
+    b1n0 ==>|step| b3n0
+    b3n0 --> b1n0
+    b4n1 --> b4n0
+    b4n0 --> b4n1
+    b5n0 ==> b4n0
+    b0n2 ==> b0n0
+    b2n0 -.-> b0n2
+    b1n0 -.-> b4n0
+    b5n1 --> b5n2
+    b5n2 --> b5n1
+    b0n2 --> b4n2
+    b0n3 ==>|step| b1n0
+    b4n1 --> b0n1
+    b0n1 --> b4n1
+    b4n2 ==> b0n3
+    b1n1 ==> b3n0
+    b3n0 --> b1n1
+    b0n0 ==>|step| b0n1
+    b0n1 --> b0n0
+    b4n0 --> b5n1
+    b5n2 -->|step| b2n0
+    B0 --> b4n0
+

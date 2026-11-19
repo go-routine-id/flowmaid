@@ -1,0 +1,14 @@
+architecture-beta
+    group cloud(cloud)[AWS Cloud]
+    group vpc(network)[VPC] in cloud
+    group priv(lock)[Private subnet] in vpc
+    service lb(internet)[Load Balancer] in vpc
+    service app1(server)[App 1] in priv
+    service app2(server)[App 2] in priv
+    service rds(database)[RDS] in cloud
+    service user(user)[User]
+    user:R --> L:lb
+    lb:R --> L:app1
+    lb:R --> L:app2
+    app1:R --> L:rds
+    app2:R --> L:rds

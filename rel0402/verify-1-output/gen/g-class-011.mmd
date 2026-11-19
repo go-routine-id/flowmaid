@@ -1,0 +1,68 @@
+classDiagram
+direction TB
+C28 ..|> C5
+C10 *-- C7 : Customer Order
+C5 *-- C12
+C23 "1" -- "*" C29 : Long label here
+C12 --> C2
+C29 --> C6
+C0 --> C5
+C28 -- C19
+C8 o-- C19
+C11 "1" -- "*" C24
+C1 *-- C13
+C13 *-- C18 : <b>bold</b>
+C5 ..|> C12
+C3 "1" <--> "*" C25
+C17 --> C22
+C3 <--> C26 : 日本語
+C0 "1" <--> "*" C23
+C16 "1" -- "*" C2
+C26 --> C9
+C9 ..> C28
+C23 *-- C5 : Customer Order
+C18 *-- C22 : x
+C25 *-- C21 : delta
+C20 "1" <--> "*" C25
+C24 o-- C2
+C24 "1" o-- "*" C2 : <b>bold</b>
+C21 "1" ..> "*" C14
+C2 <|-- C6 : <b>bold</b>
+note for C8 "Customer Order"
+note "x"
+class C0 {
+  +int id
+  +name() String
+}
+class C2 {
+  +int id
+  +name() String
+}
+class C11 {
+  +int id
+  +name() String
+}
+class C14 {
+  +int id
+  +name() String
+}
+class C18 {
+  +int id
+  +name() String
+}
+class C19 {
+  +int id
+  +name() String
+}
+class C21 {
+  +int id
+  +name() String
+}
+class C22 {
+  +int id
+  +name() String
+}
+class C28 {
+  +int id
+  +name() String
+}

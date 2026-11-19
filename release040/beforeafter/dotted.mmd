@@ -1,0 +1,8 @@
+classDiagram
+    class com.example.Order {
+        +String id
+        +total() Money
+    }
+    com.example.Order --> com.example.Customer : placedBy
+    com.example.Order *-- com.example.OrderLine : lines
+    com.example.OrderLine : +int quantity

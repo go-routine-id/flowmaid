@@ -1,0 +1,9 @@
+flowchart TD
+  s[Start] --> a1
+  t[Other] --> b1
+  subgraph A [Tall start]
+    a1["one<br/>two<br/>three"] --> a2[a two] --> a3[a three]
+  end
+  subgraph B [Short]
+    b1[b one]
+  end

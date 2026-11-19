@@ -1,0 +1,11 @@
+advanced	0.3459
+back-edge	0.0483
+demo	0.0486
+long-labels	0.0391
+shapes	0.0384
+stress	0.0869
+subgraph	0.0639
+wide-labels	0.2969
+fanout	0.3045
+lr	0.1708
+fanout-frames	1.8622

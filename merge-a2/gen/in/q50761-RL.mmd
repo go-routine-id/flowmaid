@@ -1,0 +1,16 @@
+flowchart RL
+    subgraph G0[Data ingestion workers 0]
+        g0m0[g0m0]
+        g0m1[g0m1]
+    end
+    subgraph G1[Data ingestion workers 1]
+        g1m0[g1m0]
+        g1m1[g1m1]
+        g1m2[g1m2]
+    end
+    G0 --> g0m0
+    g1m2 --> g1m1
+    g1m0 -.-> g0m0
+    g1m0 -- l9 --> g0m1
+    g1m2 --> g0m0
+    g0m1 --> G1

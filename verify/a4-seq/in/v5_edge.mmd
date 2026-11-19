@@ -1,0 +1,11 @@
+sequenceDiagram
+    participant A
+    A->>A: self only
+    activate A
+    deactivate A
+    Note over A: lonely note that is quite wide
+    alt a very long condition label for a narrow diagram
+        A->>A: x
+    else another rather long branch label here
+        A->>A: y
+    end

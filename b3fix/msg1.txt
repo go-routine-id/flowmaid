@@ -1,0 +1,94 @@
+fix(flowchart): lanes never turn across an edge at their end, stay in their frames in route(), nest uncrossed; corpus crosses less (Q4 + M4, §2.2, B3 review r1)
+
+B3 review round 1, items 1-6 (and parts of 7):
+
+1. state.mmd `retry` crossed `invalid` (static and route()). At an end a
+   lane shares with another edge, `lanes::crossings` skipped the stub and
+   leg and judged the other edge's straight line from the end's centre,
+   so the short way between the Validating frame and Rejected looked
+   crossing-free. Now the other edge's first segment is judged by where
+   it heads (`lanes::crosses_at_end`): past the lane's turn, or beside a
+   lane running straight out at the span's end on its side, it crosses.
+   `lane_at` prices every candidate spot of a side (bound and the ends'
+   span ends), not only the shortest, so a spot straight out of the end
+   can win: `retry` runs straight up out of Rejected round the outside,
+   crossing nothing, as mermaid draws it. The CHANGELOG line now says
+   what is drawn.
+2. route() let a labelled lane leave both its frames (x3-cluster-backs:
+   280 px outside Inner and Outer). route() / route_partial() now grow
+   each frame over a lane kept beside the members of the innermost box
+   holding both ends, and over its label, exactly as scene_clustered
+   does (`route_lane_clusters`; the sibling stop and re-nesting are
+   shared helpers now), so the frames match the static ones.
+3. Corpus crossings: flow corpus x_drawn 524 | 519 -> 505 | 508 (every
+   file at or below its pre-package count; bench-75 364 | 377 -> 349 |
+   375, dense-td 93 | 82 -> 93 | 75, state 0 | 0). How:
+   - nested lanes no longer cross each other's legs: of lanes in one band
+     on one side, the end nearest that side takes the lane farthest out
+     and the shortest stub (`plan` deals the planned breadths out again;
+     stagger counts the lanes farther out from their ends, not the ones
+     planned later); lanes from ends stacked on one layer into one node
+     may run side by side straight out of their ends, the planned ones no
+     obstacle (bench-75's jobs -> db); side entries into one side turn in
+     one LANE_STAGGER apart instead of on top of each other;
+   - a lane running straight into its target's busy downstream side
+     counts each edge leaving beside it (bench-75's job1 -> svc1 ran into
+     svc1 along its eight out-edges in route() and took the other side
+     from the static layout, 1 400 px away: item 6 for that edge);
+   - a back-edge whose ports lie more than DIRECT_REACH (450 px) apart
+     across the flow takes a lane instead of a reversed S sweeping along
+     the gap (bench-75 svc2 -> db entered db at 71 deg in route(), item 7;
+     dense-td n43 -> n16 swept 2 000 px through 8 edges);
+   - the router accepts the lanes first, before the builder's channel
+     edges: planned round every node and each other, they have the least
+     room, and the forward edges are priced and searched round them
+     (bench-75 static 368 -> 351, defects 14 -> 6);
+   - a lane's leg out of a member of a frame it leaves runs a stub past
+     that frame's border instead of 6 px outside it (`Lane::out`,
+     `flow_frame_spans`; job1 -> svc1 rode the jobs frame's border).
+4. wide-labels: the return edge's label covered its twin. A labelled
+   2-cycle drawn as two curves across one gap in LR / RL bows apart by
+   TWIN_LABEL_BOW (a label's height and two stroke pads; the control at
+   the end lying less far out swings first, so the curve never passes its
+   other end and comes back): lbl_edge 1 | 1 -> 0 | 0, heads within 2 deg
+   of square in static, 5 in route(), height 160 (<= 201).
+5. The debug lines in note_links_match_between_scene_and_route are gone.
+6. Static and route() now agree on bench-75's job1 -> svc1 (same lane to
+   the px) and on the jobs' lanes; x2-nested-backs still differs (both
+   sides cross nothing there).
+
+Gates (tests/quality.rs), against the pre-package values:
+- restored: CEILINGS bench-75 frame pairs 3 -> 2, dense-td static
+  defects 43 -> 42; LBL_EDGE_MAX 1|5 -> 0|4; XGAP_MAX 15|11 -> 13|11;
+  EDGE_CHIP_MAX 0|4 -> 0|3; overlap/tight rows unchanged.
+- lowered (ratchets): x_drawn 521|517 -> 505|508, end_tilt 14|19 -> 9|11,
+  end_tilt_max 86.3 -> 76.8 static, own_frame 1/32 -> 0, band_pairs
+  93|118 -> 90|101, band_len 41640 -> 40580 static, lat_backtrack 1902
+  -> 1828 static, lat_wiggles 19 -> 16 routed, idiom_bow 7|8 -> 2|1
+  (the two bowed wide-labels twins), end_kink 60|77 -> 56|71,
+  BORDER_LEN_MAX routed 2140 -> 2070, hug routed 3700 kept.
+- still above the pre-package value, each named in the file: static
+  border_len 1082 -> 1120 and hug 3110 -> 3180 (bench-75 svc4 -> logs, no
+  longer redrawn round alerts -> gw's bow, keeps the layout's channel
+  along the app frame's border); idiom_scubic 60 -> 61 static and
+  idiom_spline 21 -> 22 routed (adjacent back-edges drawn across the gap
+  as reversed S, report §2.2 fix 4); lat_wiggles 16 -> 17 static;
+  lat_backtrack 676 -> 696.1 routed; band_len 46246 -> 47104 routed
+  (dense-td n43 -> n16 now runs in a lane beside its twin).
+- MAX_ASPECT stays 12.5 (defect-locking gate revised in c33aa31).
+
+Tests: lanes a_lane_counts_the_edge_it_turns_across_at_a_shared_end,
+a_lane_straight_into_its_target_counts_the_edges_leaving_beside_it,
+lanes_from_stacked_ends_into_one_node_run_side_by_side,
+a_far_reaching_back_edge_takes_a_lane; scene
+a_lane_never_turns_across_an_edge_arriving_beside_its_end (state.mmd),
+a_lane_stays_in_its_frames_in_route_and_on_a_drag_too (x3),
+a_labelled_lr_two_cycle_bows_apart_so_each_label_rides_its_own_line,
+far_apart_back_edges_and_frame_legs_square_up_alike_in_route (bench-75).
+
+Perf (perf.sh b3fix-r1 vs baseline): bench-75 route 12.6 -> 13.8 ms,
+worst drag 20.2 -> 22.0 ms (budget 25.3), scene 31.0 -> 33.8 ms; every
+file within budget.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

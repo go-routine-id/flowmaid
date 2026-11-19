@@ -1,0 +1,13 @@
+flowchart RL
+    N0[Store]
+    N1{Parse}
+    N2(Fetch done)
+    N3(Queue)
+    N4(Check)
+    N0 -->|fail| N1
+    N1 --> N2
+    N1 --> N3
+    N1 --> N4
+    N4 ==> N3
+    N2 -->|retry| N0
+    N3 ==>|rollback| N1

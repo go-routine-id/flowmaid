@@ -1,0 +1,9 @@
+stateDiagram-v2
+  direction LR
+  [*] --> Idle
+  Idle --> Busy : start job
+  Busy --> Idle : done
+  Busy --> Error : failure detected
+  Error --> Idle : reset
+  note right of Busy : works hard
+  Error --> [*]

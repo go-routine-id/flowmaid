@@ -1,0 +1,36 @@
+{"tool":"structdump","flowmaid":"0.38.0","kind":"flowchart","direction":"LR",
+"nodes":[
+ {"id":"u","label":"u","shape":"Rect","sub":null},
+ {"id":"a1","label":"a1","shape":"Rect","sub":0},
+ {"id":"a2","label":"a2","shape":"Rect","sub":0},
+ {"id":"b1","label":"b1","shape":"Rect","sub":1},
+ {"id":"b2","label":"b2","shape":"Rect","sub":1},
+ {"id":"v","label":"v","shape":"Rect","sub":null}],
+"subgraphs":[
+ {"id":"A","title":"A","parent":null,"direction":null,"nodes":[1,2]},
+ {"id":"B","title":"B","parent":null,"direction":null,"nodes":[3,4]}],
+"edges":[
+ {"from":{"n":0},"to":{"n":1},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":1},"to":{"n":2},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":3},"to":{"n":4},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":2},"to":{"n":3},"label":"x","kind":"Arrow","drawn":true},
+ {"from":{"n":1},"to":{"n":4},"label":"y","kind":"Arrow","drawn":true},
+ {"from":{"n":4},"to":{"n":5},"label":null,"kind":"Arrow","drawn":true}],
+"scene":{"width":692.000,"height":191.500,
+ "nodes":[
+  {"id":"u","x":28.000,"y":100.250,"w":54.000,"h":38.000},
+  {"id":"a1","x":142.000,"y":100.250,"w":54.000,"h":38.000},
+  {"id":"a2","x":256.000,"y":68.000,"w":54.000,"h":38.000},
+  {"id":"b1","x":382.000,"y":68.000,"w":54.000,"h":38.000},
+  {"id":"b2","x":496.000,"y":100.250,"w":54.000,"h":38.000},
+  {"id":"v","x":610.000,"y":100.250,"w":54.000,"h":38.000}],
+ "clusters":[
+  {"id":"A","x":128.000,"y":28.000,"w":196.000,"h":135.500,"depth":0},
+  {"id":"B","x":368.000,"y":28.000,"w":196.000,"h":135.500,"depth":0}],
+ "edges":[
+  {"from":"u","to":"a1","routed":false,"label":null,"points":[[82.000,119.250],[112.000,119.250],[112.000,119.250],[142.000,119.250]]},
+  {"from":"a1","to":"a2","routed":true,"label":null,"points":[[196.000,112.250],[213.375,112.250],[226.000,112.250],[226.000,99.625],[226.000,87.000],[238.625,87.000],[256.000,87.000]]},
+  {"from":"b1","to":"b2","routed":true,"label":null,"points":[[436.000,87.000],[453.375,87.000],[466.000,87.000],[466.000,99.625],[466.000,112.250],[478.625,112.250],[496.000,112.250]]},
+  {"from":"a2","to":"b1","routed":false,"label":{"text":"x","cx":340.500,"cy":87.000,"w":21.000},"points":[[310.000,87.000],[346.000,87.000],[346.000,87.000],[382.000,87.000]]},
+  {"from":"a1","to":"b2","routed":false,"label":{"text":"y","cx":409.000,"cy":126.250,"w":21.000},"points":[[196.000,126.250],[296.000,126.250],[396.000,126.250],[496.000,126.250]]},
+  {"from":"b2","to":"v","routed":false,"label":null,"points":[[550.000,119.250],[580.000,119.250],[580.000,119.250],[610.000,119.250]]}]}}

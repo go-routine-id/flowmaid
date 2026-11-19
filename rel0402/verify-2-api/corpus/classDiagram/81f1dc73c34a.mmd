@@ -1,0 +1,23 @@
+classDiagram
+  direction LR
+  class Hub {
+    +id int
+    +name String
+    +save() bool
+  }
+  class OrderService {
+    +run()
+    -state int
+  }
+  class Cart
+  class User {
+    +run()
+    -state int
+  }
+  class InventoryRepository
+  OrderService "1" --> "0..*" Hub
+  Cart "1" --> "0..*" Hub
+  PaymentGatewayAdapter "1" --> "0..*" Hub
+  User "1" --> "0..*" Hub
+  InventoryRepository "1" --> "0..*" Hub
+  Mailer "1" --> "0..*" Hub

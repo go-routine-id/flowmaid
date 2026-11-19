@@ -1,0 +1,25 @@
+flowchart LR
+  subgraph F0 [Frame 0]
+    n0>Node 0 with a long label]
+  end
+  n3 ---> n7
+  n8 ===|x| n1
+  n3 ==>|a longer label| n0
+  n7 ---|no| n5
+  n3 ==>|x| n6
+  n3 <==>|yes| n8
+  n7 <-->|x| n7
+  n1 -.->|x| n5
+  n2 --> n8
+  n0 ==> n3
+  n5 --- F0
+  n2 e11@---> n0
+  e11@{ curve: monotoneX }
+  n0 o--o n2
+  n3 e13@--> n6
+  e13@{ curve: bumpY }
+  linkStyle 0 stroke-width:16px,stroke:#3a3
+  linkStyle 6 stroke-width:16px,stroke:#c33
+  linkStyle 7 stroke-width:55px,stroke:#36c,stroke-dasharray:6 3
+  linkStyle 8 stroke-width:55px,stroke:#3a3
+  linkStyle 9 stroke-width:3.5px,stroke:#3a3

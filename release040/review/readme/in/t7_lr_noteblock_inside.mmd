@@ -1,0 +1,10 @@
+stateDiagram-v2
+    direction LR
+    [*] --> Outer
+    state Outer {
+        A --> B
+        B --> C
+        note left of A
+            block note
+        end note
+    }

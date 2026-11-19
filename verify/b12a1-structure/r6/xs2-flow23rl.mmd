@@ -1,0 +1,75 @@
+flowchart RL
+    f0[free 0]
+    subgraph B0[Block 0]
+        b0n0
+    end
+    subgraph B1[Block 1]
+        b1n0
+        b1n1
+        b1n2
+        b1n3
+        subgraph B4[Block 4]
+            b4n0
+            b4n1
+            b4n2
+            subgraph B7[Block 7]
+                b7n0
+                b7n1
+                b7n2
+                b7n3
+            end
+        end
+    end
+    subgraph B2[Block 2]
+        b2n0
+        b2n1
+        b2n2
+    end
+    subgraph B3[Block 3]
+        b3n0
+        b3n1
+        b3n2
+    end
+    subgraph B5[Block 5]
+        b5n0
+        b5n1
+        b5n2
+        b5n3
+    end
+    subgraph B6[Block 6]
+        b6n0
+        b6n1
+    end
+    b3n0 ==> b2n2
+    b2n2 --> b3n0
+    b3n2 ==>|step| b1n2
+    b4n2 -.->|step| b4n1
+    b2n2 -.-> b5n3
+    b5n1 --> b5n0
+    b2n1 ==>|step| b6n0
+    b7n2 ==> b6n0
+    b1n2 --> b5n2
+    b5n0 -->|step| b3n2
+    b3n2 ==>|step| b7n3
+    b3n2 ==>|step| b3n0
+    b3n0 --> b3n2
+    b4n1 -.-> b7n1
+    b4n1 -->|step| b5n2
+    b6n1 -->|step| b4n0
+    b4n0 --> b6n1
+    b7n2 ==> b3n0
+    b7n2 -.-> b1n3
+    b1n3 --> b7n2
+    f0 -.->|step| b6n1
+    b6n1 --> f0
+    b7n3 ==> b2n2
+    b3n0 -->|step| b4n1
+    b4n1 --> b3n0
+    b5n1 --> b1n1
+    b1n1 --> b5n1
+    b6n1 --> b2n1
+    b5n2 -.-> b3n2
+    b2n0 -.-> b3n1
+    b2n2 -.->|step| b0n0
+    b0n0 --> b2n2
+    B5 --> b7n0

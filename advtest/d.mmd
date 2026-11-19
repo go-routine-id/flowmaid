@@ -1,0 +1,6 @@
+flowchart TD
+    subgraph Workers [Async Workers]
+        Q[(Job Queue)] --> W1[Worker 1]
+    end
+    Gate ==> Q
+    W1 --> Users

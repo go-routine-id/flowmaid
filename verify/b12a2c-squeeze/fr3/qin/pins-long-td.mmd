@@ -1,0 +1,17 @@
+flowchart TD
+  subgraph G[Very long frame title for the order processing department]
+    m0[intake]
+    m1[validate]
+    m2[archive]
+    m0 --> m1 --> m2
+  end
+  a[client a] --> G
+  b[client b] --> G
+  b --> m1
+  c[client c] -->|bulk| G
+  c --> m0
+  d[client d] --> m0
+  d --> m2
+  e[client e] --> G
+  G --> out[report]
+  m2 --> out

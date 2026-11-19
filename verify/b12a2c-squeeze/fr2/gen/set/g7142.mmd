@@ -1,0 +1,40 @@
+flowchart TD
+  n1["api<br/>queue"]
+  subgraph B0["Data tier"]
+    n2["ship audit worker"]
+    n3["store"]
+    subgraph B0s0["Analytics 0"]
+      n4["index merge worker"]
+    end
+  end
+  subgraph B1["Ingest"]
+    n5["cache api report<br/>auth"]
+    n6["ingest<br/>pack"]
+    n7["billing"]
+    n8["report"]
+  end
+  subgraph B2["Core"]
+    n9["ship"]
+    n10["index"]
+    n11["merge"]
+    n12["split"]
+    subgraph B2s0["Platform 0"]
+      n13["auth"]
+    end
+  end
+  n14["notify<br/>queue"]
+  n6 -->|parse| n14
+  n6 -.->|audit| n3
+  n6 --> B2s0
+  n6 --> n13
+  n9 ==> n13
+  n14 -->|audit| n2
+  n1 --> n14
+  n1 --> n7
+  n10 -.-> n7
+  n4 -.-> n1
+  n13 -.-> n7
+  n1 -->|ingest| n4
+  n7 --> n9
+  n5 ==> n14
+  n1 ==> n2

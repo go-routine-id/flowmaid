@@ -1,0 +1,17 @@
+flowchart TD
+    N0(Parse)
+    N1[Retry]
+    N2([Notify])
+    N3[Check retry]
+    N4(Check notify)
+    N5(Load parse)
+    N6([Check])
+    N0 --> N1
+    N1 -->|next| N2
+    N1 --> N3
+    N1 -->|no| N4
+    N2 -->|ok| N5
+    N5 --> N6
+    N5 --> N6
+    N4 -->|again| N2
+    N6 ==> N1

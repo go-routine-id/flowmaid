@@ -1,0 +1,36 @@
+flowchart LR
+  s0["queue log cache"]
+  s1["pay queue"]
+  subgraph g0["report order web zone"]
+    m0["api"]
+    m1["trace api user"]
+    m2["user log report"]
+    m3["index trace"]
+    m0 --> m1
+    m1 --> m2
+    m1 --> m3
+  end
+  subgraph g1["pay zone"]
+    m4["user pay"]
+  end
+  subgraph g2["index log zone"]
+    direction TB
+    m5["metric ship"]
+    m6["report"]
+    m7["cache order user"]
+    m5 --> m6
+  end
+  subgraph g3["index auth zone"]
+    m8["web api auth"]
+    m9["db log"]
+    m10["billing web notify"]
+    m8 --> m9
+    m8 --> m10
+  end
+  s0 --> m0
+  s1 --> g1
+  s1 --> g2
+  s1 --> m8
+  m1 --> m8
+  s1 --> L11["search api metric"]
+  s0 --> L12["trace"]

@@ -1,0 +1,40 @@
+flowchart BT
+  subgraph F0 [Frame 0]
+    direction LR
+    n11{{Node 11}}
+    n0(Node 0 with a longer label)
+    n7(Node 7 with a longer label)
+  end
+  n1 -.->|dot| n7
+  n8 -->|lbl| n1
+  n4 --> n6
+  n8 <--> n8
+  n4 --o n9
+  n11 --x n2
+  n4 --- n11
+  n8 <-.-> n13
+  n2 -->|lbl| n2
+  n4 <==> n1
+  n2 -.->|dot| n5
+  n0 ==>|thick lbl| n7
+  n4 <-.-> n6
+  n0 <--> n10
+  n4 -.->|dot| n4
+  n9 -->|lbl| n2
+  n9 --- n5
+  n8 --> n0
+  n10 --- n5
+  n3 -.->|dot| n0
+  n7 ==>|thick lbl| n8
+  n3 <-.-> n11
+  n11 --x n9
+  n1 -.->|dot| n3
+  n7 -.-> n8
+  n11 x--x n11
+  n3 --x n9
+  n2 <==> n8
+  n7 -.-> n13
+  n11 -->|lbl| n13
+  linkStyle 2 stroke:#3a3,stroke-width:5px
+  linkStyle 6 stroke:#3a3,stroke-width:7px
+  linkStyle 6 stroke:#c33,stroke-width:12px

@@ -1,0 +1,32 @@
+{"tool":"structdump","flowmaid":"0.38.0","kind":"flowchart","direction":"LR",
+"nodes":[
+ {"id":"a0","label":"start","shape":"Rect","sub":0},
+ {"id":"a1","label":"leaf a","shape":"Rect","sub":1},
+ {"id":"b1","label":"leaf b","shape":"Rect","sub":3},
+ {"id":"b2","label":"end","shape":"Rect","sub":2}],
+"subgraphs":[
+ {"id":"A","title":"Upstream","parent":null,"direction":null,"nodes":[0]},
+ {"id":"AA","title":"Inner A at the bottom","parent":0,"direction":null,"nodes":[1]},
+ {"id":"B","title":"Downstream","parent":null,"direction":null,"nodes":[3]},
+ {"id":"BB","title":"Inner B at the top","parent":2,"direction":null,"nodes":[2]}],
+"edges":[
+ {"from":{"n":0},"to":{"n":1},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":2},"to":{"n":3},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":1},"to":{"n":2},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":3},"to":{"n":0},"label":"back","kind":"Dotted","drawn":true}],
+"scene":{"width":515.900,"height":227.000,
+ "nodes":[
+  {"id":"a0","x":42.000,"y":108.000,"w":59.300,"h":38.000},
+  {"id":"a1","x":161.300,"y":108.000,"w":66.600,"h":38.000},
+  {"id":"b1","x":291.900,"y":108.000,"w":66.600,"h":38.000},
+  {"id":"b2","x":418.500,"y":108.000,"w":55.400,"h":38.000}],
+ "clusters":[
+  {"id":"A","x":28.000,"y":28.000,"w":227.900,"h":146.000,"depth":0},
+  {"id":"B","x":263.900,"y":28.000,"w":224.000,"h":146.000,"depth":0},
+  {"id":"AA","x":147.300,"y":68.000,"w":94.600,"h":92.000,"depth":1},
+  {"id":"BB","x":277.900,"y":68.000,"w":94.600,"h":92.000,"depth":1}],
+ "edges":[
+  {"from":"a0","to":"a1","routed":false,"label":null,"points":[[101.300,124.000],[131.300,124.000],[131.300,124.000],[161.300,124.000]]},
+  {"from":"b1","to":"b2","routed":false,"label":null,"points":[[358.500,124.000],[388.500,124.000],[388.500,124.000],[418.500,124.000]]},
+  {"from":"a1","to":"b1","routed":false,"label":null,"points":[[227.900,127.000],[259.900,127.000],[259.900,127.000],[291.900,127.000]]},
+  {"from":"b2","to":"a0","routed":true,"label":{"text":"back","cx":256.955,"cy":189.000,"w":43.600},"points":[[418.500,138.000],[404.471,138.000],[390.471,138.000],[390.471,152.000],[390.471,176.250],[390.471,190.250],[376.471,190.250],[129.800,190.250],[115.800,190.250],[115.800,176.250],[115.800,145.250],[115.800,138.000],[108.550,138.000],[101.300,138.000]]}]}}

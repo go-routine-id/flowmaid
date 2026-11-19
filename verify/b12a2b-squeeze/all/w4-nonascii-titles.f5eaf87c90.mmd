@@ -1,0 +1,17 @@
+flowchart TD
+    k1[Kunde] --> b1
+    k2[Händler] --> b1
+    k3[Lieferant] --> BST
+    subgraph BST[Überprüfung der Bestellungen Ärger]
+        b1[prüfen]
+        b2[buchen]
+        b1 --> b2
+    end
+    subgraph JP[注文処理パイプライン監視]
+        j1[受付]
+        j2[発送]
+        j1 --> j2
+    end
+    b2 --> j1
+    k1 --> j1
+    k2 --> JP

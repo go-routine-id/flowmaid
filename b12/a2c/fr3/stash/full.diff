@@ -1,0 +1,535 @@
+diff --git a/src/blockcheck.rs b/src/blockcheck.rs
+index 9926d01..3d4e275 100644
+--- a/src/blockcheck.rs
++++ b/src/blockcheck.rs
+@@ -4059,6 +4059,66 @@ fn a_frames_pins_and_its_displaced_entries_are_one_set_of_columns() {
+     }
+ }
+ 
++/// How far (px) edge `e`'s chip centre lies from its own drawn line.
++fn chip_off_its_line(e: &SceneEdge) -> f64 {
++    let Some((_, at, _)) = &e.label else {
++        return 0.0;
++    };
++    let seg = |a: (f64, f64), b: (f64, f64)| {
++        let (dx, dy) = (b.0 - a.0, b.1 - a.1);
++        let l2 = dx * dx + dy * dy;
++        let t = if l2 > 0.0 {
++            (((at.0 - a.0) * dx + (at.1 - a.1) * dy) / l2).clamp(0.0, 1.0)
++        } else {
++            0.0
++        };
++        (a.0 + t * dx - at.0).hypot(a.1 + t * dy - at.1)
++    };
++    crate::scene::edge_polyline(e)
++        .windows(2)
++        .map(|s| seg(s[0], s[1]))
++        .fold(f64::INFINITY, f64::min)
++}
++
++#[test]
++fn a_chip_returns_to_its_line_however_near_another_line_passes() {
++    // The final pass returns a chip the builders' pass set beside its
++    // line (before the ports spread the ends) to its spot on the line.
++    // B12 G3's air (no other line within CLEAR_GAP of a chip) must not
++    // keep it beside the line: a chip on its line beats one beside it
++    // however near the strokes (lead ruling on G3). Three `deploy` lines
++    // from one registry into three members of a block, drawn TD: `reg ->
++    // web`'s chip stayed 21 px beside its line, where a sibling's line
++    // passed within CLEAR_GAP of its spot on the line.
++    let src = "flowchart TD
++  subgraph Build[Build pipeline]
++    git[repo] -->|push| ci[CI runner] -->|image| reg[(registry)]
++  end
++  subgraph Run[Runtime]
++    web[web] -->|read| db[(db)]
++    api[api] -->|write| db
++    job[job] -->|write| db
++  end
++  subgraph Obs[Observability]
++    scr[scraper] -->|scrape| tsdb[(tsdb)]
++  end
++  reg -->|deploy| web
++  reg -->|deploy| api
++  reg -->|deploy| job
++  scr -.->|scrape| web
++  scr -.->|scrape| api
++  scr -.->|scrape| job";
++    let g = graph(src);
++    let sc = block_scene(&g);
++    let e = sc
++        .edges
++        .iter()
++        .find(|e| e.from == "reg" && e.to == "web")
++        .expect("reg -> web");
++    let off = chip_off_its_line(e);
++    assert!(off <= 3.0, "`deploy` {off:.1} px beside its line");
++}
++
+ #[test]
+ fn a_block_layouts_chips_keep_clear_of_other_lines() {
+     // B12 G3: a block layout's chip keeps `CLEAR_GAP` from every other
+diff --git a/src/edgepass.rs b/src/edgepass.rs
+index 343d2d2..c5cebb6 100644
+--- a/src/edgepass.rs
++++ b/src/edgepass.rs
+@@ -71,6 +71,7 @@ pub(crate) enum Side {
+ }
+ 
+ /// What every stage knows about the scene's edges, computed once.
++#[derive(Clone)]
+ pub(crate) struct Ctx {
+     /// Index-parallel with `sc.edges`: the (source, target) ends, or
+     /// `None` when an edge could not be matched to the graph.
+@@ -438,13 +439,64 @@ pub(crate) fn finish_blocks(g: &Graph, sc: &mut Scene, blocks: Option<&[Vec<usiz
+     stages(g, sc, cx, Mode::Static);
+ }
+ 
++/// How much (px) of its smallest gap between two lines a drawing may
++/// give up and count as no worse ([`stages`]): the quality checks'
++/// own tolerance.
++const GAP_SLACK: f64 = 0.5;
++
+ /// The edge stages over `sc` with its context built.
+-fn stages(g: &Graph, sc: &mut Scene, mut cx: Ctx, mode: Mode) {
++///
++/// In a block layout's static scene, a title side's frame pins dealt
++/// with its displaced entries as one set ([`crate::ortho`]) are kept
++/// only where the finished drawing is no worse for it than with the
++/// pins where the ports stage put them, as the quality harness counts
++/// a drawing ([`crate::quality::measure`]): no more defects, crossings,
++/// fan crossings or chips on lines, no chip farther off its own line
++/// ([`crate::labels::chips_off_lines`]); and no more entries through a
++/// frame's wall or into a node's flank and no smaller gap between two
++/// lines, unless the set takes away a defect (an arrowhead on another,
++/// two lines on one column). Moving a frame's pins past its entries had
++/// traded one overlap for six crossings on a frame with five pins under
++/// a long title, and three crossings for a lateral entry on another.
++/// `route()` draws a block layout from the static scene, and its drags
++/// with [`Ctx::blocks`] off, so they never deal title sides.
++fn stages(g: &Graph, sc: &mut Scene, cx: Ctx, mode: Mode) {
++    let alt = (mode == Mode::Static && cx.blocks).then(|| (sc.clone(), cx.clone()));
++    if !stages_with(g, sc, cx, mode, true) {
++        return;
++    }
++    let Some((mut apart, cx)) = alt else {
++        return;
++    };
++    stages_with(g, &mut apart, cx, mode, false);
++    let (set, kept) = (
++        crate::quality::measure(g, sc),
++        crate::quality::measure(g, &apart),
++    );
++    let fewer_defects = set.defects() < kept.defects();
++    let holds = set.defects() <= kept.defects()
++        && crate::labels::chips_off_lines(&sc.edges)
++            <= crate::labels::chips_off_lines(&apart.edges) + GAP_SLACK
++        && set.x_drawn <= kept.x_drawn
++        && set.fan_x <= kept.fan_x
++        && set.edge_chip <= kept.edge_chip
++        && (fewer_defects
++            || set.lateral_x <= kept.lateral_x
++                && set.side_ends <= kept.side_ends
++                && set.min_edge_gap >= kept.min_edge_gap - GAP_SLACK);
++    if !holds {
++        *sc = apart;
++    }
++}
++
++/// [`stages`] with the ortho stage's `pins_as_set`; returns whether a
++/// title side was dealt with its pins as one set.
++fn stages_with(g: &Graph, sc: &mut Scene, mut cx: Ctx, mode: Mode, pins_as_set: bool) -> bool {
+     let mut moved = vec![false; sc.edges.len()];
+     crate::ports::assign(g, sc, &cx, mode, &mut moved);
+     // Every edge on the axes, its corners rounded (report §2.1): from the
+     // ends the ports stage settled, before the router judges them.
+-    crate::ortho::orthogonalize(g, sc, &mut cx, mode);
++    let pins_moved = crate::ortho::orthogonalize(g, sc, &mut cx, mode, pins_as_set);
+     crate::router::repair(g, sc, &cx, mode, &mut moved);
+     // A rerouted end may have switched to another side of its node and
+     // landed on a port another edge already holds: space those groups
+@@ -483,6 +535,7 @@ fn stages(g: &Graph, sc: &mut Scene, mut cx: Ctx, mode: Mode) {
+     // A scene whose painter strokes its own width (ER, class) is drawn
+     // on its canvas as-is; a flowchart's is fitted like its SVG.
+     refit(sc, mode, g.edge_paint_width.is_none());
++    pins_moved
+ }
+ 
+ /// A path the stages drew as one straight leg (two waypoints on an
+diff --git a/src/labels.rs b/src/labels.rs
+index 07a104a..627db8b 100644
+--- a/src/labels.rs
++++ b/src/labels.rs
+@@ -73,6 +73,10 @@ const LABEL_SPOT_CHUNK: usize = 32;
+ const LABEL_SLIDE_STEP: f64 = 6.0;
+ /// Overlap (px, per axis) below which two boxes count as just touching.
+ const TOUCH_EPS: f64 = 0.5;
++/// How far (px) a chip's centre may lie from its own line and still
++/// read as sitting on it, as mermaid centres every chip on its line;
++/// one farther out hangs beside the line (see [`Field::keeps_air`]).
++const ON_LINE_TOL: f64 = 3.0;
+ /// Half-thickness of the band a subgraph frame's border line blocks
+ /// for edge labels (the line is drawn 1.4px wide).
+ pub(crate) const FRAME_BORDER_BAND: f64 = 1.0;
+@@ -937,6 +941,35 @@ fn point_seg_dist2(c: (f64, f64), a: (f64, f64), b: (f64, f64)) -> f64 {
+     px * px + py * py
+ }
+ 
++/// How far (px) the chips of `edges` that do not sit on their own drawn
++/// lines lie from them, all told (0 when every chip's centre is within
++/// [`ON_LINE_TOL`] of its line; a self-loop's chip, which sits beyond its
++/// loop, is not counted): what the edge stages weigh when they choose
++/// between two drawings of a block layout.
++pub(crate) fn chips_off_lines(edges: &[SceneEdge]) -> f64 {
++    edges
++        .iter()
++        .filter(|e| e.from != e.to && edge_drawn(e) && !matches!(e.kind, EdgeKind::Invisible))
++        .filter_map(|e| {
++            let (_, at, _) = e.label.as_ref()?;
++            let line = edge_polyline(e);
++            let d = line
++                .windows(2)
++                .map(|w| point_seg_dist2(*at, w[0], w[1]))
++                .fold(f64::INFINITY, f64::min)
++                .sqrt();
++            (d.is_finite() && d > ON_LINE_TOL).then_some(d)
++        })
++        .sum()
++}
++
++/// Does point `c` (a chip's centre) lie on polyline `line`, within
++/// [`ON_LINE_TOL`]?
++fn centre_on_line(c: (f64, f64), line: &[(f64, f64)]) -> bool {
++    line.windows(2)
++        .any(|w| point_seg_dist2(c, w[0], w[1]) <= ON_LINE_TOL * ON_LINE_TOL)
++}
++
+ /// Bounding box of segment `a`–`b`.
+ fn seg_box(a: (f64, f64), b: (f64, f64)) -> Rect {
+     (a.0.min(b.0), a.1.min(b.1), a.0.max(b.0), a.1.max(b.1))
+@@ -1421,6 +1454,24 @@ impl Field<'_> {
+         }
+     }
+ 
++    /// May label `ei` move from its spot `at` to box `to` (both of
++    /// width `w`) as far as B12 G3's air goes ([`Field::near`])? Yes
++    /// when `to` has no other edge's stroke within [`CLEAR_GAP`], no
++    /// more than `at` has, or `at` lies off its own line `pts` (by more
++    /// than [`ON_LINE_TOL`]): a chip on its line beats one beside it
++    /// however near the strokes, as in [`best_spot`]'s ranking. The
++    /// final pass's returns to a line's middle asked for no stroke near
++    /// at all, so a chip the builders' pass had set beside its line
++    /// (before the ports spread the ends) stayed there whenever a line
++    /// passed within CLEAR_GAP of its spot on the line: 21 px beside a
++    /// TD `deploy` run whose middle another fan line passes 6 px away.
++    fn keeps_air(&self, to: Rect, at: (f64, f64), w: f64, pts: &[(f64, f64)], ei: usize) -> bool {
++        let near = self.near(to, ei, usize::MAX);
++        near == 0
++            || !centre_on_line(at, pts)
++            || near <= self.near(label_rect(at, w), ei, usize::MAX)
++    }
++
+     /// Has the pass spent its work budget? Counted as the items the
+     /// fixed obstacles, the stroke grid and the label grid `placed`
+     /// looked at, so the cost tracks time however crowded the drawing
+@@ -2201,7 +2252,7 @@ fn place_long(
+             if field.hits(&placed, ei, r).none()
+                 && placed.clear(ei, r, keep[ei])
+                 && field.strokes().count(r, ei, 0) == 0
+-                && field.near(r, ei, 0) == 0
++                && field.keeps_air(r, at, w, pts, ei)
+             {
+                 if let Some((_, m, _)) = &mut edges[ei].label {
+                     *m = to;
+@@ -2419,7 +2470,7 @@ fn place_long(
+                 && field.untouched(r)
+                 && placed.clear(ei, r, keep[ei])
+                 && field.strokes().count(r, ei, 0) == 0
+-                && field.near(r, ei, 0) == 0
++                && field.keeps_air(r, at, w, pts, ei)
+             {
+                 if let Some((_, m, _)) = &mut edges[ei].label {
+                     *m = to;
+diff --git a/src/layout.rs b/src/layout.rs
+index 550f505..efa123d 100644
+--- a/src/layout.rs
++++ b/src/layout.rs
+@@ -6004,7 +6004,13 @@ const STAGGER_SLACK: f64 = 2.0;
+ ///   them: the turns of its fan share the band above those frames, which
+ ///   the layer lines sized for the frames as they stand. A fan into
+ ///   three staggered blocks took a crossing and a 60 px tight pair, one
+-///   into nested titles a detour round the outer frame.
++///   into nested titles a detour round the outer frame;
++/// - one node outside the blocks is fed by the last rows of two or more
++///   of them: its fan's legs, chips and turns were laid out for the
++///   blocks where they stand. Moved, one block's leg ran across the room
++///   a sibling's chip had on its own leg (three nested blocks drawn TD
++///   into one end below their parent: the chip 21 px beside its line),
++///   or left its node sideways through two frame walls (drawn BT).
+ ///
+ /// A frame that ends within the earliest's span already reads as one
+ /// band with it and stays too: moving it only lengthened the links
+@@ -6084,6 +6090,31 @@ fn level_sibling_frames(
+         }
+         out
+     };
++    // The blocks of `blocks` whose last rows feed one node outside them
++    // together with another of them (their legs of a fan into it).
++    let fan_from_lasts = |blocks: &[usize]| -> Vec<usize> {
++        let last = |c: usize| cluster_span.get(&c).map(|s| s.1);
++        let mut out = Vec::new();
++        for u in 0..na {
++            if blocks.iter().any(|&c| inside(u, c)) {
++                continue;
++            }
++            let fed: std::collections::BTreeSet<usize> = preds[u]
++                .iter()
++                .filter(|&&v| alayer[u] > alayer[v])
++                .flat_map(|&v| {
++                    blocks
++                        .iter()
++                        .copied()
++                        .filter(move |&c| inside(v, c) && last(c) == Some(alayer[v]))
++                })
++                .collect();
++            if fed.len() >= 2 {
++                out.extend(fed);
++            }
++        }
++        out
++    };
+     let td = matches!(g.direction, Direction::TD);
+     let bt = matches!(g.direction, Direction::BT);
+     // Half what an LR / RL frame grows along the flow to hold its title
+@@ -6177,7 +6208,16 @@ fn level_sibling_frames(
+             .filter(|e| e.1 - target < ALIGN_EPS)
+             .filter_map(|e| tail(e.0))
+             .fold(f64::NEG_INFINITY, f64::max);
+-        let fanned = fan_into(&blocks, li);
++        // A block is held where one node outside feeds its first row
++        // with another's, or is fed by its last row with another's: the
++        // fan's legs, their chips and turns, were laid out for the blocks
++        // where they stand. Moved, a block's leg of a fan into one node
++        // ran across the room a sibling's chip had on its own leg (three
++        // nested blocks drawn TD into one end below their parent: the
++        // chip 21 px beside its line), or left its node sideways through
++        // two frame walls (the same drawn BT).
++        let mut fanned = fan_into(&blocks, li);
++        fanned.extend(fan_from_lasts(&blocks));
+         for (c, e) in edges {
+             let within = tail(c).is_some_and(|t| t <= reach + STAGGER_SLACK);
+             if within || held(c, li) || fanned.contains(&c) {
+diff --git a/src/ortho.rs b/src/ortho.rs
+index 2c35e13..0644ae3 100644
+--- a/src/ortho.rs
++++ b/src/ortho.rs
+@@ -183,7 +183,19 @@ enum Corner {
+ /// Sets [`Ctx::chain`] for each edge drawn down a dummy chain (a long
+ /// edge's channel), which the router accepts before the others as it
+ /// did the splines, and [`Ctx::shaped`] for each labelled twin's bulge.
+-pub(crate) fn orthogonalize(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
++///
++/// `pins_as_set`: a block layout's title side deals its frame pins and
++/// displaced entries as one set where they would meet
++/// ([`TitleSides::of`]); returns whether a side was dealt so (the edge
++/// stages then judge the drawing against one with the pins left where
++/// the ports stage put them, [`crate::edgepass`]).
++pub(crate) fn orthogonalize(
++    g: &Graph,
++    sc: &mut Scene,
++    cx: &mut Ctx,
++    mode: Mode,
++    pins_as_set: bool,
++) -> bool {
+     // Past [`crate::router::ROUTE_MAX_EDGES`] the router and its nudge
+     // leave a drawing as built, so the builders' curves stay too: drawn
+     // on the axes there, every edge's rounded corners were sampled into
+@@ -194,11 +206,10 @@ pub(crate) fn orthogonalize(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode)
+         || sc.edges.is_empty()
+         || sc.edges.len() > crate::router::ROUTE_MAX_EDGES
+     {
+-        return;
++        return false;
+     }
+     if mode != Mode::Static {
+-        ortho_pass(g, sc, cx, mode);
+-        return;
++        return ortho_pass(g, sc, cx, mode, pins_as_set);
+     }
+     // (What a pass changes of an edge: its curve, its waypoints and its
+     // label's spot.)
+@@ -209,7 +220,7 @@ pub(crate) fn orthogonalize(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode)
+             .collect()
+     };
+     let before = snap(&sc.edges);
+-    ortho_pass(g, sc, cx, mode);
++    let pins_moved = ortho_pass(g, sc, cx, mode, pins_as_set);
+     // The ports stage orders a side's ends by where their edges head,
+     // which suits the builders' curves; drawn on the axes, two ends of a
+     // side whose paths turn the same way cross twice when the one turning
+@@ -221,7 +232,7 @@ pub(crate) fn orthogonalize(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode)
+     // fewer lines.
+     let moves = untangle(sc, cx, &before);
+     if moves.is_empty() {
+-        return;
++        return pins_moved;
+     }
+     let first = snap(&sc.edges);
+     restore(&mut sc.edges, before);
+@@ -238,7 +249,7 @@ pub(crate) fn orthogonalize(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode)
+             line_of(&e)
+         })
+         .collect();
+-    ortho_pass(g, sc, cx, mode);
++    let again = ortho_pass(g, sc, cx, mode, pins_as_set);
+     let changed: Vec<usize> = (0..sc.edges.len())
+         .filter(|&i| {
+             let (a, b) = (&sc.edges[i], &first[i]);
+@@ -249,6 +260,9 @@ pub(crate) fn orthogonalize(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode)
+     if crossings_of(&lines_now, &changed) >= crossings_of(&lines_first, &changed) {
+         restore(&mut sc.edges, first);
+         (cx.chain, cx.shaped) = kept;
++        pins_moved
++    } else {
++        again
+     }
+ }
+ 
+@@ -487,7 +501,10 @@ fn untangle(sc: &Scene, cx: &Ctx, before: &[Geo]) -> Vec<(usize, bool, Pt)> {
+ 
+ /// One pass of [`orthogonalize`] over the scene as the ports stage left
+ /// it (or with the ends [`untangle`] moved).
+-fn ortho_pass(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
++/// One drawing of the stage. `pins_as_set`: a title side's frame pins
++/// and displaced columns are dealt as one set where they would meet
++/// ([`TitleSides::of`]); returns whether a side was dealt so.
++fn ortho_pass(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode, pins_as_set: bool) -> bool {
+     let mut chain = vec![false; sc.edges.len()];
+     let dir = g.direction;
+     // The rows of boxes along the flow, and the free gaps between them.
+@@ -590,7 +607,7 @@ fn ortho_pass(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
+     };
+     let stubs = breadth_stubs(sc, cx, dir, &boxes);
+     let end_stubs = breadth_ends(sc, cx, dir, &boxes);
+-    let titles = TitleSides::of(sc, cx, dir, &frames);
++    let titles = TitleSides::of(sc, cx, dir, &frames, pins_as_set);
+     let mut jogs: Vec<Jog> = Vec::new();
+     let mut plans: Vec<(usize, Vec<Corner>)> = Vec::new();
+     // The edges between one pair of ends, either way round (twins): a
+@@ -1172,6 +1189,7 @@ fn ortho_pass(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
+     }
+     cx.chain = chain;
+     cx.shaped = bulged;
++    titles.set_dealt
+ }
+ 
+ /// Whether segment `a`-`b` meets the rect `(x0, y0, x1, y1)`.
+@@ -1393,14 +1411,29 @@ struct TitleSides {
+     /// The frame pins moved along a title side to keep a track off the
+     /// displaced columns: (edge, whether its target end) -> its breadth.
+     pins: std::collections::BTreeMap<(usize, bool), f64>,
++    /// Whether a side was dealt with its pins as one set (the drawing
++    /// may differ from one with the pins left alone).
++    set_dealt: bool,
+ }
+ 
+ impl TitleSides {
+-    fn of(sc: &Scene, cx: &Ctx, dir: Direction, frames: &[Rect]) -> TitleSides {
++    /// The title sides of `sc`'s frames and the columns their displaced
++    /// crossings take. With `pins_as_set`, a side whose columns, dealt
++    /// from its start a track apart, would come within a track of one of
++    /// its frame pins deals its pins and columns as one set instead
++    /// (moving pins); every other side is dealt as before.
++    fn of(
++        sc: &Scene,
++        cx: &Ctx,
++        dir: Direction,
++        frames: &[Rect],
++        pins_as_set: bool,
++    ) -> TitleSides {
+         let mut out = TitleSides {
+             sides: Vec::new(),
+             cols: std::collections::BTreeMap::new(),
+             pins: std::collections::BTreeMap::new(),
++            set_dealt: false,
+         };
+         if !cx.blocks || !matches!(dir, Direction::TD | Direction::BT) || sc.clusters.is_empty() {
+             return out;
+@@ -1531,6 +1564,52 @@ impl TitleSides {
+             let mut taken = taken.remove(&k).unwrap_or_default();
+             taken.sort_by(f64::total_cmp);
+             v.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
++            let room = f1 - crate::scene::LANE_PAD;
++            let side_pins = pins.remove(&k).unwrap_or_default();
++            // The nearest free columns past the chip, in the order of
++            // the breadths they replace, a track apart and a track off
++            // the side's other crossings, from the side's `start`. Not
++            // past another edge's crossing of the side between its port
++            // and the column: its step back to the port would cross that
++            // edge's run inside the frame (blocks/lr drawn BT, `cdn ->
++            // gateway` out past `ship -> pager` and back over it and
++            // `cart -> pager`); drawn as before, as is every entry after.
++            let mut apart: Vec<(usize, f64)> = Vec::new();
++            let mut next = start;
++            for &(b, i, _) in &v {
++                let col = column_clear_of(next, &taken);
++                if col > room || taken.iter().any(|&o| (o - b) * (o - col) < 0.0) {
++                    break;
++                }
++                apart.push((i, col));
++                next = col + TRACK_PITCH;
++            }
++            // Pins and columns are dealt as one set only where a pin
++            // would come within a track of a column, of another pin or of
++            // another line's crossing of the side (nested blocks drawn
++            // TD: the outer frame's pin 5.9 px off the line into the
++            // inner one); elsewhere moving the side's pins only turned
++            // the lines into them. Where it is dealt so, the edge stages
++            // keep the set only if the drawing is no worse for it
++            // ([`crate::edgepass`]'s `stages`).
++            let others = |at: f64| {
++                side_pins
++                    .iter()
++                    .map(|p| p.0)
++                    .chain(apart.iter().map(|a| a.1))
++                    .chain(taken.iter().copied())
++                    .filter(|&o| (o - at).abs() < TRACK_PITCH - EPS)
++                    .count()
++            };
++            // (A pin always finds itself.)
++            let near_pin = side_pins.iter().any(|p| others(p.0) > 1);
++            if !pins_as_set || !near_pin {
++                for (i, col) in apart {
++                    out.cols.entry((i, k)).or_insert(col);
++                }
++                continue;
++            }
++            out.set_dealt = true;
+             // The side's pins past the chip, nearest first. A pin and the
+             // displaced columns are one set of columns, a track apart, in
+             // the order their lines come from (the breadth of their other
+@@ -1540,10 +1619,9 @@ impl TitleSides {
+             // coming from beyond its own crossed each of them. A pin keeps
+             // its place where the columns leave it a track of room, and
+             // otherwise moves along the side past the column before it.
+-            let mut side_pins = pins.remove(&k).unwrap_or_default();
++            let mut side_pins = side_pins;
+             side_pins.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
+             let mut side_pins = side_pins.into_iter().peekable();
+-            let room = f1 - crate::scene::LANE_PAD;
+             // The last column or pin dealt; the next keeps a track off it.
+             let mut last: Option<f64> = None;
+             let after =
+@@ -1587,11 +1665,7 @@ impl TitleSides {
+                     break;
+                 }
+                 // Nor past another edge's crossing of the side between
+-                // its port and the column: its step back to the port
+-                // would cross that edge's run inside the frame
+-                // (blocks/lr drawn BT, `cdn -> gateway` out past
+-                // `ship -> pager` and back over it and `cart -> pager`).
+-                // Drawn as before; so is every entry after it.
++                // its port and the column (as above).
+                 if taken.iter().any(|&o| (o - b) * (o - col) < 0.0) {
+                     break;
+                 }

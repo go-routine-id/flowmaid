@@ -1,0 +1,27 @@
+architecture-beta
+    group g0(internet)[Private API]
+    group g1(server)[Data]
+    group g2(disk)[Private API]
+    group g3(cloud)[Ops]
+    service s0(cloud)[Authentication and Authorization Service 0]
+    service s1(internet)[PostgreSQL Primary 1] in g1
+    service s2(cloud)[PostgreSQL Primary 2] in g1
+    service s3(nonsense)[Svc 3] in g1
+    service s4(monitoring)[PostgreSQL Primary 4] in g2
+    service s5(nonsense)[Q 5] in g2
+    service s6(nonsense)[Authentication and Authorization Service 6] in g2
+    service s7(cloud)[Web App 7] in g3
+    service s8(database)[Authentication and Authorization Service 8] in g1
+    service s9(internet)[Svc 9] in g2
+    service s10(internet)[Authentication and Authorization Service 10] in g2
+    service s11(internet)[PostgreSQL Primary 11] in g3
+    junction s12 in g3
+    s8:R --> L:s0
+    s1:L -[sync]- R:s0
+    s0:R -- L:s8
+    s0:B -- T:s4
+    s7{group}:B <-[replicates to standby]-> T:s1
+    s12:B -[calls]-> T:s4
+    s4:L -[reads config]-> R:s8
+    s2:T -[x]-> B:s12
+    s7{group}:B -[replicates to standby]-> B:s8

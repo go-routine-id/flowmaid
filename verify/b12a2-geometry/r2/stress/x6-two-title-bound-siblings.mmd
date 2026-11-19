@@ -1,0 +1,17 @@
+flowchart TD
+    h[hub] --> a1
+    h --> b1
+    h --> c1
+    subgraph A["Accounts receivable reconciliation"]
+        a1[a]
+    end
+    subgraph B["Bookkeeping and quarterly ledger review"]
+        b1[b]
+    end
+    subgraph C["Compliance"]
+        c1[c]
+    end
+    a1 --> t[tail]
+    b1 --> t
+    c1 --> t
+    a1 -->|long label text here| b1

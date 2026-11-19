@@ -1,0 +1,26 @@
+flowchart TD
+    N0([Fetch store])
+    N1[Queue]
+    N2([Report])
+    N3(Report)
+    N4{Parse archive}
+    N5[(Parse validate)]
+    N6([Notify check])
+    N7{Notify notify}
+    N8{Archive}
+    N9{Store}
+    N0 -->|next| N1
+    N1 --> N2
+    N0 --> N3
+    N1 --> N4
+    N2 --> N5
+    N3 --> N6
+    N5 --> N7
+    N6 --> N8
+    N7 --> N9
+    N5 --> N9
+    N1 --> N2
+    N1 --> N6
+    N8 --> N3
+    N8 -.->|retry| N7
+    N6 --> N1

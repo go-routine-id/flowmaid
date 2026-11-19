@@ -1,0 +1,11 @@
+flowchart TD
+    subgraph G[Order processing]
+        m0[charge]
+        m1[auth service]
+        m0 --> m1
+    end
+    s0[src0] --> G
+    s0 --> m1
+    s1[src1] --> G
+    m1 --> z[end]
+    G --> z2[after]

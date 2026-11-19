@@ -1,0 +1,17 @@
+flowchart TD
+    subgraph A[Édition générale]
+        a0[a0]
+        a1[a1]
+    end
+    subgraph B[Édition générale two]
+        b0[b0 wide node]
+        b1[b1 wide node]
+        b2[b2 wide node]
+    end
+    a1 --> b0
+    a1 --> b1
+    a1 --> b2
+    p[p] --> A
+    q[q] --> B
+    r[r] --> A
+    r --> a0

@@ -1,0 +1,11 @@
+flowchart BT
+    subgraph G[Shipping and returns desk]
+        m0[ledger]
+        m1[y]
+        m0 --> m1
+    end
+    s0[src0] --> m0
+    s0 --> G
+    s1[src1] -- "lbl7" --> m1
+    m1 --> z[end]
+    G --> z2[after]

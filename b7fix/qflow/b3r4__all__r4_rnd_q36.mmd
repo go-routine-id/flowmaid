@@ -1,0 +1,20 @@
+flowchart RL
+  n1 -.-> n2
+  n0 -.->|dot| n11
+  n3 --x n8
+  n4 ==> n4
+  n5 --o n9
+  n8 --> n10
+  n0 --x n3
+  n11 ==>|thick lbl| n10
+  n5 ==> n0
+  n5 -->|lbl| n11
+  n1 --x n7
+  n4 --o n10
+  n4 o--o n8
+  n10 <--> n12
+  n0 --> n12
+  n10 ==> n4
+  n3 o--o n7
+  n12 x--x n6
+  linkStyle 3 stroke:#c33,stroke-width:7px

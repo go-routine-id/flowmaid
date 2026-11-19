@@ -1,0 +1,22 @@
+flowchart LR
+  n1["billing"]
+  n2["mail merge search"]
+  subgraph B0["Ingest"]
+    n3["split parse ingest"]
+    n4["api"]
+    n5["ingest notify split"]
+  end
+  subgraph B1["Edge services"]
+    n6["store"]
+    n7["api"]
+  end
+  n8["pack"]
+  n9["index"]
+  n4 --> n3
+  n7 ==> n8
+  n3 --> n4
+  n6 --> n5
+  n4 --> n8
+  n6 ==> n2
+  n7 --> n1
+  n5 -.->|billing| n2

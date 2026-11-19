@@ -1,0 +1,727 @@
+`" : "`
+`""`
+`"Customer Account"`
+`"Quoted Label" : value`
+`"`
+`"cardinality"`
+`"cpu.core1@irq"`
+`"left"|"right"|"top"|"bottom"|"auto"`
+`#124;`
+`#1e1f22`
+`#333333`
+`#42;`
+`#65;`
+`#9370db`
+`#96;`
+`#NN;`
+`#[non_exhaustive]`
+`#`
+`#cde498`
+`#ececff`
+`#flowmaid-<hash> .edge-animation-fast`
+`#quot;`
+`$$…$$`
+`$`
+`%%`
+`%%{init: {"flowchart": {"wrappingWidth": 120}}}%%`
+`%%{init: {"theme": "neutral"}}%%`
+`%%{initialize: …}%%`
+`%%{init}%%`
+`''`
+`((circle))`
+`()..`
+`()`
+`(rounded)`
+`))bang((`
+`)cloud(`
+`**Two**`
+`**bold** _italic_`
+`**bold**`
+`*--`
+`*..`
+`*_with`
+`*`
+`*italic*`
+`+ - # ~`
+`+`
+`+total() : Money`
+`-)`
+`-- text -->`
+`-- text --x`
+`--)`
+`---`
+`-->>`
+`-->`
+`-->|a<br/>b|`
+`-->|text|`
+`--`
+`--advance-text`
+`--advance`
+`--compact <px>`
+`--o`
+`--release`
+`--theme default`
+`--theme`
+`--x`
+`-. text .-`
+`-.->`
+`-.-`
+`-.-o`
+`-.-x`
+`-.`
+`->>`
+`->`
+`-[label]-`
+`-`
+`-x`
+`.-`
+`..>`
+`..`
+`..|>`
+`.`
+`.mmd`
+`0+`
+`0.5`
+`0`
+`1+`
+`1.5`
+`1.`
+`10`
+`12`
+`1`
+`2 * 3`
+`2004 : e1 : e2`
+`3.5`
+`400`
+`5 5`
+`5`
+`600`
+`: event`
+`: label`
+`:::`
+`:::class`
+`:::urgent large`
+`::`
+`::icon(fa fa-book)`
+`:`
+`;`
+`<-- text -->`
+`<-->`
+`<-.->`
+`<<choice>>`
+`<<fork>>`
+`<<interface>> Name`
+`<<interface>>`
+`<<join>>`
+`<<x>>`
+`<==>`
+`<T>`
+`<a href=… xlink:href=…>`
+`<b>`
+`<br/>`
+`<br>`
+`<circle>`
+`<desc>`
+`<diagram-id>-<edge-id>`
+`<i>`
+`<svg>`
+`<title>`
+`<|--`
+`== text ==>`
+`===`
+`==>`
+`==o`
+`==x`
+`@`
+`@braintree/sanitize-url`
+`@{ shape: … }`
+`@{ … }`
+`A & B --> C & D`
+`A & B --> C`
+`A ()--* B`
+`A *--* B`
+`A *--> B`
+`A --- oB`
+`A --> A`
+`A --> B & C --> D`
+`A --> B & C`
+`A --> B --> C`
+`A --> B : label`
+`A --> X`
+`A <--> B`
+`A <..> B`
+`A <|..|> B`
+`A e1@-- text --> B`
+`A e1@--> B`
+`A e1@x--x B`
+`A o--o B`
+`A { int id PK "key" string name }`
+`A(((text)))`
+`A((text))`
+`A([text])`
+`A(text)`
+`A- --> B`
+`A---oB`
+`A--B`
+`A->>+B:`
+`A->>A:`
+`A-B --> C-D`
+`A-`
+`A.B --> C`
+`A:::hot`
+`A>text]`
+`A@{ label: "**b** _i_" }`
+`A@{ shape: cyl, label: "DB" }`
+`A@{ … }`
+`A["odd [text]"]`
+`A[(text)]`
+`A[/text/]`
+`A[/text\]`
+`A[[text]]`
+`A[\text/]`
+`A[\text\]`
+`A[text]`
+`A`
+`AdvanceScene`
+`Animal <|-- Dog`
+`Animal <|--|> Zebra`
+`Animal-Name --> Dog`
+`A{text}`
+`A{{text}}`
+`B {}`
+`B-->>-A:`
+`BT`
+`B`
+`Box<T>`
+`Box`
+`C --> s`
+`C o..|> D`
+`C4`
+`CF --> VPC`
+`CI`
+`Calcium [42.96]`
+`Cargo.toml`
+`ClassBox`
+`Click A`
+`Dark`
+`Default`
+`Dev --> CI`
+`Dev`
+`E --> B`
+`Edge`
+`ErTable::name_x`
+`Flowmaid`
+`Foo Bar`
+`Foo`
+`Forest`
+`Graph::set_wrapping_width`
+`Graph`
+`LICENSE`
+`LR`
+`Mermaid`
+`Name : +member`
+`Neutral`
+`Node::label`
+`Node`
+`None`
+`Note left of A:`
+`Note over A,B:`
+`Note over A:`
+`Note right of A:`
+`PieLabel`
+`RL`
+`Scene::hit_test`
+`Scene::{hit_test, node_at, edge_at, cluster_at, hits_in_rect, nearest_node}`
+`SceneEdge.from`
+`SceneEdge::bezier`
+`SceneNode.id`
+`SceneNode::link`
+`Scene`
+`Some(Theme::Flowmaid)`
+`SvgOptions::theme`
+`SvgOptions`
+`TB`
+`TD`
+`TEXT_CALIBRATION`
+`Theme::`
+`Validating`
+`X --> s`
+`[*]`
+`[square]`
+`\"`
+`\n`
+`__bold__`
+`_`
+`_blank`
+`_italic_`
+`_parent`
+`_self`
+`_top`
+``
+`a::name`
+`a:B -- T:b`
+`a:R -- L:b`
+`a:right --> b:top`
+`about:blank`
+`accDescr { … }`
+`accDescr {`
+`accDescr: text`
+`accDescr:`
+`accDescr`
+`accTitle: text`
+`accTitle:`
+`accTitle`
+`activate`
+`actor`
+`advance::layout_advance`
+`advance::render_advance_routed_with_lanes`
+`advance::render_advance_routed`
+`advance::render_advance_svg(&str)`
+`advance::render_advance_text_svg`
+`advance`
+`advanced.mmd`
+`alt`
+`anchor <id> <side> [offset 0..=1]`
+`anchor_at`
+`anchors`
+`and`
+`animate: true`
+`animation: fast`
+`architecture-beta`
+`architecture.mmd`
+`architecture`
+`aria-describedby`
+`aria-label`
+`arrow-t<width>-s<length>`
+`arrow-t<width>`
+`arrow-w<width>`
+`as`
+`auto`
+`autonumber`
+`b`
+`background`
+`bar ()-- foo`
+`bar`
+`base`
+`basis`
+`block`
+`bolt`
+`bottom`
+`box`
+`branch`
+`break`
+`bumpX`
+`bumpY`
+`c["Customer Account"]`
+`cardinal`
+`cargo install flowmaid`
+`cargo run --release --example bench -- files <file.mmd>...`
+`cargo run --release --example bench`
+`casing.rs`
+`catmullRom`
+`center`
+`checkout`
+`circle`
+`class A,B hot`
+`class Box~T~`
+`class Duck, Fish`
+`class a,b <name>`
+`class.mmd`
+`class::`
+`class::card_spots`
+`class::head`
+`class::rel_head`
+`class::rel_tail`
+`classDef <name> k:v,k:v`
+`classDef default …`
+`classDef hot fill:#ffe3e3,stroke:#e03131`
+`classDef urgent fill:#ffe066,stroke:#c92a2a,color:#222`
+`classDef`
+`classDiagram`
+`class`
+`click A  href  "u"`
+`click A "https://example.com"`
+`click A call fn(args) "tooltip"`
+`click A callback`
+`click A href "https://example.com" "Tooltip" _blank`
+`click A,B "url"`
+`click`
+`cloud`
+`color`
+`comment_x`
+`compound.rs`
+`config lane_gap 36`
+`config lane_pad_x/y`
+`config lane_title_h`
+`config margin 24`
+`config node_gap_y`
+`config order declaration|topology`
+`config.flowchart`
+`config.sankey`
+`config.schema.yaml`
+`config: sequence: mirrorActors: false`
+`config: sequence: scopedFrames: true`
+`config:`
+`config`
+`constraint`
+`core1[Core 1] { anchor irq right }`
+`create`
+`critical`
+`crossings`
+`curve:`
+`cyl`
+`cynefin`
+`dark`
+`dash:4 2`
+`dash`
+`data:`
+`dbl-circ`
+`deactivate`
+`default`
+`delay`
+`demo.mmd`
+`destroy`
+`diam`
+`direction LR`
+`direction TB|BT|LR|RL`
+`direction`
+`doc`
+`e1@{ animate: true }`
+`e1@{ curve: linear }`
+`e1@{ curve: … }`
+`e1@{ … }`
+`edge-animation-*`
+`edge_at`
+`edgepass.rs`
+`element_at`
+`elements`
+`else`
+`emit::to_mermaid(&graph)`
+`end note`
+`end`
+`er.mmd`
+`er::`
+`er::end_glyphs(edge, cards)`
+`er::glyph`
+`erDiagram`
+`eventmodeling`
+`examples/`
+`examples/advance_swimlane.mmd`
+`examples/advance_terminals.mmd`
+`examples/advance_text.rs`
+`examples/architecture.mmd`
+`examples/class.mmd`
+`examples/demo.mmd`
+`examples/drag_sim.rs`
+`examples/er.mmd`
+`examples/gitgraph.mmd`
+`examples/journey.mmd`
+`examples/mindmap.mmd`
+`examples/pie.mmd`
+`examples/sankey.mmd`
+`examples/sequence.mmd`
+`examples/state.mmd`
+`examples/subgraph.mmd`
+`examples/timeline.mmd`
+`f-circ`
+`fanout.mmd`
+`fill`
+`flowchart TB`
+`flowchart TD`
+`flowchart-elk`
+`flowchart.wrappingWidth`
+`flowchart`
+`flowmaid --help`
+`flowmaid file.mmd`
+`flowmaid-<hash>-dash`
+`flowmaid::render_svg`
+`flowmaid`
+`fold::scene_compact`
+`foo --() bar`
+`forest`
+`fork`
+`form`
+`fr-circ`
+`fr-rect`
+`from-->to`
+`from_point`
+`from_side`
+`from`
+`gantt`
+`gitGraph TB:`
+`gitGraph`
+`gitgraph.mmd`
+`gitgraph`
+`gradient`
+`graph`
+`group`
+`h`
+`height`
+`hex`
+`hit_test`
+`hits_in_rect`
+`href`
+`https://example.com`
+`https:`
+`icon`
+`id : text`
+`id:L -- R:other`
+`id="flowmaid-<hash>-e1" data-id="e1"`
+`id`
+`img`
+`interpolate <curve>`
+`intrinsic_size_wrapped`
+`ishikawa`
+`javascript:`
+`journey.mmd`
+`journey::actor_mark`
+`journey`
+`junction`
+`justify`
+`kanban`
+`keys_end_x`
+`label-fill`
+`label: >`
+`label: |`
+`labelStyle`
+`labelType: string`
+`labelType: text`
+`label`
+`labels.rs`
+`lane id "Title" { ... }`
+`lane l "L" { a[A]; b[B] }`
+`lane_at`
+`lanes.rs`
+`layout column`
+`layout row`
+`layout.rs`
+`layout::intrinsic_size_with`
+`layout::intrinsic_size_wrapped(node, g.wrapping_width(), measure)`
+`layout`
+`lean-l`
+`lean-r`
+`left of`
+`left`
+`legacy`
+`lineColor`
+`linear`
+`linkColor`
+`linkStyle 1,2,7 color:blue`
+`linkStyle 3 stroke:#ff3,stroke-width:4px,color:red`
+`linkStyle <n> interpolate <curve>`
+`linkStyle <n>[,<n>…]`
+`linkStyle default …`
+`linkStyle default`
+`linkStyle`
+`lollipop`
+`long-labels.mmd`
+`loop`
+`lr.mmd`
+`mailto:`
+`many(0)`
+`many(1)`
+`measure`
+`merge`
+`mermaid.render()`
+`mindmap.mmd`
+`mindmap::route`
+`mindmap::scene`
+`mindmap`
+`mirrorActors`
+`model.rs`
+`monotoneX`
+`monotoneY`
+`msg`
+`namespace`
+`natural`
+`nearest_node`
+`neo-dark`
+`neo`
+`neutral`
+`nodeAlignment`
+`nodeColors`
+`nodePadding`
+`nodeWidth`
+`node_at`
+`note "text" as N`
+`note "text"`
+`note for Class "text"`
+`note left of X : text`
+`note right of X : text`
+`note right of X`
+`o--`
+`o--o`
+`oB`
+`one or more`
+`only one`
+`opt`
+`optionally to`
+`opts.palette()`
+`opts.with_source_theme(source)`
+`order:`
+`outlined`
+`o{`
+`o|`
+`p[Person]`
+`packet`
+`par`
+`parse`
+`parser.rs`
+`participant`
+`period : event[: event…]`
+`pie showData title …`
+`pie showData`
+`pie title …`
+`pie.mmd`
+`pie::scene()`
+`pie::slice_hatch`
+`pie`
+`pk, fk`
+`ports.rs`
+`pos`
+`prefix`
+`primaryBorderColor`
+`primaryColor`
+`primaryTextColor`
+`quadrantChart`
+`radar`
+`rect`
+`rel="noopener noreferrer"`
+`render()`
+`render.rs`
+`render::*_with`
+`render_svg_advanced`
+`render_svg`
+`requirementDiagram`
+`right of`
+`right`
+`role="img"`
+`rounded`
+`route()`
+`route_partial()`
+`route_partial`
+`route_sized`
+`route`
+`router.rs`
+`row`
+`s --> Y`
+`sankey-beta`
+`sankey.mmd`
+`sankey`
+`scene()`
+`scene.rs`
+`scene::box_edge_bezier`
+`scene::route(&graph, &positions)`
+`scene::route_partial`
+`scene::route_sized_with`
+`scene::scene(&graph)`
+`scene::scene_sized_with`
+`scene::to_svg(&scene)`
+`scene::to_svg`
+`scene_sized`
+`scene`
+`section <name>`
+`section`
+`seq::actor_figure`
+`seq::head`
+`seq::scene()`
+`seq`
+`sequence.mmd`
+`sequenceDiagram`
+`service`
+`shapes.mmd`
+`showData`
+`showValues`
+`slow`
+`sm-circ`
+`snake_case`
+`source,target,value`
+`source`
+`stadium`
+`state "Long title" as id`
+`state X { ... }`
+`state.mmd`
+`stateDiagram-v2`
+`stateDiagram`
+`stepAfter`
+`stepBefore`
+`step`
+`stress.mmd`
+`strict`
+`stroke-dasharray: 9,5`
+`stroke-dasharray:5,5`
+`stroke-dasharray="2 3"`
+`stroke-dasharray`
+`stroke-width`
+`stroke`
+`style <id> k:v,k:v`
+`style A fill:#f9f,stroke:#333,stroke-width:4px,color:#fff`
+`style a:right-->b:top ...`
+`style::CLUSTER_TITLE`
+`style::Palette`
+`style::cluster_style(depth)`
+`style::text_on`
+`style`
+`subgraph id [Title]`
+`subgraph s`
+`subgraph.mmd`
+`subgraph`
+`suffix`
+`swimlane-beta`
+`switch`
+`tag`
+`target`
+`task: score: actor, actor`
+`textColor`
+`text`
+`theme:`
+`themeVariables`
+`timeline.mmd`
+`timeline`
+`title …`
+`title`
+`toFixed(0)`
+`to_mermaid`
+`to_point`
+`to_side`
+`to_svg()`
+`to_svg`
+`to`
+`top`
+`trap-b`
+`treemap`
+`treeview`
+`tri`
+`true`
+`type name [PK|FK|UK] ["comment"]`
+`type: NORMAL|REVERSE|HIGHLIGHT`
+`varchar(255)`
+`vbscript:`
+`venn`
+`w`
+`wardley`
+`wasm32`
+`width + width/4 + width/2`
+`width`
+`wrappingWidth: 120`
+`x--x`
+`xychart`
+`zenuml`
+`zero or more`
+`zero or one`
+`{ … }`
+`{group}`
+`{id, side, offset}`
+`{{hexagon}}`
+`{}`
+`{…}`
+`|o`
+`|{`
+`||`
+`}`
+`}o`
+`}|`
+`~T~`
+`~~~`
+`«interface»`
+`…`

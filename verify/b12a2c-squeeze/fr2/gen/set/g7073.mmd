@@ -1,0 +1,39 @@
+flowchart TD
+  n1["split"]
+  n2["report<br/>merge"]
+  subgraph B0["Core"]
+    n3["ingest"]
+    subgraph B0s0["Fulfilment desk 0"]
+      n4["cache"]
+      n5["report"]
+    end
+    subgraph B0s1["Ingest 1"]
+      n6["queue"]
+      n7["pack"]
+    end
+  end
+  subgraph B1["Fulfilment desk"]
+    n8["parse merge merge"]
+  end
+  subgraph B2["Edge services"]
+    n9["mail<br/>ingest"]
+    n10["report"]
+  end
+  subgraph B3["Core"]
+    n11["ship cache split<br/>notify"]
+    n12["ingest"]
+    n13["db"]
+  end
+  n14["auth"]
+  n13 --> n5
+  n5 ==>|ingest| n13
+  n5 --> n1
+  n9 --> n11
+  n5 --> n9
+  n7 ==>|ingest| n9
+  n2 --> n7
+  n14 --> n1
+  n13 ==> n9
+  n13 --> n4
+  n14 -->|store| B1
+  n7 --> n6

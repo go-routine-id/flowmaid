@@ -1,0 +1,7 @@
+flowchart RL
+  S[Server] <-->|heartbeat| C1[Client one]
+  S <-->|heartbeat| C2[Client two]
+  S -->|push| C3[Client three]
+  C1 <-->|peer link| C2
+  linkStyle 0 stroke:#d33
+  linkStyle default stroke-width:2px

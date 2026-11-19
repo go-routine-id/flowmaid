@@ -1,0 +1,34 @@
+stateDiagram-v2
+[*] --> S0
+state C0 {
+  [*] --> C0i0
+  C0i0 --> C0i1
+  C0i0 --> C0i2 : e2
+  C0i1 --> C0i3
+  note left of C0i2 : n653
+}
+state C1 {
+  [*] --> C1i0
+  C1i0 --> [*]
+}
+state C2 {
+  [*] --> C2i0
+  C2i0 --> C2i1
+  state C2D {
+    [*] --> C2Da
+    C2Da --> C2Db
+    note left of C2Da : dn71
+  }
+  C2i0 --> C2D
+  C2D --> C2i0
+  note left of C2i1 : n861
+  note right of C2i1 : n55
+}
+S0 --> C0
+S0 --> C1
+C1 --> C2
+S0 --> T0
+C0i3 --> C0 : x
+C1 --> C0 : back
+note right of C2 : m924
+C2 --> [*]

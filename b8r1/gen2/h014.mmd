@@ -1,0 +1,37 @@
+flowchart LR
+  s0["cart"]
+  s1["trace trace"]
+  subgraph g0["pay zone"]
+    m0["cart metric"]
+    m1["cache auth"]
+    m2["metric"]
+    m3["queue index notify"]
+    m1 --> m2
+    m2 --> m3
+  end
+  subgraph g1["db zone"]
+    m4["pay ship"]
+  end
+  subgraph g2["notify cart zone"]
+    direction LR
+    m5["db metric index"]
+    m6["cache store"]
+    m7["notify index web"]
+    m8["ship"]
+    m9["cache ship"]
+    m5 --> m6
+    m6 --> m7
+    m5 --> m8
+    m5 --> m9
+  end
+  subgraph g3["report web order zone"]
+    m10["queue"]
+    m11["pay"]
+    m12["log"]
+    m10 --> m11
+  end
+  s0 --> g0
+  s1 --> m4
+  s0 --> m5
+  s1 --> g3
+  m4 --> m0

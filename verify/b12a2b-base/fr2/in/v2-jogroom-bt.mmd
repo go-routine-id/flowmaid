@@ -1,0 +1,21 @@
+flowchart BT
+    subgraph TOP[Upper block with a fairly long title]
+        t1[alpha]
+        t2[beta]
+    end
+    subgraph MID[Middle block title that is long]
+        m1[m one]
+        m2[m two]
+        m3[m three]
+    end
+    subgraph LOW[Lower]
+        l1[low one]
+        l2[low two]
+    end
+    l1 --> m1
+    l2 -->|across| t2
+    m1 --> t1
+    m2 --> t2
+    m3 -->|up| t1
+    l1 --> t1
+    l2 --> m3

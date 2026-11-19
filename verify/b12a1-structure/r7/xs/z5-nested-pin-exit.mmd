@@ -1,0 +1,16 @@
+flowchart TD
+    top[Entry] --> X
+    top --> p[Prep]
+    subgraph X[Outer platform block]
+        subgraph Y[Inner block with a long title]
+            y1[Inner one]
+            y2[Inner two]
+        end
+        x1[Outer one]
+        x1 --> y2
+    end
+    p --> y1
+    y1 --> top
+    q[Feeder] --> Y
+    x1 --> z[Sink]
+    y2 --> z

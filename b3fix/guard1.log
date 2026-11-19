@@ -1,0 +1,27 @@
+== fmt
+== clippy
+FAILED: cargo clippy --all-targets -- -D warnings
+    Checking flowmaid v0.33.0 (/home/user/flowmaid)
+error: casting to the same type is unnecessary (`f64` -> `f64`)
+    --> src/scene.rs:6822:41
+     |
+6822 |                 (a.l - a.lsize / 2.0) - f.0 as f64
+     |                                         ^^^^^^^^^^ help: try: `f.0`
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#unnecessary_cast
+     = note: `-D clippy::unnecessary-cast` implied by `-D warnings`
+     = help: to override `-D warnings` add `#[allow(clippy::unnecessary_cast)]`
+
+error: could not compile `flowmaid` (lib) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `flowmaid` (lib test) due to 1 previous error
+== test
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+== doctest
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.36s
+== msrv
+    Finished dev [unoptimized + debuginfo] target(s) in 6.54s
+== wasm
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.77s
+== rustdoc
+GUARD: FAILURES

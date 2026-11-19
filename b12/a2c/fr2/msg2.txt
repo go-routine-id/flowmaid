@@ -1,0 +1,50 @@
+fix(blocks): a frame's pins and its displaced title-row entries are dealt as one set of columns (b12a2c-squeeze fix round 2, item 3: b12a2b-base leftovers, pin-on-entry)
+
+B12 2.8 displaces an entry under a block's title chip to a column past
+the chip (`ortho::TitleSides`). A pin of an edge into the frame ends on
+the same side, and no crossing of the side finds it (its last point lies
+on the side): the column was dealt a rounding's breadth off a pin, the
+two lines ran down together into the frame, and the router's repair then
+rerouted the pin's line onto the displaced entry's track (traced stage by
+stage on the lead note's b9 input: after `ortho` the pin of `client -> G`
+stood at 313.3 and the displaced `hub -> queue` at 314.7; `repair` laid
+`client -> G` on the hub's track, `nudge` moved the hub 1.9 px). Counted
+as taken columns alone (the earlier trial), the pins pushed a column past
+every pin of the side, across each line into them.
+
+`TitleSides::of` now collects a title side's pins past the chip with the
+breadth their lines come from, and deals pins and displaced columns as
+one set, a track apart: a pin that lies a track before the column, or
+whose line comes from nearer the side's start, goes first and keeps its
+place where it has a track of room; any other pin moves along the side
+past the column (`TitleSides::pins`, applied to the edge's end in
+`ortho_pass`). A pin that would leave the frame stays where the ports
+stage put it. Block layouts drawn TD / BT only; the default build is
+byte-identical (25 corpus SVGs).
+
+The lead note's inputs (verifier's sets of b12a2b-base): b9-TD and
+b11-TD defects 1 -> 0, crossings 4 -> 0, `min_edge_gap` 3.39 -> 18.9 /
+19.9 (their caller enters its block from the side: `lateral_x` 1 -> 2);
+nested-n-TD defects 1 -> 0, `min_edge_gap` 5.91 -> 19.41. n070-TD keeps
+its overlap: its pin stands 14 px off the column after `ortho`, and a
+later stage lays them together; twin-n-TD and r170-TD unchanged. Over the
+verifier's generated sets (static): rnd defects 28 -> 21, crossings
+221 -> 220, `lateral_x` 118 -> 112; nt defects 13 -> 11, crossings
+166 -> 158; sw72 defects 2 -> 0, crossings 69 -> 62; tw defects 3 -> 2,
+crossings 31 -> 33. Worse per file, listed in the report with pictures:
+nt n078 (an overlap the router's repair used to undo: a pin the ports
+stage set 4 px off a member entry it does not move) and n121
+(`min_edge_gap` 13.65 -> 1.65).
+
+Test: blockcheck::a_frames_pins_and_its_displaced_entries_are_one_set_of_columns
+(the b9 and nested-n inputs: no overlap, no crossing, lines a track
+apart; fails without the change).
+
+Checks against the package start (d99c073), suite-on: cells, gate
+messages and direction copies no worse (no repository fixture has a pin
+beside a displaced entry: every cell, message and copy is unchanged from
+the previous commit). Chips off their lines at 3 px: none newly off,
+none farther. No snapshot or gate changed. Guard green.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

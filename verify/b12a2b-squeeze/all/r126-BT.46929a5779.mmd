@@ -1,0 +1,20 @@
+flowchart BT
+    subgraph O[MMMM WWWW QQQQ]
+        subgraph G[Data ingestion workers]
+            m0[w]
+            m1[charge]
+            m2[ledger]
+        end
+        k[k]
+    end
+    m0 --> k
+    m1 --> k
+    m2 --> k
+    s0[src0] -- "lbl7" --> m1
+    s0 --> G
+    s1[src1] --> m0
+    s1 -- "lbl8" --> m0
+    s2[src2] -- "lbl9" --> m2
+    s2 --> m0
+    s3[src3] --> m2
+    s3 --> O

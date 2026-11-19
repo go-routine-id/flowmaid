@@ -1,0 +1,3 @@
+DIFF verify/a1-class/r4/gen/in6_l0_c0_TB.mmd
+DIFF verify/a1-class/r6/final/loopk/k5_TB.mmd
+compared 908, differ 14

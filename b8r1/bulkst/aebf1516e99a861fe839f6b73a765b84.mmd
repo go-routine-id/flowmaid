@@ -1,0 +1,7 @@
+stateDiagram-v2
+  [*] --> Idle
+  Idle --> Active : go
+  Active --> Active : tick
+  Active --> Active : refresh cache
+  Active --> Idle : stop
+  Active --> [*]

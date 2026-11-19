@@ -1,0 +1,15 @@
+sequenceDiagram
+participant P0 as delta
+P0->P0: a&b
+P0->P0: gamma
+opt a&b
+end
+P0->>P0: self x
+P0-->P0: alpha
+opt beta
+P0-->P0: a&b
+P0--xP0: Customer Order
+P0--xP0: alpha
+end
+P0--xP0: Customer Order
+P0-->P0: Customer Order

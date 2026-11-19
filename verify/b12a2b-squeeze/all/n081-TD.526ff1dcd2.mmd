@@ -1,0 +1,17 @@
+flowchart TD
+    subgraph A[Identity provider]
+        a0[a0]
+        a1[a1 wide node]
+        a2[a2]
+    end
+    subgraph B[Identity provider backend]
+        b0[b0]
+        b1[b1]
+        b2[b2]
+    end
+    a1 --> b2
+    a2 --> b1
+    p[p] --> B
+    p --> b1
+    q[q] --> B
+    q --> b1

@@ -1,0 +1,27 @@
+flowchart LR
+  n1["ingest ingest notify<br/>ingest"]
+  subgraph B0["Storefront"]
+    n2["merge"]
+  end
+  subgraph B1["Analytics"]
+    n3["parse"]
+    subgraph B1s0["Back office and finance 0"]
+      n4["worker"]
+      n5["search"]
+    end
+    subgraph B1s1["Ingest 1"]
+      n6["audit"]
+      n7["index ship ship"]
+    end
+  end
+  n8["billing"]
+  n6 --> n7
+  n6 -->|queue| n3
+  n2 --> n7
+  n4 --> n5
+  n4 --> n8
+  n6 --> n1
+  n1 -->|ship| n2
+  n2 ==> n5
+  n1 -->|queue| n5
+  n8 ==> n5

@@ -1,0 +1,12 @@
+flowchart TD
+  subgraph S[Storage and indexing tier of the platform]
+    s1[store]
+    s2[index]
+  end
+  w1[writer one] --> S
+  w1 --> s1
+  w2[writer two] --> S
+  w2 --> s1
+  w3[writer three] -->|bulk load| s2
+  w3 --> S
+  S --> q[query]

@@ -1,0 +1,29 @@
+classDiagram
+C21 <|-- C19 : Long label here
+C13 "1" ..> "*" C8 : Long label here
+C12 ..> C1 : beta
+C16 ..|> C1
+C16 <|-- C20 : beta
+C17 "1" ..|> "*" C11
+C13 "1" o-- "*" C1 : 日本語
+C15 ..> C0 : gamma
+C17 --> C5 : beta
+C13 "1" <|-- "*" C13
+C11 "1" *-- "*" C7 : Long label here
+C1 "1" ..|> "*" C8
+C1 o-- C9
+C19 --> C9
+C12 *-- C16 : <b>bold</b>
+note for C20 "x"
+class C0 {
+  +int id
+  +name() String
+}
+class C4 {
+  +int id
+  +name() String
+}
+class C21 {
+  +int id
+  +name() String
+}

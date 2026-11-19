@@ -1,0 +1,17 @@
+flowchart LR
+  gw[Gateway] --> auth[Auth] & users[Users] & orders[Orders] & pay[Payments] & search[Search] & notif[Notify]
+  subgraph Data [Data layer]
+    direction TB
+    pg[(Postgres)]
+    redis[(Redis)]
+    es[(Elastic)]
+    kafka[[Kafka]]
+  end
+  auth --> pg & redis
+  users --> pg & redis & es
+  orders --> pg & kafka
+  pay --> pg & kafka
+  search --> es & redis
+  notif --> kafka & redis
+  gw -.-> Data
+  kafka --> notif

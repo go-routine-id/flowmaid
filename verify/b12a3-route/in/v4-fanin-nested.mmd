@@ -1,0 +1,25 @@
+flowchart BT
+    T[Target hub]
+    subgraph P[Producers]
+        subgraph P1[Left pair]
+            p1[one]
+            p2[two]
+        end
+        subgraph P2[Right pair]
+            p3[three]
+            p4[four]
+        end
+        p5[five]
+    end
+    subgraph Q[Queues]
+        q1[q one] --> q2[q two]
+    end
+    p1 --> T
+    p2 --> T
+    p3 --> T
+    p4 --> T
+    p5 --> T
+    q2 --> T
+    p1 --> q1
+    p4 --> q2
+    T --> P2

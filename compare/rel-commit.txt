@@ -1,0 +1,7 @@
+release: 0.34.0 — flowchart parity phase B (arrowheads, back-edge lanes, subgraphs, themes, shapes, labels), class/state rework, mermaid comparison in README
+
+- Version 0.34.0 (minor: see CHANGELOG "Breaking"); CHANGELOG [0.34.0] gains a Highlights summary above the detailed Added/Changed/Fixed lists.
+- README: new "flowmaid next to mermaid" section with side-by-side renders against mermaid 12.2.0 (docs/img/compare/*.png, excluded from the published crate), and a rewritten Performance section: a 25-diagram timing/size table against mermaid (geometric mean ~105x faster), interactive route_partial timings, and honest large-graph numbers (dense graphs of hundreds of nodes take tenths of a second to seconds).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

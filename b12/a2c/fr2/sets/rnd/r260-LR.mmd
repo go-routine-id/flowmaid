@@ -1,0 +1,16 @@
+flowchart LR
+    subgraph O[Order processing]
+        subgraph G[Édition générale des données]
+            m0[db]
+            m1[queue]
+            m2[charge]
+        end
+        k[k]
+    end
+    m1 --> k
+    m2 --> k
+    s0[src0] -- "lbl4" --> G
+    s1[src1] --> G
+    s1 --> m2
+    m2 --> z[end]
+    G --> z2[after]

@@ -1,0 +1,38 @@
+flowchart TD
+  n1["mail"]
+  n2["ingest"]
+  subgraph B0["Back office and finance"]
+    n3["search"]
+    n4["api ingest ship"]
+  end
+  subgraph B1["Fulfilment desk"]
+    n5["audit"]
+    n6["worker db notify"]
+    n7["audit<br/>audit"]
+  end
+  subgraph B2["Analytics"]
+    n8["split"]
+    n9["split"]
+    n10["worker"]
+  end
+  subgraph B3["Platform"]
+    n11["db"]
+    n12["auth"]
+    n13["pack"]
+  end
+  n14["report ship report"]
+  n15["billing"]
+  n12 ==> n14
+  n8 ==>|parse| n15
+  n3 --> n7
+  n7 ==>|audit| n5
+  n14 --> n6
+  n5 -.-> n13
+  n6 --> n3
+  n15 ==> n14
+  n7 -->|parse| n13
+  n1 -.->|ingest| n3
+  n14 -.-> n4
+  n10 -->|ship| n12
+  n2 --> n1
+  n4 ==> n11

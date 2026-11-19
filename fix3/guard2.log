@@ -1,0 +1,27 @@
+== fmt
+FAILED: cargo fmt --check
+Diff in /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/wt/a3-state/src/layout.rs:3441:
+             let (c, e) = (&sc.nodes[0], &sc.nodes[g.node_index("E").unwrap()]);
+             (e.y - e.h / 2.0) - (c.y + c.h / 2.0)
+         };
+[31m-        assert!(gap("{ }") > gap("{ok?}"), "{} vs {}", gap("{ }"), gap("{ok?}"));
+[m[32m+        assert!(
+[m[32m+            gap("{ }") > gap("{ok?}"),
+[m[32m+            "{} vs {}",
+[m[32m+            gap("{ }"),
+[m[32m+            gap("{ok?}")
+[m[32m+        );
+[m     }
+ 
+     #[test]
+== clippy
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 5.09s
+== test
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+== doctest
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.54s
+== msrv
+    Finished dev [unoptimized + debuginfo] target(s) in 2.50s
+== wasm
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.06s
+GUARD: FAILURES

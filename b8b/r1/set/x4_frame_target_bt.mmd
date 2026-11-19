@@ -1,0 +1,15 @@
+flowchart BT
+  root[Deployer]
+  subgraph svc[Services]
+    s1[auth]
+    s2[billing]
+    s3[mailer]
+  end
+  subgraph ops[Ops]
+    k1[pager]
+    k2[dashboards]
+  end
+  root --> svc
+  root --> k1
+  s3 --> k2
+  root --> extra[Extra]

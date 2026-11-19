@@ -1,0 +1,35 @@
+flowchart BT
+  n1["split db audit"]
+  n2["notify<br/>audit"]
+  subgraph B0["Data tier"]
+    n3["ship store ingest"]
+    n4["store"]
+  end
+  subgraph B1["Analytics"]
+    n5["worker"]
+  end
+  subgraph B2["Data tier"]
+    n6["ingest"]
+    n7["split"]
+  end
+  subgraph B3["Ingest"]
+    n8["pack"]
+    n9["parse ingest billing"]
+    subgraph B3s0["Edge services 0"]
+      n10["audit"]
+    end
+  end
+  n11["api auth mail"]
+  n2 -->|report| n8
+  n7 --> n2
+  n1 --> n7
+  n6 --> n9
+  n11 ==>|notify| n3
+  n4 --> n5
+  n2 -.-> n9
+  n5 -->|index| n2
+  n2 ==>|store| n5
+  n3 -.-> n6
+  n5 ==> n9
+  n11 ==>|worker| n5
+  n5 --> n7

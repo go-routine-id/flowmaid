@@ -1,0 +1,7 @@
+flowchart TD
+  A[Order received] --> B[Pack]
+  A -->|express| C[Ship now]
+  A --> D[Invoice]
+  A -->|gift wrap| E[Wrap]
+  B --> F[Done]
+  C --> F

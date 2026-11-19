@@ -1,0 +1,26 @@
+flowchart TD
+  n1["api"]
+  subgraph B0["Fulfilment desk"]
+    n2["db"]
+    n3["index"]
+  end
+  subgraph B1["Ops"]
+    n4["api<br/>auth"]
+    n5["api"]
+    n6["index db worker"]
+  end
+  subgraph B2["Data tier"]
+    n7["parse store notify"]
+  end
+  n8["audit"]
+  n9["api search ingest"]
+  n6 ==> n9
+  n2 --> n7
+  n6 --> n5
+  n8 ==> n7
+  n8 ==> n1
+  n7 -.-> B0
+  n3 -->|search| n9
+  n7 --> n8
+  n9 --> n7
+  n1 -.-> n5

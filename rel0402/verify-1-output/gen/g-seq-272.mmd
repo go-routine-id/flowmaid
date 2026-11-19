@@ -1,0 +1,20 @@
+sequenceDiagram
+autonumber
+actor P0 as delta
+participant P1 as alpha
+actor P2 as beta
+participant P3 as <b>bold</b>
+participant P4 as Long label here
+participant P5 as x
+participant P6 as a&b
+participant P7 as x
+activate P3
+P3->>P7: act
+deactivate P3
+activate P6
+P6->>P0: act
+deactivate P6
+P4-xP6: alpha
+alt Long label here
+P4--)P1: a&b
+end

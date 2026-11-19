@@ -1,0 +1,52 @@
+flowchart RL
+  n1["audit"]
+  n2["db"]
+  subgraph B0["Back office and finance"]
+    n3["search"]
+    n4["api"]
+    subgraph B0s0["Data tier 0"]
+      n5["worker index billing<br/>report"]
+      n6["index"]
+      n7["report<br/>billing"]
+    end
+  end
+  subgraph B1["Data tier"]
+    n8["worker merge auth<br/>store"]
+    n9["cache"]
+    n10["notify"]
+  end
+  subgraph B2["Fulfilment desk"]
+    n11["ingest"]
+    n12["mail"]
+    n13["auth notify notify"]
+    subgraph B2s0["Storefront 0"]
+      n14["merge"]
+      n15["queue"]
+    end
+    subgraph B2s1["Storefront 1"]
+      n16["parse"]
+      n17["db auth ingest<br/>queue"]
+      n18["notify"]
+    end
+  end
+  n19["mail"]
+  n20["db<br/>index"]
+  n5 --> n13
+  n5 ==> n11
+  n5 --> n19
+  n8 --> n17
+  n11 --> n20
+  n3 --> n17
+  n12 ==> n19
+  n18 --> n13
+  n10 ==> n5
+  n14 -.-> n9
+  n6 -->|split| n13
+  n6 --> n16
+  n11 -->|split| n6
+  n16 -.-> n12
+  n17 --> n5
+  n2 --> n14
+  n2 ==> n3
+  n9 -.->|split| n12
+  n14 -->|pack| B2

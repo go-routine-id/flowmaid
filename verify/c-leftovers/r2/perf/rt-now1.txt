@@ -1,0 +1,15 @@
+t1_bigblock60.mmd	scene 7.053	route 4.451	drag_route 5.852	partial 2.903
+t2_block25.mmd	scene 1.115	route 0.665	drag_route 1.210	partial 1.032
+t3_fourblocks.mmd	scene 1.385	route 0.657	drag_route 0.781	partial 0.460
+t4_bigblock120.mmd	scene 19.917	route 12.243	drag_route 13.550	partial 5.458
+t5_ctl_nobar60.mmd	scene 0.745	route 0.376	drag_route 0.680	partial 0.764
+x7-fork-to-block.mmd	scene 0.128	route 0.061	drag_route 0.121	partial 0.133
+r0_y2_state_nested.mmd	scene 2.199	route 1.084	drag_route 1.308	partial 1.115
+z014.mmd	scene 2.245	route 1.500	drag_route 1.742	partial 1.237
+z093.mmd	scene 1.105	route 0.640	drag_route 0.903	partial 0.389
+z110.mmd	scene 0.942	route 0.449	drag_route 0.954	partial 0.708
+z083.mmd	scene 1.387	route 0.741	drag_route 0.936	partial 0.506
+z206.mmd	scene 1.518	route 0.786	drag_route 1.166	partial 0.564
+g22.mmd	scene 3.575	route 1.284	drag_route 1.975	partial 1.084
+st_fork_comp.mmd	scene 0.300	route 0.264	drag_route 0.354	partial 0.213
+state.mmd	scene 0.381	route 0.240	drag_route 0.364	partial 0.393

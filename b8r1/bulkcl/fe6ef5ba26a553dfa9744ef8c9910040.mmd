@@ -1,0 +1,21 @@
+classDiagram
+    direction BT
+    class Shape {
+      <<abstract>>
+      +area()* double
+      +draw() void
+    }
+    class Canvas {
+      +add(s) void
+      +render() void
+    }
+    Shape <|-- Circle
+    Shape <|-- Rect
+    Shape <|-- Triangle
+    Rect <|-- Square
+    Canvas "1" o-- "*" Shape : contains
+    Canvas --> Renderer : uses
+    Renderer ..> Shape : draws
+    Circle : +double r
+    Rect : +double w
+    Rect : +double h

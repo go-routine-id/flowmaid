@@ -1,0 +1,22 @@
+flowchart TD
+    subgraph O[Monitoring stack]
+        subgraph I[Monitoring stack collectors]
+            x[x wide member]
+            y[y]
+        end
+        k[k]
+    end
+    subgraph P[Identity provider]
+        u[u]
+        v[v wide member]
+    end
+    a[a] --> x
+    b[b] --> I
+    c[c] --> O
+    c --> P
+    d[d] --> y
+    x --> k
+    y --> k
+    k --> u
+    k --> v
+    b --> u

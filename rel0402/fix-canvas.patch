@@ -1,0 +1,43 @@
+diff --git a/src/edgepass.rs b/src/edgepass.rs
+index 343d2d2..de4fd5f 100644
+--- a/src/edgepass.rs
++++ b/src/edgepass.rs
+@@ -1319,8 +1319,14 @@ pub(crate) fn refit(sc: &mut Scene, mode: Mode, static_fit: bool) {
+         maxx += dx;
+         maxy += dy;
+     }
+-    sc.width = sc.width.max(maxx + MARGIN);
+-    sc.height = sc.height.max(maxy + MARGIN);
++    // The far sides grow from where they are: `width` and `height` run
++    // from the origin, which is (0, 0) here except in an ER or class drag
++    // frame (`route_partial`), drawn on its base's canvas, where it is
++    // negative once a drag has grown that canvas up or left (#76). (At
++    // (0, 0) this is the plain `max` it always was, bit for bit.)
++    let far = (sc.origin.0 + sc.width, sc.origin.1 + sc.height);
++    sc.width = far.0.max(maxx + MARGIN) - sc.origin.0;
++    sc.height = far.1.max(maxy + MARGIN) - sc.origin.1;
+ }
+ 
+ /// How far (px) [`refit`] lets a static flowchart's drawing sit off its
+diff --git a/src/er.rs b/src/er.rs
+index a49f50d..14b7085 100644
+--- a/src/er.rs
++++ b/src/er.rs
+@@ -1165,10 +1165,14 @@ fn labels_off_glyphs_of(sc: &mut Scene, cards: &[(Card, Card)], only: Option<&[b
+             });
+         }
+     }
+-    // A label moved beside a line near the canvas edge still fits.
++    // A label moved beside a line near the canvas edge still fits. The
++    // far sides run from the origin: negative in a `route_partial` frame
++    // on a canvas a drag grew up or left (at (0, 0) this is the plain
++    // `max`, bit for bit).
+     if let Some(r) = grow {
+-        sc.width = sc.width.max(r.2 + crate::scene::MARGIN);
+-        sc.height = sc.height.max(r.3 + crate::scene::MARGIN);
++        let far = (sc.origin.0 + sc.width, sc.origin.1 + sc.height);
++        sc.width = far.0.max(r.2 + crate::scene::MARGIN) - sc.origin.0;
++        sc.height = far.1.max(r.3 + crate::scene::MARGIN) - sc.origin.1;
+     }
+ }
+ 

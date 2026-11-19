@@ -1,0 +1,5 @@
+flowchart LR
+ A[Client] -->|req| B[Gateway]
+ B -->|cached response served without hitting the backend| A
+ A -->|health probe| C[Service]
+ B --> C

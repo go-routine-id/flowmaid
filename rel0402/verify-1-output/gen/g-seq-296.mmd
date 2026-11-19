@@ -1,0 +1,21 @@
+sequenceDiagram
+participant P0 as Long label here
+participant P1 as alpha
+participant P2 as gamma
+actor P3 as x
+actor P4 as Long label here
+participant P5 as alpha
+participant P6 as <b>bold</b>
+par delta
+and beta
+and <b>bold</b>
+Note right of P2: a&b
+end
+activate P5
+P5->>P5: act
+deactivate P5
+P3-->>P4: alpha
+activate P3
+P3->>P5: act
+deactivate P3
+Note left of P2: beta

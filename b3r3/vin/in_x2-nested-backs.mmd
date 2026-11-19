@@ -1,0 +1,8 @@
+flowchart LR
+  S[Source] --> P1[Parse] --> P2[Validate] --> P3[Transform] --> P4[Store]
+  P1 --> Q[Queue]
+  Q --> P3
+  P4 -->|fail| P1
+  P4 -->|retry| P2
+  P3 -.->|rollback| S
+  P4 ==>|done| S

@@ -1,0 +1,10 @@
+[package]
+name = "probe_pre"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+flowmaid = { path = "/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a3-route/pre" }
+
+[profile.release]
+debug = false

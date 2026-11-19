@@ -1,0 +1,18 @@
+gitGraph
+    commit id: "init"
+    branch develop
+    commit id: "d1"
+    branch feature
+    commit id: "f1"
+    checkout develop
+    commit id: "d2"
+    checkout feature
+    commit id: "f2"
+    checkout main
+    commit id: "c2"
+    checkout develop
+    merge feature id: "mf"
+    checkout feature
+    merge develop id: "back"
+    checkout main
+    merge feature id: "final" tag: "v9"

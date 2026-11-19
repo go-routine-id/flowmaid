@@ -1,0 +1,25 @@
+flowchart TD
+  n1["store notify report"]
+  n2["cache"]
+  subgraph B0["Ingest"]
+    n3["search"]
+    subgraph B0s0["Platform 0"]
+      n4["pack<br/>api"]
+      n5["store"]
+    end
+  end
+  subgraph B1["Back office and finance"]
+    n6["split"]
+    n7["billing parse parse"]
+  end
+  n8["api search cache<br/>cache"]
+  n9["api"]
+  n4 ==> n5
+  n5 --> n3
+  n7 --> n8
+  n9 --> n4
+  n4 ==> n9
+  n6 -.->|api| n5
+  n8 -->|queue| n6
+  n3 -.-> n8
+  n8 ==> n3

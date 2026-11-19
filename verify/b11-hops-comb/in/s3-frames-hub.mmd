@@ -1,0 +1,28 @@
+flowchart TD
+  subgraph Ingest [Ingest zone]
+    in1[Reader] --> q[Queue]
+    in2[Poller] --> q
+    in3[Webhook] --> q
+  end
+  subgraph Work [Workers]
+    w1[Worker 1]
+    w2[Worker 2]
+    w3[Worker 3]
+    w4[Worker 4]
+  end
+  subgraph Store [Storage]
+    db[(Main DB)]
+    cache[(Cache)]
+    blob[(Blobs)]
+  end
+  q --> w1 & w2 & w3 & w4
+  w1 --> db & cache
+  w2 --> db & blob
+  w3 --> cache & blob & db
+  w4 -.-> db
+  w4 ==> cache
+  Ingest --> Store
+  in1 -.->|audit| blob
+  db -->|notify| q
+  linkStyle 4 stroke:#c33,stroke-width:5px
+  linkStyle 9 stroke:#36c,stroke-width:4px

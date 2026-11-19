@@ -1,0 +1,44 @@
+flowchart BT
+  n1["split store queue"]
+  n2["db"]
+  subgraph B0["Core"]
+    n3["mail ingest split"]
+    n4["audit"]
+    subgraph B0s0["Back office and finance 0"]
+      n5["auth db cache"]
+    end
+  end
+  subgraph B1["Platform"]
+    n6["search api report"]
+    n7["worker"]
+    n8["mail pack pack"]
+    n9["ship"]
+    subgraph B1s0["Ops 0"]
+      n10["parse worker search"]
+      n11["report auth ship"]
+      n12["index"]
+    end
+    subgraph B1s1["Back office and finance 1"]
+      n13["pack"]
+      n14["billing"]
+    end
+  end
+  n15["db<br/>cache"]
+  n16["api auth cache"]
+  n8 ==> n11
+  n11 --> n7
+  n13 -->|index| n2
+  n12 -.->|merge| n2
+  n9 --> n13
+  n1 -->|worker| n15
+  n9 -.-> n15
+  n7 ==> n3
+  n1 --> n10
+  n10 ==> n3
+  n8 ==> n2
+  n1 ==>|queue| n2
+  n1 --> n16
+  n14 -->|pack| n7
+  n7 --> n9
+  n3 -->|report| n2
+  n8 -->|cache| n4

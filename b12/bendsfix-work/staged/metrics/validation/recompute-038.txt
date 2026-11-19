@@ -1,0 +1,9 @@
+advanced        OK   compact_mean 5.75; compact_max 8.28; span_max 0.377; sib_side 0; sib_stacked 1; sib_stagger 0; sib_side_linked 0
+bench-75        OK   compact_mean 35.88; compact_max 52.03; span_max 0.464; sib_side 4; sib_stacked 6; sib_stagger 2; sib_side_linked 4
+dense-lr        OK   compact_mean 8.76; compact_max 11.78; span_max 0.603; sib_side 7; sib_stacked 4; sib_stagger 4; sib_side_linked 5
+dense-td        OK   compact_mean 12.45; compact_max 24.66; span_max 0.795; sib_side 3; sib_stacked 1; sib_stagger 3; sib_side_linked 3
+fanout-frames   OK   compact_mean 2.88; compact_max 3.37; span_max 0.462; sib_side 15; sib_stacked 0; sib_stagger 0; sib_side_linked 0
+infra-overview  OK   compact_mean 6.90; compact_max 11.43; span_max 0.767; sib_side 6; sib_stacked 4; sib_stagger 3; sib_side_linked 5
+state           OK   compact_mean 5.35; compact_max 5.35; span_max 0.105; sib_side 0; sib_stacked 0; sib_stagger 0; sib_side_linked 0
+subgraph        OK   compact_mean 6.28; compact_max 7.49; span_max 0.562; sib_side 0; sib_stacked 0; sib_stagger 0; sib_side_linked 0
+recompute: all rows agree

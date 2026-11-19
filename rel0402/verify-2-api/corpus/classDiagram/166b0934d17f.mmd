@@ -1,0 +1,14 @@
+classDiagram
+    namespace BaseShapes {
+        class Triangle
+        class Rectangle {
+          double width
+          double height
+        }
+    }
+    BaseShapes.Triangle --> Shape
+    A.B : +int x
+    A.B : +run()
+    A.B ..> BaseShapes.Rectangle
+    class A.B:::hot
+    classDef hot fill:#fee

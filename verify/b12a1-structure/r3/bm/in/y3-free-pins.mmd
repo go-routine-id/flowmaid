@@ -1,0 +1,20 @@
+flowchart TD
+  src1[Producer one] --> POOL
+  src2[Producer two] --> POOL
+  src1 --> p1
+  src2 --> p1
+  src3[Producer three] --> p1
+  src3 --> POOL
+  subgraph POOL[A pool with quite a long title chip]
+    p1[First member] --> p2[Second member]
+    p1 --> p3[Third member]
+  end
+  POOL --> out1[Consumer one]
+  POOL --> out2[Consumer two]
+  p2 --> out1
+  p3 --> out2
+  subgraph SIDE[Side]
+    k1 --> k2
+  end
+  src1 --> SIDE
+  SIDE --> POOL

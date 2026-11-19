@@ -1,0 +1,20 @@
+flowchart BT
+  subgraph F0 [Frame 0]
+    n0([Node 0 with a long label])
+    n4[/Node 4 with a long label/]
+    n2(Node 2)
+  end
+  subgraph F1 [Frame 1]
+    n3[/Node 3/]
+  end
+  n0 --o n0
+  n0 e1@--- n3
+  e1@{ curve: natural }
+  n2 ==> n4
+  n1 -.-|yes| F0
+  n4 ~~~ n4
+  n3 x--x n1
+  n4 <==> n3
+  linkStyle 1 stroke-width:15px,stroke:#c33
+  linkStyle 3 stroke-width:16px,stroke:#36c,stroke-dasharray:6 3
+  linkStyle 4 stroke-width:30px

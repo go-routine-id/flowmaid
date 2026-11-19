@@ -1,0 +1,11 @@
+flowchart TD
+  subgraph X[Outer]
+    subgraph Y[Inner source]
+      a[a] --> b[b] --> b2[b2]
+    end
+    subgraph Z[Inner target]
+      c[c] --> c2[c2]
+    end
+    b2 --> c
+    a --> c2
+  end

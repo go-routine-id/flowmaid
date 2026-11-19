@@ -1,0 +1,23 @@
+MUST FAIL     infra-overview                     crossings               21  must <= 20        target <= 16        [0.38 24, start 23, mermaid 16]  4.3 (a): mermaid's + 4
+target missed infra-overview-v2                  crossings               15  must <= 17        target <= 13        [0.38 19, start 19, mermaid 13]  4.3 (b): mermaid's + 4
+MUST FAIL     perm-a-edges-reversed              crossings               21  must <= 20        target <= -         [0.38 12, start 12, mermaid 7]  4.3 (b): the analog's must (a, d), mermaid's + 4 (c, b, e)
+MUST FAIL     perm-b-subgraphs-reversed          crossings               32  must <= 23        target <= -         [0.38 19, start 18, mermaid 19]  4.3 (b): the analog's must (a, d), mermaid's + 4 (c, b, e)
+MUST FAIL     perm-c-actors-reversed             crossings               21  must <= 20        target <= -         [0.38 24, start 23, mermaid 16]  4.3 (b): the analog's must (a, d), mermaid's + 4 (c, b, e)
+MUST FAIL     perm-d-edges-rotated               crossings               21  must <= 20        target <= -         [0.38 24, start 23, mermaid 19]  4.3 (b): the analog's must (a, d), mermaid's + 4 (c, b, e)
+MUST FAIL     perm-e-one-more-inner-edge         crossings               40  must <= 22        target <= -         [0.38 34, start 33, mermaid 18]  4.3 (b): the analog's must (a, d), mermaid's + 4 (c, b, e)
+MUST FAIL     perm-b-subgraphs-reversed          bands            U1 T1 U2 / GH EXT / PROD / STG DR  must == = infra-overview: U1 T1 U2 / EXT GH / PROD / DR STG target == -         [0.38 NA, start NA, mermaid NA]  4.3 (b): the same band order as the analog
+MUST FAIL     perm-c-actors-reversed             bands            U2 T1 U1 / EXT GH / PROD / DR STG  must == = infra-overview: U1 T1 U2 / EXT GH / PROD / DR STG target == -         [0.38 NA, start NA, mermaid NA]  4.3 (b): the same band order as the analog
+MUST FAIL     perm-e-one-more-inner-edge         bands            U1 T1 U2 / GH EXT / PROD / STG DR  must == = infra-overview: U1 T1 U2 / EXT GH / PROD / DR STG target == -         [0.38 NA, start NA, mermaid NA]  4.3 (b): the same band order as the analog
+MUST FAIL     perm-e-one-more-inner-edge         breadth               2599  must == 2609.1..3188.9 target == -         [0.38 2857, start 2857, mermaid 2419]  4.3 (b): canvas breadth within 10 % of the analog's
+MUST FAIL     blocks-overview                    crossings                9  must <= 7         target <= 5         [0.38 14, start 14, mermaid 5]  4.3 (c): mermaid's 5 + 2
+MUST FAIL     blocks-overview-edges-reversed     crossings                9  must <= 7         target <= 5         [0.38 7, start 6, mermaid 6]  4.3 (c): mermaid's 5 + 2
+MUST FAIL     blocks-overview-edges-rotated      crossings                9  must <= 7         target <= 5         [0.38 23, start 23, mermaid 5]  4.3 (c): mermaid's 5 + 2
+MUST FAIL     blocks-overview-actors-reversed    crossings                9  must <= 7         target <= 5         [0.38 15, start 15, mermaid 5]  4.3 (c): mermaid's 5 + 2
+MUST FAIL     blocks-overview-subgraphs-reversed crossings                9  must <= 7         target <= 5         [0.38 12, start 12, mermaid 5]  4.3 (c): mermaid's 5 + 2
+MUST FAIL     dense-td                           xframe_runs              1  must <= 0         target <= -         [0.38 12, start 12, mermaid 0]  4.3 (f)
+target missed dense-lr                           crossings               15  must <= 51.5      target <= 10        [0.38 46, start 45, mermaid 10]  4.3 (f): the smaller of 1.1 x 0.38's + 2 and 1.1 x the starting release's + 2
+MUST FAIL     dense-td                           crossings              151  must <= 74.6      target <= 68        [0.38 80, start 66, mermaid 68]  4.3 (f): the smaller of 1.1 x 0.38's + 2 and 1.1 x the starting release's + 2
+MUST FAIL     dense-td                           xframe_runs              1  must <= 0         target <= -         [0.38 12, start 12, mermaid 0]  4.3 (f): no run through a block that holds neither end
+MUST FAIL     fork-twins                         xframe_runs              1  must <= 0         target <= -         [0.38 0, start 0, mermaid 0]  4.3 (f): no run through a block that holds neither end
+judge: --due A1: 109 rule(s) due at a later checkpoint left out
+judge: 155 checks on 92 diagram(s): 19 must-fail, 2 target missed

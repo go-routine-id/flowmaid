@@ -1,0 +1,43 @@
+flowchart LR
+  n1["merge"]
+  subgraph B0["Back office and finance"]
+    n2["pack"]
+    n3["report"]
+    n4["pack api index<br/>parse"]
+    n5["ship"]
+  end
+  subgraph B1["Data tier"]
+    n6["worker queue parse<br/>billing"]
+    n7["pack mail mail<br/>search"]
+  end
+  subgraph B2["Back office and finance"]
+    n8["notify"]
+    n9["merge"]
+    subgraph B2s0["Ops 0"]
+      n10["parse"]
+      n11["split"]
+    end
+    subgraph B2s1["Edge services 1"]
+      n12["search"]
+      n13["ship billing pack"]
+      n14["mail"]
+    end
+  end
+  n15["report<br/>audit"]
+  n4 -.-> n12
+  n13 --> n8
+  n10 ==> n9
+  n12 -->|worker| n7
+  n8 --> n4
+  n4 --> n2
+  n2 --> n13
+  n15 --> n3
+  n12 -.-> n3
+  n9 --> B2s1
+  n5 --> n10
+  n7 ==> n10
+  n6 --> n2
+  n15 --> n4
+  n10 -->|notify| n14
+  n9 -->|worker| n7
+  n2 -.->|report| n6

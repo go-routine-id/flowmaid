@@ -1,0 +1,12 @@
+n000-TD.static.svg	a1 → b1: x	7.3
+n001-BT.static.svg	a0 → b1: x	0.0
+n003-BT.static.svg	a0 → b1: x	0.0
+n005-TD.static.svg	a1 → b0: x	0.0
+n012-TD.static.svg	a0 → b1: x	0.0
+n015-TD.static.svg	a0 → b0: x	0.0
+n016-TD.static.svg	a0 → b1: x	0.0
+n021-TD.static.svg	a0 → b0: x	0.0
+n022-BT.static.svg	a0 → b1: x	0.1
+n023-BT.static.svg	a1 → b2: x	0.0
+n025-BT.static.svg	a2 → b0: x	0.0
+n031-TD.static.svg	a2 → b2: x	0.0

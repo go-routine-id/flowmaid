@@ -1,0 +1,513 @@
+dense-td	static	n16->n32 ortho
+dense-td	static	n16->n31 ortho
+dense-td	static	n16->n40 ortho
+dense-td	static	n16->n17 ortho
+dense-td	static	n16->n41 ortho
+dense-td	static	n16->n35 ortho
+dense-td	static	n16->n43 edge_chip g10
+dense-td	static	n16->n43 ortho
+dense-td	static	n16->n37 ortho
+dense-td	static	n16->n23 ortho
+dense-td	static	n16->n44 edge_chip g10
+dense-td	static	n16->n44 ortho
+dense-td	static	n16->n29 ortho
+dense-td	static	n31->n16 ortho
+dense-td	static	n36->n16 ortho
+dense-td	static	n21->n16 ortho
+dense-td	static	n33->n16 ortho
+dense-td	static	n43->n16 edge_chip g10
+dense-td	static	n43->n16 ortho
+dense-td	static	n4->n30 ortho
+dense-td	static	n8->n42 ortho
+dense-td	static	n28->n42 ortho
+dense-td	static	n11->n37 ortho
+dense-td	static	n11->n39 ortho
+dense-td	static	n31->n38 ortho
+dense-td	static	n29->n38 ortho
+dense-td	static	n15->n38 ortho
+dense-td	static	n4->n43 ortho
+dense-td	static	n5->n44 ortho
+dense-td	static	n22->n40 ortho
+dense-td	static	n25->n42 ortho
+dense-td	static	n25->n38 ortho
+dense-td	static	n20->n37 ortho
+dense-td	static	n7->n33 ortho
+dense-td	static	n2->n7 ortho
+dense-td	static	n33->n35 ortho
+dense-td	static	n1->n5 ortho
+dense-td	static	n38->n39 ortho
+dense-td	static	n3->n7 ortho
+dense-td	static	n5->n7 ortho
+dense-td	static	n41->n42 ortho
+dense-td	static	n46->n17 ortho
+dense-td	static	n46->g9 ortho
+dense-td	static	n45->g8 ortho
+dense-td	static	n16->n32 band n16->n31 142px
+dense-td	static	n16->n32 band n16->n21 170px
+dense-td	static	n16->n32 band n31->n16 176px
+dense-td	static	n16->n32 tight n31->n16 144px
+dense-td	static	n16->n32 band n21->n16 170px
+dense-td	static	n16->n31 XD n16->n35 at (2013,484)
+dense-td	static	n16->n31 band n16->n23 444px
+dense-td	static	n16->n31 band n16->n29 568px
+dense-td	static	n16->n31 tight n16->n29 122px
+dense-td	static	n16->n31 band n31->n16 862px
+dense-td	static	n16->n31 tight n31->n16 132px
+dense-td	static	n16->n40 XD n16->n35 at (2013,447)
+dense-td	static	n16->n40 band n16->n37 1382px
+dense-td	static	n16->n40 tight n16->n37 84px
+dense-td	static	n16->n40 band n16->n23 968px
+dense-td	static	n16->n40 tight n16->n23 96px
+dense-td	static	n16->n40 band n16->n29 518px
+dense-td	static	n16->n40 band n36->n16 1222px
+dense-td	static	n16->n40 XD n8->n42 at (652,1537)
+dense-td	static	n16->n40 XD n15->n38 at (602,1740)
+dense-td	static	n16->n40 band n22->n40 596px
+dense-td	static	n16->n17 band n43->n16 270px
+dense-td	static	n16->n17 tight n43->n16 88px
+dense-td	static	n16->n17 band n46->n17 334px
+dense-td	static	n16->n41 band n16->n43 1072px
+dense-td	static	n16->n41 band n16->n44 3046px
+dense-td	static	n16->n41 tight n16->n44 134px
+dense-td	static	n16->n41 band n21->n16 144px
+dense-td	static	n16->n41 band n33->n16 226px
+dense-td	static	n16->n41 tight n33->n16 144px
+dense-td	static	n16->n41 XD n4->n30 at (3266,1033)
+dense-td	static	n16->n41 band n4->n30 128px
+dense-td	static	n16->n41 band n28->n42 352px
+dense-td	static	n16->n41 XD n7->n33 at (2905,1020)
+dense-td	static	n16->n41 band n46->g9 1618px
+dense-td	static	n16->n35 XD n16->n37 at (2013,434)
+dense-td	static	n16->n35 XD n16->n23 at (2013,459)
+dense-td	static	n16->n35 XD n16->n29 at (2013,472)
+dense-td	static	n16->n35 XD n31->n16 at (2013,497)
+dense-td	static	n16->n35 band n31->n16 276px
+dense-td	static	n16->n35 XD n36->n16 at (2013,422)
+dense-td	static	n16->n43 band n16->n44 3256px
+dense-td	static	n16->n43 tight n16->n44 120px
+dense-td	static	n16->n43 band n43->n16 3650px
+dense-td	static	n16->n43 tight n43->n16 110px
+dense-td	static	n16->n43 XD n4->n30 at (3369,1033)
+dense-td	static	n16->n43 XD n7->n33 at (2905,995)
+dense-td	static	n16->n43 XD n46->g9 at (3369,1083)
+dense-td	static	n16->n43 XD n46->g9 at (1691,1678)
+dense-td	static	n16->n43 band n46->g9 1724px
+dense-td	static	n16->n37 band n16->n23 838px
+dense-td	static	n16->n37 band n36->n16 1542px
+dense-td	static	n16->n37 tight n36->n16 70px
+dense-td	static	n16->n37 XD n8->n42 at (652,1348)
+dense-td	static	n16->n37 XD n15->n38 at (383,1740)
+dense-td	static	n16->n37 band n20->n37 1080px
+dense-td	static	n16->n21 band n31->n16 152px
+dense-td	static	n16->n21 band n21->n16 174px
+dense-td	static	n16->n21 tight n21->n16 174px
+dense-td	static	n16->n21 band n33->n16 162px
+dense-td	static	n16->n23 band n16->n29 658px
+dense-td	static	n16->n23 tight n16->n29 108px
+dense-td	static	n16->n44 band n33->n16 198px
+dense-td	static	n16->n44 band n43->n16 1072px
+dense-td	static	n16->n44 XD n4->n30 at (3335,1033)
+dense-td	static	n16->n44 band n4->n30 196px
+dense-td	static	n16->n44 band n28->n42 192px
+dense-td	static	n16->n44 XD n7->n33 at (2905,1008)
+dense-td	static	n16->n44 XD n46->g9 at (3335,1083)
+dense-td	static	n16->n44 XD n46->g9 at (3402,1652)
+dense-td	static	n16->n44 band n46->g9 2000px
+dense-td	static	n16->n29 band n31->n16 378px
+dense-td	static	n36->n16 XD n8->n42 at (652,959)
+dense-td	static	n36->n16 band n8->n42 370px
+dense-td	static	n36->n16 XD n11->n37 at (327,1500)
+dense-td	static	n36->n16 XD n11->n39 at (132,1765)
+dense-td	static	n36->n16 XD n15->n38 at (193,1500)
+dense-td	static	n36->n16 XD n20->n37 at (430,1500)
+dense-td	static	n36->n16 band n20->n37 2230px
+dense-td	static	n36->n16 XD n45->g8 at (132,1778)
+dense-td	static	n21->n16 band n33->n16 178px
+dense-td	static	n21->n16 tight n33->n16 156px
+dense-td	static	n43->n16 XD n4->n30 at (3512,1033)
+dense-td	static	n43->n16 band n5->n44 1970px
+dense-td	static	n43->n16 XD n7->n33 at (2905,983)
+dense-td	static	n43->n16 XD n46->g9 at (1691,1690)
+dense-td	static	n43->n16 XD n46->g9 at (3512,1083)
+dense-td	static	n43->n16 band n46->g9 1678px
+dense-td	static	n4->n30 band n4->n43 350px
+dense-td	static	n4->n30 XD n5->n44 at (3558,740)
+dense-td	static	n8->n42 XD n15->n38 at (652,1740)
+dense-td	static	n8->n42 XD n22->n40 at (652,1550)
+dense-td	static	n8->n42 XD n20->n37 at (652,946)
+dense-td	static	n8->n42 XD n38->n39 at (652,2113)
+dense-td	static	n8->n42 band n38->n39 124px
+dense-td	static	n28->n42 band n25->n38 626px
+dense-td	static	n28->n42 band n41->n42 122px
+dense-td	static	n11->n37 XD n15->n38 at (327,484)
+dense-td	static	n11->n37 XD n15->n38 at (327,1740)
+dense-td	static	n11->n39 band n45->g8 508px
+dense-td	static	n31->n38 band n29->n38 578px
+dense-td	static	n31->n38 XD n25->n42 at (1479,1467)
+dense-td	static	n31->n38 XD n25->n42 at (1023,1582)
+dense-td	static	n31->n38 band n25->n38 686px
+dense-td	static	n29->n38 XD n25->n42 at (1354,1467)
+dense-td	static	n29->n38 XD n25->n42 at (1023,1562)
+dense-td	static	n15->n38 XD n22->n40 at (616,1740)
+dense-td	static	n15->n38 XD n20->n37 at (355,1740)
+dense-td	static	n4->n43 XD n5->n44 at (1678,2018)
+dense-td	static	n4->n43 band n5->n44 720px
+dense-td	static	n4->n43 XD n46->g9 at (3651,698)
+dense-td	static	n5->n44 XD n46->g9 at (3651,995)
+dense-td	static	n5->n44 XD n46->g9 at (1691,1716)
+dense-td	static	n5->n44 band n46->g9 156px
+dense-td	static	n25->n42 XD n25->n38 at (1023,1603)
+dense-td	static	n25->n42 band n25->n38 232px
+dense-td	static	n16->n41 lat_wiggle 1158.9
+dense-td	static	n16->n35 lat_wiggle 32.6
+dense-td	static	n16->n43 lat_wiggle 1417.5
+dense-td	static	n16->n44 lat_wiggle 1396.3
+dense-td	static	n8->n42 lat_wiggle 343.4
+dense-td	static	n11->n39 lat_wiggle 101.9
+dense-td	static	n15->n38 lat_wiggle 487.4
+dense-td	static	n4->n43 lat_wiggle 168.9
+dense-td	static	n5->n44 lat_wiggle 481.1
+dense-td	static	n2->n7 lat_wiggle 40.3
+dense-td	static	n46->g9 lat_wiggle 1427.8
+dense-td	static	n16->n35 side_ends n16
+dense-td	static	n8->n42 lateral_x g9 L
+dense-td	static	n11->n37 side_ends n11
+dense-td	static	n4->n43 lateral_x g1 R
+dense-td	static	n4->n43 lateral_x g8 R
+dense-td	static	n4->n43 lateral_x g9 R
+dense-td	static	n4->n43 lateral_x g10 R
+dense-td	static	n25->n42 lateral_x g6 L
+dense-td	static	n16->n32 chip_crowd 8.2px
+dense-td	static	n16->n17 chip_crowd 10.1px
+dense-td	static	n16->n41 chip_crowd 3.6px
+dense-td	static	n16->n21 chip_crowd 10.5px
+dense-td	static	n31->n38 chip_crowd 10.2px
+dense-td	routed	n16->n32 ortho
+dense-td	routed	n16->n31 ortho
+dense-td	routed	n16->n40 ortho
+dense-td	routed	n16->n17 ortho
+dense-td	routed	n16->n41 edge_frame g5
+dense-td	routed	n16->n41 edge_frame g6
+dense-td	routed	n16->n41 border g6 left 400px
+dense-td	routed	n16->n41 hug g6 400px
+dense-td	routed	n16->n41 hug n29 52px
+dense-td	routed	n16->n41 edge_chip g6
+dense-td	routed	n16->n41 ortho
+dense-td	routed	n16->n35 ortho
+dense-td	routed	n16->n43 edge_node n21
+dense-td	routed	n16->n43 edge_frame g5
+dense-td	routed	n16->n43 edge_frame g6
+dense-td	routed	n16->n43 edge_frame g7
+dense-td	routed	n16->n43 border g7 bottom 229px
+dense-td	routed	n16->n43 hug g7 227px
+dense-td	routed	n16->n43 hug n35 187px
+dense-td	routed	n16->n43 edge_chip g10
+dense-td	routed	n16->n43 ortho
+dense-td	routed	n16->n37 ortho
+dense-td	routed	n16->n21 ortho
+dense-td	routed	n16->n23 ortho
+dense-td	routed	n16->n44 edge_frame g5
+dense-td	routed	n16->n44 edge_frame g6
+dense-td	routed	n16->n44 ortho
+dense-td	routed	n16->n29 ortho
+dense-td	routed	n31->n16 hug g7 27px
+dense-td	routed	n31->n16 ortho
+dense-td	routed	n36->n16 edge_frame g2
+dense-td	routed	n36->n16 edge_frame g3
+dense-td	routed	n36->n16 hug g1 531px
+dense-td	routed	n36->n16 edge_chip g8
+dense-td	routed	n36->n16 ortho
+dense-td	routed	n33->n16 ortho
+dense-td	routed	n43->n16 ortho
+dense-td	routed	n4->n30 ortho
+dense-td	routed	n8->n42 edge_node n23
+dense-td	routed	n8->n42 edge_frame g5
+dense-td	routed	n8->n42 edge_chip g9
+dense-td	routed	n8->n42 ortho
+dense-td	routed	n28->n42 ortho
+dense-td	routed	n11->n37 ortho
+dense-td	routed	n31->n38 hug g5 644px
+dense-td	routed	n31->n38 ortho
+dense-td	routed	n29->n38 ortho
+dense-td	routed	n4->n43 edge_frame g5
+dense-td	routed	n4->n43 edge_frame g6
+dense-td	routed	n4->n43 edge_frame g7
+dense-td	routed	n4->n43 border g7 bottom 750px
+dense-td	routed	n4->n43 hug g7 750px
+dense-td	routed	n4->n43 hug n35 184px
+dense-td	routed	n4->n43 edge_chip g10
+dense-td	routed	n4->n43 ortho
+dense-td	routed	n5->n44 ortho
+dense-td	routed	n22->n40 ortho
+dense-td	routed	n25->n42 ortho
+dense-td	routed	n25->n38 ortho
+dense-td	routed	n20->n37 ortho
+dense-td	routed	n7->n33 hug g5 594px
+dense-td	routed	n7->n33 ortho
+dense-td	routed	n33->n35 ortho
+dense-td	routed	n1->n5 ortho
+dense-td	routed	n38->n39 ortho
+dense-td	routed	n3->n7 ortho
+dense-td	routed	n5->n7 ortho
+dense-td	routed	n41->n42 ortho
+dense-td	routed	n46->n17 ortho
+dense-td	routed	n46->g1 ortho
+dense-td	routed	n46->g9 edge_frame g1
+dense-td	routed	n46->g9 ortho
+dense-td	routed	n45->g8 ortho
+dense-td	routed	n16->n32 XD n16->n40 at (2070,491)
+dense-td	routed	n16->n32 XD n16->n40 at (2054,750)
+dense-td	routed	n16->n32 band n16->n40 242px
+dense-td	routed	n16->n32 XD n16->n41 at (2093,491)
+dense-td	routed	n16->n32 XD n16->n41 at (2054,776)
+dense-td	routed	n16->n32 XD n16->n43 at (2129,491)
+dense-td	routed	n16->n32 band n16->n43 130px
+dense-td	routed	n16->n32 tight n16->n43 130px
+dense-td	routed	n16->n32 XD n16->n37 at (2058,492)
+dense-td	routed	n16->n32 XD n16->n37 at (2054,737)
+dense-td	routed	n16->n32 tight n16->n37 216px
+dense-td	routed	n16->n32 overlap n16->n37 244px
+dense-td	routed	n16->n32 band n16->n21 140px
+dense-td	routed	n16->n32 tight n16->n21 138px
+dense-td	routed	n16->n32 band n16->n23 600px
+dense-td	routed	n16->n32 XD n16->n29 at (2082,491)
+dense-td	routed	n16->n32 XD n16->n29 at (2054,788)
+dense-td	routed	n16->n32 band n21->n16 140px
+dense-td	routed	n16->n31 XD n16->n40 at (1889,751)
+dense-td	routed	n16->n31 XD n16->n41 at (1889,776)
+dense-td	routed	n16->n31 XD n16->n37 at (1889,738)
+dense-td	routed	n16->n31 XD n16->n23 at (1889,1087)
+dense-td	routed	n16->n31 XD n16->n44 at (1889,369)
+dense-td	routed	n16->n31 XD n16->n44 at (1795,1149)
+dense-td	routed	n16->n31 band n16->n44 264px
+dense-td	routed	n16->n31 tight n16->n44 44px
+dense-td	routed	n16->n31 XD n16->n29 at (1889,788)
+dense-td	routed	n16->n31 band n31->n16 454px
+dense-td	routed	n16->n31 touch n31->n16 2.9px
+dense-td	routed	n16->n31 XD n36->n16 at (1889,358)
+dense-td	routed	n16->n31 band n36->n16 120px
+dense-td	routed	n16->n31 XD n25->n42 at (1688,1418)
+dense-td	routed	n16->n31 band n20->n37 392px
+dense-td	routed	n16->n40 band n16->n41 1124px
+dense-td	routed	n16->n40 band n16->n37 1912px
+dense-td	routed	n16->n40 tight n16->n37 384px
+dense-td	routed	n16->n40 XD n16->n23 at (2070,383)
+dense-td	routed	n16->n40 XD n16->n23 at (2030,751)
+dense-td	routed	n16->n40 XD n16->n44 at (2070,369)
+dense-td	routed	n16->n40 XD n16->n44 at (1795,751)
+dense-td	routed	n16->n40 band n16->n29 398px
+dense-td	routed	n16->n40 tight n16->n29 384px
+dense-td	routed	n16->n40 XD n31->n16 at (2005,751)
+dense-td	routed	n16->n40 XD n8->n42 at (995,751)
+dense-td	routed	n16->n40 XD n15->n38 at (682,751)
+dense-td	routed	n16->n40 band n22->n40 690px
+dense-td	routed	n16->n40 band n20->n37 1314px
+dense-td	routed	n16->n40 XD n45->g8 at (548,987)
+dense-td	routed	n16->n17 XD n16->n35 at (2218,477)
+dense-td	routed	n16->n17 band n16->n35 124px
+dense-td	routed	n16->n17 band n33->n16 124px
+dense-td	routed	n16->n17 XD n43->n16 at (2199,357)
+dense-td	routed	n16->n41 XD n16->n23 at (2093,383)
+dense-td	routed	n16->n41 XD n16->n23 at (2030,776)
+dense-td	routed	n16->n41 XD n16->n23 at (1335,1087)
+dense-td	routed	n16->n41 XD n16->n44 at (2093,369)
+dense-td	routed	n16->n41 XD n16->n44 at (1795,776)
+dense-td	routed	n16->n41 XD n16->n29 at (2081,776)
+dense-td	routed	n16->n41 band n16->n29 1078px
+dense-td	routed	n16->n41 tight n16->n29 414px
+dense-td	routed	n16->n41 XD n31->n16 at (2005,776)
+dense-td	routed	n16->n41 XD n31->n38 at (1335,1523)
+dense-td	routed	n16->n41 XD n29->n38 at (1335,1352)
+dense-td	routed	n16->n41 XD n25->n38 at (1335,1373)
+dense-td	routed	n16->n35 XD n16->n43 at (2129,1276)
+dense-td	routed	n16->n35 XD n33->n16 at (2218,604)
+dense-td	routed	n16->n35 band n33->n16 580px
+dense-td	routed	n16->n35 XD n43->n16 at (2218,357)
+dense-td	routed	n16->n43 XD n16->n21 at (2129,520)
+dense-td	routed	n16->n43 band n16->n21 164px
+dense-td	routed	n16->n43 tight n16->n21 90px
+dense-td	routed	n16->n43 overlap n16->n21 96px
+dense-td	routed	n16->n43 XD n16->n44 at (1795,1483)
+dense-td	routed	n16->n43 XD n28->n42 at (1852,1483)
+dense-td	routed	n16->n43 XD n28->n42 at (1553,1972)
+dense-td	routed	n16->n43 XD n4->n43 at (1914,1483)
+dense-td	routed	n16->n43 band n4->n43 544px
+dense-td	routed	n16->n43 tight n4->n43 520px
+dense-td	routed	n16->n43 overlap n4->n43 552px
+dense-td	routed	n16->n43 band n25->n42 136px
+dense-td	routed	n16->n43 XD n33->n35 at (2129,1320)
+dense-td	routed	n16->n37 XD n16->n23 at (2058,383)
+dense-td	routed	n16->n37 XD n16->n23 at (2030,738)
+dense-td	routed	n16->n37 XD n16->n44 at (2058,369)
+dense-td	routed	n16->n37 XD n16->n44 at (1795,738)
+dense-td	routed	n16->n37 band n16->n29 388px
+dense-td	routed	n16->n37 XD n31->n16 at (2005,738)
+dense-td	routed	n16->n37 XD n8->n42 at (995,738)
+dense-td	routed	n16->n37 band n8->n42 162px
+dense-td	routed	n16->n37 XD n15->n38 at (682,738)
+dense-td	routed	n16->n37 band n20->n37 1508px
+dense-td	routed	n16->n37 XD n45->g8 at (370,987)
+dense-td	routed	n16->n21 band n21->n16 170px
+dense-td	routed	n16->n21 band n33->n16 170px
+dense-td	routed	n16->n23 XD n16->n44 at (2105,369)
+dense-td	routed	n16->n23 XD n16->n44 at (1795,1087)
+dense-td	routed	n16->n23 XD n16->n29 at (2082,383)
+dense-td	routed	n16->n23 XD n16->n29 at (2030,788)
+dense-td	routed	n16->n23 XD n16->n29 at (1410,1087)
+dense-td	routed	n16->n23 XD n31->n16 at (2005,1087)
+dense-td	routed	n16->n23 band n31->n16 700px
+dense-td	routed	n16->n44 XD n16->n29 at (2082,369)
+dense-td	routed	n16->n44 XD n16->n29 at (1795,788)
+dense-td	routed	n16->n44 XD n31->n16 at (2005,369)
+dense-td	routed	n16->n44 XD n31->n16 at (1795,1432)
+dense-td	routed	n16->n44 band n31->n16 234px
+dense-td	routed	n16->n44 band n36->n16 274px
+dense-td	routed	n16->n44 tight n36->n16 240px
+dense-td	routed	n16->n44 XD n43->n16 at (1795,2058)
+dense-td	routed	n16->n44 XD n28->n42 at (1795,1972)
+dense-td	routed	n16->n44 XD n4->n43 at (1795,1483)
+dense-td	routed	n16->n44 XD n5->n44 at (1795,2027)
+dense-td	routed	n16->n44 XD n20->n37 at (1874,369)
+dense-td	routed	n16->n44 XD n20->n37 at (1795,726)
+dense-td	routed	n16->n44 XD n46->g9 at (1795,1930)
+dense-td	routed	n16->n29 XD n31->n16 at (2005,788)
+dense-td	routed	n31->n16 XD n36->n16 at (2005,358)
+dense-td	routed	n31->n16 XD n25->n42 at (1688,1432)
+dense-td	routed	n36->n16 XD n8->n42 at (1184,358)
+dense-td	routed	n36->n16 XD n11->n37 at (223,358)
+dense-td	routed	n36->n16 XD n11->n39 at (209,358)
+dense-td	routed	n36->n16 XD n15->n38 at (682,358)
+dense-td	routed	n36->n16 XD n20->n37 at (1874,358)
+dense-td	routed	n36->n16 XD n12->n13 at (961,358)
+dense-td	routed	n36->n16 XD n45->g8 at (74,985)
+dense-td	routed	n36->n16 tight n45->g8 610px
+dense-td	routed	n36->n16 overlap n45->g8 622px
+dense-td	routed	n21->n16 band n33->n16 258px
+dense-td	routed	n21->n16 tight n33->n16 242px
+dense-td	routed	n43->n16 XD n4->n30 at (3458,358)
+dense-td	routed	n43->n16 XD n4->n43 at (3549,358)
+dense-td	routed	n43->n16 band n4->n43 1132px
+dense-td	routed	n43->n16 XD n5->n44 at (1699,2058)
+dense-td	routed	n43->n16 XD n2->n7 at (2890,358)
+dense-td	routed	n43->n16 XD n1->n5 at (3318,358)
+dense-td	routed	n43->n16 XD n3->n7 at (3161,358)
+dense-td	routed	n43->n16 XD n1->n6 at (3415,358)
+dense-td	routed	n43->n16 XD n46->n17 at (2230,357)
+dense-td	routed	n43->n16 band n46->n17 196px
+dense-td	routed	n43->n16 XD n46->g9 at (3281,358)
+dense-td	routed	n4->n30 XD n5->n44 at (3272,1148)
+dense-td	routed	n4->n30 band n5->n44 526px
+dense-td	routed	n4->n30 XD n1->n6 at (3415,596)
+dense-td	routed	n4->n30 XD n46->g9 at (3281,1148)
+dense-td	routed	n4->n30 band n46->g9 554px
+dense-td	routed	n8->n42 XD n31->n38 at (995,1523)
+dense-td	routed	n8->n42 XD n29->n38 at (995,1352)
+dense-td	routed	n8->n42 XD n25->n38 at (995,1373)
+dense-td	routed	n8->n42 XD n20->n37 at (995,726)
+dense-td	routed	n8->n42 band n20->n37 188px
+dense-td	routed	n28->n42 XD n4->n43 at (1852,1483)
+dense-td	routed	n28->n42 XD n4->n43 at (1579,1972)
+dense-td	routed	n28->n42 band n25->n42 126px
+dense-td	routed	n28->n42 XD n46->g9 at (1852,1930)
+dense-td	routed	n11->n37 band n11->n39 838px
+dense-td	routed	n11->n37 XD n45->g8 at (223,987)
+dense-td	routed	n11->n39 XD n45->g8 at (209,987)
+dense-td	routed	n29->n38 band n25->n38 634px
+dense-td	routed	n15->n38 XD n22->n40 at (682,1332)
+dense-td	routed	n15->n38 XD n20->n37 at (682,726)
+dense-td	routed	n4->n43 XD n5->n44 at (3272,1483)
+dense-td	routed	n4->n43 band n25->n42 114px
+dense-td	routed	n4->n43 XD n46->g9 at (3281,1483)
+dense-td	routed	n5->n44 XD n46->g9 at (3272,1929)
+dense-td	routed	n5->n44 band n46->g9 1286px
+dense-td	routed	n5->n44 tight n46->g9 1286px
+dense-td	routed	n22->n40 XD n45->g8 at (578,1332)
+dense-td	routed	n22->n40 band n45->g8 580px
+dense-td	routed	n25->n42 band n41->n42 260px
+dense-td	routed	n25->n38 XD n29->n31 at (1434,1373)
+dense-td	routed	n20->n37 XD n45->g8 at (342,987)
+dense-td	routed	n1->n5 XD n46->g9 at (3281,532)
+dense-td	routed	n46->n17 XD n46->g9 at (2230,114)
+dense-td	routed	n46->n17 end_cross n46->g9 at (2230,114)
+dense-td	routed	n16->n32 lbl_edge n16->n43
+dense-td	routed	n16->n21 lbl_edge n16->n43
+dense-td	routed	n22->n40 lbl_edge n16->n40
+dense-td	routed	n22->n40 lbl_edge n45->g8
+dense-td	routed	fan_x n46 Bottom n46->g9 x n46->n17 at (2230,114)
+dense-td	routed	fan_x n16 Bottom n16->n37 x n16->n23 at (2058,383)
+dense-td	routed	fan_x n16 Bottom n16->n37 x n16->n23 at (2030,738)
+dense-td	routed	fan_x n16 Bottom n16->n37 x n16->n44 at (2058,369)
+dense-td	routed	fan_x n16 Bottom n16->n37 x n16->n44 at (1795,738)
+dense-td	routed	fan_x n16 Bottom n16->n37 x n16->n32 at (2058,492)
+dense-td	routed	fan_x n16 Bottom n16->n37 x n16->n32 at (2054,737)
+dense-td	routed	fan_x n16 Bottom n16->n40 x n16->n23 at (2070,383)
+dense-td	routed	fan_x n16 Bottom n16->n40 x n16->n23 at (2030,751)
+dense-td	routed	fan_x n16 Bottom n16->n40 x n16->n44 at (2070,369)
+dense-td	routed	fan_x n16 Bottom n16->n40 x n16->n44 at (1795,751)
+dense-td	routed	fan_x n16 Bottom n16->n40 x n16->n32 at (2070,491)
+dense-td	routed	fan_x n16 Bottom n16->n40 x n16->n32 at (2054,750)
+dense-td	routed	fan_x n16 Bottom n16->n29 x n16->n41 at (2081,776)
+dense-td	routed	fan_x n16 Bottom n16->n29 x n16->n23 at (2082,383)
+dense-td	routed	fan_x n16 Bottom n16->n29 x n16->n23 at (2030,788)
+dense-td	routed	fan_x n16 Bottom n16->n29 x n16->n23 at (1410,1087)
+dense-td	routed	fan_x n16 Bottom n16->n29 x n16->n44 at (2082,369)
+dense-td	routed	fan_x n16 Bottom n16->n29 x n16->n44 at (1795,788)
+dense-td	routed	fan_x n16 Bottom n16->n29 x n16->n32 at (2082,491)
+dense-td	routed	fan_x n16 Bottom n16->n29 x n16->n32 at (2054,788)
+dense-td	routed	fan_x n16 Bottom n16->n41 x n16->n23 at (2093,383)
+dense-td	routed	fan_x n16 Bottom n16->n41 x n16->n23 at (2030,776)
+dense-td	routed	fan_x n16 Bottom n16->n41 x n16->n23 at (1335,1087)
+dense-td	routed	fan_x n16 Bottom n16->n41 x n16->n44 at (2093,369)
+dense-td	routed	fan_x n16 Bottom n16->n41 x n16->n44 at (1795,776)
+dense-td	routed	fan_x n16 Bottom n16->n41 x n16->n32 at (2093,491)
+dense-td	routed	fan_x n16 Bottom n16->n41 x n16->n32 at (2054,776)
+dense-td	routed	fan_x n16 Bottom n16->n23 x n16->n44 at (2105,369)
+dense-td	routed	fan_x n16 Bottom n16->n23 x n16->n44 at (1795,1087)
+dense-td	routed	fan_x n16 Bottom n16->n44 x n16->n43 at (1795,1483)
+dense-td	routed	fan_x n16 Bottom n16->n44 x n43->n16 at (1795,2058)
+dense-td	routed	fan_x n16 Bottom n16->n43 x n16->n32 at (2129,491)
+dense-td	routed	fan_x n16 Bottom n16->n43 x n16->n21 at (2129,520)
+dense-td	routed	fan_x n16 Bottom n43->n16 x n16->n17 at (2199,357)
+dense-td	routed	fan_x n44 Top n5->n44 x n16->n44 at (1795,2027)
+dense-td	routed	n16->n35 lat_wiggle 14.5
+dense-td	routed	n5->n44 lat_wiggle 14.5
+dense-td	routed	n46->g9 lat_wiggle 1079.2
+dense-td	routed	n16->n31 side_ends n16
+dense-td	routed	n16->n31 side_ends n31
+dense-td	routed	n16->n35 side_ends n16
+dense-td	routed	n16->n44 lateral_x g8 R
+dense-td	routed	n16->n44 lateral_x g9 R
+dense-td	routed	n16->n44 lateral_x g10 R
+dense-td	routed	n31->n16 side_ends n31
+dense-td	routed	n31->n16 side_ends n16
+dense-td	routed	n31->n16 up_lanes
+dense-td	routed	n36->n16 lateral_x g1 L
+dense-td	routed	n36->n16 lateral_x g4 L
+dense-td	routed	n43->n16 lateral_x g8 R
+dense-td	routed	n43->n16 lateral_x g4 R
+dense-td	routed	n43->n16 lateral_x g9 R
+dense-td	routed	n43->n16 lateral_x g10 R
+dense-td	routed	n43->n16 side_ends n43
+dense-td	routed	n43->n16 up_lanes
+dense-td	routed	n4->n30 lateral_x g5 R
+dense-td	routed	n4->n30 lateral_x g6 R
+dense-td	routed	n4->n30 side_ends n4
+dense-td	routed	n28->n42 lateral_x g8 R
+dense-td	routed	n28->n42 lateral_x g9 R
+dense-td	routed	n28->n42 side_ends n42
+dense-td	routed	n29->n38 lateral_x g6 L
+dense-td	routed	n5->n44 lateral_x g8 R
+dense-td	routed	n5->n44 lateral_x g9 R
+dense-td	routed	n5->n44 lateral_x g10 R
+dense-td	routed	n5->n44 side_ends n5
+dense-td	routed	n22->n40 lateral_x g5 L
+dense-td	routed	n25->n42 side_ends n42
+dense-td	routed	n25->n38 lateral_x g6 L
+dense-td	routed	n46->g9 lateral_x g8 R
+dense-td	routed	n16->n32 chip_crowd 0.0px
+dense-td	routed	n16->n40 chip_crowd 11.9px
+dense-td	routed	n16->n41 chip_crowd 4.9px
+dense-td	routed	n16->n21 chip_crowd 0.0px
+dense-td	routed	n22->n40 chip_crowd 0.0px
+dense-td	routed	n25->n38 chip_crowd 3.5px
+dense-td	routed	n20->n37 chip_crowd 11.5px

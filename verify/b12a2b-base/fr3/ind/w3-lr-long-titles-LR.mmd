@@ -1,0 +1,16 @@
+flowchart LR
+    u1[User one] --> p1
+    u2[User two] --> p1
+    u3[User three] --> PAY
+    subgraph PAY[Payment Gateway Mmmm Wwww]
+        p1[auth]
+        p2[capture]
+        p1 --> p2
+    end
+    subgraph LED[Ledger Bookkeeping]
+        l1[post]
+        l2[reconcile]
+        l1 --> l2
+    end
+    p2 --> l1
+    u1 --> l1

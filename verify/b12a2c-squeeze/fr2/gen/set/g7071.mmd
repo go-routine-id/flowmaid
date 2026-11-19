@@ -1,0 +1,33 @@
+flowchart RL
+  n1["index"]
+  n2["worker<br/>queue"]
+  subgraph B0["Data tier"]
+    n3["report"]
+    subgraph B0s0["Analytics 0"]
+      n4["notify"]
+      n5["mail"]
+      n6["index<br/>worker"]
+    end
+  end
+  subgraph B1["Platform"]
+    n7["mail"]
+    n8["ship"]
+    n9["audit worker ship"]
+    n10["worker"]
+  end
+  n11["parse notify db"]
+  n11 ==>|audit| n3
+  n9 --> n2
+  n9 --> n4
+  n7 --> n1
+  n11 -->|merge| n10
+  n5 ==>|ingest| n2
+  n10 --> n3
+  n3 -.-> n4
+  n4 --> n3
+  n8 ==>|mail| n6
+  n3 -->|audit| n7
+  n8 --> n1
+  n5 -.-> B1
+  n4 -->|mail| n8
+  n10 --> n2

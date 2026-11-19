@@ -1,0 +1,18 @@
+flowchart BT
+    N0[Fetch]
+    N1[Emit parse]
+    N2(Check)
+    N3[/Queue/]
+    N4{Done}
+    N5([Notify])
+    N0 --> N1
+    N0 --> N2
+    N1 --> N3
+    N1 --> N4
+    N4 --> N5
+    N0 --> N5
+    N0 --> N2
+    N0 --> N3
+    N4 -.-> N2
+    N5 -->|back| N2
+    N3 -->|retry| N0

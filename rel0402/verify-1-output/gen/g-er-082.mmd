@@ -1,0 +1,36 @@
+erDiagram
+direction LR
+E0 ||--|| E1 : r0
+E2 }|..|{ E3 : r1
+E4 }o--o{ E2 : r2
+E3 }|..|{ E4 : has
+E2 }o--o{ E5 : has
+E1 }o--o{ E1 : has
+E0 ||--o{ E0 : r6
+E0 |o--|| E4 : r7
+E0 ||--|{ E5 : r8
+E0 ||--o{ E1 : has
+E4 ||--|| E0 : has
+E1 ||--o{ E1 : has
+E5 }|..|{ E1 : has
+E0 |o--|| E3 : r13
+E0 |o--|| E4 : has
+E5 |o--|| E2 : has
+E5 ||--|| E3 : r16
+E1 |o--|| E0 : has
+E4 }o--o{ E0 : has
+E5 }|..|{ E3 : r19
+E2 ||--o{ E4 : "two words"
+E0 ||--|{ E3 : has
+E4 ||--|| E2 : r22
+E2 ||--o{ E1 : has
+E5 |o--|| E3 : r24
+E0 ||--|{ E5 : has
+E0 {
+  int id PK
+  string name "comment"
+}
+E3 {
+  int id PK
+  string name "comment"
+}

@@ -1,0 +1,20 @@
+flowchart RL
+    subgraph O[WWW Mammoth Wombat Overview]
+        subgraph G[Édition générale des données]
+            m0[y]
+            m1[w]
+        end
+        k[k]
+    end
+    m0 --> k
+    m1 --> k
+    s0[src0] --> O
+    s1[src1] -- "lbl3" --> m1
+    s1 --> G
+    s2[src2] -- "lbl9" --> G
+    s2 --> m0
+    s3[src3] --> m0
+    s3 --> m0
+    s4[src4] --> G
+    s4 --> m1
+    G --> z2[after]

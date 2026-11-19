@@ -1,0 +1,44 @@
+   Compiling flowmaid v0.40.1 (/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/merge-a2/v1/wt-dev)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 45.29s
+     Running unittests src/lib.rs (/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/merge-a2/v1/target-devdbg/debug/deps/flowmaid-b22f524f81951378)
+
+running 3 tests
+test scene::tests::scene_carries_stable_identity_and_stays_index_parallel ... ok
+test levels::tests::the_permanent_identity_rows_are_the_fixtures_outside_block_mode ... FAILED
+test identity::everything_renders_as_before_with_blocks_off ... ok
+
+failures:
+
+---- levels::tests::the_permanent_identity_rows_are_the_fixtures_outside_block_mode stdout ----
+
+thread 'levels::tests::the_permanent_identity_rows_are_the_fixtures_outside_block_mode' (5663) panicked at src/levels.rs:765:36:
+blocks/nested-wide-title has no row
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/panicking.rs:80:14
+   2: flowmaid::levels::tests::the_permanent_identity_rows_are_the_fixtures_outside_block_mode::{closure#0}::{closure#2}
+             at ./src/levels.rs:765:36
+   3: <core::option::Option<&str>>::unwrap_or_else::<flowmaid::levels::tests::the_permanent_identity_rows_are_the_fixtures_outside_block_mode::{closure#0}::{closure#2}>
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/option.rs:1064:21
+   4: flowmaid::levels::tests::the_permanent_identity_rows_are_the_fixtures_outside_block_mode::{closure#0}
+             at ./src/levels.rs:765:18
+   5: flowmaid::levels::tests::the_permanent_identity_rows_are_the_fixtures_outside_block_mode
+             at ./src/levels.rs:772:28
+   6: flowmaid::levels::tests::the_permanent_identity_rows_are_the_fixtures_outside_block_mode::{closure#0}
+             at ./src/levels.rs:753:73
+   7: <flowmaid::levels::tests::the_permanent_identity_rows_are_the_fixtures_outside_block_mode::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+   8: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+
+failures:
+    levels::tests::the_permanent_identity_rows_are_the_fixtures_outside_block_mode
+
+test result: FAILED. 2 passed; 1 failed; 0 ignored; 0 measured; 1183 filtered out; finished in 5.37s
+
+error: test failed, to rerun pass `--lib`
+exit 101

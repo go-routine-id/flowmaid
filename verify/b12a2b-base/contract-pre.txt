@@ -1,0 +1,73 @@
+blocks-overview-LR-on partial k10: edge 26 REG>ORD diagonal waypoint segment (793.3226243211519, 146.40792259813804)->(839.2785714285715, 147.25)
+blocks-overview-RL-on partial k10: edge 26 REG>ORD diagonal waypoint segment (1917.7559471624804, 146.40792267640094)->(1871.7999999999997, 147.25)
+lr-TD-off partial k4: edge 6 mid (186.2, 644.0) picks 8 which is not there
+twoway-noted-TD-on route0: edge 3 K0>K1 diagonal waypoint segment (222.14999999999998, 194.0)->(255.51436771643614, 232.625)
+twoway-noted-TD-on route k0: edge 3 K0>K1 diagonal waypoint segment (234.17499999999998, 194.0)->(260.27916666666664, 229.85)
+twoway-noted-TD-on route k3: edge 3 K0>K1 diagonal waypoint segment (214.97499999999997, 194.0)->(260.1258333333333, 229.55)
+twoway-noted-TD-on partial k3: edge 3 K0>K1 diagonal waypoint segment (214.97499999999997, 194.0)->(260.1258333333333, 229.55)
+twoway-noted-TD-on route k6: edge 3 K0>K1 diagonal waypoint segment (222.14999999999998, 194.0)->(259.71436771643613, 232.625)
+wide-stroke-LR-off route0: edge 4 a2>b1 diagonal waypoint segment (496.70000000000005, 112.0)->(526.7, 115.0)
+wide-stroke-LR-off route k0: edge 4 a2>b1 diagonal waypoint segment (496.70000000000005, 112.0)->(526.7, 115.0)
+wide-stroke-RL-off route0: edge 4 a2>b1 diagonal waypoint segment (584.0, 112.0)->(554.0, 115.0)
+wide-stroke-RL-off route k0: edge 4 a2>b1 diagonal waypoint segment (584.0, 112.0)->(554.0, 115.0)
+wide-stroke-RL-off route k6: edge 4 a2>b1 diagonal waypoint segment (584.0, 118.0)->(554.0, 115.0)
+advanced-TD-off scene: edge 15 Users>Mon mid (238.25000000000009, 979.2990451388889) picks nothing
+advanced-TD-off route0: edge 15 Users>Mon mid (246.25000000000006, 992.5) picks nothing
+advanced-TD-off route k0: edge 15 Users>Mon mid (246.25000000000006, 992.5) picks nothing
+advanced-TD-off partial k0: edge 15 Users>Mon mid (238.25000000000009, 979.2990451388889) picks nothing
+advanced-TD-off route k7: edge 15 Users>Mon mid (219.63114149305562, 993.8492838541667) picks nothing
+advanced-TD-off partial k7: edge 15 Users>Mon mid (219.64721860532416, 993.8492838541667) picks nothing
+advanced-TD-off route k13: edge 15 Users>Mon mid (246.25000000000006, 992.5) picks nothing
+advanced-TD-off partial k13: edge 15 Users>Mon mid (238.25000000000009, 979.2990451388889) picks nothing
+advanced-TD-on scene: edge 15 Users>Mon mid (350.0750000000001, 1015.299045138889) picks nothing
+advanced-TD-on route0: edge 15 Users>Mon mid (358.07500000000005, 1028.5) picks nothing
+advanced-TD-on route k0: edge 15 Users>Mon mid (358.07500000000005, 1028.5) picks nothing
+advanced-TD-on partial k0: edge 15 Users>Mon mid (350.0750000000001, 1015.299045138889) picks nothing
+advanced-TD-on route k7: edge 15 Users>Mon mid (331.45614149305567, 1029.8492838541667) picks nothing
+advanced-TD-on partial k7: edge 15 Users>Mon mid (331.4722186053242, 1029.8492838541667) picks nothing
+advanced-TD-on route k13: edge 15 Users>Mon mid (358.07500000000005, 1028.5) picks nothing
+advanced-TD-on partial k13: edge 15 Users>Mon mid (350.0750000000001, 1015.299045138889) picks nothing
+advanced-BT-off scene: edge 15 Users>Mon mid (253.75000000000006, 200.57863136574076) picks nothing
+advanced-BT-off route0: edge 15 Users>Mon mid (261.75000000000006, 256.0) picks nothing
+advanced-BT-off route k0: edge 15 Users>Mon mid (261.75000000000006, 256.0) picks nothing
+advanced-BT-off partial k0: edge 15 Users>Mon mid (253.75000000000006, 200.57863136574076) picks nothing
+advanced-BT-off route k7: edge 15 Users>Mon diagonal waypoint segment (220.75000000000006, 243.0)->(261.75000000000006, 214.0)
+advanced-BT-off route k7: edge 15 Users>Mon mid (220.75000000000006, 271.0) picks nothing
+advanced-BT-off partial k7: edge 15 Users>Mon diagonal waypoint segment (220.75000000000006, 243.0)->(261.75000000000006, 214.0)
+advanced-BT-off partial k7: edge 15 Users>Mon mid (220.75000000000006, 271.0) picks nothing
+advanced-BT-off route k13: edge 15 Users>Mon mid (261.75000000000006, 256.0) picks nothing
+advanced-BT-off partial k13: edge 15 Users>Mon mid (253.75000000000006, 200.57863136574076) picks nothing
+advanced-BT-on scene: edge 15 Users>Mon mid (350.07500000000005, 200.57863136574076) picks nothing
+advanced-BT-on route0: edge 15 Users>Mon mid (358.07500000000005, 256.0) picks nothing
+advanced-BT-on route k0: edge 15 Users>Mon mid (358.07500000000005, 256.0) picks nothing
+advanced-BT-on partial k0: edge 15 Users>Mon mid (350.07500000000005, 200.57863136574076) picks nothing
+advanced-BT-on route k7: edge 15 Users>Mon diagonal waypoint segment (317.07500000000005, 243.0)->(358.07500000000005, 214.0)
+advanced-BT-on route k7: edge 15 Users>Mon mid (317.07500000000005, 271.0) picks nothing
+advanced-BT-on partial k7: edge 15 Users>Mon diagonal waypoint segment (317.07500000000005, 243.0)->(358.07500000000005, 214.0)
+advanced-BT-on partial k7: edge 15 Users>Mon mid (317.07500000000005, 271.0) picks nothing
+advanced-BT-on route k13: edge 15 Users>Mon mid (358.07500000000005, 256.0) picks nothing
+advanced-BT-on partial k13: edge 15 Users>Mon mid (350.07500000000005, 200.57863136574076) picks nothing
+advanced-LR-off scene: edge 15 Users>Mon mid (1311.2990451388891, 225.76645688657408) picks nothing
+advanced-LR-off partial k0: edge 15 Users>Mon mid (1311.2990451388891, 225.76645688657408) picks nothing
+advanced-LR-off route k7: edge 15 Users>Mon diagonal waypoint segment (1298.5, 248.75)->(1353.5, 233.75)
+advanced-LR-off route k7: edge 15 Users>Mon mid (1326.0, 241.25) picks nothing
+advanced-LR-off partial k7: edge 15 Users>Mon diagonal waypoint segment (1298.5, 248.75)->(1353.5, 233.75)
+advanced-LR-off partial k7: edge 15 Users>Mon mid (1326.0, 241.25) picks nothing
+advanced-LR-off route k13: edge 15 Users>Mon mid (1324.5, 233.75) picks nothing
+advanced-LR-off partial k13: edge 15 Users>Mon mid (1311.2990451388891, 225.76645688657408) picks nothing
+advanced-LR-on scene: edge 15 Users>Mon mid (1368.649045138889, 315.76645688657413) picks nothing
+advanced-LR-on route0: edge 15 Users>Mon mid (1381.85, 323.75) picks nothing
+advanced-LR-on route k0: edge 15 Users>Mon mid (1381.85, 323.75) picks nothing
+advanced-LR-on partial k0: edge 15 Users>Mon mid (1368.649045138889, 315.76645688657413) picks nothing
+advanced-LR-on route k7: edge 15 Users>Mon diagonal waypoint segment (1355.85, 338.75)->(1410.85, 323.75)
+advanced-LR-on route k7: edge 15 Users>Mon mid (1383.35, 331.25) picks nothing
+advanced-LR-on partial k7: edge 15 Users>Mon diagonal waypoint segment (1355.85, 338.75)->(1410.85, 323.75)
+advanced-LR-on partial k7: edge 15 Users>Mon mid (1383.35, 331.25) picks nothing
+advanced-LR-on route k13: edge 15 Users>Mon mid (1381.85, 323.75) picks nothing
+advanced-LR-on partial k13: edge 15 Users>Mon mid (1368.649045138889, 315.76645688657413) picks nothing
+advanced-RL-off route k13: edge 15 Users>Mon mid (390.69999999999976, 233.75) picks nothing
+advanced-RL-on route0: edge 15 Users>Mon mid (390.69999999999976, 323.75) picks nothing
+advanced-RL-on route k0: edge 15 Users>Mon mid (390.69999999999976, 323.75) picks nothing
+advanced-RL-on route k7: edge 15 Users>Mon mid (346.2696976273146, 325.27088758680554) picks nothing
+advanced-RL-on route k13: edge 15 Users>Mon mid (390.69999999999976, 323.75) picks nothing
+checked 104 (file, dir, mode); with findings 14; worst route_partial 2.14 ms

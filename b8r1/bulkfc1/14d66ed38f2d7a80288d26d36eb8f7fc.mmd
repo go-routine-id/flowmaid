@@ -1,0 +1,21 @@
+flowchart BT
+    N0{Archive}
+    N1(Check queue)
+    N2([Emit])
+    N3(Notify)
+    N4{{Store store}}
+    N5[Done validate]
+    N6([Archive retry])
+    N7(Load)
+    N0 --> N1
+    N0 -->|no| N2
+    N0 --> N3
+    N2 --> N4
+    N2 --> N5
+    N3 --> N6
+    N6 -->|fail| N7
+    N2 --> N6
+    N1 --> N6
+    N2 --> N7
+    N6 ==>|back| N1
+    N6 -->|back| N3

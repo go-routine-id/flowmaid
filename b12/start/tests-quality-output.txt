@@ -1,0 +1,106 @@
+   Compiling flowmaid v0.38.0 (/home/user/flowmaid)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.79s
+     Running tests/quality.rs (target/debug/deps/quality-741ec6a9ac6530f2)
+
+running 15 tests
+test a_one_px_drag_leaves_unrelated_edges_put ... quality/dense-lr: 0 drag jumps
+quality/dense-td: 5 drag jumps
+quality/bench-75: 13 drag jumps
+notes/spread-face: 0 drag jumps
+notes/fork-twins: 0 drag jumps
+notes/near-drag: 0 drag jumps
+ok
+test block_fixtures_are_not_drawn_worse ... ok
+test channels_keep_edges_apart_and_off_chips ... ok
+test crossing_gaps_do_not_read_as_dashes ... ok
+test defect_baseline_gate ... static	end_tilt	0.0000
+static	end_tilt_max	0.2719
+static	end_gaps	0.0000
+static	end_gap_max	0.0483
+static	lat_wiggles	15.0000
+static	lat_backtrack	1862.2250
+static	own_frame_x	0.0000
+static	own_frame_len	0.0000
+static	band_pairs	132.0000
+static	band_len	74724.0000
+static	ink	0.1166
+static	idiom_ortho	185.0000
+static	idiom_scubic	0.0000
+static	idiom_spline	0.0000
+static	idiom_bow	0.0000
+static	x_drawn	405.0000
+static	end_kink	0.0000
+static	ink_out	0.0000
+static	xhops	363.0000
+static	fan_x	9.0000
+static	fan_uneven	1.0000
+static	compact_max	52.0262
+static	compact_mean	9.9931
+static	span_max	0.7952
+static	sib_stagger	9.0000
+static	title_cut	0.0000
+static	edge_len	191991.4673
+static	bends_max	9.0000
+static	detour_max	1.6818
+static	lbl_end_mean	173.3229
+static	chip_crowd	26.0000
+static	chip_gap_min	0.0000
+routed	end_tilt	0.0000
+routed	end_tilt_max	0.5626
+routed	end_gaps	0.0000
+routed	end_gap_max	0.0483
+routed	lat_wiggles	5.0000
+routed	lat_backtrack	422.7500
+routed	own_frame_x	0.0000
+routed	own_frame_len	0.0000
+routed	band_pairs	141.0000
+routed	band_len	71016.0000
+routed	ink	0.1125
+routed	idiom_ortho	185.0000
+routed	idiom_scubic	0.0000
+routed	idiom_spline	0.0000
+routed	idiom_bow	0.0000
+routed	x_drawn	465.0000
+routed	end_kink	0.0000
+routed	ink_out	0.0000
+routed	xhops	416.0000
+routed	fan_x	13.0000
+routed	fan_uneven	2.0000
+routed	compact_max	48.0743
+routed	compact_mean	7.7518
+routed	span_max	0.7952
+routed	sib_stagger	9.0000
+routed	title_cut	0.0000
+routed	edge_len	188623.1324
+routed	bends_max	8.0000
+routed	detour_max	1.3831
+routed	lbl_end_mean	187.6446
+routed	chip_crowd	24.0000
+routed	chip_gap_min	0.0000
+ok
+test edge_line_order_barely_moves_the_dense_layouts ... ok
+test edges_keep_off_frame_borders ... ok
+test every_block_fixture_has_a_ceiling ... ok
+test every_fixture_has_a_ceiling ... ok
+test every_shape_end_sits_on_its_outline ... ok
+test labels_cover_nothing_they_must_not ... ok
+test layout_shape_gate ... ok
+test long_labels_wrap_and_dense_labels_do_not_tower ... ok
+test moving_a_node_declaration_barely_moves_dense_td ... ok
+test quality_gate ... file	mode	nodes	edges	frames	edge_node_x	edge_node_pairs	edge_frame_x	edge_frame_pairs	edge_edge_x	overlap_pairs	overlap_len	node_near	min_node_gap	min_edge_gap	node_overlap	node_frame	frame_overlap	lbl_node	lbl_lbl	lbl_chip	lbl_edge	lbl_arrow	shared_ports	arrow_on_start	wiggles	backtrack	frame_side	center_off	width	height	aspect	area_per_node	defects	corner_touch	border_runs	border_len	overlap_max	tight_pairs	tight_len	hug_runs	hug_len	hug_max	edge_chip	end_cross	xgap_max	dash_edges	lbl_crowd	ortho_edges	xnotches	end_tilt	end_tilt_max	end_gaps	end_gap_max	lat_wiggles	lat_backtrack	own_frame_x	own_frame_len	band_pairs	band_len	ink	idiom_ortho	idiom_scubic	idiom_spline	idiom_bow	x_drawn	end_kink	ink_out	xhops	fan_x	fan_uneven	compact_max	compact_mean	span_max	sib_stagger	title_cut	edge_len	bends_max	detour_max	lbl_end_mean	chip_crowd	chip_gap_min
+back-edge	static	6.00	6.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	12.89	40.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.04	290.00	543.70	1.87	26278.83	0	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	3.00	0.00	0.00	0.00	0.00	0.05	0.00	0.00	0.00	0.00	0.00	0.00	0.14	6.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	644.73	2.00	0.97	59.26	0.00	15.36
+back-edge	routed	6.00	6.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	12.89	40.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.04	290.00	543.70	1.87	26278.83	0	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	3.00	0.00	0.00	0.00	0.00	0.05	0.00	0.00	0.00	0.00	0.00	0.00	0.14	6.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	644.73	2.00	0.97	59.26	0.00	15.36
+bench-75	static	21.00	75.00	5.00	0.00	0.00	3.00	4.00	293.00	0.00	0.00	0.00	9.00	14.74	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.47	2221.80	1965.25	1.13	207923.45	4	0.00	0.00	0.00	0.00	22.00	5808.00	1.00	59.43	59.43	0.00	0.00	2.00	0.00	0.00	74.00	0.00	0.00	0.00	0.00	0.05	11.00	1659.33	0.00	0.00	61.00	26976.00	0.05	75.00	0.00	0.00	0.00	294.00	0.00	0.00	266.00	6.00	0.00	52.03	35.88	0.46	2.00	0.00	80857.86	9.00	1.68	0.00	0.00	40.00
+bench-75	routed	21.00	75.00	5.00	0.00	0.00	0.00	0.00	344.00	1.00	218.00	0.00	10.22	10.63	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.34	2221.80	1792.50	1.24	189646.50	1	0.00	3.00	357.03	218.00	31.00	5818.00	5.00	490.01	235.76	1.00	0.00	2.00	0.00	0.00	74.00	0.00	0.00	0.00	0.00	0.05	3.00	338.75	0.00	0.00	81.00	31606.00	0.05	75.00	0.00	0.00	0.00	345.00	0.00	0.00	313.00	10.00	1.00	48.07	23.68	0.46	2.00	0.00	78006.26	8.00	1.38	0.00	0.00	40.00
+dense-lr	static	52.00	42.00	11.00	0.00	0.00	8.00	13.00	39.00	2.00	92.00	0.00	12.50	12.50	0.00	0.00	0.00	0.00	0.00	0.00	5.00	0.00	0.00	0.00	0.00	0.00	0.00	0.49	2301.55	3467.50	1.51	153473.55	15	0.00	0.00	0.00	56.00	6.00	668.00	0.00	0.00	0.00	0.00	1.00	1.00	0.00	0.00	36.00	0.00	0.00	0.27	0.00	0.04	1.00	20.75	0.00	0.00	32.00	17044.00	0.08	42.00	0.00	0.00	0.00	45.00	0.00	0.00	40.00	2.00	1.00	11.78	8.76	0.60	4.00	0.00	38766.33	8.00	1.01	350.84	10.00	0.00
+dense-lr	routed	52.00	42.00	11.00	0.00	0.00	7.00	11.00	37.00	2.00	70.00	0.00	12.50	12.50	0.00	0.00	0.00	0.00	0.00	0.00	4.00	0.00	0.00	0.00	0.00	0.00	0.00	0.49	2301.55	3467.50	1.51	153473.55	13	0.00	0.00	0.00	38.00	6.00	672.00	3.00	648.97	289.47	0.00	1.00	2.00	0.00	0.00	35.00	0.00	0.00	0.56	0.00	0.04	0.00	0.00	0.00	0.00	27.00	12250.00	0.08	42.00	0.00	0.00	0.00	43.00	0.00	0.00	32.00	1.00	1.00	11.78	8.32	0.60	4.00	0.00	38682.88	7.00	1.00	344.33	11.00	0.00
+dense-td	static	46.00	47.00	10.00	0.00	0.00	11.00	26.00	56.00	1.00	18.00	0.00	12.50	12.50	0.00	0.00	0.00	0.00	0.00	0.00	1.00	0.00	0.00	0.00	0.00	0.00	0.00	0.07	4249.10	1806.29	2.35	166849.75	27	0.00	0.00	0.00	18.00	2.00	124.00	0.00	0.00	0.00	0.00	0.00	1.00	0.00	0.00	39.00	0.00	0.00	0.00	0.00	0.01	2.00	154.15	0.00	0.00	32.00	28464.00	0.08	47.00	0.00	0.00	0.00	66.00	0.00	0.00	57.00	1.00	0.00	24.66	12.45	0.80	3.00	0.00	63527.50	8.00	1.08	466.60	13.00	0.00
+dense-td	routed	46.00	47.00	10.00	0.00	0.00	12.00	29.00	66.00	1.00	18.00	0.00	12.50	12.50	0.00	0.00	0.00	0.00	0.00	0.00	1.00	0.00	0.00	0.00	0.00	0.00	0.00	0.08	4224.10	1806.29	2.34	165868.08	30	0.00	2.00	321.91	18.00	0.00	0.00	2.00	299.61	253.10	0.00	0.00	1.00	0.00	0.00	41.00	0.00	0.00	0.00	0.00	0.01	1.00	56.00	0.00	0.00	27.00	25040.00	0.08	47.00	0.00	0.00	0.00	76.00	0.00	0.00	70.00	1.00	0.00	23.77	11.63	0.80	3.00	0.00	63229.86	8.00	1.04	515.47	11.00	0.00
+fanout-frames	static	22.00	7.00	6.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	14.00	40.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.09	565.50	2311.00	4.09	59403.20	0	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	7.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	3.00	1532.00	0.15	7.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	3.37	2.88	0.46	0.00	0.00	4602.28	4.00	1.00	0.00	0.00	40.00
+fanout-frames	routed	22.00	7.00	6.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	14.00	40.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.09	565.50	2311.00	4.09	59403.20	0	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	6.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	3.00	1558.00	0.15	7.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	3.37	2.88	0.46	0.00	0.00	4413.39	4.00	1.00	0.00	0.00	40.00
+wide-labels	static	6.00	8.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	20.25	40.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.46	1971.00	156.30	12.61	51343.93	0	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	6.00	0.00	0.00	0.00	0.00	0.00	1.00	28.00	0.00	0.00	4.00	708.00	0.21	8.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	3592.77	2.00	1.12	163.23	3.00	5.02
+wide-labels	routed	6.00	8.00	0.00	0.00	0.00	0.00	0.00	1.00	0.00	0.00	0.00	16.25	40.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.17	1971.00	181.30	10.87	59556.43	0	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	6.00	0.00	0.00	0.00	0.00	0.00	1.00	28.00	0.00	0.00	3.00	562.00	0.18	8.00	0.00	0.00	0.00	1.00	0.00	0.00	1.00	1.00	0.00	0.00	0.00	0.00	0.00	0.00	3646.00	2.00	1.12	206.80	2.00	4.00
+ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 34.07s
+

@@ -1,0 +1,14 @@
+flowchart RL
+    subgraph G[Shipping and returns desk]
+        m0[x wide member node]
+        m1[ledger]
+    end
+    s0[src0] --> G
+    s1[src1] --> G
+    s1 -- "lbl8" --> G
+    s2[src2] --> G
+    s3[src3] --> m0
+    s3 --> G
+    s4[src4] -- "lbl1" --> m0
+    s4 --> m0
+    m1 --> z[end]

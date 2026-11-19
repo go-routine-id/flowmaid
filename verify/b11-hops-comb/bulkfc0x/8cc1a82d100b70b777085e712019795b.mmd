@@ -1,0 +1,13 @@
+flowchart TD
+A{a} --> B{b}
+A --> C{c}
+B --> D{d}
+C --> D
+D --> A
+B -.-> C
+subgraph S [box]
+  E{e} --> F{f}
+end
+D --> E
+F --> A
+A ~~~ F

@@ -1,0 +1,14 @@
+stateDiagram-v2
+direction LR
+state K0 {
+  [*] --> a
+}
+state K1 {
+  direction TB
+  [*] --> b
+  b --> c : t1
+}
+K0 --> K1
+K1 --> K0 : back
+note left of K1 : one
+note left of K1 : two

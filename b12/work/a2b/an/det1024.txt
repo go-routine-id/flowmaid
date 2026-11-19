@@ -1,0 +1,165 @@
+infra-overview	static	U1->DNS ortho
+infra-overview	static	U2->DNS ortho
+infra-overview	static	R1->ARGO ortho
+infra-overview	static	DNS->TR2 ortho
+infra-overview	static	DNS->PSPROD ortho
+infra-overview	static	DNS->DRAPP ortho
+infra-overview	static	DNS->PSDEV ortho
+infra-overview	static	DNS->SITE ortho
+infra-overview	static	DNS->TR1 ortho
+infra-overview	static	DRAPP->TG ortho
+infra-overview	static	ARGO->TG ortho
+infra-overview	static	PSPROD->TG ortho
+infra-overview	static	TR1->LANE ortho
+infra-overview	static	LANE->PG ortho
+infra-overview	static	LANE->OAI ortho
+infra-overview	static	LANE->AZ ortho
+infra-overview	static	LANE->GITLAB ortho
+infra-overview	static	ARGO->GITLAB ortho
+infra-overview	static	PG->DRAPP ortho
+infra-overview	static	TR2->PSPROD ortho
+infra-overview	static	PSPROD->GITLAB ortho
+infra-overview	static	R2->STG ortho
+infra-overview	static	R2->DR ortho
+infra-overview	static	DNS->TR2 band DNS->PSPROD 184px
+infra-overview	static	DNS->TR2 band DNS->TR1 412px
+infra-overview	static	DNS->TR2 XD DRAPP->TG at (1139,893)
+infra-overview	static	DNS->TR2 XD PSPROD->TG at (1424,946)
+infra-overview	static	DNS->TR2 XD PG->DRAPP at (1139,913)
+infra-overview	static	DNS->TR2 XD R2->DR at (1139,933)
+infra-overview	static	DNS->TR2 band R2->DR 700px
+infra-overview	static	DNS->PSPROD band DNS->DRAPP 146px
+infra-overview	static	DNS->PSPROD XD DRAPP->TG at (962,893)
+infra-overview	static	DNS->PSPROD XD PG->DRAPP at (962,913)
+infra-overview	static	DNS->PSPROD XD R2->DR at (962,933)
+infra-overview	static	DNS->DRAPP band DNS->SITE 220px
+infra-overview	static	DNS->PSDEV band DNS->SITE 460px
+infra-overview	static	DNS->TR1 XD DRAPP->TG at (1263,451)
+infra-overview	static	DNS->TR1 XD PSPROD->TG at (1392,451)
+infra-overview	static	DRAPP->TG band PSPROD->TG 104px
+infra-overview	static	DRAPP->TG band PG->DRAPP 428px
+infra-overview	static	ARGO->TG band PSPROD->TG 118px
+infra-overview	static	ARGO->TG XD LANE->OAI at (1676,402)
+infra-overview	static	ARGO->TG band LANE->OAI 152px
+infra-overview	static	ARGO->TG XD LANE->AZ at (2065,402)
+infra-overview	static	PSPROD->TG XD PG->DRAPP at (1424,913)
+infra-overview	static	PSPROD->TG XD R2->DR at (1424,933)
+infra-overview	static	LANE->GITLAB band ARGO->GITLAB 242px
+infra-overview	static	LANE->GITLAB XD R2->DR at (2116,933)
+infra-overview	static	ARGO->GITLAB XD R2->DR at (2294,933)
+infra-overview	static	PG->DRAPP band R2->DR 782px
+infra-overview	static	R2->STG band R2->DR 818px
+infra-overview	static	PG->DRAPP lbl_edge DNS->TR2
+infra-overview	static	DNS->DRAPP lat_wiggle 57.5
+infra-overview	static	DNS->PSDEV lat_wiggle 200.9
+infra-overview	static	DNS->TR1 lat_wiggle 183.0
+infra-overview	static	LANE->GITLAB lat_wiggle 174.5
+infra-overview	static	R2->STG lat_wiggle 351.8
+infra-overview	static	R2->DR lat_wiggle 238.3
+infra-overview	static	DR sib_stagger STG
+infra-overview	static	DNS->PSPROD lateral_x STG L
+infra-overview	static	DNS->PSPROD side_ends PSPROD
+infra-overview	static	R2->STG pin_corner STG
+infra-overview	static	R2->DR pin_corner DR
+infra-overview	static	T1->DNS chip_crowd 3.8px
+infra-overview	static	ARGO->TG chip_crowd 10.2px
+infra-overview	static	PG->DRAPP chip_crowd 0.0px
+infra-overview	static	R2->PROD chip_crowd 10.2px
+infra-overview	routed	U1->DNS ortho
+infra-overview	routed	T1->DNS ortho
+infra-overview	routed	U2->DNS ortho
+infra-overview	routed	R1->ARGO ortho
+infra-overview	routed	DNS->TR2 ortho
+infra-overview	routed	DNS->PSPROD hug DR 29px
+infra-overview	routed	DNS->PSPROD ortho
+infra-overview	routed	DNS->DRAPP ortho
+infra-overview	routed	DNS->PSDEV edge_chip DR
+infra-overview	routed	DNS->PSDEV ortho
+infra-overview	routed	DNS->SITE ortho
+infra-overview	routed	DNS->TR1 ortho
+infra-overview	routed	DRAPP->TG ortho
+infra-overview	routed	ARGO->TG border PROD top 279px
+infra-overview	routed	ARGO->TG hug PROD 267px
+infra-overview	routed	ARGO->TG edge_chip PROD
+infra-overview	routed	ARGO->TG ortho
+infra-overview	routed	PSPROD->TG hug PROD 36px
+infra-overview	routed	PSPROD->TG edge_chip STG
+infra-overview	routed	PSPROD->TG ortho
+infra-overview	routed	TR1->LANE ortho
+infra-overview	routed	LANE->PG ortho
+infra-overview	routed	LANE->OAI ortho
+infra-overview	routed	LANE->GITLAB ortho
+infra-overview	routed	ARGO->GITLAB ortho
+infra-overview	routed	PG->DRAPP hug PROD 102px
+infra-overview	routed	PG->DRAPP ortho
+infra-overview	routed	TR2->PSPROD ortho
+infra-overview	routed	LANES4->GITLAB ortho
+infra-overview	routed	PSPROD->GITLAB ortho
+infra-overview	routed	R2->STG ortho
+infra-overview	routed	R2->DR ortho
+infra-overview	routed	R1->ARGO XD R2->DR at (2146,298)
+infra-overview	routed	DNS->TR2 XD DNS->TR1 at (1147,588)
+infra-overview	routed	DNS->TR2 XD DRAPP->TG at (1147,386)
+infra-overview	routed	DNS->TR2 XD PSPROD->TG at (1493,1064)
+infra-overview	routed	DNS->TR2 XD PG->DRAPP at (1493,886)
+infra-overview	routed	DNS->TR2 XD R2->DR at (1147,556)
+infra-overview	routed	DNS->PSPROD band DNS->DRAPP 506px
+infra-overview	routed	DNS->PSPROD XD DRAPP->TG at (962,984)
+infra-overview	routed	DNS->PSPROD XD PG->DRAPP at (849,886)
+infra-overview	routed	DNS->PSPROD XD R2->DR at (870,984)
+infra-overview	routed	DNS->PSPROD band R2->DR 426px
+infra-overview	routed	DNS->DRAPP band DNS->SITE 586px
+infra-overview	routed	DNS->DRAPP band PG->DRAPP 160px
+infra-overview	routed	DNS->PSDEV band DNS->SITE 342px
+infra-overview	routed	DNS->TR1 XD DRAPP->TG at (962,588)
+infra-overview	routed	DNS->TR1 XD PSPROD->TG at (1379,588)
+infra-overview	routed	DNS->TR1 XD LANE->OAI at (1314,588)
+infra-overview	routed	DNS->TR1 XD R2->DR at (894,556)
+infra-overview	routed	DRAPP->TG XD PG->DRAPP at (962,886)
+infra-overview	routed	DRAPP->TG XD R2->DR at (962,556)
+infra-overview	routed	ARGO->TG band PSPROD->TG 202px
+infra-overview	routed	ARGO->TG XD LANE->OAI at (1396,311)
+infra-overview	routed	ARGO->TG XD LANE->AZ at (1867,523)
+infra-overview	routed	ARGO->TG XD R2->DR at (1493,485)
+infra-overview	routed	PSPROD->TG XD LANE->OAI at (1379,714)
+infra-overview	routed	PSPROD->TG XD LANE->OAI at (1379,311)
+infra-overview	routed	PSPROD->TG XD PG->DRAPP at (1520,886)
+infra-overview	routed	PSPROD->TG XD R2->DR at (1379,556)
+infra-overview	routed	LANE->OAI XD R2->DR at (1314,556)
+infra-overview	routed	LANE->AZ XD R2->DR at (1867,391)
+infra-overview	routed	LANE->GITLAB XD ARGO->GITLAB at (1990,1314)
+infra-overview	routed	ARGO->GITLAB XD R2->STG at (2308,994)
+infra-overview	routed	PG->DRAPP XD R2->DR at (870,886)
+infra-overview	routed	DNS->DRAPP lbl_edge DNS->PSPROD
+infra-overview	routed	fan_uneven DNS Bottom 5 ends, pitch 22.4..44.8
+infra-overview	routed	LANE->GITLAB lat_wiggle 31.2
+infra-overview	routed	R2->STG lat_wiggle 122.6
+infra-overview	routed	DR sib_stagger STG
+infra-overview	routed	DNS->TR2 side_ends DNS
+infra-overview	routed	DNS->TR2 side_ends TR2
+infra-overview	routed	DNS->PSPROD lateral_x STG L
+infra-overview	routed	DNS->PSPROD side_ends PSPROD
+infra-overview	routed	DNS->PSDEV side_ends PSDEV
+infra-overview	routed	DNS->TR1 lateral_x PROD L
+infra-overview	routed	DNS->TR1 side_ends TR1
+infra-overview	routed	DRAPP->TG lateral_x DR R
+infra-overview	routed	DRAPP->TG side_ends DRAPP
+infra-overview	routed	DRAPP->TG side_ends TG
+infra-overview	routed	DRAPP->TG up_lanes
+infra-overview	routed	LANE->OAI lateral_x PROD L
+infra-overview	routed	LANE->OAI side_ends LANE
+infra-overview	routed	LANE->OAI up_lanes
+infra-overview	routed	LANE->GITLAB lateral_x STG R
+infra-overview	routed	LANE->GITLAB lateral_x STG R
+infra-overview	routed	LANE->GITLAB side_ends GITLAB
+infra-overview	routed	ARGO->GITLAB lateral_x STG R
+infra-overview	routed	R2->STG lateral_x GH R
+infra-overview	routed	R2->STG side_ends R2
+infra-overview	routed	R2->DR pin_corner DR
+infra-overview	routed	T1->DNS chip_crowd 5.0px
+infra-overview	routed	DNS->PSPROD chip_crowd 7.7px
+infra-overview	routed	DNS->DRAPP chip_crowd 0.0px
+infra-overview	routed	DNS->TR1 chip_crowd 6.2px
+infra-overview	routed	ARGO->TG chip_crowd 8.1px
+infra-overview	routed	R2->STG chip_crowd 9.6px
+infra-overview	routed	R2->DR chip_crowd 9.3px

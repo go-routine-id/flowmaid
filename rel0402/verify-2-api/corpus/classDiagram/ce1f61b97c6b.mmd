@@ -1,0 +1,13 @@
+classDiagram
+A --> B
+B ..|> C : has many of
+A o-- D
+B *-- B
+D ..> D : d0
+D ..> D : d1
+D --> D : d2
+class B {
+ +int id
+ +run() void
+ +stop()
+}

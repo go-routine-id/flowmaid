@@ -1,0 +1,45 @@
+flowchart RL
+  n1["db"]
+  n2["notify"]
+  subgraph B0["Edge services"]
+    n3["auth"]
+    n4["cache"]
+    n5["api pack index<br/>search"]
+    n6["db"]
+  end
+  subgraph B1["Platform"]
+    n7["auth"]
+    n8["cache"]
+    n9["store"]
+    n10["queue index queue"]
+  end
+  subgraph B2["Fulfilment desk"]
+    n11["ship"]
+    n12["index"]
+    n13["search"]
+    n14["api<br/>search"]
+  end
+  n15["split"]
+  n16["index"]
+  n15 -.->|queue| n12
+  n12 -->|search| n8
+  n10 -.->|queue| n13
+  n8 -.->|api| n15
+  n2 --> n14
+  n14 -->|worker| n7
+  n6 -.-> n4
+  n5 ==> n9
+  n5 --> n16
+  n3 --> n2
+  n15 ==> n10
+  n11 -->|worker| n10
+  n11 -.-> n3
+  n7 -.-> n4
+  n16 -->|worker| n6
+  n7 -.-> n2
+  n3 --> n9
+  n14 --> n11
+  n2 ==> n3
+  n2 --> n16
+  n9 -.-> n13
+  n3 --> n15

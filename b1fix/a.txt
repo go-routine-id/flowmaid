@@ -1,0 +1,112 @@
+bench-75	static	alerts->dash overlap job3->logs 20px
+bench-75	static	alerts->gw edge_frame app
+bench-75	static	alerts->gw ortho
+bench-75	static	dash->ext ortho
+bench-75	static	dash->user ortho
+bench-75	static	db->metrics lat_wiggle 155.5
+bench-75	static	db->metrics ortho
+bench-75	static	gw->logs lat_wiggle 142.0
+bench-75	static	gw->logs ortho
+bench-75	static	gw->svc2 lat_wiggle 129.5
+bench-75	static	gw->svc2 ortho
+bench-75	static	gw->svc3 tight alerts->gw 144px
+bench-75	static	gw->svc4 ortho
+bench-75	static	job1->db tight job3->db 160px
+bench-75	static	job1->ext ortho
+bench-75	static	job1->svc1 ortho
+bench-75	static	job2->db ortho
+bench-75	static	job2->ext lat_wiggle 125.0
+bench-75	static	job2->ext ortho
+bench-75	static	job2->ext tight user->ext 102px
+bench-75	static	job2->objects ortho
+bench-75	static	job3->ext ortho
+bench-75	static	job3->logs ortho
+bench-75	static	lb->metrics edge_frame app
+bench-75	static	lb->metrics hug svc2 59px
+bench-75	static	lb->metrics hug svc5 59px
+bench-75	static	lb->metrics ortho
+bench-75	static	lb->svc1 border edge right 48px
+bench-75	static	lb->svc1 hug edge 59px
+bench-75	static	lb->svc1 overlap alerts->gw 32px
+bench-75	static	lb->svc2 ortho
+bench-75	static	lb->svc4 ortho
+bench-75	static	lb->svc4 tight svc4->db 26px
+bench-75	static	metrics->dash ortho
+bench-75	static	objects->logs ortho
+bench-75	static	queue->job1 ortho
+bench-75	static	queue->job2 ortho
+bench-75	static	queue->job3 ortho
+bench-75	static	svc1->cache end_cross svc1->objects at (451,495)
+bench-75	static	svc1->cache ortho
+bench-75	static	svc1->db ortho
+bench-75	static	svc1->db overlap svc1->objects 70px
+bench-75	static	svc1->db overlap svc5->logs 34px
+bench-75	static	svc1->db tight svc1->metrics 26px
+bench-75	static	svc1->db tight svc1->objects 106px
+bench-75	static	svc1->db tight svc3->db 104px
+bench-75	static	svc1->db tight svc5->db 312px
+bench-75	static	svc1->db tight svc5->logs 38px
+bench-75	static	svc1->logs lat_wiggle 97.5
+bench-75	static	svc1->logs ortho
+bench-75	static	svc1->metrics ortho
+bench-75	static	svc1->objects hug data 38px
+bench-75	static	svc1->objects ortho
+bench-75	static	svc1->objects overlap job1->svc1 78px
+bench-75	static	svc1->objects overlap svc5->logs 36px
+bench-75	static	svc1->objects tight job1->svc1 126px
+bench-75	static	svc1->objects tight svc5->logs 38px
+bench-75	static	svc1->queue lat_wiggle 93.5
+bench-75	static	svc1->queue ortho
+bench-75	static	svc2->db tight job1->db 32px
+bench-75	static	svc2->logs lat_wiggle 71.5
+bench-75	static	svc2->metrics ortho
+bench-75	static	svc2->queue ortho
+bench-75	static	svc3->cache ortho
+bench-75	static	svc3->cache tight svc3->objects 270px
+bench-75	static	svc3->db border data left 120px
+bench-75	static	svc3->db hug data 143px
+bench-75	static	svc3->db overlap job1->svc1 198px
+bench-75	static	svc3->db overlap svc5->db 192px
+bench-75	static	svc3->db overlap svc5->logs 42px
+bench-75	static	svc3->db tight job1->svc1 340px
+bench-75	static	svc3->db tight svc5->db 328px
+bench-75	static	svc3->db tight svc5->logs 38px
+bench-75	static	svc3->logs lat_wiggle 42.5
+bench-75	static	svc3->metrics ortho
+bench-75	static	svc3->objects ortho
+bench-75	static	svc3->objects tight svc3->metrics 276px
+bench-75	static	svc3->queue edge_gap alerts->gw 7.0px
+bench-75	static	svc3->queue lat_wiggle 16.0
+bench-75	static	svc3->queue ortho
+bench-75	static	svc3->queue tight alerts->gw 392px
+bench-75	static	svc4->db ortho
+bench-75	static	svc4->db tight cache->svc4 46px
+bench-75	static	svc4->db tight db->metrics 44px
+bench-75	static	svc4->logs ortho
+bench-75	static	svc4->metrics ortho
+bench-75	static	svc4->metrics overlap svc5->ext 16px
+bench-75	static	svc4->metrics tight svc5->ext 42px
+bench-75	static	svc4->queue ortho
+bench-75	static	svc5->cache ortho
+bench-75	static	svc5->cache tight svc5->objects 184px
+bench-75	static	svc5->cache tight svc5->queue 42px
+bench-75	static	svc5->db ortho
+bench-75	static	svc5->db tight job1->svc1 474px
+bench-75	static	svc5->ext edge_gap lb->metrics 7.2px
+bench-75	static	svc5->ext lat_wiggle 4.2
+bench-75	static	svc5->ext ortho
+bench-75	static	svc5->ext tight lb->metrics 190px
+bench-75	static	svc5->logs overlap job1->svc1 60px
+bench-75	static	svc5->logs tight job1->svc1 88px
+bench-75	static	svc5->objects ortho
+bench-75	static	svc5->objects tight svc5->ext 396px
+bench-75	static	svc5->queue ortho
+bench-75	static	svc6->cache ortho
+bench-75	static	svc6->db ortho
+bench-75	static	svc6->ext ortho
+bench-75	static	svc6->logs ortho
+bench-75	static	svc6->queue ortho
+bench-75	static	user->ext lat_wiggle 805.6
+bench-75	static	user->ext ortho
+bench-75	static	user->gw border edge left 51px
+bench-75	static	user->gw hug edge 60px

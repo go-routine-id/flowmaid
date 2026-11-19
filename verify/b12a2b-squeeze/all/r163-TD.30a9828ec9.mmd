@@ -1,0 +1,17 @@
+flowchart TD
+    subgraph O[MMMM WWWW QQQQ]
+        subgraph G[Shipping and returns desk]
+            m0[queue]
+            m1[queue]
+            m2[y]
+        end
+        k[k]
+    end
+    s0[src0] --> m0
+    s1[src1] --> m2
+    s1 --> O
+    s2[src2] --> G
+    s3[src3] --> G
+    s3 --> m1
+    s4[src4] --> m0
+    s4 --> m2

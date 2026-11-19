@@ -1,0 +1,1 @@
+v1-pins-and-entries.svg	Order processing and fulfilment pipeline	A 3.76 hub → q1	B 3.76 hub → q1

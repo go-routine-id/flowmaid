@@ -1,0 +1,37 @@
+flowchart LR
+  n1["queue ship db"]
+  n2["index"]
+  subgraph B0["Data tier"]
+    n3["cache"]
+    n4["auth<br/>split"]
+    subgraph B0s0["Ingest 0"]
+      n5["split<br/>parse"]
+    end
+    subgraph B0s1["Back office and finance 1"]
+      n6["worker<br/>billing"]
+      n7["audit"]
+      n8["auth auth api"]
+    end
+  end
+  subgraph B1["Core"]
+    n9["cache pack pack<br/>api"]
+  end
+  subgraph B2["Analytics"]
+    n10["report<br/>cache"]
+    n11["ingest"]
+    n12["notify"]
+  end
+  n13["ingest"]
+  n3 --> n6
+  n9 -->|billing| n2
+  n1 --> n12
+  n5 --> n13
+  n6 ==>|report| n11
+  n9 ==> B0s1
+  n4 --> n9
+  n4 -->|store| n2
+  n1 -->|pack| n10
+  n1 -->|search| n11
+  n6 ==>|auth| n3
+  n5 --> n10
+  n13 -.->|cache| n6

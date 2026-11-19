@@ -1,0 +1,13 @@
+flowchart TD
+    subgraph G[Order processing]
+        m0[ledger]
+        m1[queue]
+        m2[db]
+        m0 --> m1
+    end
+    s0[src0] --> G
+    s1[src1] --> m0
+    s2[src2] --> m2
+    s2 -- "lbl9" --> G
+    s3[src3] --> m2
+    s3 --> G

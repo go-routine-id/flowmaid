@@ -1,0 +1,11 @@
+flowchart TD
+A --> B --> C
+style A fill:#f9f,stroke:#333,stroke-width:4px,color:#fff,foo:bar
+classDef default fill:#eee
+classDef hot fill:#f00
+class B hot
+C:::hot
+linkStyle 0 stroke:#f00,stroke-width:12px,stroke-dasharray:5 5,color:blue,fill:none,zzz:1
+linkStyle default stroke:#0f0
+linkStyle 1 interpolate stepAfter
+linkStyle 0,1 color:red

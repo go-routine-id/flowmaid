@@ -1,0 +1,9 @@
+docs(ports): `order_pins` cites a repository fixture for its case, not a workspace diagram (B12 fix round 4)
+
+The doc comment of `ports::order_pins` named a stress diagram that lives
+only in the verifier's workspace; it now cites blocks/state-note, the
+fixture its test (`a_frame_sides_free_pins_take_the_order_their_channels_come_in`)
+runs on. No code or output change.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

@@ -1,0 +1,24 @@
+flowchart RL
+    N0([Done])
+    N1[Emit report]
+    N2(Store check)
+    N3{Check}
+    N4(Report)
+    N5(Store store)
+    N6[Emit]
+    N7[Notify]
+    N8{Validate done}
+    N9([Retry])
+    N0 --> N1
+    N0 -->|fail| N2
+    N0 --> N3
+    N3 --> N4
+    N2 -->|yes| N5
+    N4 --> N6
+    N4 --> N7
+    N7 -->|fail| N8
+    N6 --> N9
+    N0 --> N8
+    N2 --> N3
+    N5 --> N7
+    N5 -.->|again| N1

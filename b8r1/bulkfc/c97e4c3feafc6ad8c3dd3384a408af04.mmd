@@ -1,0 +1,20 @@
+flowchart TD
+    N0{Check}
+    N1(Check)
+    N2[Emit notify]
+    N3[Report]
+    N4([Validate])
+    N5([Check report])
+    N6(Done)
+    N7[Report]
+    N8[Emit fetch]
+    N0 -->|ok| N1
+    N1 --> N2
+    N0 --> N3
+    N2 --> N4
+    N4 --> N5
+    N5 -->|fail| N6
+    N6 -->|fail| N7
+    N5 --> N8
+    N2 --> N3
+    N5 ==> N3

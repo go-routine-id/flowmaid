@@ -1,0 +1,18 @@
+flowchart LR
+  H0 ==>|gift wrap| N0
+  H0 -.->|a much longer label here| N2
+  H0 ==>|retry| N0
+  H1 ==>|express| N3
+  H1 ==>|retry| N1
+  H2 ==>|express| N1
+  H2 ---|ok| N3
+  H2 ---|ok| N3
+  H2 ==>|retry| N0
+  H2 -.->|no| N1
+  H2 -->|no| N2
+  H2 -.->|yes| N0
+  H2 --- N3
+  H2 ==>|a much longer label here| N2
+  H2 -.->|express| N3
+  N1 -->|retry| N1
+  N0 --> N0

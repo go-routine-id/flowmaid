@@ -1,0 +1,17 @@
+flowchart TD
+    subgraph O[Payments]
+        subgraph G[Édition générale des données]
+            m0[ledger]
+            m1[ledger]
+        end
+        k[k]
+    end
+    s0[src0] -- "lbl2" --> G
+    s0 --> G
+    s1[src1] --> G
+    s2[src2] --> G
+    s2 --> m0
+    s3[src3] --> G
+    s3 --> O
+    s4[src4] --> G
+    m1 --> z[end]

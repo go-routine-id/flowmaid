@@ -1,0 +1,26 @@
+{"tool":"structdump","flowmaid":"0.38.0","kind":"flowchart","direction":"TD",
+"nodes":[
+ {"id":"x","label":"cart","shape":"Rect","sub":1},
+ {"id":"y","label":"receipt","shape":"Rect","sub":1},
+ {"id":"a","label":"profile","shape":"Rect","sub":0},
+ {"id":"b1","label":"confirm","shape":"Rect","sub":2}],
+"subgraphs":[
+ {"id":"A","title":"Customer","parent":null,"direction":null,"nodes":[2]},
+ {"id":"A1","title":"Checkout","parent":0,"direction":null,"nodes":[0,1]},
+ {"id":"B","title":"Shop","parent":null,"direction":null,"nodes":[3]}],
+"edges":[
+ {"from":{"n":0},"to":{"n":3},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":3},"to":{"n":1},"label":null,"kind":"Arrow","drawn":true}],
+"scene":{"width":403.500,"height":446.000,
+ "nodes":[
+  {"id":"x","x":199.800,"y":108.000,"w":55.400,"h":38.000},
+  {"id":"y","x":190.300,"y":352.000,"w":74.400,"h":38.000},
+  {"id":"a","x":290.700,"y":108.000,"w":70.800,"h":38.000},
+  {"id":"b1","x":42.000,"y":254.000,"w":78.300,"h":38.000}],
+ "clusters":[
+  {"id":"A","x":162.300,"y":28.000,"w":213.200,"h":390.000,"depth":0},
+  {"id":"B","x":28.000,"y":214.000,"w":106.300,"h":92.000,"depth":0},
+  {"id":"A1","x":176.300,"y":68.000,"w":102.400,"h":336.000,"depth":1}],
+ "edges":[
+  {"from":"x","to":"b1","routed":true,"label":null,"points":[[227.500,146.000],[227.500,185.500],[227.500,199.500],[213.500,199.500],[108.336,199.500],[94.336,199.500],[94.336,213.500],[94.336,254.000]]},
+  {"from":"b1","to":"y","routed":true,"label":null,"points":[[81.150,292.000],[81.150,308.000],[81.150,322.000],[95.150,322.000],[213.500,322.000],[227.500,322.000],[227.500,336.000],[227.500,352.000]]}]}}

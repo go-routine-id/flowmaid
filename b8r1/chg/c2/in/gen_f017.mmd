@@ -1,0 +1,40 @@
+flowchart RL
+  n0["do consectetur veniam<br/>sit lorem elit"]
+  subgraph g0["sed aliqua eiusmod laboris amet veniam ipsum amet"]
+    n1(["eiusmod veniam<br/>laboris<br/>do"])
+    n2("laboris ullamco amet ut")
+  end
+  subgraph g1["ut nostrud ipsum tempor"]
+    direction LR
+    n3["sit veniam<br/>elit aliqua"]
+    n4[("dolor sed adipiscing")]
+    n5(["tempor eiusmod consectetur<br/>sit nostrud nostrud"])
+  end
+  subgraph g2["ipsum lorem labore sed"]
+    direction TB
+    n6(["dolor magna lorem<br/>incididunt magna"])
+    n7("sed amet")
+    n8["veniam"]
+    n9[("ipsum consectetur ut<br/>do")]
+    n10[("magna dolor veniam dolor<br/>elit veniam<br/>nostrud consectetur do")]
+    n11["nostrud incididunt magna elit<br/>aliqua laboris labore dolor<br/>adipiscing elit magna eiusmod"]
+  end
+  subgraph g3["nostrud ipsum eiusmod nostrud consectetur"]
+    n12(["tempor consectetur adipiscing<br/>ut tempor labore<br/>aliqua"])
+    n13["adipiscing<br/>labore labore<br/>aliqua amet veniam veniam"]
+    n14("do<br/>consectetur lorem labore")
+    n15[("ipsum sed<br/>aliqua")]
+    n16["magna"]
+  end
+  subgraph g4["sit lorem veniam elit laboris lorem"]
+    n17("adipiscing")
+  end
+  n18(["tempor veniam nostrud<br/>incididunt lorem aliqua eiusmod"])
+  n19(["laboris"])
+  n0 ==> g0
+  n0 --> g1
+  n0 -.-> n8
+  n0 --> g3
+  n0 -.-> g4
+  n0 --> n18
+  n0 --> n19

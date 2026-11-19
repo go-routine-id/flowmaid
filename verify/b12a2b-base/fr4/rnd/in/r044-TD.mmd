@@ -1,0 +1,12 @@
+flowchart TD
+    subgraph G[Payments]
+        m0[y]
+        m1[x wide member node]
+        m0 --> m1
+    end
+    s0[src0] -- "lbl6" --> m0
+    s0 --> m0
+    s1[src1] --> G
+    s1 --> m1
+    s2[src2] --> G
+    s2 --> m1

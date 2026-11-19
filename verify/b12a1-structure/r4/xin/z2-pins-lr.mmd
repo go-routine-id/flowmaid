@@ -1,0 +1,21 @@
+flowchart LR
+  subgraph A[Clients]
+    a1[Web]
+    a2[Mobile]
+    a3[Partner API]
+  end
+  subgraph B[Gateway]
+    g1[Edge router]
+  end
+  subgraph C[Services]
+    c1[Orders]
+    c2[Billing]
+    c3[Search]
+  end
+  a3 --> B
+  a1 --> B
+  a2 --> B
+  B --> C
+  g1 --> c2
+  c1 --> c2
+  C --> a1

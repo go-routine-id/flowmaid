@@ -1,0 +1,13 @@
+stateDiagram-v2
+    direction TB
+    [*] --> Draft
+    Draft --> Review : submit
+    Review --> Draft : changes
+    Review --> Published : approve
+    note right of Draft : author edits here
+    note left of Published : visible to all
+    note right of Review
+        two reviewers
+        must agree
+    end note
+    Published --> [*]

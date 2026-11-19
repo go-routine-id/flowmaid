@@ -1,0 +1,12 @@
+architecture-beta
+    group g0(monitoring)[Backend Services]
+    group g1(database)[Data Storage Layer]
+    group g2(disk)[Backend Services] in g1
+    group g3(cloud)[Frontend]
+    service s0(cloud)[Service 0]
+    service s1(cloud)[Service 1] in g2
+    service s2(cloud)[Service 2] in g0
+    service s3(monitoring)[Service 3] in g3
+    s2:L -- R:s1
+    s0:L -- B:s3
+    s3:B -- L:s0

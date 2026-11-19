@@ -1,0 +1,50 @@
+flowchart RL
+  n1["store"]
+  n2["api"]
+  n3["pack"]
+  subgraph B0["Ingest"]
+    n4["notify mail pack<br/>ingest"]
+    n5["ship<br/>store"]
+    n6["index"]
+  end
+  subgraph B1["Storefront"]
+    n7["api"]
+    n8["ingest"]
+    n9["audit<br/>auth"]
+  end
+  subgraph B2["Edge services"]
+    n10["auth report pack"]
+    n11["split"]
+    n12["merge"]
+    n13["db"]
+    subgraph B2s0["Ingest 0"]
+      n14["ingest queue db<br/>auth"]
+      n15["mail"]
+    end
+    subgraph B2s1["Core 1"]
+      n16["api"]
+    end
+  end
+  n17["worker"]
+  n18["auth worker queue<br/>parse"]
+  n5 --> n13
+  n5 --> n14
+  n4 -->|api| n5
+  n10 --> n17
+  n12 ==> n6
+  n18 --> n14
+  n7 --> n1
+  n14 --> n10
+  n15 -.->|api| n10
+  n5 --> n12
+  n6 --> n11
+  n16 --> n4
+  n5 ==>|pack| n11
+  n6 ==> n10
+  n12 -->|pack| n4
+  n8 -.->|search| n14
+  n2 --> n11
+  n4 --> n12
+  n16 -.->|billing| n3
+  n13 --> n8
+  n9 --> n18

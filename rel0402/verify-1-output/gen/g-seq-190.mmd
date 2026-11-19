@@ -1,0 +1,36 @@
+sequenceDiagram
+autonumber
+participant P0 as <b>bold</b>
+participant P1 as x
+loop x
+P0-->P0: alpha
+Note over P0,P1: a&b
+P1--xP1: <b>bold</b>
+P0-->>P1: x
+P0->>P0: self 日本語
+Note left of P1: gamma
+P1-xP0: gamma
+par Customer Order
+Note over P0,P1: alpha
+P1->>P1: alpha
+P1--xP1: gamma
+loop gamma
+P1-)P1: gamma
+Note left of P1: gamma
+loop gamma
+P0--xP1: alpha
+Note over P0,P1: alpha
+P0--)P0: a&b
+Note right of P0: a&b
+P0-)P1: Long label here
+end
+P0-xP0: Customer Order
+Note over P0,P1: x
+Note over P0,P1: beta
+P0->>P0: self delta
+P1-xP1: delta
+P1->>P1: delta
+P0-->>P0: <b>bold</b>
+end
+end
+end

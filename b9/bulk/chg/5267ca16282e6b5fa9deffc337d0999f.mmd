@@ -1,0 +1,33 @@
+stateDiagram-v2
+direction BT
+[*] --> A
+state K0 {
+  direction TB
+  [*] --> K0_0
+  K0_0 --> K0_1
+  K0_0 --> K0_2
+  K0_0 --> K0_3
+  state K0N {
+    [*] --> K0N_0
+    state K0NN {
+      [*] --> K0NN_0
+      note left of K0NN_0 : in562
+    }
+    K0N_0 --> K0NN
+    K0N_0 --> K0NN_0
+    K0NN_0 --> [*]
+  }
+  K0_1 --> K0N
+  note left of K0NN_0 : in875
+  note right of K0N_0 : in227
+  note right of K0_2 : in666
+}
+A --> K0 : g1
+A --> B0
+K0 --> A : back
+note right of A
+  on739 line one
+  second line
+end note
+note right of A : on465
+note left of B0 : on401

@@ -1,0 +1,18 @@
+architecture-beta
+    group g0(server)[Private API]
+    service s0(database)[Q 0] in g0
+    service s1(cloud)[PostgreSQL Primary 1]
+    service s2(internet)[Svc 2] in g0
+    service s3(cloud)[Authentication and Authorization Service 3] in g0
+    service s4(monitoring)[PostgreSQL Primary 4]
+    service s5(monitoring)[Svc 5] in g0
+    service s6(disk)[PostgreSQL Primary 6] in g0
+    service s7(server)[PostgreSQL Primary 7] in g0
+    service s8(internet)[PostgreSQL Primary 8] in g0
+    junction s9 in g0
+    s2:L --> R:s0
+    s9:L -[publishes order events]- L:s3
+    s1:B <--> T:s9
+    s4:R <-[replicates to standby]-> L:s0
+    s2:T -- B:s8
+    s3:B -- L:s7

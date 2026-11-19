@@ -1,0 +1,15 @@
+flowchart TD
+    subgraph A[Order processing]
+        a0[a0 wide node]
+        a1[a1 wide node]
+        a2[a2 wide node]
+    end
+    subgraph B[Order processing two]
+        b0[b0 wide node]
+        b1[b1 wide node]
+        b2[b2]
+    end
+    a0 --> b2
+    a1 --> b0
+    p[p] --> B
+    p --> b1

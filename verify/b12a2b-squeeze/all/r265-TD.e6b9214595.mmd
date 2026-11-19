@@ -1,0 +1,19 @@
+flowchart TD
+    subgraph O[Data ingestion workers]
+        subgraph G[MMMM WWWW QQQQ]
+            m0[auth service]
+            m1[queue]
+            m2[charge]
+        end
+        k[k]
+    end
+    m2 --> k
+    s0[src0] --> G
+    s0 --> m2
+    s1[src1] --> G
+    s2[src2] --> O
+    s2 --> G
+    s3[src3] --> O
+    s4[src4] -- "lbl8" --> G
+    s4 --> m2
+    m2 --> z[end]

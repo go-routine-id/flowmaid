@@ -1,0 +1,19 @@
+flowchart BT
+    subgraph O[Order processing]
+        subgraph G[Data ingestion workers]
+            m0[ledger]
+            m1[queue]
+            m2[ledger]
+        end
+        k[k]
+    end
+    m0 --> k
+    s0[src0] --> G
+    s0 -- "lbl9" --> m2
+    s1[src1] --> m2
+    s1 --> m0
+    s2[src2] --> m2
+    s2 --> O
+    s3[src3] -- "lbl6" --> O
+    s3 --> G
+    m2 --> z[end]

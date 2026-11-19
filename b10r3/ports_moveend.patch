@@ -1,0 +1,22 @@
+diff --git a/src/ports.rs b/src/ports.rs
+index 886cc2a..0f490d8 100644
+--- a/src/ports.rs
++++ b/src/ports.rs
+@@ -1981,6 +1981,17 @@ fn move_end(e: &mut SceneEdge, src: bool, old: Pt, delta: Pt, side: Side, back:
+         } else {
+             e.waypoints.drain(n - k - drop..n - k);
+         }
++        // A flowchart path on the axes lost the point before the corner
++        // it now turns at with them: its corners rounded afresh, as the
++        // stages draw them (report §2.1), so a host's spline turns there
++        // as a rounded corner, not in a sweep over the dropped leg
++        // (bench-75's `svc6 --> ext` sagged over 270 px, B10 review r3
++        // #5).
++        if e.paint_width.is_none() {
++            if let Some(c) = crate::router::ortho_corners(e) {
++                e.waypoints = crate::router::smooth(&c, crate::router::CORNER_R);
++            }
++        }
+     }
+     // Keep the fallback curve's matching end on the drawn end.
+     if same(e.bezier[pi], old) {

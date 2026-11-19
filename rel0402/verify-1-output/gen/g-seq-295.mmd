@@ -1,0 +1,13 @@
+sequenceDiagram
+autonumber
+participant P0 as alpha
+participant P1 as gamma
+actor P2 as beta
+participant P3 as x
+Note left of P2: gamma
+activate P3
+P3->>P1: act
+deactivate P3
+Note over P0,P3: beta
+P3->>P3: gamma
+P0-->P1: a&b

@@ -1,0 +1,20 @@
+flowchart RL
+    N0{Queue load}
+    N1((Load))
+    N2[Fetch load]
+    N3{Done}
+    N4(Fetch)
+    N5[Report]
+    N6[Retry]
+    N7(Retry load)
+    N0 --> N1
+    N1 --> N2
+    N0 -->|no| N3
+    N2 --> N4
+    N4 -->|fail| N5
+    N3 --> N6
+    N4 --> N7
+    N4 --> N6
+    N0 --> N2
+    N1 --> N4
+    N7 -->|retry| N0

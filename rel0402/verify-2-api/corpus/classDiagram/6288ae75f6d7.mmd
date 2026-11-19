@@ -1,0 +1,11 @@
+classDiagram
+direction BT
+    class Employee {
+      +String name
+    }
+    Org <|-- Employee
+    Org <|-- Team
+    Org <|-- Office
+    Employee "1" o-- "*" Employee : manages
+    Employee --> Employee : mentors
+    Employee ..> Employee : reviews

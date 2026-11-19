@@ -1,0 +1,17 @@
+=== bulkst on -> r1
+2fc998811aeafd29b9d43cc16d1ab2c9 static tight_pairs 2->1; tight_len 66->36; edge_len 1613.45->1611.95; lbl_end_mean 64.16->63.00; chip_gap_min 8.05->5.88
+3d210104011ba4863978d58b8bdafb98 static lbl_end_mean 194.80->194.65; chip_crowd 1->0; chip_gap_min 8.64->13.09
+8ab502b33e05038aac3628ebeb7bffd1 static edge_edge_x 1->0; tight_pairs 3->4; tight_len 248->224; xgap_max 1->0; ortho_edges 8->9; band_pairs 3->0; band_len 416->0; x_drawn 1->0; fan_x 1->0; edge_len 4110.14->4113.19; detour_max 1->0.98; lbl_end_mean 60.20->76.28; chip_gap_min 8.20->3.48
+9a94998d77e24fbd3b22be94e5c059d4 routed ends_apart 4->2
+9a94998d77e24fbd3b22be94e5c059d4 static ortho_edges 7->5; fan_uneven 2->1; edge_len 2196.76->2052.86; lbl_end_mean 77.01->67.03; chip_gap_min 26.80->16.97
+b0ebca7e3d7b659210bdf342f444c273 static edge_len 2093.34->2093.71
+cd11c66758afa23dc179523e9dbd1e5b static tight_len 32->28; edge_len 6394.88->6395.61; lbl_end_mean 83.76->84.12
+d077d02b5ff6747eff73b9c6bf0b44e1 static min_node_gap 14.51->25.88; tight_len 62->46; edge_len 1266.97->1265.77; lbl_end_mean 70.43->61.04; chip_gap_min 7.99->10.25
+d4555aee72fbb6cdc8f817141b41fc1c static edge_len 1787.02->1785.06; lbl_end_mean 52.99->53.98; chip_gap_min 11.10->10.25
+=== bulkfc on -> r1
+=== all on -> r1
+r6_rand_r210 static min_node_gap 14.51->25.88; tight_len 62->46; edge_len 1266.97->1265.77; lbl_end_mean 70.43->61.04; chip_gap_min 7.99->10.25
+r6_rand_r246 static edge_len 1787.02->1785.06; lbl_end_mean 52.99->53.98; chip_gap_min 11.10->10.25
+=== dirs on -> r1
+=== dirsx on -> r1
+=== stress on -> r1

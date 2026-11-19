@@ -1,0 +1,20 @@
+flowchart LR
+    N0[(Queue)]
+    N1{Done}
+    N2(Fetch retry)
+    N3[/Archive parse/]
+    N4{Done}
+    N5{Store load}
+    N6((Archive))
+    N7(Validate)
+    N8(Queue)
+    N0 --> N1
+    N0 --> N2
+    N0 -->|yes| N3
+    N2 --> N4
+    N4 --> N5
+    N4 -->|next| N6
+    N6 -->|ok| N7
+    N5 --> N8
+    N6 -->|again| N3
+    N2 --> N0

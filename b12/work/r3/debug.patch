@@ -1,0 +1,83 @@
+diff --git a/src/edgepass.rs b/src/edgepass.rs
+index ce9d0ad..3e2c345 100644
+--- a/src/edgepass.rs
++++ b/src/edgepass.rs
+@@ -431,27 +431,36 @@ pub(crate) fn finish_blocks(g: &Graph, sc: &mut Scene, blocks: Option<&[Vec<usiz
+ /// The edge stages over `sc` with its context built.
+ fn stages(g: &Graph, sc: &mut Scene, mut cx: Ctx, mode: Mode) {
+     let mut moved = vec![false; sc.edges.len()];
++    let xxdbg = |tag: &str, sc: &Scene| { if std::env::var("FM_XXDBG4").is_ok() { let m = crate::quality::measure(g, sc); eprintln!("XXDBG stage {tag}: x_drawn {} fan_x {} edge_node {} edge_frame {} hard {}", m.x_drawn, m.fan_x, m.edge_node_x, m.edge_frame_x, m.edge_node_x + m.shared_ports + m.arrow_on_start + m.wiggles + m.frame_side + m.node_overlap + m.node_frame + m.frame_overlap); } }; // XXDBG
++    xxdbg("builder", sc); // XXDBG
+     crate::ports::assign(g, sc, &cx, mode, &mut moved);
++    xxdbg("ports", sc); // XXDBG
+     // Every edge on the axes, its corners rounded (report §2.1): from the
+     // ends the ports stage settled, before the router judges them.
+     crate::ortho::orthogonalize(g, sc, &mut cx, mode);
++    xxdbg("ortho", sc); // XXDBG
+     crate::router::repair(g, sc, &cx, mode, &mut moved);
++    xxdbg("repair", sc); // XXDBG
+     // A rerouted end may have switched to another side of its node and
+     // landed on a port another edge already holds: space those groups
+     // again. Groups the router left alone are already spaced and stay
+     // byte-identical.
+     crate::ports::respace(g, sc, &cx, mode, &mut moved);
++    xxdbg("respace", sc); // XXDBG
+     // After the ports are spaced again, so the channel nudge sees (and
+     // keeps) the final ends; in the static scene it ends by putting each
+     // side's ends in the order their paths now head (G9).
+     crate::router::nudge(g, sc, &cx, mode, &mut moved);
++    xxdbg("nudge", sc); // XXDBG
+     // Then two unrelated edges the nudge (or the builder) left side by
+     // side under the spacing get one moved clear, where that costs
+     // nothing else (G4).
+     crate::router::spread_close(g, sc, &cx, mode, &mut moved);
++    xxdbg("spread", sc); // XXDBG
+     // Then a fan's teeth nest: the ports, the tracks and the turns of
+     // each side's ends in one order (report B4, see [`crate::comb`]).
+     crate::comb::comb(sc, &cx, &mut moved);
++    xxdbg("comb", sc); // XXDBG
+     glyph_stubs(sc, &cx, &mut moved);
+     straight_cubics(sc, &cx);
+     square_s_cubics(sc, &cx);
+@@ -470,6 +479,7 @@ fn stages(g: &Graph, sc: &mut Scene, mut cx: Ctx, mode: Mode) {
+         Mode::Routed => crate::labels::LABEL_ROUTE_WORK,
+     };
+     crate::labels::relabel(g, sc, &cx, &moved, budget);
++    xxdbg("relabel", sc); // XXDBG
+     // A scene whose painter strokes its own width (ER, class) is drawn
+     // on its canvas as-is; a flowchart's is fitted like its SVG.
+     refit(sc, mode, g.edge_paint_width.is_none());
+diff --git a/src/layout.rs b/src/layout.rs
+index 2fe518e..1cddf03 100644
+--- a/src/layout.rs
++++ b/src/layout.rs
+@@ -4508,6 +4508,21 @@ fn place(
+             &mut layers,
+             &mut pos,
+         );
++        if std::env::var("FM_XXDBG").is_ok() { // XXDBG
++            eprintln!("XXDBG order starts {} seed {} na {} links {} layered {}", starts, seed.is_some(), na, links, count_crossings(&layers, &succs, &alayer, nlayers)); // XXDBG
++            for (l, lv) in layers.iter().enumerate() { // XXDBG
++                let mut s = String::new(); // XXDBG
++                let mut prevp: Vec<usize> = Vec::new(); // XXDBG
++                for &v in lv { // XXDBG
++                    let p = &apath[v]; // XXDBG
++                    if *p != prevp { s.push_str(&format!(" |{}|", p.iter().map(|&c| g.subgraphs[c].id.clone()).collect::<Vec<_>>().join("/"))); prevp = p.clone(); } // XXDBG
++                    if v < n { s.push_str(&format!(" {}", g.nodes[v].id)); } // XXDBG
++                    else if dummy_edge[v] != usize::MAX { let e = &g.edges[dummy_edge[v]]; s.push_str(&format!(" ({}>{})", g.nodes[e.from].id, g.nodes[e.to].id)); } // XXDBG
++                    else { s.push_str(if border_side[v] == 1 { " [" } else { " ]" }); } // XXDBG
++                } // XXDBG
++                eprintln!("XXDBG L{l}:{s}"); // XXDBG
++            } // XXDBG
++        } // XXDBG
+     }
+     if clustered && block_order.is_none() {
+         let keys = cluster_keys(&layers, &apath, &border_side);
+@@ -6992,6 +7007,7 @@ impl BlockOrder<'_> {
+                 }
+             }
+             let c = self.settle(layers, pos);
++            if std::env::var("FM_XXDBG2").is_ok() { eprintln!("XXDBG start {k} layered {c}"); } // XXDBG
+             if best.as_ref().map_or(true, |b| c < b.0) {
+                 best = Some((c, layers.clone()));
+             }

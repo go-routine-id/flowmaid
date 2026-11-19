@@ -1,0 +1,38 @@
+q50015-BT.svg
+  ok
+q50084-BT.svg
+  ok
+q50168-TD.svg
+  ok
+q50210-TD.svg
+  ok
+q50600-BT.svg
+  ok
+q50658-BT.svg
+  ok
+q50829-TD.svg
+  ok
+q50945-BT.svg
+  ok
+q51019-TD.svg
+  ISSUES
+  flowmaid-c88b6c2e9ffa99af-x2: fill hole (198.9,163.5) covers another line's gap flowmaid-c88b6c2e9ffa99af-x5 at (199.6,165.9) -> under-line is over there
+  flowmaid-c88b6c2e9ffa99af-x2: fill hole (198.7,161.0) covers another line's gap flowmaid-c88b6c2e9ffa99af-x5 at (199.6,165.9) -> under-line is over there
+  flowmaid-c88b6c2e9ffa99af-x2: fill hole (198.9,163.5) covers another line's gap flowmaid-c88b6c2e9ffa99af-x5 at (202.1,165.9) -> under-line is over there
+  flowmaid-c88b6c2e9ffa99af-x2: fill hole (198.9,163.5) covers another line's gap flowmaid-c88b6c2e9ffa99af-x10 at (199.6,167.6) -> under-line is over there
+  flowmaid-c88b6c2e9ffa99af-x5: fill hole (202.1,165.9) covers another line's gap flowmaid-c88b6c2e9ffa99af-x2 at (199.2,165.9) -> under-line is over there
+  flowmaid-c88b6c2e9ffa99af-x5: fill hole (202.1,165.9) covers another line's gap flowmaid-c88b6c2e9ffa99af-x2 at (198.9,163.5) -> under-line is over there
+q51395-TD.svg
+  ok
+q51553-BT.svg
+  ok
+q51628-BT.svg
+  ok
+q51701-BT.svg
+  ok
+q51900-BT.svg
+  ok
+q51925-BT.svg
+  ok
+q52220-BT.svg
+  ok

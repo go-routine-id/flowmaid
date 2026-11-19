@@ -19,7 +19,10 @@ part of the flowmaid crate.
 | `bin/structdump-038` | that example built against 0.38.0 (commit 0366084), ready to run |
 | `struct/<name>.struct.json` | structure files for every input used here (the structure is a property of the input) |
 | `run.sh` | one command: render the inputs with a flowmaid CLI (or mermaid) and measure them |
-| `judge`, `thresholds.json` | check a table against the proposed B12 acceptance rules |
+| `judge`, `thresholds.json` | check a table against the proposed B12 acceptance rules (`thresholds-routed.json`: the routed rules) |
+| `mkthresholds.py` | writes `thresholds.json` and `thresholds-routed.json`: `mkthresholds.py <outdir> <baseline-038.tsv> <ref-mermaid.tsv> [--check]` (see "Bends fix") |
+| `mkrefs.sh` | re-measures the five reference tables from the stored reference SVGs: `mkrefs.sh <blockmetrics> <outdir>` (see "Bends fix") |
+| `baseline-038.tsv`, `ref-start.tsv`, `ref-mermaid.tsv`, `ref-038-routed.tsv`, `ref-start-routed.tsv` | the reference tables the judge reads (95 / 95 / 95 / 92 / 92 rows; see "B12.0 additions") |
 | `show` | print TSV tables aligned (`show -t` = one column per diagram) |
 | `structinfo`, `inputs.tsv` | per input: edges across a subgraph border, open / closed subgraphs |
 | `in/*.mmd` | the 8 inputs (the analog + every flowchart/state input with subgraphs in the three corpus dirs) |
@@ -53,7 +56,7 @@ cp $M/structdump.rs <tree>/examples/ && (cd <tree> && cargo build --release --ex
 $M/blockmetrics --struct /tmp/in.struct.json --check-scene in.svg
 
 $M/run.sh mermaid /some/outdir               # the mermaid side (NODE_PATH=$(npm root -g))
-$M/blockmetrics --selftest                   # 534 checks against hand-worked numbers
+$M/blockmetrics --selftest                   # 813 checks against hand-worked numbers (534 at first)
 ```
 
 `IN=<dir> run.sh ...` measures another directory of `.mmd` files (missing structure files
@@ -123,10 +126,10 @@ see `hops`); a flowmaid path stops 5.5 px short under an arrowhead.
 | `hops` | crossing hops drawn in the paths (a detour ≤ 26 px long, ≤ 9 px off its line, that returns to the line, which then carries straight on; back-to-back hops are chained). Hops are replaced by their chord before anything is measured, so they neither add length nor break a straight run. mermaid 12.2 draws them; flowmaid will from B11 |
 | `edge_len` | total length of all edges |
 | `edge_len_n` | `edge_len` / side of the average node box (√(node area / nodes)) — comparable across engines, whose boxes differ in size |
-| `straight_max`, `straight_max_edge` | the longest straight run (a run continues while a segment turns < 1.5° and stays within 0.75 px of the run's line) and its edge |
-| `bends` | per edge, (straight runs ≥ 8 px) − 1, summed. Auxiliary: meaningless for splines |
-| `lanes_max` | the most parallel lines one perpendicular cut crosses with no gap wider than 26 px between neighbours (axis-aligned straight runs ≥ 40 px only) — the widest bundle |
-| `lane_gap_min` | smallest distance between two parallel straight runs of different edges that overlap for ≥ 40 px |
+| `straight_max`, `straight_max_edge` | the longest straight run and its edge. A run continues while a segment turns < 1.5° from the run's line and stays within 0.75 px of it (`STRAIGHT_ANG`, `STRAIGHT_OFF`). **Since 2026-11-17 a run's line is the line of its longest segment** (the straight stretch's own axis), not of its first: segments seed runs longest first and each seed takes its connected neighbours under the two tolerances (`seedRuns`). **Consecutive collinear runs merge** when the shorter one, and whatever lies between them, never leaves the 0.75 px band of the longer one's line (`straightRuns`: a corner tail that has not left the line yet, mermaid's sub-pixel jogs). Before, a run that started on the tail of a rounded corner took a curve sample up to 1.5° off the axis as its line, drifted off the stretch after ~29 px and cut one straight stretch into several runs (see "Bends fix" below) |
+| `bends` | per edge, (straight runs ≥ 8 px, `BEND_RUN_MIN`) − 1, summed; `bends_max` is the largest per-edge count. Same runs as `straight_max`, and **a rounded corner is one turn** (`turnRuns`): an 8 px piece of a long-tailed corner that is straight within 1.5° but has already left the band is dropped when it turns the same way from its predecessor and into its successor, a quarter turn or less in all (90° + 2 × 1.5°), the path turns straight on from it to the neighbour it is within 45° of, and it is shorter than that neighbour. A jog, a Z, a U and a 45° chamfer drawn straight keep every run. Against scene truth (the start commit's scene polylines) the count is **~7 % low** (1855 counted / 1987 true turns on the start's drawings; 150 edges under-counted): `BEND_RUN_MIN` 8 px together with flowmaid's larger corner radius means a Z whose middle is under ~32 px has no 8 px straight part and counts once. This slightly favours flowmaid against mermaid's exact `L` + `Q` counts (the start's analog: 53 counted, 55 true). Auxiliary: meaningless for splines and large-radius curves (a quarter arc of radius 300-400 reads 2, of 200 / 800 reads 6 / 9) |
+| `lanes_max` | the most parallel lines one perpendicular cut crosses with no gap wider than 26 px between neighbours (axis-aligned straight runs ≥ 40 px only) — the widest bundle. Uses the same straight runs (corrected 2026-11-17) |
+| `lane_gap_min` | smallest distance between two parallel straight runs of different edges that overlap for ≥ 40 px. Uses the same straight runs (corrected 2026-11-17) |
 | `lbl_n` | labelled edges |
 | `lbl_off_mean`, `lbl_off_max` | **distance from the label to the edge's midpoint as a fraction of the edge's length**: \|s − L/2\| / L, s = position along the path of the point nearest the label's centre. 0 = at the middle, 0.5 = at an end |
 | `lbl_endpx_mean`, `lbl_endpx_max` | px along the edge from the label to its nearer end, min(s, L − s) |
@@ -180,8 +183,9 @@ The analog, `infra-overview` (all columns in the two `.tsv` files):
 | `xframe_runs` / `xframe_len` / `xframe_edges` | 3 / 2012 px / 3 | 0 / 0 / 0 |
 | `crossings` (`hops`) | 24 (0) | 16 (16) |
 | `edge_len` (`edge_len_n`) | 22350 px (199.4) | 30835 px (237.7) |
-| `straight_max` | 1175 (PG→DRAPP) | 1236 (R2→STG) |
-| `lanes_max`, `lane_gap_min` | 6, 9.3 px | 6, 12.0 px |
+| `straight_max` | 1175 (PG→DRAPP); corrected counter (2026-11-17): 1405 | 1236 (R2→STG); corrected: 1236 |
+| `lanes_max`, `lane_gap_min` | 6, 9.3 px; corrected: 6, 9.3 px | 6, 12.0 px; corrected: 6, 12.0 px |
+| `bends`, `bends_max` (B12.0 column) | 109, 8 (ARGO→TG); corrected: 53, 4 (R1→ARGO) | 100, 7 (LANE→OAI); corrected: 100, 7 |
 | `lbl_off_mean` / `lbl_off_max` (20 labels) | 0.198 / 0.332 | 0.130 / 0.329 |
 | `lbl_endpx_mean` / `lbl_endpx_max` | 309 / 753 px | 558 / 986 px |
 | `lbl_lbl`, `lbl_node`, `lbl_struck` | 0, 0, 0 | 0, 0, 0 |
@@ -417,3 +421,75 @@ Start commit of B12: `3abbfeb` (B11's head). Its CLI, `quality` example and `str
   0.38 (boxes <= 0.1 px, cylinders <= 1 px). `lateral_x` equals `critic/lateral.py` on hub5 (5), cycle2
   (6), the public fixture (14) and `revise/lat2.py :h` on spread-bottom (1); mermaid's analog reads 0
   with 36 flow-side crossings.
+
+## Bends fix (2026-11-17, before package b12a2b)
+
+Study `b12/design-a2b/bends.md` (pictures in `design-a2b/bends/pic/`), skeptic `b12/design-a2b/critique.md` §2.3.
+The judge as it was before this fix is kept in `b12/metrics-backup-before-bends-fix/` (`SHA256SUMS.txt`).
+
+* **The bug.** `straightRuns` grew each run on the line of the run's *first* segment. flowmaid paints a rounded
+  corner as two cubics whose outer control points lie on the straight stretches, so the first segment after a
+  corner is a curve sample up to 1.5° off the axis; that line leaves the stretch by 0.75 px after ~29 px and the
+  stretch was cut into several runs, each counted by `bends`. `straight_max`, `lanes_max` and `lane_gap_min`
+  read the same runs. Example: 7122a53's analog `DNS>PSDEV` turns 6 times and was counted 13; 0.38's analog
+  `ARGO>TG`, the source of the `bends_max` bound "0.38's own worst edge", turns 4 times and was counted 8.
+  mermaid paints `L` + `Q` corners whose straight parts are exact `L` segments; its rows were read right
+  already (15 `bends` cells change, all sub-pixel jogs).
+* **The counting now** (columns table above): a run's line is its longest segment (`seedRuns`); consecutive
+  collinear runs merge within the 0.75 px band (`straightRuns`); a rounded corner is one turn (`turnRuns`,
+  `bends` / `bends_max` only). The tolerances keep their values (1.5°, 0.75 px, `BEND_RUN_MIN` 8 px).
+  `--selftest`: the 790 earlier hand-worked checks pass unchanged, plus 23 new ones (813). The old
+  function is kept as `anchoredRuns` for comparison.
+* **Truthfulness.** Against the start commit's scene polylines (841 routed edges): the old counter equalled the
+  scene's axis turns on 18 % of the edges, the corrected one on 79 %; it is above on 25 (each an unbridged hop on
+  a corner tail, a separate `dehop` bug, not fixed here) and below on 150. In total it counts **~7 % below scene
+  truth** (1855 / 1987 on the start's drawings): with `BEND_RUN_MIN` 8 px and flowmaid's larger corner radius a
+  Z whose middle is under ~32 px has no 8 px straight part, so the Z counts once. This favours flowmaid slightly
+  against mermaid's exact counts (the start's analog: 53 counted, 55 true). The count is also stable under sampling
+  (changes on 38 of 1289 start edges between 6 / 12 / 24 points per cubic, against 631 before).
+* **Reference tables.** All five were re-measured from their stored SVGs with the corrected counter, the routed
+  twins too, so every table is measured by one counter: `baseline-038.tsv` (260 cells changed),
+  `ref-start.tsv` (259), `ref-mermaid.tsv` (23), `ref-038-routed.tsv` (264), `ref-start-routed.tsv` (254).
+  Only `bends`, `bends_max(_edge)`, `straight_max(_edge)`, `lane_gap_min` and `lanes_max` change. No routed rule
+  reads those columns, and no rule that reads a reference table at judge time (`ref` / `min` / `max` bounds,
+  static or routed) reads a changed column: `thresholds-routed.json` regenerates byte-equal, and the routed
+  judge output is byte-identical with old or new counter and old or new routed tables
+  (`b12/bendsfix-work/routed-indep/`).
+* **`mkrefs.sh <blockmetrics> <outdir>`** re-measures the five tables from the stored reference renders in
+  `b12/local/out` (`start/`, `fm038/`, `mermaid/`, the `t9bt-*/` BT copies, and `start/q`, `fm038/q` for the routed
+  twins), with the live row order and labels. Nothing is rendered. With the blockmetrics a table was made with,
+  the output is byte-equal to that table (checked with the pre-fix blockmetrics on all five).
+* **`mkthresholds.py <outdir> <baseline-038.tsv> <ref-mermaid.tsv> [--check]`** writes `thresholds.json` and
+  `thresholds-routed.json` into `<outdir>`. The rules are those of SPEC 4.3 as before; the constants that were
+  read off a reference value of a changed column are now computed from the two tables by the formula each rule's
+  `why` states (`analog_bends` = ⌊1.2 × mermaid's analog `bends`⌋, `bends_max` = 0.38's analog `bends_max`,
+  `analog_straight` = mermaid's analog `straight_max` rounded up to 10, `analog_lane` = 0.38's analog
+  `lane_gap_min`, `v2_bends` and `pub_bends` = ⌊1.2 × mermaid's⌋). `--check` asserts that the formulas give the
+  constants that were typed in before the fix (120 / 8 / 1240 / 9.3 / 114 / 110): run on the **pre-fix** tables
+  (`metrics-backup-before-bends-fix/metrics/`) it passes and writes the pre-fix `thresholds*.json` byte for byte,
+  so the derivation is auditable; on the live tables it fails by design (bends_max 4, pub_bends 108). Run on the
+  live tables without `--check`, it writes the live `thresholds*.json` byte for byte. Never point `<outdir>` at
+  this directory with the old tables.
+* **Threshold changes** (live against the backup, `b12/bendsfix-work/install-check/thr-static.txt`):
+  5 rule rows tighter, 0 looser, 129 equal; routed file byte-equal.
+
+  | rule (scope) | why | before | now |
+  |---|---|---|---|
+  | `bends_max` infra-overview | 4.3 (a): 0.38's own worst edge (0.38 analog 8 → 4) | ≤ 8 | ≤ 4 |
+  | `bends_max` infra-overview-v2 | 4.3 (b): the analog's bound | ≤ 8 | ≤ 4 |
+  | `bends_max` perm-a … perm-e | 4.3 (b) | ≤ 8 | ≤ 4 |
+  | `bends_max` blocks-overview + its 4 permutations | 4.3 (c) | ≤ 8 | ≤ 4 |
+  | `bends` blocks-overview + its 4 permutations | 4.3 (c): mermaid's + 20 % (mermaid 92 → 90) | ≤ 110 | ≤ 108 |
+
+  The analog's `bends` (120), v2's (114), `straight_max` (1240) and `lane_gap_min` (9.3) keep their bounds.
+  Fixing the counter without these bounds would have dropped 7 `bends_max` lines at 7122a53 (a loosening);
+  counter and thresholds went live together.
+* **Effect at 7122a53** (`b12/local/out/fr4-split-bendsfix/`, the fr4-split SVGs re-measured): `--due A2` 91 → 89
+  must-fail lines (the analog's and v2's `bends` lines go: 141 → 70, 147 → 72); the 7 `bends_max` lines stay
+  (6 > 4); the analog's `straight_max` line stays (1590 → 1919 > 1240: the truthful run is longer); `--due A1` 0.
+* **Open rule question (the user's call; until decided the bound applies as derived).** Measured truthfully,
+  "0.38's own worst edge" is 4, below mermaid's own worst edge (7 on the analog, 6 on v2, 6-8 on the
+  permutations, 6 on the public family) and below the public family's 0.38 and start worst edge (6 / 6).
+  Judged with the corrected judge, mermaid's own rows fail 12 `bends_max` lines (16 → 28 must-fail with
+  `--due A2`); with the old measure 0.38's 8 sat above mermaid's 7 and the rule agreed with the user's bar
+  ("like mermaid or tidier"). Any other reference (mermaid's worst edge, a fixed number) is a rule change.

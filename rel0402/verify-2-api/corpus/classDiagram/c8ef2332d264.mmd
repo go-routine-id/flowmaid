@@ -1,0 +1,12 @@
+classDiagram
+    Animal <|-- Mammal
+    Animal <|-- Bird
+    Mammal <|-- Dog
+    Mammal <|-- Cat
+    Bird <|-- Eagle
+    Dog <|-- Puppy
+    Zoo "1" o-- "*" Animal : houses
+    Zoo --> Puppy : adopts
+    Keeper --> Zoo : works at
+    Keeper --> Eagle : feeds
+    Puppy ..> Keeper : likes

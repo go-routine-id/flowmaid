@@ -1,0 +1,41 @@
+flowchart TD
+  n1["ship"]
+  subgraph B0["Core"]
+    n2["api"]
+    n3["split db index"]
+    n4["auth"]
+    n5["report"]
+    subgraph B0s0["Platform 0"]
+      n6["notify"]
+      n7["index"]
+    end
+  end
+  subgraph B1["Edge services"]
+    n8["api"]
+    n9["pack"]
+    n10["merge search pack"]
+  end
+  subgraph B2["Platform"]
+    n11["mail notify mail"]
+    n12["ingest"]
+    subgraph B2s0["Platform 0"]
+      n13["audit notify cache"]
+    end
+  end
+  n14["index"]
+  n12 -->|cache| n6
+  n12 --> n7
+  n13 ==>|billing| n12
+  n10 --> n2
+  n2 -->|ship| n14
+  n9 -.-> n7
+  n10 --> B0
+  n12 -->|split| n10
+  n13 --> n1
+  n13 -.-> n9
+  n14 -.-> n3
+  n6 --> n5
+  n10 --> n12
+  n9 -->|db| n6
+  n13 --> n10
+  n8 ==>|ingest| n1

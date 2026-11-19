@@ -1,0 +1,10 @@
+flowchart LR
+  S[Source] -.->|dotted path| A[Alpha]
+  S ==>|thick path| B[Beta]
+  S -->|plain path| C[Gamma]
+  S e1@-->|animated| D[Delta]
+  A -->|a long plain label sets this gap| E[Join]
+  B -.->|short| E
+  C --> E
+  D --> E
+  e1@{ animate: true }

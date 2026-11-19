@@ -1,0 +1,21 @@
+  left: 34
+  left: false
+ right: 0
+ right: true
+assertion `left == right` failed: __note_18 -> T0: [(588.525, 570.5), (588.525, 570.5), (346.775, 675.0), (346.775, 675.0)] vs [(588.525, 570.5), (588.525, 570.5), (359.775, 694.0), (359.775, 694.0)]
+assertion `left == right` failed: route: crossings inside the fan
+panicked at src/comb.rs:2083:13:
+panicked at src/ports.rs:3221:13:
+panicked at src/render.rs:323:9:
+panicked at src/scene.rs:16104:13:
+panicked at src/scene.rs:16210:13:
+panicked at src/scene.rs:18159:21:
+panicked at src/scene.rs:18259:17:
+panicked at src/scene.rs:18792:13:
+panicked at tests/quality.rs:1136:5:
+panicked at tests/quality.rs:1364:5:
+panicked at tests/quality.rs:345:5:
+panicked at tests/quality.rs:407:5:
+panicked at tests/quality.rs:534:5:
+panicked at tests/quality.rs:714:5:
+panicked at tests/quality.rs:795:5:

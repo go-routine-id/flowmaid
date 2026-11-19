@@ -1,0 +1,53 @@
+flowchart TD
+  n0["magna do sit<br/>do lorem nostrud amet<br/>laboris sed tempor"]
+  subgraph g0["sed nostrud sed sed ipsum adipiscing"]
+    direction LR
+    n1["tempor eiusmod dolor<br/>dolor elit"]
+    n2(["nostrud sit ipsum magna<br/>do consectetur ipsum elit<br/>amet elit magna"])
+    n3(["dolor consectetur do<br/>adipiscing"])
+    n4(["magna<br/>sit"])
+    n5(["lorem labore<br/>tempor amet nostrud adipiscing"])
+  end
+  subgraph g1["adipiscing magna ullamco aliqua amet"]
+    n6(["ullamco"])
+    n7("labore dolor ut<br/>sed<br/>sit")
+    n8(["sed<br/>ut eiusmod tempor<br/>adipiscing magna"])
+    n9(["amet ipsum sed ut<br/>magna eiusmod dolor nostrud"])
+  end
+  subgraph g2["sed adipiscing dolor eiusmod ut veniam incididunt"]
+    n10[("sed laboris aliqua tempor<br/>consectetur consectetur")]
+    n11[("dolor amet<br/>lorem incididunt adipiscing eiusmod<br/>do elit labore")]
+    n12[("veniam elit<br/>consectetur laboris<br/>ipsum magna")]
+  end
+  subgraph g3["ut laboris adipiscing aliqua ullamco elit amet"]
+    direction LR
+    n13("ipsum ut")
+  end
+  subgraph g4["ipsum incididunt magna eiusmod labore ut magna labore tempor"]
+    direction TB
+    n14[("sed consectetur aliqua lorem")]
+    n15[("sed ut aliqua incididunt<br/>ut do<br/>lorem veniam sit")]
+    n16(["incididunt dolor magna<br/>tempor ullamco laboris ipsum<br/>nostrud"])
+    n17[("sed tempor")]
+    n18["tempor magna sit"]
+  end
+  subgraph g5["labore sit laboris incididunt"]
+    n19(["nostrud<br/>sed ut ut"])
+    n20[("eiusmod sit ullamco eiusmod<br/>elit amet laboris")]
+    n21("aliqua veniam ipsum dolor<br/>tempor elit<br/>ullamco amet elit")
+    n22(["ut sit sed<br/>laboris"])
+    n23["labore<br/>incididunt aliqua labore amet"]
+  end
+  subgraph g6["consectetur consectetur consectetur"]
+    direction TB
+    n24("laboris ipsum<br/>ullamco labore magna<br/>elit")
+    n25("aliqua consectetur incididunt")
+    n24 --> n25
+  end
+  n0 --> g0
+  n0 --> g1
+  n0 -.-> g2
+  n0 --> g3
+  n0 --> g4
+  n0 --> n21
+  n0 --> g6

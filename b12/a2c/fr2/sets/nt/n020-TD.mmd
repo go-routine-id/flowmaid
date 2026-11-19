@@ -1,0 +1,16 @@
+flowchart TD
+    subgraph A[Monitoring stack]
+        a0[a0]
+        a1[a1 wide node]
+        a2[a2]
+    end
+    subgraph B[Monitoring stack backend]
+        b0[b0 wide node]
+        b1[b1]
+        b2[b2]
+    end
+    a0 --> b0
+    a2 --> b0
+    p[p] --> B
+    q[q] --> B
+    q --> b1

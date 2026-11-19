@@ -1,0 +1,53 @@
+flowchart TD
+  n1["db"]
+  n2["ingest index mail"]
+  n3["store"]
+  subgraph B0["Edge services"]
+    n4["db"]
+    n5["auth"]
+    n6["ship"]
+  end
+  subgraph B1["Core"]
+    n7["parse<br/>ingest"]
+    n8["pack mail billing<br/>db"]
+    subgraph B1s0["Ingest 0"]
+      n9["report"]
+      n10["worker"]
+      n11["store"]
+    end
+    subgraph B1s1["Platform 1"]
+      n12["split"]
+    end
+  end
+  subgraph B2["Storefront"]
+    n13["report"]
+    n14["queue audit parse"]
+    n15["report"]
+    subgraph B2s0["Ops 0"]
+      n16["worker<br/>mail"]
+      n17["billing"]
+    end
+  end
+  n18["search"]
+  n19["worker"]
+  n15 --> n11
+  n12 --> n6
+  n5 --> n16
+  n16 -.->|worker| n7
+  n15 -.-> n17
+  n5 --> n12
+  n1 -.-> n3
+  n14 ==> n12
+  n7 -->|pack| n13
+  n12 -.-> n7
+  n5 --> n9
+  n6 ==> n17
+  n9 ==> n19
+  n2 ==> n4
+  n19 -->|queue| n7
+  n8 -.-> n7
+  n10 -->|cache| n3
+  n16 ==> n18
+  n18 ==> n8
+  n12 --> n3
+  n15 -->|worker| n1

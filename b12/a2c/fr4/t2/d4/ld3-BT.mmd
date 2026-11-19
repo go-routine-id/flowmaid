@@ -1,0 +1,17 @@
+flowchart BT
+    dns[name server] --> gw[gateway]
+    dns --> mid[audit log]
+    dns --> px[operator]
+    gw --> a1
+    gw --> a2
+    mid --> m1[archive]
+    px --> b1
+    mon[monitor] --> b2
+    subgraph A[Standby site<br/>small shared machine<br/>hosts other sites too]
+        a1[standby copy]
+        a2[public website]
+    end
+    subgraph B[Staging and production]
+        b1[ingress proxy] --> b2[production app]
+        b2 --> b3[git server]
+    end

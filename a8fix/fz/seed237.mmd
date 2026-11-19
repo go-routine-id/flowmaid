@@ -1,0 +1,15 @@
+architecture-beta
+    service s0(monitoring)[Service 0]
+    service s1(internet)[Service 1]
+    service s2(monitoring)[Service 2]
+    service s3(monitoring)[Service 3]
+    service s4(database)[Service 4]
+    s4:L -- R:s0
+    s0:R --> L:s1
+    s1:R --> L:s3
+    s3:B -- T:s2
+    s1:L --> R:s2
+    s1:T -- B:s2
+    s1:T -- B:s4
+    s3:L --> B:s2
+    s3:T -- R:s2

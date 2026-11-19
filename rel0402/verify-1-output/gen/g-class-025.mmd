@@ -1,0 +1,31 @@
+classDiagram
+C1 <--> C1
+C1 "1" <|-- "*" C1
+C0 o-- C0
+C1 -- C1
+C0 "1" *-- "*" C0 : Customer Order
+C0 o-- C1 : beta
+C0 <--> C0
+C0 ..|> C0 : 日本語
+C1 ..> C1 : <b>bold</b>
+C1 "1" ..> "*" C0
+C1 "1" ..> "*" C1
+C1 "1" *-- "*" C1
+C0 *-- C1
+C0 "1" <|-- "*" C1
+C1 "1" <|-- "*" C1
+C1 <--> C1 : alpha
+C0 *-- C0 : gamma
+C1 "1" ..|> "*" C0 : alpha
+C1 <|-- C1 : <b>bold</b>
+C0 ..> C1
+C1 -- C1
+C0 *-- C1 : alpha
+C1 "1" o-- "*" C0 : alpha
+C1 "1" <--> "*" C1
+C1 *-- C0
+C0 <|-- C0
+C0 <--> C1
+note for C0 "Customer Order"
+note "Customer Order"
+note "<b>bold</b>"

@@ -1,0 +1,25 @@
+architecture-beta
+    group g0(cloud)[Observability]
+    service s0(cloud)[Svc 0] in g0
+    service s1(disk)[Q 1]
+    service s2(database)[Web App 2] in g0
+    service s3(monitoring)[PostgreSQL Primary 3] in g0
+    service s4(nonsense)[Svc 4]
+    service s5(internet)[PostgreSQL Primary 5] in g0
+    service s6(server)[Web App 6] in g0
+    service s7(internet)[Q 7] in g0
+    service s8(cloud)[Svc 8] in g0
+    service s9(nonsense)[Authentication and Authorization Service 9] in g0
+    service s10(disk)[Svc 10] in g0
+    service s11(database)[Q 11] in g0
+    service s12(disk)[Web App 12] in g0
+    s8:L -[publishes order events]-> T:s3
+    s9:L <--> R:s10
+    s9:T -[sync]- L:s10
+    s3{group}:T -- B:s1
+    s4:L <--> R:s7
+    s6:B <-[publishes order events]-> T:s10
+    s4:B --> B:s2{group}
+    s9:T -[sync]-> B:s10
+    s10:L --> R:s6
+    s9:L <--> R:s11

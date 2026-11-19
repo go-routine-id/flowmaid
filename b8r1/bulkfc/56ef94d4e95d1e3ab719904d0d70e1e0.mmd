@@ -1,0 +1,11 @@
+flowchart TD
+    N0(Fetch)
+    N1[Report]
+    N2[Validate]
+    N3([Emit store])
+    N4[Retry]
+    N0 --> N1
+    N1 --> N2
+    N0 --> N3
+    N2 --> N4
+    N4 -.->|back| N2

@@ -1,0 +1,20 @@
+stateDiagram-v2
+  [*] --> Idle
+  Idle --> Busy : start
+  Busy --> Idle : stop
+  Busy --> Check
+  state Check <<choice>>
+  Check --> Fast : small
+  Check --> Slow : large
+  Check --> Fail : bad
+  Fast --> [*]
+  Slow --> [*]
+  state Fork <<fork>>
+  Fail --> Fork
+  Fork --> R1
+  Fork --> R2
+  state Join <<join>>
+  R1 --> Join
+  R2 --> Join
+  Join --> Idle
+  note right of Busy : working hard

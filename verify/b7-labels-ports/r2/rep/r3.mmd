@@ -1,0 +1,6 @@
+flowchart TD
+  S[Start] --> A[Work item]
+  A --> C{check}
+  C -->|retry| A
+  C --> D[Done]
+  X[Other] --> Y[Thing]

@@ -1,0 +1,33 @@
+flowchart TD
+  n1["ingest"]
+  n2["index"]
+  subgraph B0["Core"]
+    n3["merge"]
+  end
+  subgraph B1["Fulfilment desk"]
+    n4["notify index ingest"]
+    n5["merge"]
+    n6["ship"]
+    n7["worker"]
+  end
+  subgraph B2["Platform"]
+    n8["db"]
+    n9["merge audit worker"]
+    n10["billing"]
+  end
+  n11["db"]
+  n10 --> n5
+  n11 ==> n4
+  n2 -.->|mail| n8
+  n7 --> B0
+  n7 --> n2
+  n9 --> n4
+  n4 --> n7
+  n9 --> n7
+  n4 -->|worker| n2
+  n5 ==> n10
+  n4 -.-> n3
+  n4 --> n10
+  n1 -->|notify| n9
+  n11 -->|split| n8
+  n10 ==> n11

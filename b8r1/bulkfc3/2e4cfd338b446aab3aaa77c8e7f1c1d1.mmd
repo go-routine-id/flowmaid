@@ -1,0 +1,12 @@
+flowchart LR
+  A[Start] --> B[Parse input]
+  B --> B
+  B --> C{Valid?}
+  C -->|yes| D[Process]
+  C -->|no| E[Report]
+  D --> F[Store]
+  E --> F
+  F --> F
+  F -->|retry| B
+  D -.->|again| B
+  F --> G[Done]

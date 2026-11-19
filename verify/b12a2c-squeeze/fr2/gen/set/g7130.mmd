@@ -1,0 +1,51 @@
+flowchart TD
+  n1["cache"]
+  n2["ship split ship"]
+  n3["ship"]
+  subgraph B0["Storefront"]
+    n4["search index store"]
+    n5["mail"]
+    subgraph B0s0["Platform 0"]
+      n6["auth cache audit"]
+      n7["ship"]
+      n8["parse<br/>report"]
+    end
+    subgraph B0s1["Fulfilment desk 1"]
+      n9["search"]
+      n10["parse worker db"]
+    end
+  end
+  subgraph B1["Fulfilment desk"]
+    n11["ingest"]
+    n12["index report index"]
+    n13["merge"]
+    subgraph B1s0["Ops 0"]
+      n14["search"]
+    end
+  end
+  subgraph B2["Data tier"]
+    n15["billing"]
+    n16["merge billing notify"]
+    n17["worker ingest ship"]
+    n18["queue worker audit"]
+  end
+  n19["merge<br/>billing"]
+  n20["audit"]
+  n19 --> n14
+  n8 --> n16
+  n2 -.-> n7
+  n10 -->|worker| n20
+  n5 ==> n13
+  n6 -->|ship| B0s0
+  n10 --> n5
+  n9 --> n2
+  n13 --> n10
+  n5 --> n3
+  n5 ==> n4
+  n11 --> n9
+  n8 --> n11
+  n12 ==> n10
+  n20 --> n5
+  n20 --> n16
+  n11 -->|index| n20
+  n3 --> n17

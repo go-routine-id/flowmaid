@@ -1,0 +1,23 @@
+flowchart BT
+    N0{Archive parse}
+    N1[Report]
+    N2([Validate])
+    N3([Archive])
+    N4[Load]
+    N5(Done)
+    N6{Validate check}
+    N7{Emit done}
+    N8([Check])
+    N0 --> N1
+    N1 -->|yes| N2
+    N0 --> N3
+    N1 --> N4
+    N4 --> N5
+    N4 -->|yes| N6
+    N5 --> N7
+    N7 -->|ok| N8
+    N5 --> N6
+    N1 --> N5
+    N7 -->|retry| N1
+    N6 --> N1
+    N4 ==> N0

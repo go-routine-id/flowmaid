@@ -1,0 +1,10 @@
+flowchart TD
+    subgraph A[Customer]
+        a1[order]
+        a2[pay]
+    end
+    subgraph B[Shop]
+        b1[confirm]
+        b2[pack]
+    end
+    a1 --> b1 --> a2 --> b2 --> a1

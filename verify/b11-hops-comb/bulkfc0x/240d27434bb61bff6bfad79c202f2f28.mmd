@@ -1,0 +1,24 @@
+flowchart BT
+    N0[Check]
+    N1[Load queue]
+    N2[Fetch retry]
+    N3{Queue emit}
+    N4([Check archive])
+    N5(Validate report)
+    N6{Done}
+    N7[Report]
+    N8((Queue))
+    N0 -->|ok| N1
+    N0 -->|ok| N2
+    N1 -->|yes| N3
+    N1 --> N4
+    N2 -->|fail| N5
+    N5 --> N6
+    N4 --> N7
+    N7 --> N8
+    N2 --> N4
+    N1 --> N4
+    N0 --> N7
+    N8 ==>|rollback| N0
+    N7 -.->|retry| N1
+    N3 -->|back| N0

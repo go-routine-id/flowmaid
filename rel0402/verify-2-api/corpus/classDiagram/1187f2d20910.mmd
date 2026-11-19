@@ -1,0 +1,20 @@
+classDiagram
+    direction BT
+    class Shape
+    <<interface>> Shape
+    class Box~T~ {
+        +List~T~ items
+        +size() int
+        +get(int i) T
+        +count$ int
+        +area()* double
+    }
+    Box : +push(T item) void
+    class Map~K, V~
+    Shape <|.. Box
+    Box "1" *-- "many" Map : holds
+    Shape <|-- Circle
+    Circle : +radius double
+    note for Box "generic container\ncan hold anything"
+    note for Shape "an interface"
+    note "free note"

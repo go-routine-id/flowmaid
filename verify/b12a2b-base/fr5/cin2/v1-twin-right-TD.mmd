@@ -1,0 +1,16 @@
+flowchart TD
+    subgraph A[Inventory management desk]
+        a1[a1]
+        a2[a2 wide node here]
+    end
+    subgraph B[Inventory management desk two]
+        b1[b1 wide node]
+        b2[b2]
+    end
+    a2 --> b2
+    a1 --> b1
+    a2 --> b1
+    p[p] --> A
+    p --> a1
+    q[q] --> B
+    q --> b2

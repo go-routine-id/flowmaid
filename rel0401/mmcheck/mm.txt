@@ -1,0 +1,94 @@
+"classDiagram\nclass A."	ERR Parse error on line 2: | ...lassDiagramclass A. | ----------------------^ | Expecting 'ALPHA', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'NEWLINE'
+"classDiagram\nclass .A"	ERR Parse error on line 2: | classDiagramclass .A | ------------------^ | Expecting 'ALPHA', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'DOT'
+"classDiagram\nclass A...B"	ERR Parse error on line 2: | classDiagramclass A...B | -------------------^ | Expecting 'NEWLINE', 'EOF', 'SQS', 'STRUCT_START', 'STRUCT_STOP', 'STYLE_SEPARATOR', 'ANNOTATION_START', got 'DOTTED_LINE'
+"classDiagram\nclass A..B"	ERR Parse error on line 2: | classDiagramclass A..B | -------------------^ | Expecting 'NEWLINE', 'EOF', 'SQS', 'STRUCT_START', 'STRUCT_STOP', 'STYLE_SEPARATOR', 'ANNOTATION_START', got 'DOTTED_LINE'
+"classDiagram\nclass A.B"	OK ["A.B"]
+"classDiagram\nclass a.b.C"	OK ["a.b.C"]
+"classDiagram\nclass A.."	ERR Parse error on line 2: | classDiagramclass A.. | -------------------^ | Expecting 'NEWLINE', 'EOF', 'SQS', 'STRUCT_START', 'STRUCT_STOP', 'STYLE_SEPARATOR', 'ANNOTATION_START', got 'DOTTED_LINE'
+"classDiagram\nclass ..A"	ERR Parse error on line 2: | classDiagramclass ..A | ------------------^ | Expecting 'ALPHA', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'DOTTED_LINE'
+"classDiagram\nclass A.B."	ERR Parse error on line 2: | ...ssDiagramclass A.B. | ----------------------^ | Expecting 'ALPHA', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'NEWLINE'
+"classDiagram\nclass .A.B"	ERR Parse error on line 2: | classDiagramclass .A.B | ------------------^ | Expecting 'ALPHA', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'DOT'
+"classDiagram\nclass A..B.C"	ERR Parse error on line 2: | classDiagramclass A..B.C | -------------------^ | Expecting 'NEWLINE', 'EOF', 'SQS', 'STRUCT_START', 'STRUCT_STOP', 'STYLE_SEPARATOR', 'ANNOTATION_START', got 'DOTTED_LINE'
+"classDiagram\nclass A.-B"	OK ["A.-B"]
+"classDiagram\nclass A-.B"	OK ["A-.B"]
+"classDiagram\nclass A._B"	OK ["A._B"]
+"classDiagram\nclass A.1"	OK ["A.1"]
+"classDiagram\nclass 1.A"	OK ["1.A"]
+"classDiagram\nclass A . B"	OK ["A.B"]
+"classDiagram\nclass A.B~T~"	OK ["A.B"]
+"classDiagram\nclass A.~T~"	ERR Parse error on line 2: | ...assDiagramclass A.~T~ | ----------------------^ | Expecting 'ALPHA', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'GENERICTYPE'
+"classDiagram\nclass A, B."	ERR Parse error on line 2: | classDiagramclass A, B. | -------------------^ | Expecting 'NEWLINE', 'EOF', 'SQS', 'STR', 'DOT', 'GENERICTYPE', 'LABEL', 'STRUCT_START', 'STRUCT_STOP', 'STYLE_SEPARATOR', 'ANNOTATION_START', 'AN
+"classDiagram\nclass A., B"	ERR Parse error on line 2: | ...lassDiagramclass A., B | ----------------------^ | Expecting 'ALPHA', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'PUNCTUATION'
+"classDiagram\nclass A.B, C.D"	ERR Parse error on line 2: | ...assDiagramclass A.B, C.D | ----------------------^ | Expecting 'NEWLINE', 'EOF', 'SQS', 'STR', 'DOT', 'GENERICTYPE', 'LABEL', 'STRUCT_START', 'STRUCT_STOP', 'STYLE_SEPARATOR', 'ANNOTATION_STAR
+"classDiagram\nclass A. {\n}"	ERR Parse error on line 2: | ...assDiagramclass A. {} | ----------------------^ | Expecting 'ALPHA', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'STRUCT_START'
+"classDiagram\nclass .A {\n}"	ERR Parse error on line 2: | classDiagramclass .A {} | ------------------^ | Expecting 'ALPHA', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'DOT'
+"classDiagram\nclass A.B {\n+x int\n}"	OK ["A.B"]
+"classDiagram\nclass A...B {\n}"	ERR Parse error on line 2: | classDiagramclass A...B {} | -------------------^ | Expecting 'NEWLINE', 'EOF', 'SQS', 'STRUCT_START', 'STRUCT_STOP', 'STYLE_SEPARATOR', 'ANNOTATION_START', got 'DOTTED_LINE'
+"classDiagram\nclass A....B"	ERR Parse error on line 2: | classDiagramclass A....B | -------------------^ | Expecting 'NEWLINE', 'EOF', 'SQS', 'STRUCT_START', 'STRUCT_STOP', 'STYLE_SEPARATOR', 'ANNOTATION_START', got 'DOTTED_LINE'
+"classDiagram\nclass A.:::foo"	ERR Parse error on line 2: | ...lassDiagramclass A.:::foo | ----------------------^ | Expecting 'ALPHA', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'STYLE_SEPARATOR'
+"classDiagram\nclass A.B:::foo"	OK ["A.B"]
+"classDiagram\nclass A[\"lbl\"]"	OK ["A"]
+"classDiagram\nclass A.[\"lbl\"]"	ERR Parse error on line 2: | ...lassDiagramclass A.["lbl"] | ----------------------^ | Expecting 'ALPHA', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'SQS'
+"classDiagram\nclass `A.`"	OK ["A."]
+"classDiagram\nclass `.A`"	OK [".A"]
+"classDiagram\nclass A.B[\"lbl\"]"	OK ["A.B"]
+"classDiagram\nclass A\nclass B."	ERR Parse error on line 3: | ...ramclass Aclass B. | ---------------------^ | Expecting 'ALPHA', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'NEWLINE'
+"classDiagram\nclass A.\nA --> B"	ERR Parse error on line 2: | ...lassDiagramclass A.A --> B | ----------------------^ | Expecting 'ALPHA', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'NEWLINE'
+"classDiagram\nA. --> B"	ERR Parse error on line 2: | classDiagramA. --> B | ---------------^ | Expecting 'ALPHA', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'LINE'
+"classDiagram\nA --> B."	ERR Parse error on line 2: | ...lassDiagramA --> B. | ----------------------^ | Expecting 'ALPHA', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'NEWLINE'
+"classDiagram\n.A --> B"	ERR Parse error on line 2: | classDiagram.A --> B | ------------^ | Expecting 'acc_title', 'acc_descr', 'acc_descr_multiline_value', 'NAMESPACE', 'ANNOTATION_START', 'CLASS', 'MEMBER', 'SEPARATOR', 'NOTE_FOR', 'NOTE', 'CLASS
+"classDiagram\nA.B --> C"	OK ["A.B","C"]
+"classDiagram\nA...B"	ERR Parse error on line 2: | classDiagramA...B | ---------------^ | Expecting 'STR', 'ALPHA', 'AGGREGATION', 'EXTENSION', 'COMPOSITION', 'DEPENDENCY', 'LOLLIPOP', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'DOT'
+"classDiagram\nA ... B"	ERR Parse error on line 2: | classDiagramA ... B | ----------------^ | Expecting 'STR', 'ALPHA', 'AGGREGATION', 'EXTENSION', 'COMPOSITION', 'DEPENDENCY', 'LOLLIPOP', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'DOT'
+"classDiagram\nA .. B"	OK ["A","B"]
+"classDiagram\nA..B"	OK ["A","B"]
+"classDiagram\nA.B ..> C"	OK ["A.B","C"]
+"classDiagram\nA. : +x int"	ERR Parse error on line 2: | classDiagramA. : +x int | ---------------^ | Expecting 'ALPHA', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'LABEL'
+"classDiagram\nA.B : +x int"	OK ["A.B"]
+"classDiagram\n.A : +x int"	ERR Parse error on line 2: | classDiagram.A : +x int | ------------^ | Expecting 'acc_title', 'acc_descr', 'acc_descr_multiline_value', 'NAMESPACE', 'ANNOTATION_START', 'CLASS', 'MEMBER', 'SEPARATOR', 'NOTE_FOR', 'NOTE', 'CL
+"classDiagram\n<<interface>> A."	ERR Parse error on line 2: | ...ram<<interface>> A. | ----------------------^ | Expecting 'ALPHA', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'NEWLINE'
+"classDiagram\n<<interface>> A.B"	ERR Cannot read properties of undefined (reading 'annotations')
+"classDiagram\nnote for A. \"x\""	ERR Parse error on line 2: | ...iagramnote for A. "x" | ----------------------^ | Expecting 'ALPHA', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'STR'
+"classDiagram\nnote for A.B \"x\""	OK []
+"classDiagram\nA.B .. C"	OK ["A.B","C"]
+"classDiagram\nA.. --> B"	ERR Parse error on line 2: | classDiagramA.. --> B | ----------------^ | Expecting 'STR', 'ALPHA', 'AGGREGATION', 'EXTENSION', 'COMPOSITION', 'DEPENDENCY', 'LOLLIPOP', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'LINE'
+"classDiagram\nclass A, B"	ERR Parse error on line 2: | classDiagramclass A, B | -------------------^ | Expecting 'NEWLINE', 'EOF', 'SQS', 'STR', 'DOT', 'GENERICTYPE', 'LABEL', 'STRUCT_START', 'STRUCT_STOP', 'STYLE_SEPARATOR', 'ANNOTATION_START', 'ANN
+"classDiagram\nclass A,B"	ERR Parse error on line 2: | classDiagramclass A,B | -------------------^ | Expecting 'NEWLINE', 'EOF', 'SQS', 'STR', 'DOT', 'GENERICTYPE', 'LABEL', 'STRUCT_START', 'STRUCT_STOP', 'STYLE_SEPARATOR', 'ANNOTATION_START', 'ANNO
+"classDiagram\nclass A"	OK ["A"]
+"classDiagram\nclass A. B"	OK ["A.B"]
+"classDiagram\nclass A .B"	OK ["A.B"]
+"classDiagram\nclass A . . B"	ERR Parse error on line 2: | ...ssDiagramclass A . . B | ----------------------^ | Expecting 'ALPHA', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'DOT'
+"classDiagram\nA . B --> C"	OK ["A.B","C"]
+"classDiagram\nA.B.C --> D"	OK ["A.B.C","D"]
+"classDiagram\nclass A.B.C {\n}"	OK ["A.B.C"]
+"classDiagram\nclass A.B~T~ {\n}"	OK ["A.B"]
+"classDiagram\nA.B~T~ --> C"	OK ["A.B","C"]
+"classDiagram\nclass A-"	OK ["A-"]
+"classDiagram\nclass -A"	OK ["-A"]
+"classDiagram\nclass A.-"	OK ["A.-"]
+"classDiagram\nclass A-."	ERR Parse error on line 2: | ...assDiagramclass A-. | ----------------------^ | Expecting 'ALPHA', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'NEWLINE'
+"classDiagram\nclass A.B-"	OK ["A.B-"]
+"classDiagram\nA.B \"1\" --> \"*\" C.D"	OK ["A.B","C.D"]
+"classDiagram\nA.B : +x()"	OK ["A.B"]
+"classDiagram\nclass A\nA : +x\nclass A."	ERR Parse error on line 4: | ...ss AA : +xclass A. | ---------------------^ | Expecting 'ALPHA', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'NEWLINE'
+"classDiagram\nclass A..B:::foo"	ERR Parse error on line 2: | classDiagramclass A..B:::foo | -------------------^ | Expecting 'NEWLINE', 'EOF', 'SQS', 'STRUCT_START', 'STRUCT_STOP', 'STYLE_SEPARATOR', 'ANNOTATION_START', got 'DOTTED_LINE'
+"classDiagram\nclass A.B.:::foo"	ERR Parse error on line 2: | ...ssDiagramclass A.B.:::foo | ----------------------^ | Expecting 'ALPHA', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'STYLE_SEPARATOR'
+"classDiagram\nA.B..C"	OK ["A.B","C"]
+"classDiagram\nA.B ..C"	OK ["A.B","C"]
+"classDiagram\nA. ..B"	ERR Parse error on line 2: | classDiagramA. ..B | ---------------^ | Expecting 'ALPHA', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'DOTTED_LINE'
+"classDiagram\nclass A.  "	ERR Parse error on line 2: | ...lassDiagramclass A.   | ----------------------^ | Expecting 'ALPHA', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'NEWLINE'
+"classDiagram\nclass A ."	ERR Parse error on line 2: | ...assDiagramclass A . | ----------------------^ | Expecting 'ALPHA', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'NEWLINE'
+"classDiagram\nclass  .A"	ERR Parse error on line 2: | classDiagramclass  .A | -------------------^ | Expecting 'ALPHA', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'DOT'
+"classDiagram\nclass A.\t"	ERR Parse error on line 2: | ...lassDiagramclass A.	 | ----------------------^ | Expecting 'ALPHA', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'NEWLINE'
+"classDiagram\n<<interface>> .A"	ERR Parse error on line 2: | ...agram<<interface>> .A | ----------------------^ | Expecting 'ALPHA', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'DOT'
+"classDiagram\nclass A\n<<interface>> A."	ERR Parse error on line 3: | ...s A<<interface>> A. | ----------------------^ | Expecting 'ALPHA', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'NEWLINE'
+"classDiagram\nclass A.B.~T~"	ERR Parse error on line 2: | ...sDiagramclass A.B.~T~ | ----------------------^ | Expecting 'ALPHA', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'GENERICTYPE'
+"classDiagram\nclass A, .B"	ERR Parse error on line 2: | classDiagramclass A, .B | -------------------^ | Expecting 'NEWLINE', 'EOF', 'SQS', 'STR', 'DOT', 'GENERICTYPE', 'LABEL', 'STRUCT_START', 'STRUCT_STOP', 'STYLE_SEPARATOR', 'ANNOTATION_START', 'AN
+"classDiagram\nclass ."	ERR Parse error on line 2: | classDiagramclass . | ------------------^ | Expecting 'ALPHA', 'NUM', 'MINUS', 'UNICODE_TEXT', 'BQUOTE_STR', got 'DOT'
+"classDiagram\nclass A.B[\"x.y\"]"	OK ["A.B"]
+"classDiagram\nclass A[\"x.\"]"	OK ["A"]
+"classDiagram\nclass Map~a.b~"	OK ["Map"]
+"classDiagram\nclass A.B {\n}\n<<interface>> A.B"	OK ["A.B"]
+"classDiagram\nclass A..B~T~"	ERR Parse error on line 2: | classDiagramclass A..B~T~ | -------------------^ | Expecting 'NEWLINE', 'EOF', 'SQS', 'STRUCT_START', 'STRUCT_STOP', 'STYLE_SEPARATOR', 'ANNOTATION_START', got 'DOTTED_LINE'
+"classDiagram\nclass A . B {\n}"	OK ["A.B"]
+"classDiagram\nclass `A..B`"	OK ["A..B"]

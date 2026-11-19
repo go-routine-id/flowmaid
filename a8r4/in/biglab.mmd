@@ -1,0 +1,122 @@
+architecture-beta
+group g0(cloud)[Group 0]
+service s0_0(server)[Service 0.0] in g0
+service s0_1(server)[Service 0.1] in g0
+service s0_2(server)[Service 0.2] in g0
+service s0_3(server)[Service 0.3] in g0
+service s0_4(server)[Service 0.4] in g0
+service s0_5(server)[Service 0.5] in g0
+service s0_6(server)[Service 0.6] in g0
+service s0_7(server)[Service 0.7] in g0
+group g1(cloud)[Group 1]
+service s1_0(server)[Service 1.0] in g1
+service s1_1(server)[Service 1.1] in g1
+service s1_2(server)[Service 1.2] in g1
+service s1_3(server)[Service 1.3] in g1
+service s1_4(server)[Service 1.4] in g1
+service s1_5(server)[Service 1.5] in g1
+service s1_6(server)[Service 1.6] in g1
+service s1_7(server)[Service 1.7] in g1
+group g2(cloud)[Group 2]
+service s2_0(server)[Service 2.0] in g2
+service s2_1(server)[Service 2.1] in g2
+service s2_2(server)[Service 2.2] in g2
+service s2_3(server)[Service 2.3] in g2
+service s2_4(server)[Service 2.4] in g2
+service s2_5(server)[Service 2.5] in g2
+service s2_6(server)[Service 2.6] in g2
+service s2_7(server)[Service 2.7] in g2
+group g3(cloud)[Group 3]
+service s3_0(server)[Service 3.0] in g3
+service s3_1(server)[Service 3.1] in g3
+service s3_2(server)[Service 3.2] in g3
+service s3_3(server)[Service 3.3] in g3
+service s3_4(server)[Service 3.4] in g3
+service s3_5(server)[Service 3.5] in g3
+service s3_6(server)[Service 3.6] in g3
+service s3_7(server)[Service 3.7] in g3
+group g4(cloud)[Group 4]
+service s4_0(server)[Service 4.0] in g4
+service s4_1(server)[Service 4.1] in g4
+service s4_2(server)[Service 4.2] in g4
+service s4_3(server)[Service 4.3] in g4
+service s4_4(server)[Service 4.4] in g4
+service s4_5(server)[Service 4.5] in g4
+service s4_6(server)[Service 4.6] in g4
+service s4_7(server)[Service 4.7] in g4
+group g5(cloud)[Group 5]
+service s5_0(server)[Service 5.0] in g5
+service s5_1(server)[Service 5.1] in g5
+service s5_2(server)[Service 5.2] in g5
+service s5_3(server)[Service 5.3] in g5
+service s5_4(server)[Service 5.4] in g5
+service s5_5(server)[Service 5.5] in g5
+service s5_6(server)[Service 5.6] in g5
+service s5_7(server)[Service 5.7] in g5
+s0_0:R -[calls]-> L:s0_1
+s0_0:B -[reads config]-> T:s0_4
+s0_1:R -[publishes order events]-> L:s0_2
+s0_1:B -[x]-> T:s0_5
+s0_2:R -[replicates to standby]-> L:s0_3
+s0_2:B -[calls]-> T:s0_6
+s0_3:B -[reads config]-> T:s0_7
+s0_4:R -[publishes order events]-> L:s0_5
+s0_5:R -[x]-> L:s0_6
+s0_6:R -[replicates to standby]-> L:s0_7
+s1_0:R -[calls]-> L:s1_1
+s1_0:B -[reads config]-> T:s1_4
+s1_1:R -[publishes order events]-> L:s1_2
+s1_1:B -[x]-> T:s1_5
+s1_2:R -[replicates to standby]-> L:s1_3
+s1_2:B -[calls]-> T:s1_6
+s1_3:B -[reads config]-> T:s1_7
+s1_4:R -[publishes order events]-> L:s1_5
+s1_5:R -[x]-> L:s1_6
+s1_6:R -[replicates to standby]-> L:s1_7
+s2_0:R -[calls]-> L:s2_1
+s2_0:B -[reads config]-> T:s2_4
+s2_1:R -[publishes order events]-> L:s2_2
+s2_1:B -[x]-> T:s2_5
+s2_2:R -[replicates to standby]-> L:s2_3
+s2_2:B -[calls]-> T:s2_6
+s2_3:B -[reads config]-> T:s2_7
+s2_4:R -[publishes order events]-> L:s2_5
+s2_5:R -[x]-> L:s2_6
+s2_6:R -[replicates to standby]-> L:s2_7
+s3_0:R -[calls]-> L:s3_1
+s3_0:B -[reads config]-> T:s3_4
+s3_1:R -[publishes order events]-> L:s3_2
+s3_1:B -[x]-> T:s3_5
+s3_2:R -[replicates to standby]-> L:s3_3
+s3_2:B -[calls]-> T:s3_6
+s3_3:B -[reads config]-> T:s3_7
+s3_4:R -[publishes order events]-> L:s3_5
+s3_5:R -[x]-> L:s3_6
+s3_6:R -[replicates to standby]-> L:s3_7
+s4_0:R -[calls]-> L:s4_1
+s4_0:B -[reads config]-> T:s4_4
+s4_1:R -[publishes order events]-> L:s4_2
+s4_1:B -[x]-> T:s4_5
+s4_2:R -[replicates to standby]-> L:s4_3
+s4_2:B -[calls]-> T:s4_6
+s4_3:B -[reads config]-> T:s4_7
+s4_4:R -[publishes order events]-> L:s4_5
+s4_5:R -[x]-> L:s4_6
+s4_6:R -[replicates to standby]-> L:s4_7
+s5_0:R -[calls]-> L:s5_1
+s5_0:B -[reads config]-> T:s5_4
+s5_1:R -[publishes order events]-> L:s5_2
+s5_1:B -[x]-> T:s5_5
+s5_2:R -[replicates to standby]-> L:s5_3
+s5_2:B -[calls]-> T:s5_6
+s5_3:B -[reads config]-> T:s5_7
+s5_4:R -[publishes order events]-> L:s5_5
+s5_5:R -[x]-> L:s5_6
+s5_6:R -[replicates to standby]-> L:s5_7
+s0_3:R -[calls]-> L:s1_0
+s1_7:B -[reads config]-> T:s2_0
+s2_3:R -[publishes order events]-> L:s3_0
+s3_7:B -[x]-> T:s4_0
+s4_3:R -[replicates to standby]-> L:s5_0
+s4_4:T -[calls]- B:s2_0
+s5_7:T -[reads config]- B:s3_5

@@ -1,0 +1,5 @@
+dense-lr: route_partial worst 5.54 ms (node 46); route() worst 7.28 ms (node 8), 0 frames over 8 ms (route() reported, not asserted)
+dense-td: route_partial worst 8.70 ms (node 17); route() worst 8.38 ms (node 17), 3 frames over 8 ms (route() reported, not asserted)
+thread 'router::tests::fixture_drag_perf_guard' (30796) panicked at src/router.rs:6702:13:
+dense-td route_partial: 8.70 ms
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1230 filtered out; finished in 20.46s

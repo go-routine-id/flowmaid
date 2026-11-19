@@ -1,0 +1,15 @@
+flowchart BT
+    subgraph O[Payments]
+        subgraph G[Shipping and returns desk]
+            m0[db]
+            m1[y]
+            m2[x wide member node]
+        end
+        k[k]
+    end
+    m1 --> k
+    m2 --> k
+    s0[src0] --> O
+    s0 --> m2
+    s1[src1] -- "lbl1" --> O
+    s1 -- "lbl6" --> G

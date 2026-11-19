@@ -1,0 +1,23 @@
+[package]
+name = "hp"
+version = "0.1.0"
+edition = "2021"
+[dependencies]
+flowmaid = { path = "/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/cl3/pre" }
+[profile.release]
+debug = false
+[[bin]]
+name = "classq2"
+path = "/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/c-leftovers/r2/src/bin/classq2.rs"
+[[bin]]
+name = "clsvg"
+path = "/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/c-leftovers/r2/src/bin/clsvg.rs"
+[[bin]]
+name = "dragt"
+path = "/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/c-leftovers/h/src/bin/dragt.rs"
+[[bin]]
+name = "clsdrag"
+path = "/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/c-leftovers/h/src/bin/clsdrag.rs"
+[[bin]]
+name = "clstime"
+path = "/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/cl3/src/clstime.rs"

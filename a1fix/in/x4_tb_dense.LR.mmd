@@ -1,0 +1,23 @@
+classDiagram
+    direction LR
+    class Service {
+        <<service>>
+        +handle(Request req) Response
+    }
+    Controller --> Service : calls
+    Controller --> Validator : validates
+    Service --> Repository : reads
+    Service --> Cache : caches
+    Service ..> Logger : logs
+    Repository --> Database : queries
+    Cache ..> Logger : logs
+    Repository ..> Logger : logs
+    Database "1" *-- "*" Table : contains
+    Table "1" *-- "*" Column : has
+    Column "*" --> "1" Type : typed
+    Validator ..> Logger
+    Controller ..> Logger
+    Service "1" --> "*" Event : emits
+    Event <|-- Created
+    Event <|-- Deleted
+    Event <|-- Updated

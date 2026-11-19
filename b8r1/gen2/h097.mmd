@@ -1,0 +1,39 @@
+flowchart LR
+  s0["ship log metric"]
+  s1["log log"]
+  subgraph g0["ship zone"]
+    m0["store queue"]
+    m1["log"]
+    m2["billing"]
+    m3["trace"]
+    m0 --> m1
+    m0 --> m2
+    m2 --> m3
+  end
+  subgraph g1["billing zone"]
+    direction LR
+    m4["search queue"]
+    m5["store cache"]
+    m6["auth cart log"]
+    m7["store order"]
+    m4 --> m5
+    m5 --> m7
+  end
+  subgraph g2["pay zone"]
+    direction LR
+    m8["log notify"]
+    m9["billing"]
+    m10["ship"]
+    m11["billing notify"]
+    m12["report log report"]
+    m8 --> m9
+    m9 --> m10
+    m8 --> m11
+  end
+  s1 --> m0
+  s1 --> g1
+  s1 --> g2
+  m10 --> m5
+  m7 --> m8
+  s1 --> L13["queue"]
+  s1 --> L14["user order"]

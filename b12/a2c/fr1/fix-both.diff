@@ -1,0 +1,542 @@
+diff --git a/src/blockcheck.rs b/src/blockcheck.rs
+index 1be4af6..74d9b78 100644
+--- a/src/blockcheck.rs
++++ b/src/blockcheck.rs
+@@ -3826,3 +3826,150 @@ fn sibling_frames_of_a_band_start_level_and_keep_their_size() {
+         }
+     }
+ }
++
++#[test]
++fn a_chip_kept_off_its_end_blocks_stays_on_its_line() {
++    // B12 G3 keeps a label off the frames that hold one end of its edge
++    // only while that leaves it a clean spot ON its line: where the best
++    // spot outside them lay beside the line, chips came off their lines
++    // (the public fixture drawn BT set `place order` 41 px beside its line
++    // by the Storefront title, drawn LR `write` 20 px; `response` hung
++    // 35 px beside its line). Mermaid centres a chip on its line; here a
++    // chip inside its end block still reads as its line's label.
++    for (name, label) in [
++        ("blocks-overview-bt", "place order"),
++        ("blocks-overview-lr", "write"),
++        ("reqresp", "response"),
++    ] {
++        let g = fixture(&format!("blocks/{name}"));
++        let sc = block_scene(&g);
++        for e in &sc.edges {
++            let Some((text, at, _)) = &e.label else {
++                continue;
++            };
++            if text != label {
++                continue;
++            }
++            let path = crate::scene::edge_polyline(e);
++            let seg = |a: (f64, f64), b: (f64, f64)| {
++                let (dx, dy) = (b.0 - a.0, b.1 - a.1);
++                let l2 = dx * dx + dy * dy;
++                let t = if l2 > 0.0 {
++                    (((at.0 - a.0) * dx + (at.1 - a.1) * dy) / l2).clamp(0.0, 1.0)
++                } else {
++                    0.0
++                };
++                (a.0 + t * dx - at.0).hypot(a.1 + t * dy - at.1)
++            };
++            let off = path
++                .windows(2)
++                .map(|s| seg(s[0], s[1]))
++                .fold(f64::INFINITY, f64::min);
++            assert!(off <= 3.0, "{name} `{label}`: {off:.1} px off its line");
++        }
++    }
++}
++
++#[test]
++fn a_block_its_links_take_room_from_stays_on_its_layer_lines() {
++    // B12 X4 levels a staggered sibling frame by moving its block
++    // upstream; the shift comes out of the gaps its own links cross. A
++    // block stays on its layer lines (its first-row members level with
++    // their siblings' centres) when a link from outside comes into it
++    // past its first row, when one node feeds the first rows of two or
++    // more siblings, and when its frame ends within the earliest's span.
++    let cases = [
++        // A tall outside node's labelled edge into the short block's
++        // second row: its chip came to sit on the other line out of X.
++        (
++            "flowchart TD
++  s[Start] --> a1
++  s --> b1
++  s --> x[\"X one<br/>two<br/>three<br/>four<br/>five<br/>six\"]
++  x -->|from the tall outside node| a2
++  x --> b2
++  subgraph A [Short block]
++    a1[a one] --> a2[a two] --> a3[a three]
++  end
++  subgraph B [Tall block]
++    b1[\"b one<br/>two<br/>three<br/>four<br/>five<br/>six\"] --> b2[b two]
++  end",
++            ["a1", "b1"].as_slice(),
++        ),
++        // A node beside the blocks into the moved block's second row: its
++        // line turned twice more round the block's title.
++        (
++            "flowchart TD
++  hub[Hub] --> m1
++  hub --> n1
++  hub --> lone[Lone node beside]
++  lone -->|lone into block row two| m2
++  lone -->|lone into other block| n2
++  subgraph M [Moved block]
++    m1[short] --> m2[m two] --> m3[m three]
++  end
++  subgraph N [Tall first row]
++    n1[\"tall<br/>first<br/>row<br/>node\"] --> n2[n two]
++  end
++  m3 -->|done| out[Out]
++  n2 -->|also done| out",
++            ["m1", "n1"].as_slice(),
++        ),
++        // One entry point feeding three staggered blocks: the fan took a
++        // crossing once the blocks were levelled under it.
++        (
++            "flowchart TD
++  top[Entry point] --> a1
++  top --> b1
++  top --> c1
++  subgraph A [Alpha block]
++    a1[One line] --> a2[Second] --> a3[Third]
++  end
++  subgraph B [Beta block with a longer title]
++    b1[\"Two<br/>lines<br/>tall\"] --> b2[Next]
++  end
++  subgraph C [Gamma]
++    c1[\"A<br/>B\"] --> c2[Down] --> c3[Down more]
++  end
++  a3 --> sink[Sink]
++  b2 --> sink
++  c3 --> sink",
++            ["a1", "b1", "c1"].as_slice(),
++        ),
++        // A frame that ends within the earliest one's span reads as one
++        // band with it already.
++        (
++            "flowchart TD
++  s[Start] --> a1
++  t[Other] --> b1
++  subgraph A [Tall start]
++    a1[\"one<br/>two<br/>three\"] --> a2[a two] --> a3[a three]
++  end
++  subgraph B [Short]
++    b1[b one]
++  end",
++            ["a1", "b1"].as_slice(),
++        ),
++    ];
++    for (src, first) in cases {
++        for dir in ["TD", "BT"] {
++            let g = graph(&in_direction(src, dir));
++            let sc = block_scene(&g);
++            let y = |id: &str| {
++                let b = node_box(&sc, id);
++                (b.1 + b.3) / 2.0
++            };
++            for w in first.windows(2) {
++                assert!(
++                    (y(w[0]) - y(w[1])).abs() < 0.5,
++                    "{dir} {}: {} at {}, {} at {}",
++                    src.lines().nth(1).unwrap_or(""),
++                    w[0],
++                    y(w[0]),
++                    w[1],
++                    y(w[1])
++                );
++            }
++        }
++    }
++}
+diff --git a/src/labels.rs b/src/labels.rs
+index 1af638c..3a8cb01 100644
+--- a/src/labels.rs
++++ b/src/labels.rs
+@@ -1593,10 +1593,24 @@ impl Track {
+                     .iter()
+                     .any(|f| r.0 < f.2 && r.2 > f.0 && r.1 < f.3 && r.3 > f.1)
+             };
+-            if inner.iter().any(|&k| !meets(k)) {
+-                inner.retain(|&k| !meets(k));
+-                if let Some(p) = off.1 {
+-                    let d2 = |k: usize| (spots[k].0 - p.0).powi(2) + (spots[k].1 - p.1).powi(2);
++            // A label that lies in one leaves it only for a spot no
++            // farther from its line's nearer end: past that, the gap
++            // between the blocks is no nearer the end the label tells
++            // about than the frame's inside, and a long edge would carry
++            // its chip off to its middle (B12 G3 against `lbl_endpx`).
++            let end = |k: usize| arc[k].min(s - arc[k]);
++            let near = |p: (f64, f64)| {
++                let d2 = |k: usize| (spots[k].0 - p.0).powi(2) + (spots[k].1 - p.1).powi(2);
++                (0..spots.len()).min_by(|&a, &b| d2(a).total_cmp(&d2(b)))
++            };
++            let held = off.1.and_then(near).map(|k| (k, end(k)));
++            let keeps = |k: usize| !meets(k) && held.map_or(true, |(_, e)| end(k) <= e + TOUCH_EPS);
++            if inner.iter().any(|&k| keeps(k)) {
++                inner.retain(|&k| keeps(k));
++                if let Some((h, _)) = held {
++                    let d2 = |k: usize| {
++                        (spots[k].0 - spots[h].0).powi(2) + (spots[k].1 - spots[h].1).powi(2)
++                    };
+                     if let Some(&k) = inner.iter().min_by(|&&a, &&b| d2(a).total_cmp(&d2(b))) {
+                         mid = arc[k];
+                     }
+@@ -2037,6 +2051,10 @@ fn place_long(
+         .map(|e| pairs.get(&pair(e)).is_some_and(|&k| k > 1))
+         .collect();
+     let mut tracks: Vec<Option<Track>> = (0..n).map(|_| None).collect();
++    // Per edge with end blocks, its spots with none kept off them: the
++    // search a label falls back on when the frames leave it no clean
++    // spot on its line (lead ruling on G3: a chip stays on its line).
++    let mut whole_tracks: Vec<Option<Track>> = (0..n).map(|_| None).collect();
+     // A fan label left in the near half of its line (the builder's
+     // midpoint slot, say) is stacked into the far part first; one that
+     // finds no spot there is re-placed below like a detached one.
+@@ -2247,9 +2265,32 @@ fn place_long(
+                     at
+                 }
+             } else {
+-                best_spot(
++                let (to, key) = best_spot(
+                     &field, &placed, &edges[ei], nodes, ei, at, w, track, off_line,
+-                )
++                );
++                // B12 G3 keeps a label off its end blocks only while that
++                // leaves it a clean spot ON its line. Where the best spot
++                // outside them lies beside the line (or is not clean),
++                // the label is searched as if there were no end blocks:
++                // a chip inside its end block still reads as its line's
++                // label, one beside the line no longer does (mermaid
++                // centres every chip on its line). The public fixture
++                // drawn BT set `place order` 41 px beside its line by the
++                // Storefront title once the frame's stretch of the line
++                // was barred.
++                let on_line = key.tier == Tier::Line && field.settled(&key);
++                match (&lines[ei], off_ends[ei].0.is_empty() || on_line) {
++                    (Some(pts), false) => {
++                        let whole = whole_tracks[ei].get_or_insert_with(|| {
++                            Track::new(pts, hub[ei].0, w, keep[ei], &field, &(Vec::new(), None))
++                        });
++                        best_spot(
++                            &field, &placed, &edges[ei], nodes, ei, at, w, whole, off_line,
++                        )
++                        .0
++                    }
++                    _ => to,
++                }
+             };
+             tried[ei] = true;
+             if to != at {
+@@ -2967,7 +3008,7 @@ fn best_spot(
+     w: f64,
+     track: &Track,
+     off_line: bool,
+-) -> (f64, f64) {
++) -> ((f64, f64), SpotKey) {
+     let mut best = (at, SpotKey::WORST);
+     if !off_line {
+         // The old spot keeps its slot unless it hits something: being
+@@ -3029,15 +3070,21 @@ fn best_spot(
+         }
+     }
+     if !best.1.blocked {
+-        return best.0;
++        return best;
+     }
+     // Out of work: the best spot so far, or (none found off the line)
+     // the line's own preferred one.
+     if field.spent(placed) {
+         return if off_line && best.1.dev.is_infinite() {
+-            track.own_spot()
++            (
++                track.own_spot(),
++                SpotKey {
++                    tier: Tier::Line,
++                    ..SpotKey::WORST
++                },
++            )
+         } else {
+-            best.0
++            best
+         };
+     }
+     // 3. Anywhere on the line (near its ends, past a self-loop): the
+@@ -3057,7 +3104,7 @@ fn best_spot(
+     if let Some(p) = clear {
+         let key = tier_key(p, Hits::default(), false, 0);
+         if key.better(&best.1) {
+-            return p;
++            return (p, key);
+         }
+     }
+     let touch = |p: &(f64, f64)| {
+@@ -3081,7 +3128,7 @@ fn best_spot(
+             }
+         }
+     }
+-    best.0
++    best
+ }
+ 
+ /// Fallback when the scans found nothing clear: every spot along the
+@@ -3419,6 +3466,61 @@ mod tests {
+         assert_eq!(all.scan.len(), free.scan.len());
+     }
+ 
++    #[test]
++    fn a_label_leaves_its_end_block_for_no_spot_farther_from_an_end() {
++        // A label that sat inside an end block, 300 px down a 1000 px
++        // line, leaves it only for a spot at most 300 px from an end of
++        // its line: the stretch between the blocks lies past that on a
++        // long edge, and the chip would be carried off to its middle.
++        let pts = [(0.0, 0.0), (0.0, 1000.0)];
++        let field = Field {
++            fixed: Fixed::new(),
++            lines: &[],
++            stroke_grid: OnceCell::new(),
++            budget: usize::MAX,
++            strokes_matter: true,
++            labelled: Vec::new(),
++        };
++        let w = 60.0;
++        let near = (-50.0, -10.0, 50.0, 600.0);
++        let free = Track::new(
++            &pts,
++            LABEL_PREFER,
++            w,
++            LABEL_KEEP,
++            &field,
++            &(Vec::new(), None),
++        );
++        // The far end's block leaves 610..880 outside: only its far part
++        // (700 on) lies no farther from an end than the label sat.
++        let far = (-50.0, 890.0, 50.0, 1010.0);
++        let kept = Track::new(
++            &pts,
++            LABEL_PREFER,
++            w,
++            LABEL_KEEP,
++            &field,
++            &(vec![near, far], Some((0.0, 300.0))),
++        );
++        assert!(!kept.scan.is_empty());
++        for &(_, k) in &kept.scan {
++            let y = kept.spots[k].1;
++            assert!((700.0 - TOUCH_EPS..880.0).contains(&y), "{y}");
++        }
++        // The far block leaves only 610..670: every spot there lies
++        // farther from both ends, so the label keeps its whole line.
++        let far = (-50.0, 680.0, 50.0, 1010.0);
++        let whole = Track::new(
++            &pts,
++            LABEL_PREFER,
++            w,
++            LABEL_KEEP,
++            &field,
++            &(vec![near, far], Some((0.0, 300.0))),
++        );
++        assert_eq!(whole.scan.len(), free.scan.len());
++    }
++
+     #[test]
+     fn floor_i64_is_the_floor_cast_everywhere() {
+         let mut vs = vec![
+diff --git a/src/layout.rs b/src/layout.rs
+index 2276565..95779f0 100644
+--- a/src/layout.rs
++++ b/src/layout.rs
+@@ -5875,6 +5875,7 @@ fn place(
+             &cluster_span,
+             &header,
+             &title_jog,
++            (&preds, &succs),
+         ),
+         _ => (0..na).map(|v| lcoord[alayer[v]]).collect(),
+     };
+@@ -5969,34 +5970,57 @@ const TITLE_FIT_PASSES: usize = 2;
+ /// already: float noise of the breadth placement.
+ const TITLE_FIT_EPS: f64 = 0.5;
+ 
++/// How far (px) a sibling frame may end past the one that starts first
++/// and still read as lying within its span along the flow (B12 X4; the
++/// judge's `sib_stagger` slack).
++const STAGGER_SLACK: f64 = 2.0;
++
+ /// B12 X4: the positions along the flow of a block layout's nodes and
+ /// chain dummies (by augmented index). Each sits on its layer line, with
+ /// one exception that levels sibling frames: on a layer that is the
+-/// first row of two or more top-level blocks, every block whose frame
+-/// starts later than the earliest of them moves upstream, as a whole
+-/// (its members at any depth and the dummies of the chains it holds),
+-/// until its frame's leading edge meets the earliest. A frame's leading
+-/// edge is its first-row members' upstream edges less, per frame from
+-/// that block inwards that opens on the layer, what the scene's frame
+-/// reaches past them there: [`FRAME_PAD`] and, in TD, the title strip
+-/// and the jog room ([`title_jogs`]).
++/// first row of two or more top-level blocks, a block whose frame starts
++/// later than the earliest of them and ends past the earliest's span
++/// (the two would read as interleaved: `sib_stagger`) moves upstream, as
++/// a whole (its members at any depth and the dummies of the chains it
++/// holds), until its frame's leading edge meets the earliest. A frame's
++/// leading edge is its first-row members' upstream edges less, per frame
++/// from that block inwards that opens on the layer, what the scene's
++/// frame reaches past them there: [`FRAME_PAD`] and, in TD, the title
++/// strip and the jog room ([`title_jogs`]); its trailing edge likewise
++/// from its last row.
++///
++/// The earliest leading edge is one the layer lines already reserve
++/// (`reach_of` takes the largest reach on the layer), but a block's own
++/// links take room from the shift too, so a block stays on its layer
++/// lines when
++/// - a link from outside it comes into it past its first row from
++///   upstream (into a later row, or down through a first-row dummy):
++///   the shift comes out of the gap that link crosses, which the layer
++///   lines sized for its turns and its label. An outside node's labelled
++///   edge into a block's second row put its chip on its neighbour's line
++///   and turned twice more round the block's title;
++/// - one node outside the blocks feeds the first rows of two or more of
++///   them: the turns of its fan share the band above those frames, which
++///   the layer lines sized for the frames as they stand. A fan into
++///   three staggered blocks took a crossing and a 60 px tight pair, one
++///   into nested titles a detour round the outer frame.
++/// A frame that ends within the earliest's span already reads as one
++/// band with it and stays too: moving it only lengthened the links
++/// leaving its last row.
+ ///
+-/// It needs no room: the earliest leading edge is one the layer lines
+-/// already reserve (`reach_of` takes the largest reach on the layer),
+-/// and the gap after a moved block only grows. The block moves whole,
+-/// so its frame keeps its size: moving only its first-row members (the
+-/// spec's first wording) stretched the frame by the shift, which cost
+-/// frame compactness, and left the dummies of its inner chains on the
+-/// old line. Top-level blocks only: levelling nested siblings changed
+-/// no frame the gates read and lengthened a dense drawing's parallel
+-/// runs (dense-td drawn TD: `band_len` +242). TD / BT only: in LR / RL
+-/// the shift took one more crossing on dense-lr and moved two lines of
+-/// `notes/spread-bottom` 4 px nearer. The shift is a layout coordinate,
+-/// not a frame rule: frames stay functions of their own members, so
+-/// `route()` at the scene's centres draws them the same. Without it,
+-/// sibling frames of a band whose first rows differ in height started
+-/// apart and read as interleaved (the public fixture's build pipeline
+-/// beside the shared services: `sib_stagger`).
++/// The block moves whole, so its frame keeps its size: moving only its
++/// first-row members (the spec's first wording) stretched the frame by
++/// the shift, which cost frame compactness, and left the dummies of its
++/// inner chains on the old line. Top-level blocks only: levelling nested
++/// siblings changed no frame the gates read and lengthened a dense
++/// drawing's parallel runs (dense-td drawn TD: `band_len` +242). TD / BT
++/// only: in LR / RL the shift took one more crossing on dense-lr and
++/// moved two lines of `notes/spread-bottom` 4 px nearer. The shift is a
++/// layout coordinate, not a frame rule: frames stay functions of their
++/// own members, so `route()` at the scene's centres draws them the same.
++/// Without it, sibling frames of a band whose first rows differ in
++/// height started apart and read as interleaved (the public fixture's
++/// build pipeline beside the shared services).
+ #[allow(clippy::too_many_arguments)] // internal: one bundle of layered-graph state
+ fn level_sibling_frames(
+     g: &Graph,
+@@ -6008,6 +6032,7 @@ fn level_sibling_frames(
+     cluster_span: &BTreeMap<usize, (usize, usize)>,
+     header: &[f64],
+     title_jog: &[f64],
++    (preds, succs): (&[Vec<usize>], &[Vec<usize>]),
+ ) -> Vec<f64> {
+     let n = g.nodes.len();
+     let na = alayer.len();
+@@ -6015,6 +6040,38 @@ fn level_sibling_frames(
+     if !matches!(g.direction, Direction::TD | Direction::BT) {
+         return lpos;
+     }
++    // A link from outside block `c` comes into it past its first row
++    // `li` from upstream.
++    let held = |c: usize, li: usize| {
++        (0..na).any(|v| {
++            apath[v].first() == Some(&c)
++                && (alayer[v] > li || v >= n)
++                && preds[v]
++                    .iter()
++                    .chain(&succs[v])
++                    .any(|&u| alayer[u] < alayer[v] && apath[u].first() != Some(&c))
++        })
++    };
++    // The blocks of `blocks` one node outside them feeds on their first
++    // row `li` together with another of them.
++    let fan_into = |blocks: &[usize], li: usize| -> Vec<usize> {
++        let mut out = Vec::new();
++        for u in 0..na {
++            if apath[u].first().is_some_and(|c| blocks.contains(c)) {
++                continue;
++            }
++            let fed: std::collections::BTreeSet<usize> = succs[u]
++                .iter()
++                .filter(|&&v| alayer[v] == li && alayer[u] < li)
++                .filter_map(|&v| apath[v].first().copied())
++                .filter(|c| blocks.contains(c))
++                .collect();
++            if fed.len() >= 2 {
++                out.extend(fed);
++            }
++        }
++        out
++    };
+     let td = matches!(g.direction, Direction::TD);
+     // What frame `c` reaches upstream past a member on its first row.
+     let grow = |c: usize| -> f64 {
+@@ -6041,6 +6098,33 @@ fn level_sibling_frames(
+         }
+         out
+     };
++    // Block `c`'s trailing edge along the flow, from its members on its
++    // last row: what the scene's frame reaches past them there, the
++    // title strip and jog room in BT.
++    let tail = |c: usize| -> Option<f64> {
++        let &(_, hi) = cluster_span.get(&c)?;
++        let back = |c2: usize| {
++            FRAME_PAD
++                + if td {
++                    0.0
++                } else {
++                    header.get(c2).copied().unwrap_or(0.0)
++                        + title_jog.get(c2).copied().unwrap_or(0.0)
++                }
++        };
++        let mut out: Option<f64> = None;
++        for v in (0..n).filter(|&v| alayer[v] == hi && nc[v].contains(&c)) {
++            let at = nc[v].iter().position(|&x| x == c).unwrap_or(0);
++            let reach: f64 = nc[v][at..]
++                .iter()
++                .filter(|c2| cluster_span.get(c2).is_some_and(|&(_, h)| h == hi))
++                .map(|&c2| back(c2))
++                .sum();
++            let e = lcoord[hi] + alsize[v] / 2.0 + reach;
++            out = Some(out.map_or(e, |o: f64| o.max(e)));
++        }
++        out
++    };
+     // Top-level blocks by their first row.
+     let mut groups: BTreeMap<usize, Vec<usize>> = BTreeMap::new();
+     for (&c, &(lo, _)) in cluster_span {
+@@ -6057,7 +6141,18 @@ fn level_sibling_frames(
+             .filter_map(|&c| edge(c, li).map(|e| (c, e)))
+             .collect();
+         let target = edges.iter().map(|e| e.1).fold(f64::INFINITY, f64::min);
++        // How far the frames that start earliest reach along the flow.
++        let reach = edges
++            .iter()
++            .filter(|e| e.1 - target < ALIGN_EPS)
++            .filter_map(|e| tail(e.0))
++            .fold(f64::NEG_INFINITY, f64::max);
++        let fanned = fan_into(&blocks, li);
+         for (c, e) in edges {
++            let within = tail(c).is_some_and(|t| t <= reach + STAGGER_SLACK);
++            if within || held(c, li) || fanned.contains(&c) {
++                continue;
++            }
+             let d = target - e;
+             if d.abs() < ALIGN_EPS {
+                 continue;

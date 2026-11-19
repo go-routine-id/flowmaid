@@ -1,0 +1,20 @@
+flowchart LR
+    N0([Emit])
+    N1([Done])
+    N2[Report emit]
+    N3([Archive queue])
+    N4{Archive}
+    N5([Report parse])
+    N6[Queue validate]
+    N7{Emit}
+    N8{Report}
+    N0 --> N1
+    N1 --> N2
+    N2 --> N3
+    N2 -->|next| N4
+    N2 --> N5
+    N5 --> N6
+    N5 --> N7
+    N6 --> N8
+    N0 --> N6
+    N8 -->|again| N3

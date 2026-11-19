@@ -1,0 +1,12 @@
+flowchart TD
+  subgraph OUT[Outer]
+    subgraph IN[Inner]
+      a1[one] --> a2[two] --> a3[three]
+      a3 -->|redo from the very start| a1
+    end
+    a3 --> b1[four]
+    b1 -.->|rewind| a2
+  end
+  b1 --> c[end]
+  c --> c
+  c ==> a1

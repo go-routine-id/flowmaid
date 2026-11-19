@@ -1,0 +1,15 @@
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> WaitingForTheCustomerToConfirmTheOrder : customer places a new order
+    state "Waiting for the customer to confirm the order and pay the invoice" as Wait
+    Idle --> Wait
+    Wait --> Processing : paid
+    state check <<choice>>
+    Processing --> check
+    check --> Shipped : stock available in the main warehouse
+    check --> Backordered : out of stock
+    Backordered --> Processing
+    Shipped --> [*]
+    note right of Wait
+        The customer has fourteen days to pay before the order expires
+    end note

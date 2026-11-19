@@ -1,0 +1,30 @@
+stateDiagram-v2
+direction LR
+[*] --> Idle
+Idle : waiting
+state "Long title" as L
+Idle --> L : go
+state Comp {
+  direction LR
+  [*] --> a
+  a --> b
+  state Inner {
+    x --> y
+  }
+}
+L --> Comp
+Comp --> [*]
+state c <<choice>>
+state f <<fork>>
+state j <<join>>
+Idle --> c
+c --> f : yes
+f --> p
+f --> q
+p --> j
+q --> j
+note right of Idle : hello
+note left of L
+  block note
+end note
+note "free" as N

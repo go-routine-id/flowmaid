@@ -1,0 +1,25 @@
+flowchart TD
+    N0([Emit])
+    N1(Parse)
+    N2{{Report}}
+    N3([Check emit])
+    N4[Notify fetch]
+    N5([Validate])
+    N6[Store load]
+    N7(Done)
+    N8{Emit store}
+    N9{{Retry queue}}
+    N0 -->|no| N1
+    N1 --> N2
+    N1 --> N3
+    N1 --> N4
+    N2 --> N5
+    N5 --> N6
+    N4 -->|fail| N7
+    N6 --> N8
+    N7 --> N9
+    N7 --> N8
+    N6 --> N7
+    N0 --> N8
+    N4 ==>|rollback| N0
+    N5 -->|again| N0

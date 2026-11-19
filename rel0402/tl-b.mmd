@@ -1,0 +1,39 @@
+classDiagram
+  direction TB
+  class Hub {
+    +id int
+    +name String
+    +save() bool
+  }
+  class Svc0 {
+    +run()
+    -state int
+  }
+  class Svc1
+  class Svc3 {
+    +run()
+    -state int
+  }
+  class Svc4
+  class Svc6 {
+    +run()
+    -state int
+  }
+  class Svc7
+  class Svc9 {
+    +run()
+    -state int
+  }
+  class Svc10
+  Svc0 ..> Hub : uses0
+  Svc1 ..> Hub : uses1
+  Svc2 ..> Hub : uses2
+  Svc3 ..> Hub : uses3
+  Svc4 ..> Hub : uses4
+  Svc5 ..> Hub : uses5
+  Svc6 ..> Hub : uses6
+  Svc7 ..> Hub : uses7
+  Svc8 ..> Hub : uses8
+  Svc9 ..> Hub : uses9
+  Svc10 ..> Hub : uses10
+  Svc11 ..> Hub : uses11

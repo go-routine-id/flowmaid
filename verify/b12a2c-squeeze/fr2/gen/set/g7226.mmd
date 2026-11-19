@@ -1,0 +1,49 @@
+flowchart TD
+  n1["auth queue search"]
+  n2["api"]
+  subgraph B0["Data tier"]
+    n3["mail split audit"]
+    n4["merge"]
+    n5["audit"]
+    n6["notify"]
+    subgraph B0s0["Ops 0"]
+      n7["store worker split"]
+    end
+    subgraph B0s1["Ops 1"]
+      n8["pack"]
+      n9["parse"]
+      n10["audit cache api"]
+    end
+  end
+  subgraph B1["Ops"]
+    n11["report<br/>db"]
+    n12["merge api pack"]
+  end
+  subgraph B2["Platform"]
+    n13["ship<br/>auth"]
+    n14["notify"]
+    n15["audit report store"]
+  end
+  n16["search"]
+  n4 -->|merge| n14
+  n7 ==>|search| n10
+  n3 --> n1
+  n14 ==>|parse| n13
+  n9 -.-> n8
+  n6 --> n3
+  n7 --> n11
+  n12 --> n2
+  n8 ==>|search| n2
+  n6 -->|report| n5
+  n5 ==>|auth| n1
+  n6 --> n13
+  n7 -.-> n16
+  n8 --> n11
+  n10 --> n3
+  n1 --> n14
+  n1 -.-> B0s1
+  n15 ==> n8
+  n6 --> n12
+  n2 --> B0
+  n8 --> n15
+  n13 -->|parse| n14

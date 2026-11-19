@@ -1,0 +1,78 @@
+stateDiagram-v2
+direction LR
+[*] --> A
+state K0 {
+  [*] --> K0_0
+  K0_0 --> K0_1
+  K0_1 --> K0_2
+  note right of K0_0
+    in823 line one
+    second line
+  end note
+  K0_1 --> [*]
+}
+state K1 {
+  [*] --> K1_0
+  K1_0 --> K1_1
+  state K1N {
+    [*] --> K1N_0
+    K1N_0 --> K1N_1 : t1
+    K1N_0 --> K1N_2 : t2
+    K1N_0 --> K1N_3 : t3
+    state K1NN {
+      [*] --> K1NN_0
+      K1NN_0 --> K1NN_1
+      K1NN_1 --> K1NN_2
+      K1NN_1 --> K1NN_3 : t3
+      state K1NN_c <<choice>>
+      K1NN_0 --> K1NN_c
+      K1NN_c --> K1NN_1 : a
+      K1NN_c --> K1NN_2 : b
+    }
+    K1N_0 --> K1NN
+    K1NN_2 --> [*]
+  }
+  K1_0 --> K1N
+  note left of K1N_3 : in797
+}
+state K2 {
+  [*] --> K2_0
+  K2_0 --> K2_1
+  state K2N {
+    direction RL
+    [*] --> K2N_0
+    K2N_0 --> K2N_1 : t1
+    K2N_0 --> K2N_2 : t2
+    K2N_0 --> K2N_3
+    state K2NN {
+      [*] --> K2NN_0
+    }
+    K2N_2 --> K2NN
+    K2NN --> K2N_3 : up
+  }
+  K2_0 --> K2N
+  K2_0 --> K2N_2
+  note left of K2N_3
+    in214 line one
+    second line
+  end note
+  note right of K2N_2
+    in253 line one
+    second line
+  end note
+  note left of K2N_2 : in275
+}
+A --> K0
+K0 --> K1
+A --> K2 : g3
+K0 --> B0 : g4
+K1 --> B1
+K0 --> K1NN_0
+K2N_1 --> K2 : out
+B0 --> K2 : back
+note right of B1 : on449
+note right of B1 : on449b
+note right of K1 : on631
+note left of K0 : on350
+note left of K1N : on192
+A --> [*]

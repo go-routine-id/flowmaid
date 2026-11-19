@@ -1,0 +1,8 @@
+flowchart BT
+  A((Hub)) -->|ask| B{Decide}
+  B -->|answer| A
+  B --> C[Worker]
+  C --> B
+  C --> D[Done]
+  D -->|loop back to the very start| A
+  C --> C

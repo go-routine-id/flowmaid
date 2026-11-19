@@ -1,0 +1,63 @@
+flowchart BT
+  n1["split split pack"]
+  n2["notify"]
+  n3["worker"]
+  subgraph B0["Data tier"]
+    n4["ship"]
+    n5["merge ingest auth"]
+    n6["report"]
+    n7["search audit merge<br/>queue"]
+    subgraph B0s0["Fulfilment desk 0"]
+      n8["index"]
+    end
+    subgraph B0s1["Back office and finance 1"]
+      n9["queue"]
+      n10["ingest"]
+      n11["search<br/>report"]
+    end
+  end
+  subgraph B1["Fulfilment desk"]
+    n12["report merge search<br/>billing"]
+    n13["audit"]
+    n14["worker"]
+    n15["store"]
+  end
+  subgraph B2["Ingest"]
+    n16["audit"]
+    n17["notify notify pack"]
+    n18["search"]
+    n19["merge"]
+    subgraph B2s0["Ingest 0"]
+      n20["pack"]
+    end
+    subgraph B2s1["Edge services 1"]
+      n21["billing billing audit"]
+    end
+  end
+  n22["notify"]
+  n23["api"]
+  n8 ==> n4
+  n18 --> n8
+  n5 --> B2
+  n18 --> n22
+  n14 -->|index| n16
+  n8 ==> n6
+  n22 -.-> n9
+  n1 ==>|pack| n4
+  n12 --> n18
+  n19 -.-> n9
+  n12 ==> n9
+  n1 --> n16
+  n11 ==>|billing| n7
+  n6 --> n3
+  n15 --> n18
+  n22 ==> n4
+  n8 --> n7
+  n3 -.->|audit| n9
+  n11 ==>|parse| n4
+  n18 ==> n9
+  n1 --> n5
+  n5 -->|index| n14
+  n10 -.->|split| n11
+  n10 ==> n22
+  n1 -->|billing| n13

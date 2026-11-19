@@ -1,0 +1,34 @@
+flowchart BT
+  subgraph F0 [Frame 0]
+    n5((Node 5))
+  end
+  subgraph F1 [Frame 1]
+    n2{{Node 2 with a longer label}}
+    n3(Node 3 with a longer label)
+    n6[(Node 6)]
+  end
+  n0 <-.-> n2
+  n7 <==> n5
+  n4 -.-> n8
+  n5 --o n9
+  n4 <-.-> n3
+  n5 -->|lbl| F0
+  n2 -.->|dot| n4
+  n2 --- n3
+  n7 x--x n4
+  n0 <-.-> n9
+  n5 -->|lbl| n6
+  n0 <==> F1
+  n6 -.->|dot| n1
+  n6 o--o n7
+  n2 --- n3
+  n2 --- n0
+  n3 --o n4
+  n5 <-.-> n6
+  n7 --x n8
+  n9 <--> n5
+  n0 ==> F0
+  n8 -->|lbl| n9
+  linkStyle 6 stroke:#c33,stroke-width:24px
+  linkStyle 0 stroke:#c33,stroke-width:3px
+  linkStyle 19 stroke-width:3px

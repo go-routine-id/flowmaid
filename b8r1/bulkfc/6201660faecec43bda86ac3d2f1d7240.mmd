@@ -1,0 +1,37 @@
+flowchart BT
+  subgraph F0 [Frame 0]
+    n13(Node 13)
+    n2((Node 2))
+  end
+  subgraph F1 [Frame 1]
+    n8[(Node 8)]
+    n1(Node 1)
+  end
+  subgraph F2 [Frame 2]
+    n7((Node 7))
+  end
+  n5 <--> n13
+  n8 o--o n6
+  n2 <--> n4
+  n12 <--> n2
+  n1 <-.-> n6
+  n4 --> n12
+  n5 <-.-> n6
+  n10 --- n5
+  n8 x--x n2
+  n9 ==>|thick lbl| n12
+  n7 --x n12
+  n1 --x n1
+  n12 o--o F2
+  n9 <==> n3
+  n4 --x F0
+  n2 <-.-> n7
+  n9 ==>|thick lbl| n5
+  n12 ==> n2
+  n8 --> n9
+  n11 --- n13
+  n6 <--> n8
+  n7 <--> n3
+  n0 --x n5
+  n2 x--x n10
+  linkStyle 6 stroke-width:5px

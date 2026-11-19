@@ -1,0 +1,23 @@
+flowchart RL
+    N0(Queue check)
+    N1[Load]
+    N2{Archive}
+    N3{Report done}
+    N4[Emit fetch]
+    N5(Done parse)
+    N6(Fetch)
+    N7([Queue notify])
+    N8(Load)
+    N9{Emit notify}
+    N0 -->|ok| N1
+    N1 --> N2
+    N1 --> N3
+    N2 --> N4
+    N4 --> N5
+    N3 --> N6
+    N5 -->|fail| N7
+    N5 --> N8
+    N6 --> N9
+    N1 --> N6
+    N5 --> N6
+    N8 ==> N3

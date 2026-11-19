@@ -1,0 +1,10 @@
+stateDiagram-v2
+    [*] --> P
+    P --> Second
+    state Second {
+        a --> b
+        b --> c
+    }
+    note left of a : lead a
+    note left of c : lead c
+    note right of P : after P

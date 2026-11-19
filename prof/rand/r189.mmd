@@ -1,0 +1,27 @@
+flowchart LR
+  H0 -.-> N4
+  H0 ==> N8
+  H0 -.->|ok| N2
+  H0 ==>|x| N12
+  H0 ==> N11
+  H0 --> N9
+  H0 --> N1
+  H1 -.-> N4
+  H1 -->|express| N14
+  H1 -->|x| N13
+  H1 ==> N0
+  H1 -.->|express| N13
+  H1 --> N10
+  N4 --> N12
+  N12 -->|gift wrap| N12
+  N3 -->|gift wrap| N0
+  N0 --> N4
+  N5 -->|x| N15
+  N16 --> N16
+  N1 --> N13
+  N15 --> N11
+  N1 --> N0
+  N15 --> N14
+  N13 --> N15
+  N16 -->|express| N8
+  N13 -->|express| N3

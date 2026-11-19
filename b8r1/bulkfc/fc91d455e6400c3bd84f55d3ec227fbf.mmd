@@ -1,0 +1,8 @@
+flowchart LR
+  n2 o--o|yes| n0
+  n2 ---|yes| n1
+  n0 e2@--o|a longer label| n0
+  e2@{ curve: natural }
+  n2 <--> n1
+  n2 --o n0
+  linkStyle 2 stroke-width:30px,stroke:#c33

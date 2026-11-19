@@ -1,0 +1,19 @@
+flowchart LR
+    S[Source] --> T1[Target one]
+    S --> T2[Target two]
+    S -->|a much longer label| T3[Target three]
+    S -.-> T4[Target four]
+    S ==> T5[Target five]
+    S --> T6[Target six]
+    P[Peer] --> T1
+    P --> T3
+    P --> T6
+    Q[Queue] --> T2
+    Q --> T5
+    T1 --> Z[Sink]
+    T3 --> Z
+    T6 --> Z
+    T2 -->|late| Z
+    Q -->|direct| Z
+    linkStyle 4 stroke:#a0a,stroke-width:4px
+    linkStyle default interpolate basis

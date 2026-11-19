@@ -1,0 +1,42 @@
+fix(blocks): steps whose rooms do not meet are channels of their own, so a two-way pair keeps its turned edge inside the stacked blocks (B12.9 G2, B12.11 title-clear rule 2; B12a2 fix round 4 #7)
+
+What (block mode, behind the internal switch; static scene):
+`ortho::place_tracks` splits a channel into the sets of steps whose
+rooms chain (`split_by_room`) and places each set as a channel of its
+own (`place_channel`, the former loop body, unchanged). Outside a block
+layout a channel is placed as before.
+
+Why (verifier item #7): blocks/t9c-frames-8px-two-way drawn TD or BT
+kept 2 lateral crossings, which
+`an_edge_between_stacked_blocks_crosses_their_title_sides_past_the_chips`
+accepted as a known leftover. In a block layout one layer gap holds the
+space between two stacked frames and the lower frame's title strip and
+jog room; the pair's four steps (two between the frames, two in `Beta
+one`'s jog room) share the gap and their spans overlap, so they were
+ordered as one stack of tracks: the order interleaved the two rooms,
+and the jog room's two steps landed 5 px apart (291.5 / 296.5). The
+router took the turned `b -> a` round the right of both blocks.
+Placed per room, the jog-room steps stand 12.5 px apart and the
+ortho path is kept: `b -> a` leaves `Beta one` and `Beta` by their
+title sides at the column past the chips, as `a -> b` enters them.
+
+Changed (static, block mode; default build byte-identical,
+off-identity test green): of the 332 direction copies of
+tests/fixtures/{blocks,quality,notes} and the 32 of examples/, three:
+t9c-frames-8px-two-way TD and BT (lateral_x 2 -> 0 each, every other
+harness column unchanged) and nested-cases LR (the return tracks above
+`Outer` nest a little differently; harness numbers unchanged). Routed
+output unchanged on every copy. Suite-on failing tests: the same 14
+names.
+
+Not covered: the verifier's s3-nested-two-way drawn TD (a labelled
+two-way pair and a third entry into a nested frame's one member) keeps
+lateral_x 4: its label slot lies left of the target block, so both
+edges reach the member through the lateral walls (reported).
+
+Test: blockcheck::an_edge_between_stacked_blocks_crosses_their_title_sides_past_the_chips
+now asks lateral_x 0 for t9c in every direction too (it fails without
+the fix: 2 drawn TD and BT). No gate or snapshot changes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

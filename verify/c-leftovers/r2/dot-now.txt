@@ -1,0 +1,34 @@
+d01.mmd	FM: A,B rel=1 [A>B] notes=0
+d02.mmd	FM: A,B rel=1 [A>B] notes=0
+d03.mmd	FM: A,B rel=1 [A>B] notes=0
+d04.mmd	FM: A,B rel=1 [A>B] notes=0
+d05.mmd	FM: A,B rel=1 [A>B] notes=0
+d06.mmd	FM: A,B rel=1 [B>A] notes=0
+d07.mmd	FM: Ao,B rel=1 [Ao>B] notes=0
+d08.mmd	FM: A.o,B rel=1 [A.o>B] notes=0
+d09.mmd	FM: o.A,B rel=1 [o.A>B] notes=0
+d10.mmd	FM: A.B rel=0 [] notes=0
+d11.mmd	FM: A.B,C rel=1 [A.B>C] notes=0
+d12.mmd	FM: A,B rel=1 [A>B] notes=0
+d13.mmd	FM: A.B,C.D rel=1 [A.B>C.D] notes=0
+d14.mmd	FM: A,B rel=1 [A>B] notes=0
+d15.mmd	FM: A rel=0 [] notes=0
+d16.mmd	FM: A.B.C.D,E.F.G rel=1 [A.B.C.D>E.F.G] notes=0
+d17.mmd	FM: A.B,C rel=1 [C>A.B] notes=0
+d18.mmd	FM: A.B,C.D rel=1 [A.B>C.D] notes=0
+d19.mmd	FM: A.B,C rel=1 [A.B>C] notes=1
+d20.mmd	FM: A.B,C,D rel=2 [A.B>C A.B>D] notes=0
+d21.mmd	FM: A.B,C rel=1 [A.B>C] notes=0
+d22.mmd	FM: ERR line 2: class relation needs two class names, got 'A.' / 'B'
+d23.mmd	FM: ERR line 2: class relation needs two class names, got '.A' / 'B'
+d24.mmd	FM: ERR line 2: class relation needs two class names, got 'A' / '.B'
+d25.mmd	FM: ERR line 2: class relation needs two class names, got 'A' / 'B.'
+d26.mmd	FM: C,A.B rel=1 [C>A.B] notes=0
+d27.mmd	FM: A.B,C rel=1 [A.B>C] notes=0
+d28.mmd	FM: A.B,C.D rel=1 [A.B>C.D] notes=0
+d29.mmd	FM: A.B,C.D rel=1 [A.B>C.D] notes=0
+d30.mmd	FM: o,B rel=1 [o>B] notes=0
+d31.mmd	FM: A,o rel=1 [A>o] notes=0
+d32.mmd	FM: o.o,o.o.o rel=1 [o.o.o>o.o] notes=0
+d33.mmd	FM: A.B,C rel=1 [A.B>C] notes=0
+d34.mmd	FM: ERR line 2: class relation needs two class names, got 'x.o' / '.y'

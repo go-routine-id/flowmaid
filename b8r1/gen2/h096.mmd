@@ -1,0 +1,25 @@
+flowchart TD
+  s0["log web"]
+  s1["search auth"]
+  subgraph g0["log queue zone"]
+    direction TB
+    m0["pay"]
+  end
+  subgraph g1["pay zone"]
+    direction LR
+    m1["auth api search"]
+  end
+  subgraph g2["report billing cache zone"]
+    m2["index ship pay"]
+    m3["report"]
+    m4["user"]
+    m5["ship queue ship"]
+    m2 --> m3
+    m2 --> m4
+    m4 --> m5
+  end
+  s0 --> m0
+  s1 --> g1
+  s0 --> g2
+  m1 --> m3
+  m0 --> m1

@@ -1,0 +1,18 @@
+classDiagram
+C1 o-- C0 : <b>bold</b>
+C1 "1" ..> "*" C0
+C1 ..> C1 : alpha
+C1 "1" --> "*" C0 : x
+C0 --> C1
+C0 ..> C1 : alpha
+C0 ..> C1
+C1 -- C0
+C0 "1" <|-- "*" C1 : beta
+C0 "1" --> "*" C1 : 日本語
+C0 ..> C0 : 日本語
+C1 <|-- C0
+C1 "1" -- "*" C0
+C0 <|-- C0
+C0 *-- C0 : x
+C1 <|-- C0 : beta
+note "Long label here"

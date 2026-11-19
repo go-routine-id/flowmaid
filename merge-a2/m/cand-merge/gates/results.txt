@@ -1,0 +1,3 @@
+src=/home/user/flowmaid
+lib exit=101 test result: FAILED. 1205 passed; 9 failed; 5 ignored; 0 measured; 0 filtered out; finished in 34.70s
+quality exit=101 test result: FAILED. 9 passed; 6 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.85s

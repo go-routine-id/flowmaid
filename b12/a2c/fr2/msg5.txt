@@ -1,0 +1,33 @@
+feat(blocks): X4's downstream rule: sibling frames that share their last row but not their first end level (b12a2c-squeeze fix round 2, item 4: X4 last-row rule)
+
+B12 X4: "the same holds downstream on a layer that is the last row of
+two or more sibling blocks which do not share their first row". After
+the first rows are levelled, `level_sibling_frames` groups sibling
+blocks (any depth, outermost first) by their last row; where they do not
+all share their first row, a block whose frame ends earlier than the
+latest moves downstream, whole, until they end level. The mirror of
+630096c's rules holds a block: a link out of it leaves before its last
+row downstream, one node outside is fed by the last rows of two or more
+of them, or its frame starts within the latest's span. Edges are read at
+the positions the first-row pass left.
+
+Two blocks drawn TD, one with three rows, one starting a row later with
+a tall last member, ended 25 px apart and read as interleaved; they end
+level now in all four directions, and `route()` at the scene's centres
+draws the same frames. No repository drawing changes (each such band
+there is held by one of the rules).
+
+The public fixture drawn BT's crowded `deploy` chip, which the verifier
+put down to this rule's absence, is fixed by aa1c980 (its chip keeps
+CLEAR_GAP from the thick run under it): its build pipeline shares its
+first row with the shared services, so this rule does not apply there.
+
+Test: blockcheck::sibling_frames_that_share_their_last_row_end_level
+(TD, BT, LR, RL; fails without the change).
+
+Checks against the previous commit: every cell, gate message and
+direction copy unchanged, as are the verifier's generated sets. Default
+build byte-identical. No snapshot or gate changed. Guard green.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

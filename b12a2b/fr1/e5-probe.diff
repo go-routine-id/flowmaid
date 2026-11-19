@@ -1,0 +1,20 @@
+diff --git a/src/layout.rs b/src/layout.rs
+index 01a253d..a48cbe3 100644
+--- a/src/layout.rs
++++ b/src/layout.rs
+@@ -9302,10 +9302,15 @@ fn pair_sep(
+             let outside = |w: usize, x: usize| b[w] == 1 && !p[x].starts_with(&p[w]);
+             // The strip room of the wall's own box.
+             let room = |w: usize| p[w].last().map_or(0.0, |&c| h[c]);
++            // (e5 probe: an inner dummy keeps out of its block's strip band.)
++            let inner = |w: usize, x: usize| {
++                b[w] == 1 && x >= n && p[x].starts_with(&p[w]) && crate::levels::blocks_on()
++            };
+             match (outside(u, v), outside(v, u)) {
+                 (true, true) => room(u).max(room(v)),
+                 (true, false) => room(u),
+                 (false, true) => room(v),
++                (false, false) if inner(u, v) => room(u),
+                 (false, false) => 0.0,
+             }
+         }

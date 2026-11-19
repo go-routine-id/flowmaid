@@ -1,0 +1,11 @@
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> Busy : go
+    Busy --> Done
+    Done --> [*]
+    note right of Idle : waits here
+    note left of Done
+        all work
+        finished
+    end note
+    note "free card" as N1

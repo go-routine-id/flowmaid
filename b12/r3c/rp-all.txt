@@ -1,0 +1,60 @@
+== on run 1 04:32:32 load=1.23
+quality/dense-lr: route_partial worst 5.73 ms (node 14), 0 frames over 6 ms
+quality/dense-td: route_partial worst 8.33 ms (node 17), 32 frames over 6 ms
+quality/bench-75: route_partial worst 7.10 ms (node 13), 8 frames over 6 ms
+blocks/blocks-overview: route_partial worst 4.01 ms (node 9), 0 frames over 6 ms
+ANALOG: route_partial worst 5.19 ms (node 21), 0 frames over 6 ms
+== def run 1 04:32:47 load=1.18
+quality/dense-lr: route_partial worst 5.88 ms (node 14), 0 frames over 6 ms
+quality/dense-td: route_partial worst 6.49 ms (node 17), 4 frames over 6 ms
+quality/bench-75: route_partial worst 7.45 ms (node 10), 5 frames over 6 ms
+blocks/blocks-overview: route_partial worst 4.50 ms (node 12), 0 frames over 6 ms
+ANALOG: route_partial worst 6.83 ms (node 17), 1 frames over 6 ms
+== base run 1 04:33:01 load=1.14
+quality/dense-lr: route_partial worst 7.15 ms (node 14), 2 frames over 6 ms
+quality/dense-td: route_partial worst 9.46 ms (node 8), 61 frames over 6 ms
+quality/bench-75: route_partial worst 7.95 ms (node 8), 16 frames over 6 ms
+blocks/blocks-overview: route_partial worst 4.72 ms (node 11), 0 frames over 6 ms
+ANALOG: route_partial worst 4.86 ms (node 21), 0 frames over 6 ms
+== on run 2 04:33:19 load=1.10
+quality/dense-lr: route_partial worst 6.98 ms (node 5), 3 frames over 6 ms
+quality/dense-td: route_partial worst 10.65 ms (node 32), 64 frames over 6 ms
+quality/bench-75: route_partial worst 7.93 ms (node 3), 13 frames over 6 ms
+blocks/blocks-overview: route_partial worst 3.39 ms (node 16), 0 frames over 6 ms
+ANALOG: route_partial worst 6.88 ms (node 19), 1 frames over 6 ms
+== def run 2 04:33:35 load=1.08
+quality/dense-lr: route_partial worst 6.58 ms (node 10), 2 frames over 6 ms
+quality/dense-td: route_partial worst 8.18 ms (node 44), 7 frames over 6 ms
+quality/bench-75: route_partial worst 8.00 ms (node 11), 15 frames over 6 ms
+blocks/blocks-overview: route_partial worst 5.01 ms (node 14), 0 frames over 6 ms
+ANALOG: route_partial worst 4.84 ms (node 6), 0 frames over 6 ms
+== base run 2 04:33:49 load=1.06
+quality/dense-lr: route_partial worst 7.45 ms (node 5), 1 frames over 6 ms
+quality/dense-td: route_partial worst 8.48 ms (node 44), 42 frames over 6 ms
+quality/bench-75: route_partial worst 7.46 ms (node 2), 8 frames over 6 ms
+blocks/blocks-overview: route_partial worst 4.31 ms (node 12), 0 frames over 6 ms
+ANALOG: route_partial worst 3.80 ms (node 6), 0 frames over 6 ms
+== on run 3 04:34:15 load=0.88
+quality/dense-lr: route_partial worst 5.52 ms (node 46), 0 frames over 6 ms
+quality/dense-td: route_partial worst 8.56 ms (node 17), 28 frames over 6 ms
+quality/bench-75: route_partial worst 8.75 ms (node 15), 14 frames over 6 ms
+blocks/blocks-overview: route_partial worst 3.24 ms (node 11), 0 frames over 6 ms
+ANALOG: route_partial worst 5.25 ms (node 11), 0 frames over 6 ms
+== def run 3 04:34:31 load=0.91
+quality/dense-lr: route_partial worst 6.71 ms (node 14), 1 frames over 6 ms
+quality/dense-td: route_partial worst 6.57 ms (node 17), 3 frames over 6 ms
+quality/bench-75: route_partial worst 6.37 ms (node 6), 2 frames over 6 ms
+blocks/blocks-overview: route_partial worst 4.60 ms (node 12), 0 frames over 6 ms
+ANALOG: route_partial worst 6.82 ms (node 6), 1 frames over 6 ms
+== on run 4 04:34:45 load=0.93
+quality/dense-lr: route_partial worst 5.49 ms (node 14), 0 frames over 6 ms
+quality/dense-td: route_partial worst 8.91 ms (node 26), 43 frames over 6 ms
+quality/bench-75: route_partial worst 6.32 ms (node 2), 4 frames over 6 ms
+blocks/blocks-overview: route_partial worst 3.21 ms (node 11), 0 frames over 6 ms
+ANALOG: route_partial worst 5.00 ms (node 16), 0 frames over 6 ms
+== def run 4 04:35:00 load=0.95
+quality/dense-lr: route_partial worst 7.98 ms (node 46), 3 frames over 6 ms
+quality/dense-td: route_partial worst 6.66 ms (node 17), 4 frames over 6 ms
+quality/bench-75: route_partial worst 6.39 ms (node 14), 4 frames over 6 ms
+blocks/blocks-overview: route_partial worst 4.58 ms (node 12), 0 frames over 6 ms
+ANALOG: route_partial worst 6.03 ms (node 17), 1 frames over 6 ms

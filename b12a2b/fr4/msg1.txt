@@ -1,0 +1,75 @@
+fix(blocks): a frame's pin comes in on the side of an entry it would cross, and is not nudged within a stroke of a line (b12a2b-base fix round 4 #1, #2)
+
+Fix round 3 (ffc3c5d) fenced the titles' bold ink in the channel nudge
+and dealt a frame's pins past the ink. Two things then went wrong on
+the verifier's inputs drawn TD (none of them is among the 364 copies or
+the 95 local inputs):
+
+- #1, title strike, and #2 (a), pin and entry on top of each other
+  (two stacked blocks, the lower one's left member wholly under its
+  title and entered from the upper block, a pin into the lower frame
+  from the left). The repair takes `a1 --> b1` round the lower title's
+  chip at the regular width, between the chip and the frame's pin
+  `q --> B`, which the ports stage stands a chip's clearance past the
+  ink. The nudge's spread groups that column with the pin and lays the
+  pin past it: `place_group`'s order key sums both ends' turns, so a
+  leg turning the same way at both ends outweighs a pin, which turns
+  once and ends on its port inside the other's span. Laid so, the pin's
+  turn crosses the column, the nudge's scoring takes both moves back,
+  and `a1 --> b1` stays on `Shipping and returns desk two`'s ink (0.04
+  px, Chromium) or, under shorter titles, on top of the pin for 58 px.
+  `router::pins_past_turns`: in a block layout's static scene a pin's
+  last leg and an inner leg of another edge that passes it on both
+  sides along the channel are swapped when the pin's turn crosses the
+  other leg in the key's order and not in the other, and the two whole
+  paths, each leg moved to the lower or upper of two lines a spacing
+  apart, cross each other and every other edge less often swapped.
+  The pin then comes in left of the column, the column moves past the
+  ink: twin `Shipping and returns desk` title gap 0.04 -> 9.98 px,
+  no crossing.
+  (Swapped on the turns alone, random inputs took new crossings and a
+  2 px gap; swapped with a leg that passes the pin on one side only,
+  quality/dense-td drawn TD took a 264 px band, a worse
+  `defect_baseline_gate` message.)
+- #2 (b) (random inputs r042, r250): the spread lays an entry `ortho`'s
+  title sides displaced past a title at the ink's clearance and the
+  frame's pin past it; the scoring refuses the entry's move (its turn
+  under the title row comes within the chip's reach at the corner) and
+  keeps the pin's, which removes the crossing of the entry's step: the
+  pin's head lands 5.2 px from the entry's line. In the nudge's
+  judging, in a block layout drawn TD or BT, a frame's pin is not moved
+  where it comes within `EDGE_SEP_MIN` of another edge, nearer than it
+  was (or where it crossed it). (Applied to every edge, or to pins in
+  LR/RL too, random inputs took defects elsewhere.)
+
+Harness on the verifier's inputs (static; head -> this commit):
+twin TD under `Shipping and returns desk` x_drawn 1 -> 0; under
+`Order processing` / `Identity provider` / `Monitoring stack`
+overlap_pairs 1 -> 0, defects 1 -> 0, min_edge_gap 9.73 / 10.04 /
+10.04 -> 22.22 / 22.52 / 22.52; r250 defects 1 -> 0 (min_edge_gap 5.21
+-> 25.02, the pin crossing the entry's step as at 6e1bf72), r042
+defects 1 -> 0 (5.21 -> 10.50). The 300 random inputs: static defects
+31 -> 28 (30 at 6e1bf72, 31 at 7122a53). No title gap of a changed
+drawing goes under 6.9 px (Chromium). Not fixed: r170 (a pin the
+ports stage's respacing stands on the column of an entry into a
+member of a nested frame; at 6e1bf72 that entry grazed the title's
+ink instead), see the report.
+
+Checks (b12/tools-a2b, tree build): against ffc3c5d no cell, gate
+message or copy changes at all (VERDICT: no worse); against 7122a53
+cells no worse (89 -> 86), gate messages no worse (14 failing, same
+names), copies: only blocks/swimlane-nested TD min_edge_gap 40 -> 25,
+item 3's trade the lead accepted on 2026-11-18. Default build
+byte-identical (render.sh: 25 / 25 corpus SVGs equal to the
+pre-package render). No snapshot or gate changes.
+
+Tests: blockcheck::a_frames_pin_keeps_off_the_columns_of_the_entries_beside_it
+(the twin blocks under four titles, ink clear, no overlap, no defect,
+no crossing; the r250 and r042 shapes, no overlap or defect; fails at
+the previous head on every one), router::tests::
+a_pins_turn_inside_another_legs_span_crosses_it_on_one_side_only.
+blockcheck's title-ink check is a function now
+(`titles_clear_their_ink`), shared by both tests.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

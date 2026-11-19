@@ -1,0 +1,17 @@
+flowchart BT
+    subgraph A[Identity provider]
+        a0[a0]
+        a1[a1]
+        a2[a2]
+    end
+    subgraph B[Identity provider x]
+        b0[b0 wide node]
+        b1[b1]
+    end
+    a0 --> b1
+    a2 --> b0
+    p[p] --> A
+    p --> a2
+    q[q] --> B
+    q --> b0
+    r[r] --> B

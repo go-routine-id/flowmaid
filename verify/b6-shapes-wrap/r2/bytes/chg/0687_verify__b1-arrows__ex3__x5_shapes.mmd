@@ -1,0 +1,17 @@
+flowchart LR
+  a[Rect] --> b{Diamond with words}
+  a --> c((Circle))
+  a --> d[(Cylinder)]
+  a --> e{{Hexagon}}
+  a --> f[/Para/]
+  a --> g[\Alt para\]
+  a --> h>Flag]
+  b --> c
+  c --> d
+  d --> e
+  e --> f
+  f --> g
+  g --> h
+  h --> a
+  b ==> h
+  c -.-> g

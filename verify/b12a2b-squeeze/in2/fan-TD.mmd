@@ -1,0 +1,24 @@
+flowchart TD
+    subgraph SRC[Producers]
+        h[hub]
+        k[aux]
+    end
+    subgraph DST[Consumers]
+        c1[c1]
+        c2[c2]
+        c3[c3]
+        c4[c4]
+        c5[c5]
+    end
+    h --> c1
+    h --> c2
+    h --> c3
+    h --> c4
+    h --> c5
+    k --> c5
+    k --> c1
+    x[external] --> DST
+    y[other] --> SRC
+    y --> c3
+    c2 --> z[sink]
+    z -.-> h

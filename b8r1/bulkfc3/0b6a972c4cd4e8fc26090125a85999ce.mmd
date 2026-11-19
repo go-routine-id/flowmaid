@@ -1,0 +1,5 @@
+flowchart LR
+  A[Start] --> B[Poll]
+  B -->|timeout| B
+  B -->|busy| B
+  B --> C[Done]

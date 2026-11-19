@@ -1,0 +1,18 @@
+classDiagram
+class Node {
+  +id int
+  +parent Node
+  +children List~Node~
+}
+class Tree
+class Leaf
+Tree --> Node
+Tree --> Leaf
+Node --> Node : parent
+Node --> Node : next
+Node --> Node : prev
+Node "1" *-- "many" Node : children
+Node --> Node : root
+Leaf --> Leaf : sibling
+Leaf --> Leaf : twin
+Tree --> Tree : sub

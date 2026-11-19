@@ -1,0 +1,142 @@
+infra-lr	static	U1->DNS band T1->DNS 322px
+infra-lr	static	T1->DNS band U2->DNS 290px
+infra-lr	static	R1->ARGO band ARGO->TG 132px
+infra-lr	static	DNS->TR2 band DNS->PSPROD 138px
+infra-lr	static	DNS->TR2 band DNS->DRAPP 120px
+infra-lr	static	DNS->TR2 band DNS->TR1 252px
+infra-lr	static	DNS->TR2 band R2->DR 296px
+infra-lr	static	DNS->PSPROD band DNS->DRAPP 130px
+infra-lr	static	DNS->PSPROD band DNS->SITE 104px
+infra-lr	static	DNS->PSPROD band DNS->TR1 116px
+infra-lr	static	DNS->DRAPP band DNS->PSDEV 126px
+infra-lr	static	DNS->DRAPP band DNS->SITE 176px
+infra-lr	static	DNS->DRAPP band DRAPP->TG 500px
+infra-lr	static	DNS->PSDEV band DNS->SITE 256px
+infra-lr	static	DRAPP->TG band PSPROD->TG 1212px
+infra-lr	static	DRAPP->TG band PG->DRAPP 304px
+infra-lr	static	DRAPP->TG band R2->DR 112px
+infra-lr	static	ARGO->TG band PSPROD->TG 146px
+infra-lr	static	PSPROD->TG band TR2->PSPROD 108px
+infra-lr	static	LANE->GITLAB band ARGO->GITLAB 124px
+infra-lr	static	ARGO->GITLAB band R2->STG 106px
+infra-lr	static	PG->DRAPP band R2->DR 130px
+infra-lr	static	PG->DRAPP tight R2->DR 116px
+infra-lr	static	R2->STG band R2->DR 298px
+infra-lr	static	T1->DNS lbl_edge U2->DNS
+infra-lr	static	LANE->GITLAB lat_wiggle 100.8
+infra-lr	static	R2->STG lat_wiggle 109.0
+infra-lr	static	R2->DR lat_wiggle 82.0
+infra-lr	static	R2->STG pin_corner STG
+infra-lr	static	R2->DR pin_corner DR
+infra-lr	static	T1->DNS chip_crowd 0.0px
+infra-lr	static	R1->ARGO chip_crowd 4.0px
+infra-lr	static	PSPROD->TG chip_crowd 7.0px
+infra-lr	static	PG->DRAPP chip_crowd 10.2px
+infra-lr	static	R2->PROD chip_crowd 4.0px
+infra-lr	routed	U1->DNS band T1->DNS 322px
+infra-lr	routed	T1->DNS band U2->DNS 290px
+infra-lr	routed	R1->ARGO band ARGO->TG 132px
+infra-lr	routed	DNS->TR2 band DNS->PSPROD 138px
+infra-lr	routed	DNS->TR2 band DNS->DRAPP 120px
+infra-lr	routed	DNS->TR2 band DNS->TR1 252px
+infra-lr	routed	DNS->TR2 band R2->DR 296px
+infra-lr	routed	DNS->PSPROD band DNS->DRAPP 130px
+infra-lr	routed	DNS->PSPROD band DNS->SITE 104px
+infra-lr	routed	DNS->PSPROD band DNS->TR1 116px
+infra-lr	routed	DNS->DRAPP band DNS->PSDEV 126px
+infra-lr	routed	DNS->DRAPP band DNS->SITE 176px
+infra-lr	routed	DNS->DRAPP band DRAPP->TG 500px
+infra-lr	routed	DNS->PSDEV band DNS->SITE 256px
+infra-lr	routed	DRAPP->TG band PSPROD->TG 1212px
+infra-lr	routed	DRAPP->TG band PG->DRAPP 304px
+infra-lr	routed	DRAPP->TG band R2->DR 112px
+infra-lr	routed	ARGO->TG band PSPROD->TG 146px
+infra-lr	routed	PSPROD->TG band TR2->PSPROD 108px
+infra-lr	routed	LANE->GITLAB band ARGO->GITLAB 124px
+infra-lr	routed	ARGO->GITLAB band R2->STG 106px
+infra-lr	routed	PG->DRAPP band R2->DR 130px
+infra-lr	routed	PG->DRAPP tight R2->DR 116px
+infra-lr	routed	R2->STG band R2->DR 298px
+infra-lr	routed	T1->DNS lbl_edge U2->DNS
+infra-lr	routed	LANE->GITLAB lat_wiggle 100.8
+infra-lr	routed	R2->STG lat_wiggle 109.0
+infra-lr	routed	R2->DR lat_wiggle 82.0
+infra-lr	routed	R2->STG pin_corner STG
+infra-lr	routed	R2->DR pin_corner DR
+infra-lr	routed	T1->DNS chip_crowd 0.0px
+infra-lr	routed	R1->ARGO chip_crowd 4.0px
+infra-lr	routed	PSPROD->TG chip_crowd 7.0px
+infra-lr	routed	PG->DRAPP chip_crowd 10.2px
+infra-lr	routed	R2->PROD chip_crowd 4.0px
+infra-rl	static	U1->DNS band T1->DNS 322px
+infra-rl	static	T1->DNS band U2->DNS 290px
+infra-rl	static	R1->ARGO band ARGO->TG 132px
+infra-rl	static	DNS->TR2 band DNS->PSPROD 230px
+infra-rl	static	DNS->TR2 band DNS->DRAPP 120px
+infra-rl	static	DNS->TR2 band DNS->TR1 252px
+infra-rl	static	DNS->TR2 band R2->DR 296px
+infra-rl	static	DNS->PSPROD band DNS->DRAPP 132px
+infra-rl	static	DNS->PSPROD band DNS->SITE 106px
+infra-rl	static	DNS->PSPROD band DNS->TR1 182px
+infra-rl	static	DNS->DRAPP band DNS->PSDEV 126px
+infra-rl	static	DNS->DRAPP band DNS->SITE 176px
+infra-rl	static	DNS->DRAPP band DRAPP->TG 500px
+infra-rl	static	DNS->PSDEV band DNS->SITE 256px
+infra-rl	static	DRAPP->TG band PSPROD->TG 1212px
+infra-rl	static	DRAPP->TG band PG->DRAPP 304px
+infra-rl	static	DRAPP->TG band R2->DR 112px
+infra-rl	static	ARGO->TG band PSPROD->TG 146px
+infra-rl	static	PSPROD->TG band TR2->PSPROD 108px
+infra-rl	static	LANE->GITLAB band ARGO->GITLAB 124px
+infra-rl	static	ARGO->GITLAB band R2->STG 106px
+infra-rl	static	PG->DRAPP band R2->DR 130px
+infra-rl	static	PG->DRAPP tight R2->DR 116px
+infra-rl	static	R2->STG band R2->DR 298px
+infra-rl	static	T1->DNS lbl_edge U2->DNS
+infra-rl	static	DNS->PSPROD end_kink end on PSPROD 50.2deg
+infra-rl	static	LANE->GITLAB lat_wiggle 100.8
+infra-rl	static	R2->STG lat_wiggle 109.0
+infra-rl	static	R2->DR lat_wiggle 82.0
+infra-rl	static	R2->STG pin_corner STG
+infra-rl	static	R2->DR pin_corner DR
+infra-rl	static	T1->DNS chip_crowd 0.0px
+infra-rl	static	R1->ARGO chip_crowd 4.0px
+infra-rl	static	PSPROD->TG chip_crowd 7.0px
+infra-rl	static	PG->DRAPP chip_crowd 10.2px
+infra-rl	static	R2->PROD chip_crowd 4.0px
+infra-rl	routed	U1->DNS band T1->DNS 322px
+infra-rl	routed	T1->DNS band U2->DNS 290px
+infra-rl	routed	R1->ARGO band ARGO->TG 132px
+infra-rl	routed	DNS->TR2 band DNS->PSPROD 230px
+infra-rl	routed	DNS->TR2 band DNS->DRAPP 120px
+infra-rl	routed	DNS->TR2 band DNS->TR1 252px
+infra-rl	routed	DNS->TR2 band R2->DR 296px
+infra-rl	routed	DNS->PSPROD band DNS->DRAPP 132px
+infra-rl	routed	DNS->PSPROD band DNS->SITE 106px
+infra-rl	routed	DNS->PSPROD band DNS->TR1 182px
+infra-rl	routed	DNS->DRAPP band DNS->PSDEV 126px
+infra-rl	routed	DNS->DRAPP band DNS->SITE 176px
+infra-rl	routed	DNS->DRAPP band DRAPP->TG 500px
+infra-rl	routed	DNS->PSDEV band DNS->SITE 256px
+infra-rl	routed	DRAPP->TG band PSPROD->TG 1212px
+infra-rl	routed	DRAPP->TG band PG->DRAPP 304px
+infra-rl	routed	DRAPP->TG band R2->DR 112px
+infra-rl	routed	ARGO->TG band PSPROD->TG 146px
+infra-rl	routed	PSPROD->TG band TR2->PSPROD 108px
+infra-rl	routed	LANE->GITLAB band ARGO->GITLAB 124px
+infra-rl	routed	ARGO->GITLAB band R2->STG 106px
+infra-rl	routed	PG->DRAPP band R2->DR 130px
+infra-rl	routed	PG->DRAPP tight R2->DR 116px
+infra-rl	routed	R2->STG band R2->DR 298px
+infra-rl	routed	T1->DNS lbl_edge U2->DNS
+infra-rl	routed	DNS->PSPROD end_kink end on PSPROD 50.2deg
+infra-rl	routed	LANE->GITLAB lat_wiggle 100.8
+infra-rl	routed	R2->STG lat_wiggle 109.0
+infra-rl	routed	R2->DR lat_wiggle 82.0
+infra-rl	routed	R2->STG pin_corner STG
+infra-rl	routed	R2->DR pin_corner DR
+infra-rl	routed	T1->DNS chip_crowd 0.0px
+infra-rl	routed	R1->ARGO chip_crowd 4.0px
+infra-rl	routed	PSPROD->TG chip_crowd 7.0px
+infra-rl	routed	PG->DRAPP chip_crowd 10.2px
+infra-rl	routed	R2->PROD chip_crowd 4.0px

@@ -1,0 +1,15 @@
+classDiagram
+A "1" *-- "*" B : owns
+A o-- C
+B "1" ..|> "*" D : x
+B "1" <|-- "*" E : owns
+B "1" --> "*" F
+F ..|> G
+G o-- H
+F "1" <|-- "*" I : has many of
+G ..|> E
+B o-- B
+B --> B : b1
+B "1" --> "*" B : b2
+B ..> B : b3
+B --> B : b4

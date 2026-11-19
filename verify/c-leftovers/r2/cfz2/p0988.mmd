@@ -1,0 +1,14 @@
+classDiagram
+direction LR
+A "1" ..|> "*" B : uses
+B --|> C
+A -- D : x
+A -- E : owns
+D --|> F : uses
+C *-- F
+E <|-- F
+F o-- F : f0
+F --> F : f1
+F --> F : f2
+F ..> F
+F *-- F : f4

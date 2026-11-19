@@ -1,0 +1,8 @@
+flowchart TD
+    subgraph Platform [Production Platform]
+        Gate(API Gateway) --> Auth
+        subgraph Workers [Async Workers]
+            Q[(Job Queue)] --> W1[Worker 1]
+        end
+        Gate ==> Q
+    end

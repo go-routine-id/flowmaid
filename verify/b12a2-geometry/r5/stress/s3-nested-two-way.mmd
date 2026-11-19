@@ -1,0 +1,15 @@
+flowchart TD
+    subgraph A[A]
+        subgraph A1[A one]
+            a[node a with a wide label]
+            a2[another]
+        end
+    end
+    subgraph B[B]
+        subgraph B1[B one]
+            b[b]
+        end
+    end
+    a -->|go| b
+    b -->|back| a
+    a2 --> b

@@ -1,0 +1,14 @@
+advanced.mmd	frames=168	worst_ms=1.54	p99=1.26	p95=1.02	over6=0	mean_ms=0.52	worst_node=Gate
+back-edge.mmd	frames=72	worst_ms=0.58	p99=0.51	p95=0.27	over6=0	mean_ms=0.11	worst_node=C
+bench-75.mmd	frames=252	worst_ms=5.31	p99=5.16	p95=4.51	over6=0	mean_ms=2.83	worst_node=metrics
+demo.mmd	frames=72	worst_ms=0.62	p99=0.56	p95=0.32	over6=0	mean_ms=0.13	worst_node=D
+dense-lr.mmd	frames=624	worst_ms=5.00	p99=3.38	p95=2.95	over6=0	mean_ms=1.77	worst_node=n12
+dense-td.mmd	frames=552	worst_ms=5.47	p99=4.09	p95=3.27	over6=0	mean_ms=2.03	worst_node=n16
+fanout-frames.mmd	frames=264	worst_ms=2.14	p99=1.21	p95=0.70	over6=0	mean_ms=0.24	worst_node=n0
+fanout.mmd	frames=108	worst_ms=1.11	p99=0.78	p95=0.48	over6=0	mean_ms=0.26	worst_node=C
+long-labels.mmd	frames=60	worst_ms=0.91	p99=0.72	p95=0.53	over6=0	mean_ms=0.13	worst_node=B
+lr.mmd	frames=84	worst_ms=0.65	p99=0.65	p95=0.44	over6=0	mean_ms=0.16	worst_node=FE
+shapes.mmd	frames=132	worst_ms=0.66	p99=0.48	p95=0.36	over6=0	mean_ms=0.15	worst_node=C
+stress.mmd	frames=48	worst_ms=1.18	p99=0.99	p95=0.74	over6=0	mean_ms=0.31	worst_node=A
+subgraph.mmd	frames=96	worst_ms=0.39	p99=0.35	p95=0.29	over6=0	mean_ms=0.11	worst_node=Bus
+wide-labels.mmd	frames=72	worst_ms=1.25	p99=1.17	p95=1.11	over6=0	mean_ms=0.50	worst_node=E

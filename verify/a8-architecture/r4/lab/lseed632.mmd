@@ -1,0 +1,18 @@
+architecture-beta
+    group g0(cloud)[Edge]
+    group g1(database)[Observability]
+    service s0(database)[PostgreSQL Primary 0]
+    service s1(disk)[Q 1] in g1
+    service s2(disk)[Web App 2]
+    service s3(monitoring)[Svc 3] in g1
+    service s4(internet)[Web App 4] in g1
+    service s5(disk)[Web App 5] in g1
+    service s6(nonsense)[PostgreSQL Primary 6] in g1
+    service s7(nonsense)[PostgreSQL Primary 7] in g1
+    service s8(database)[Web App 8]
+    s2:B <--> T:s3
+    s8:T <-[REST over https]-> B:s7
+    s3:B -[x]- T:s6
+    s7:T -[calls]-> T:s8
+    s4:T <-[calls]-> T:s2
+    s6{group}:T -[x]- L:s0

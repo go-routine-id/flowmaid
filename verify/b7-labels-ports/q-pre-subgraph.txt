@@ -1,0 +1,4 @@
+   Q routed C1->Store end_kink end on Store 71.3deg
+   Q routed C2->Store end_kink end on Store 71.3deg
+   Q static C1->Store end_kink end on Store 14.8deg
+   Q static C2->Store end_kink end on Store 14.8deg

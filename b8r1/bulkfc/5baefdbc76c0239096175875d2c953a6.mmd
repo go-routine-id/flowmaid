@@ -1,0 +1,20 @@
+flowchart BT
+    N0[Emit done]
+    N1[Queue]
+    N2[Check]
+    N3[Emit store]
+    N4(Notify done)
+    N5[Load]
+    N6([Notify archive])
+    N7[Load]
+    N8(Retry parse)
+    N0 --> N1
+    N0 -->|no| N2
+    N1 --> N3
+    N1 --> N4
+    N3 --> N5
+    N5 --> N6
+    N6 --> N7
+    N7 --> N8
+    N6 ==> N2
+    N8 ==> N2

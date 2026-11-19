@@ -1,0 +1,14 @@
+advanced         edges=20  scene=   684.7us route=   480.0us to_svg=   342.4us
+back-edge        edges=6   scene=    75.6us route=    56.3us to_svg=    83.6us
+bench-75         edges=75  scene= 31919.4us route=  7798.0us to_svg=  4143.5us
+demo             edges=6   scene=    77.1us route=    57.3us to_svg=    83.3us
+dense-lr         edges=42  scene= 17044.8us route=  3643.5us to_svg=  1677.1us
+dense-td         edges=47  scene= 23265.3us route=  5620.3us to_svg=  1770.0us
+fanout-frames    edges=7   scene=  1741.9us route=   207.1us to_svg=   231.8us
+fanout           edges=13  scene=   242.9us route=   110.9us to_svg=   249.1us
+long-labels      edges=4   scene=    63.9us route=    50.4us to_svg=    62.7us
+lr               edges=7   scene=    84.7us route=    62.2us to_svg=   108.8us
+shapes           edges=10  scene=    52.4us route=    30.5us to_svg=   122.3us
+stress           edges=7   scene=   125.1us route=    99.1us to_svg=   104.1us
+subgraph         edges=8   scene=   111.3us route=    52.2us to_svg=   110.5us
+wide-labels      edges=8   scene=   404.0us route=   441.0us to_svg=   140.5us

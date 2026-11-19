@@ -1,0 +1,26 @@
+test(blocks): the sweep's ratchet is lowered to the 8 diagrams blocks add hard zeros to, and each one's cause is pinned (B12.6, B12 fix round 6 #1; lead note 3 of "hold step 1")
+
+`blockcheck::a_generated_sweep_keeps_the_block_invariants` printed "blocks
+add hard zeros on 8 diagrams" while `SWEEP_ADDED_MAX` still allowed 9: the
+ratchet is 8 now. And the sweep no longer only counts them: for every
+generated diagram on which the block layout draws more hard zeros than the
+layout before blocks, `assert_added_zeros` checks that what it adds is one
+of the two causes the checkpoint report names, and nothing else:
+
+- a note card's link sharing its state's port with another card's link
+  ("port K0_0 __note_6 __note_7"; seven state diagrams): the note links'
+  pins are B12.14's (lead note 6, judged at C);
+- a whole block's end on a lateral side of its frame on a level the lane
+  rule dissolved, where the other end lies within the block's layers
+  (`flow 23 RL`: `B5 -> b7n0`; the root level is dissolved, B5 spans
+  layers 1-9 and b7n0 sits on 5, because B4 holding b7n0 must come before
+  b5n2, `b4n1 -> b5n2`, so no side of B5 faces b7n0 along the flow; spec
+  2.8 allows a lateral side there). The layout before blocks happened to
+  put b7n0 one layer past B5. Reported for the lead to decide.
+
+Every other hard-zero kind (edge through a node, wiggle, node overlap,
+node in a foreign frame, frame overlap, own-frame run) may not rise on any
+generated diagram. No other test, snapshot or gate changes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

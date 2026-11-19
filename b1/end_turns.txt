@@ -1,0 +1,41 @@
+782:fn end_turns(b: &[(f64, f64); 4]) -> (f64, f64) {
+783-    const STEPS: usize = 24;
+784-    let pts = sample_cubic(b, STEPS);
+785-    let turn = |tip: (f64, f64), ctl: [(f64, f64); 2], walk: &mut dyn Iterator<Item = (f64, f64)>| {
+786-        // The tangent at the end: off the nearest control point that
+787-        // is not the end itself.
+788-        let Some(c) = ctl.into_iter().find(|c| (c.0 - tip.0).hypot(c.1 - tip.1) > 1e-9) else {
+789-            return 0.0;
+790-        };
+791-        let t = (tip.0 - c.0, tip.1 - c.1);
+792-        let mut left = GLYPH_STUB;
+793-        let mut prev = tip;
+794-        for q in walk {
+795-            let d = (q.0 - prev.0).hypot(q.1 - prev.1);
+796-            if d >= left || d > 0.0 && left <= 1e-9 {
+797-                let h = (prev.0 - q.0, prev.1 - q.1);
+798-                let cos = (t.0 * h.0 + t.1 * h.1) / (t.0.hypot(t.1) * h.0.hypot(h.1));
+799-                return cos.clamp(-1.0, 1.0).acos().to_degrees();
+800-            }
+801-            left -= d;
+802-            prev = q;
+803-        }
+804-        0.0
+805-    };
+806-    (
+807-        turn(b[0], [b[1], b[2]], &mut pts.iter().skip(1).copied()),
+808-        turn(b[3], [b[2], b[1]], &mut pts.iter().rev().skip(1).copied()),
+809-    )
+810-}
+811-
+812-/// The single cubic `b` as drawn, as (start point, commands): at each
+813-/// end `stubs` marks, a straight [`GLYPH_STUB`] along the end's handle
+814-/// into the end point, the cubic now ending (or starting) at the stub's
+815-/// inner end with the same control point — still on the handle's line,
+816-/// so the curve meets the stub without a kink and the glyph points
+817-/// square into the side. The rest of the curve is the cubic's own; it
+818-/// strays from the cubic only near a stubbed end, by under a stub's
+819-/// length.
+820-fn stubbed_cubic(b: [(f64, f64); 4], stubs: (bool, bool)) -> ((f64, f64), Vec<Seg>) {
+821-    let toward = |from: (f64, f64), to: (f64, f64)| {
+822-        let l = (to.0 - from.0).hypot(to.1 - from.1);

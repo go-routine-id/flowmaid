@@ -1,0 +1,15 @@
+flowchart RL
+    U[user] --> A1
+    U --> B1
+    subgraph A["Ingress layer with a remarkably long block title"]
+        A1[lb]
+    end
+    subgraph B["Second block whose title is also very long indeed"]
+        B1[api] --> B2[db]
+    end
+    subgraph C[short]
+        C1[cache]
+    end
+    A1 --> C1
+    B2 --> C1
+    A1 --> B2

@@ -1,0 +1,12 @@
+flowchart BT
+    subgraph G[WWW Mammoth Wombat Overview]
+        m0[x wide member node]
+        m1[auth service]
+        m2[db]
+        m0 --> m1
+    end
+    s0[src0] --> G
+    s0 --> G
+    s1[src1] -- "lbl3" --> m2
+    s2[src2] --> G
+    s3[src3] --> m0

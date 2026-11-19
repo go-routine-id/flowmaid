@@ -1,0 +1,15 @@
+flowchart TD
+    subgraph O[Payments]
+        subgraph G[Order processing]
+            m0[w]
+            m1[w]
+            m2[x wide member node]
+        end
+        k[k]
+    end
+    m1 --> k
+    m2 --> k
+    s0[src0] --> m2
+    s1[src1] --> m2
+    s1 --> O
+    m2 --> z[end]

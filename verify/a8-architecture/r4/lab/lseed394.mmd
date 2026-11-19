@@ -1,0 +1,19 @@
+architecture-beta
+    group g0(disk)[Data Storage Layer]
+    group g1(internet)[Ops]
+    group g2(database)[Data Storage Layer] in g1
+    group g3(database)[Data Storage Layer]
+    service s0(nonsense)[Web App 0] in g1
+    service s1(server)[Authentication and Authorization Service 1] in g1
+    service s2(database)[Web App 2] in g1
+    service s3(monitoring)[Authentication and Authorization Service 3] in g1
+    service s4(disk)[PostgreSQL Primary 4] in g2
+    service s5(monitoring)[PostgreSQL Primary 5] in g2
+    s0:B -[x]-> T:s2
+    s0:T -- B:s4
+    s4:T -[calls]- T:s5
+    s2:R -[replicates to standby]-> L:s4
+    s1:T <--> B:s2
+    s4:T <-[REST over https]-> B:s3
+    s4:T -[reads config]-> B:s0
+    s0:L -[calls]-> R:s1

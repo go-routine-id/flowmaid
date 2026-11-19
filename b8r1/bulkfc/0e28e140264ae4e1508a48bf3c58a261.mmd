@@ -1,0 +1,12 @@
+flowchart LR
+  subgraph P[Producer]
+    p1[gen] --> p2[batch]
+  end
+  subgraph Q[Queue]
+    q1[topic]
+  end
+  subgraph R[Consumer]
+    r1[read] --> r2[store]
+  end
+  P -->|publishes events| Q
+  Q <-->|ack and pull| R

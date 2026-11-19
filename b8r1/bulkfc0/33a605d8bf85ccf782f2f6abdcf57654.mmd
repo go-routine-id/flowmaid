@@ -1,0 +1,27 @@
+flowchart LR
+  subgraph F0 [Frame 0]
+    n0(Node 0)
+    n3[/Node 3/]
+    n6{Node 6}
+  end
+  subgraph F1 [Frame 1]
+    n1[/Node 1/]
+  end
+  n3 o--o|x| n1
+  n3 o--o n1
+  n4 <-.->|x| n4
+  n6 ==> n3
+  n1 <--> n4
+  n2 ===|x| n0
+  n5 <--> n3
+  n4 ==> n4
+  n5 <-.->|yes| n3
+  n1 === n5
+  n5 x--x n6
+  linkStyle 0 stroke-width:2px,stroke:#c33
+  linkStyle 3 stroke-width:12px,stroke:#36c,stroke-dasharray:6 3
+  linkStyle 5 stroke-width:20px
+  linkStyle 6 stroke-width:20px,stroke:#3a3
+  linkStyle 9 stroke-width:15px,stroke:#3a3
+  linkStyle 10 stroke-width:55px,stroke:#36c,stroke-dasharray:6 3
+  linkStyle default stroke-width:55px

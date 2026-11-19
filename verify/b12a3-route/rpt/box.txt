@@ -1,0 +1,4 @@
+head-1 rustc=0 load=1.58 2.13 2.47
+pre-1 rustc=0 load=1.43 1.92 2.32
+head-2 rustc=0 load=1.32 1.82 2.26
+pre-2 rustc=0 load=1.18 1.73 2.21

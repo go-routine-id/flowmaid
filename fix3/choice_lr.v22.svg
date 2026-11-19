@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="363" height="293" viewBox="0 0 363 293" font-family="Helvetica, Arial, sans-serif" font-size="14" role="img" aria-label="State diagram">
+<title>State diagram</title>
+<rect width="363" height="293" fill="#ffffff"/>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 1 L 9 5 L 0 9 z" fill="#44507a"/></marker><mask id="flowmaid-ee308e0fe6ec3f4d-x1" maskUnits="userSpaceOnUse" x="25.9" y="73.5" width="261.9" height="184.9"><rect x="25.9" y="73.5" width="261.9" height="184.9" fill="#fff"/><circle cx="104.0" cy="200.6" r="4.47" fill="#000"/></mask></defs>
+<path d="M 49.0 201.0 L 70.1 201.0 C 91.3 201.0, 133.6 201.0, 169.4 195.9 C 205.3 190.8, 234.7 180.7, 249.3 175.6 L 264.0 170.5" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>start → Check</title></path>
+<path d="M 264.0 184.5 C 224.0 259.4, 93.7 265.4, 49.7 97.3" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)" mask="url(#flowmaid-ee308e0fe6ec3f4d-x1)"><title>Check → c</title></path>
+<path d="M 49.7 84.7 C 97.9 84.7, 100.7 54.0, 148.9 54.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>c → Ok: yes</title></path>
+<path d="M 56.0 91.0 C 103.6 91.0, 100.1 128.0, 147.7 128.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>c → Fail: no</title></path>
+<path d="M 204.0 142.0 C 234.0 142.0, 234.0 156.5, 264.0 156.5" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>Fail → Check: retry</title></path>
+<path d="M 202.9 47.0 C 246.8 47.0, 246.8 47.0, 290.7 47.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>Ok → end</title></path>
+<g><title>c</title>
+<polygon points="42.0,77.0 56.0,91.0 42.0,105.0 28.0,91.0" fill="#fcf2da" stroke="#d99114" stroke-width="1.6"/>
+<text x="42.0" y="91.0" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<g><title>start</title>
+<circle cx="42.0" cy="201.0" r="7.0" fill="#44507a" stroke="#44507a" stroke-width="1.6"/>
+<text x="42.0" y="201.0" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<g><title>Check</title>
+<rect x="264.0" y="151.5" width="71.3" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="299.7" y="170.5" dy="0.33em" text-anchor="middle" fill="#232840">Check</text>
+</g>
+<g><title>Ok</title>
+<rect x="148.9" y="28.0" width="54.0" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="175.9" y="47.0" dy="0.33em" text-anchor="middle" fill="#232840">Ok</text>
+</g>
+<g><title>Fail</title>
+<rect x="147.7" y="116.0" width="56.3" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="175.9" y="135.0" dy="0.33em" text-anchor="middle" fill="#232840">Fail</text>
+</g>
+<g><title>end</title>
+<circle cx="299.7" cy="47.0" r="9.0" fill="#ffffff" stroke="#44507a" stroke-width="1.6"/>
+<circle cx="299.7" cy="47.0" r="5.0" fill="#44507a" stroke="#44507a" stroke-width="1.6"/>
+<text x="299.7" y="47.0" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<rect x="94.6" y="52.0" width="35.8" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="112.5" y="62.0" dy="0.33em" text-anchor="middle" fill="#232840">yes</text>
+<rect x="97.7" y="107.8" width="29.6" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="112.5" y="117.8" dy="0.33em" text-anchor="middle" fill="#232840">no</text>
+<rect x="208.0" y="120.6" width="42.1" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="229.0" y="130.6" dy="0.33em" text-anchor="middle" fill="#232840">retry</text>
+</svg>

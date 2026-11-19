@@ -1,0 +1,21 @@
+architecture-beta
+    group g0(cloud)[Telemetry and Logging Platform]
+    group g1(cloud)[Telemetry and Logging Platform]
+    group g2(nonsense)[Data]
+    service s0(server)[PostgreSQL Primary 0] in g1
+    service s1(database)[Authentication and Authorization Service 1] in g1
+    service s2(database)[Svc 2] in g0
+    service s3(server)[Q 3] in g0
+    service s4(monitoring)[Web App 4] in g2
+    service s5(nonsense)[Authentication and Authorization Service 5] in g1
+    service s6(cloud)[Authentication and Authorization Service 6]
+    junction s7 in g0
+    junction s8 in g1
+    s5{group}:T --> B:s6
+    s5:R -- L:s7{group}
+    s0:R --> L:s5
+    s1{group}:B <-[publishes order events]-> T:s2
+    s7:R -[publishes order events]- L:s1
+    s1:L <--> R:s4
+    s5:B -[x]-> L:s7
+    s6:B -- T:s4

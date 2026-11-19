@@ -1,0 +1,9 @@
+stateDiagram-v2
+state C {
+  direction LR
+  a --> b
+  note right of a : inner
+}
+note right of C : outer
+[*] --> C
+C --> [*]

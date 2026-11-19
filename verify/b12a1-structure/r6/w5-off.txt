@@ -1,0 +1,343 @@
+file	mode	nodes	edges	frames	edge_node_x	edge_node_pairs	edge_frame_x	edge_frame_pairs	edge_edge_x	overlap_pairs	overlap_len	node_near	min_node_gap	min_edge_gap	node_overlap	node_frame	frame_overlap	lbl_node	lbl_lbl	lbl_chip	lbl_edge	lbl_arrow	shared_ports	arrow_on_start	wiggles	backtrack	frame_side	center_off	width	height	aspect	area_per_node	defects	route_ms	deterministic	corner_touch	border_runs	border_len	overlap_max	tight_pairs	tight_len	hug_runs	hug_len	hug_max	edge_chip	end_cross	xgap_max	dash_edges	lbl_crowd	ortho_edges	xnotches	scene_ms	drag_ms	drag_mean	drag_over	end_tilt	end_tilt_max	end_gaps	end_gap_max	lat_wiggles	lat_backtrack	own_frame_x	own_frame_len	band_pairs	band_len	ink	idiom_ortho	idiom_scubic	idiom_spline	idiom_bow	x_drawn	end_kink	ink_out	xhops	fan_x	fan_uneven	compact_max	compact_mean	span_max	sib_stagger	title_cut	edge_len	bends_max	detour_max	lbl_end_mean	chip_crowd	chip_gap_min	sib_side_linked	lateral_x	up_lanes	side_ends	spine_off	pin_corner	block_mode	fr_max	ends_apart	dfr_own	dfr_far
+0b968b60eebe180e40ebd4ccd7e74348	static	22	27	3	0	0	0	0	1	0	0	0	14	40	0	0	0	0	0	0	0	0	0	0	0	0	0	0.51	845.85	1070	1.26	41139.07	0	0	1	0	0	0	0	2	118	0	0	0	0	0	0	0	0	12	0	2.26	0	0	0	1	42.75	0	0.04	0	0	0	0	1	106	0.05	23	1	0	3	1	1	0	1	0	0	20.48	11.79	0.78	0	0	4031.30	23	1.04	72.79	2	3.74	1	1	0	1	0	1	0	0	0	0	0
+0b968b60eebe180e40ebd4ccd7e74348	static	__start_0->C0i0 ortho
+0b968b60eebe180e40ebd4ccd7e74348	static	C0i0->C0ch ortho
+0b968b60eebe180e40ebd4ccd7e74348	static	C0ch->C0i0 ortho
+0b968b60eebe180e40ebd4ccd7e74348	static	C0ch->C0i0 ortho
+0b968b60eebe180e40ebd4ccd7e74348	static	C0i0->__note_8 idiom scubic
+0b968b60eebe180e40ebd4ccd7e74348	static	__note_9->C0i0 idiom bow
+0b968b60eebe180e40ebd4ccd7e74348	static	C0i0->__note_10 idiom bow
+0b968b60eebe180e40ebd4ccd7e74348	static	C1i0->C1i1 ortho
+0b968b60eebe180e40ebd4ccd7e74348	static	C1i0->C1i2 ortho
+0b968b60eebe180e40ebd4ccd7e74348	static	C1i1->__note_16 idiom bow
+0b968b60eebe180e40ebd4ccd7e74348	static	C1i1->__end_2 ortho
+0b968b60eebe180e40ebd4ccd7e74348	static	C1i2->S0 ortho
+0b968b60eebe180e40ebd4ccd7e74348	static	C0i0->C0D ortho
+0b968b60eebe180e40ebd4ccd7e74348	static	C0D->C0i0 ortho
+0b968b60eebe180e40ebd4ccd7e74348	static	S0->C1 ortho
+0b968b60eebe180e40ebd4ccd7e74348	static	C1->C0i0 ortho
+0b968b60eebe180e40ebd4ccd7e74348	static	__start_0->C0i0 band C1->C0i0 106px
+0b968b60eebe180e40ebd4ccd7e74348	static	C0i0->C0ch tight C0ch->C0i0 62px
+0b968b60eebe180e40ebd4ccd7e74348	static	C0ch->C0i0 tight C0ch->C0i0 56px
+0b968b60eebe180e40ebd4ccd7e74348	static	C1i1->__end_2 end_tilt end on __end_2 42.8deg
+0b968b60eebe180e40ebd4ccd7e74348	static	C1i1->__end_2 end_kink end on __end_2 42.8deg
+0b968b60eebe180e40ebd4ccd7e74348	static	C0 sib_side_linked C1
+0b968b60eebe180e40ebd4ccd7e74348	static	C1i2->S0 side_ends S0
+0b968b60eebe180e40ebd4ccd7e74348	static	C0D->C0i0 pin_corner C0D
+0b968b60eebe180e40ebd4ccd7e74348	static	C1->C0i0 lateral_x C0 R
+0b968b60eebe180e40ebd4ccd7e74348	static	C0ch->C0i0 chip_crowd 3.7px
+0b968b60eebe180e40ebd4ccd7e74348	static	C0ch->C0i0 chip_crowd 6.6px
+0b968b60eebe180e40ebd4ccd7e74348	routed	22	27	3	0	0	0	0	2	1	16	0	14	3.51	0	0	0	0	0	0	0	0	0	0	0	0	0	0.51	845.85	1070	1.26	41139.07	1	0.93	1	0	0	0	16	2	118	0	0	0	0	0	1	0	0	14	0	0	0	0	0	1	42.75	0	0.04	0	0	0	0	1	192	0.06	22	2	0	3	2	1	0	0	0	0	20.48	11.79	0.78	0	0	4377.11	23	1.57	111.67	4	3.74	1	1	1	1	0	1	1	0	5	0	0
+0b968b60eebe180e40ebd4ccd7e74348	routed	__start_0->C0i0 ortho
+0b968b60eebe180e40ebd4ccd7e74348	routed	C0i0->C0ch ortho
+0b968b60eebe180e40ebd4ccd7e74348	routed	C0ch->C0i0 ortho
+0b968b60eebe180e40ebd4ccd7e74348	routed	C0ch->C0i0 ortho
+0b968b60eebe180e40ebd4ccd7e74348	routed	C0i0->__note_8 idiom scubic
+0b968b60eebe180e40ebd4ccd7e74348	routed	__note_9->C0i0 idiom bow
+0b968b60eebe180e40ebd4ccd7e74348	routed	C0i0->__note_10 idiom bow
+0b968b60eebe180e40ebd4ccd7e74348	routed	C1i0->C1i1 ortho
+0b968b60eebe180e40ebd4ccd7e74348	routed	C1i0->C1i2 ortho
+0b968b60eebe180e40ebd4ccd7e74348	routed	C1i1->__note_16 idiom bow
+0b968b60eebe180e40ebd4ccd7e74348	routed	C1i1->__end_2 ortho
+0b968b60eebe180e40ebd4ccd7e74348	routed	C1i2->S0 ortho
+0b968b60eebe180e40ebd4ccd7e74348	routed	C0i0->C0D ortho
+0b968b60eebe180e40ebd4ccd7e74348	routed	C0D->C0i0 ortho
+0b968b60eebe180e40ebd4ccd7e74348	routed	S0->C0 ortho
+0b968b60eebe180e40ebd4ccd7e74348	routed	S0->C1 ortho
+0b968b60eebe180e40ebd4ccd7e74348	routed	C1->C0i0 ortho
+0b968b60eebe180e40ebd4ccd7e74348	routed	C0->S0 ortho
+0b968b60eebe180e40ebd4ccd7e74348	routed	__note_20->C1 idiom scubic
+0b968b60eebe180e40ebd4ccd7e74348	routed	C0i0->C0ch tight C0ch->C0i0 62px
+0b968b60eebe180e40ebd4ccd7e74348	routed	C0ch->C0i0 tight C0ch->C0i0 56px
+0b968b60eebe180e40ebd4ccd7e74348	routed	C1i1->__note_16 overlap C1i2->S0 16px
+0b968b60eebe180e40ebd4ccd7e74348	routed	C1i1->__note_16 edge_gap C1i2->S0 3.5px
+0b968b60eebe180e40ebd4ccd7e74348	routed	C1i2->S0 band S0->C1 192px
+0b968b60eebe180e40ebd4ccd7e74348	routed	C1i1->__end_2 end_tilt end on __end_2 42.8deg
+0b968b60eebe180e40ebd4ccd7e74348	routed	C1i1->__end_2 end_kink end on __end_2 42.8deg
+0b968b60eebe180e40ebd4ccd7e74348	routed	C0 sib_side_linked C1
+0b968b60eebe180e40ebd4ccd7e74348	routed	C1i2->S0 side_ends C1i2
+0b968b60eebe180e40ebd4ccd7e74348	routed	C1i2->S0 up_lanes
+0b968b60eebe180e40ebd4ccd7e74348	routed	C0D->C0i0 pin_corner C0D
+0b968b60eebe180e40ebd4ccd7e74348	routed	C1->C0i0 lateral_x C0 R
+0b968b60eebe180e40ebd4ccd7e74348	routed	C0ch->C0i0 chip_crowd 3.7px
+0b968b60eebe180e40ebd4ccd7e74348	routed	C0ch->C0i0 chip_crowd 6.6px
+0b968b60eebe180e40ebd4ccd7e74348	routed	C1i0->C1i1 chip_crowd 5.8px
+0b968b60eebe180e40ebd4ccd7e74348	routed	C0->S0 chip_crowd 7.6px
+1ab4c56b11c1117317692bfd001ea74f	static	28	37	4	0	0	0	0	3	1	22	0	14	40	0	0	0	0	0	0	0	0	0	0	0	0	0	0.50	1217.25	1548.50	1.27	67318.27	1	0	1	0	0	0	22	1	30	0	0	0	0	0	1	0	0	15	0	5.14	0	0	0	0	0	0	0.05	2	140.42	0	0	2	282	0.04	31	3	0	3	3	0	0	0	2	2	25.46	14.45	0.51	0	0	6869.14	11	1.46	114.84	2	6.33	0	1	0	0	0	0	0	0	0	0	0
+1ab4c56b11c1117317692bfd001ea74f	static	K0_0->K0_1 ortho
+1ab4c56b11c1117317692bfd001ea74f	static	__start_1->K1_0 ortho
+1ab4c56b11c1117317692bfd001ea74f	static	K1_0->K1_1 ortho
+1ab4c56b11c1117317692bfd001ea74f	static	K1_1->K1_2 ortho
+1ab4c56b11c1117317692bfd001ea74f	static	K1_1->K1_3 ortho
+1ab4c56b11c1117317692bfd001ea74f	static	__start_2->K1N_0 ortho
+1ab4c56b11c1117317692bfd001ea74f	static	__note_15->K1N_0 idiom scubic
+1ab4c56b11c1117317692bfd001ea74f	static	K1_1->K1N_0 ortho
+1ab4c56b11c1117317692bfd001ea74f	static	K1_0->K1_f ortho
+1ab4c56b11c1117317692bfd001ea74f	static	K1_f->K1_3 ortho
+1ab4c56b11c1117317692bfd001ea74f	static	K1_f->K1_0 ortho
+1ab4c56b11c1117317692bfd001ea74f	static	K1N_0->__note_17 idiom scubic
+1ab4c56b11c1117317692bfd001ea74f	static	__note_18->K1_0 idiom bow
+1ab4c56b11c1117317692bfd001ea74f	static	__note_19->K1_2 idiom scubic
+1ab4c56b11c1117317692bfd001ea74f	static	K2_0->__note_24 idiom bow
+1ab4c56b11c1117317692bfd001ea74f	static	K2_0->__note_25 idiom bow
+1ab4c56b11c1117317692bfd001ea74f	static	A->K1_2 ortho
+1ab4c56b11c1117317692bfd001ea74f	static	K1N->K1_2 ortho
+1ab4c56b11c1117317692bfd001ea74f	static	A->K0 ortho
+1ab4c56b11c1117317692bfd001ea74f	static	A->K2 ortho
+1ab4c56b11c1117317692bfd001ea74f	static	K2->A ortho
+1ab4c56b11c1117317692bfd001ea74f	static	K1_1->K1_2 band A->K1_2 154px
+1ab4c56b11c1117317692bfd001ea74f	static	__note_15->K1N_0 tight K1_1->K1N_0 30px
+1ab4c56b11c1117317692bfd001ea74f	static	__note_15->K1N_0 overlap K1_1->K1N_0 22px
+1ab4c56b11c1117317692bfd001ea74f	static	A->K2 band K2->A 128px
+1ab4c56b11c1117317692bfd001ea74f	static	fan_x A Bottom A->K2 x K2->A at (677,165)
+1ab4c56b11c1117317692bfd001ea74f	static	fan_x K1_0 Bottom K1_0->K1_f x K1_f->K1_0 at (309,836)
+1ab4c56b11c1117317692bfd001ea74f	static	fan_uneven K1_2 Top 4 ends, pitch 14.0..17.6
+1ab4c56b11c1117317692bfd001ea74f	static	fan_uneven K1N_0 Top 3 ends, pitch 9.0..45.8
+1ab4c56b11c1117317692bfd001ea74f	static	K0_0->K0_1 lat_wiggle 15.5
+1ab4c56b11c1117317692bfd001ea74f	static	K1_1->K1_2 lat_wiggle 124.9
+1ab4c56b11c1117317692bfd001ea74f	static	K1_1->K1N_0 lateral_x K1N R
+1ab4c56b11c1117317692bfd001ea74f	static	K1_1->K1_3 chip_crowd 6.3px
+1ab4c56b11c1117317692bfd001ea74f	static	K2->A chip_crowd 10.1px
+1ab4c56b11c1117317692bfd001ea74f	routed	28	37	4	0	0	0	0	1	1	20	0	12.30	40	0	0	0	0	0	0	0	0	0	0	0	0	0	0.53	1217.25	1548.50	1.27	67318.27	1	2.71	1	0	0	0	20	1	60	0	0	0	0	1	0	0	0	16	0	0	0	0	0	0	0	0	0.05	2	120.45	0	0	1	120	0.04	29	5	0	3	1	0	0	0	1	3	13.04	10.76	0.51	0	0	6782.10	11	1.27	91.05	1	3.19	0	3	0	1	0	1	1	228.75	8	0	0
+1ab4c56b11c1117317692bfd001ea74f	routed	K0_0->K0_1 ortho
+1ab4c56b11c1117317692bfd001ea74f	routed	K0_f->K0_1 ortho
+1ab4c56b11c1117317692bfd001ea74f	routed	__start_1->K1_0 ortho
+1ab4c56b11c1117317692bfd001ea74f	routed	K1_0->K1_1 ortho
+1ab4c56b11c1117317692bfd001ea74f	routed	K1_1->K1_2 ortho
+1ab4c56b11c1117317692bfd001ea74f	routed	K1_1->K1_3 ortho
+1ab4c56b11c1117317692bfd001ea74f	routed	__start_2->K1N_0 ortho
+1ab4c56b11c1117317692bfd001ea74f	routed	__note_15->K1N_0 idiom scubic
+1ab4c56b11c1117317692bfd001ea74f	routed	K1_1->K1N_0 ortho
+1ab4c56b11c1117317692bfd001ea74f	routed	K1_0->K1_f ortho
+1ab4c56b11c1117317692bfd001ea74f	routed	K1_f->K1_3 ortho
+1ab4c56b11c1117317692bfd001ea74f	routed	K1_f->K1_0 ortho
+1ab4c56b11c1117317692bfd001ea74f	routed	K1N_0->__note_17 idiom scubic
+1ab4c56b11c1117317692bfd001ea74f	routed	__note_18->K1_0 idiom bow
+1ab4c56b11c1117317692bfd001ea74f	routed	__note_19->K1_2 idiom scubic
+1ab4c56b11c1117317692bfd001ea74f	routed	K2_0->__note_24 idiom bow
+1ab4c56b11c1117317692bfd001ea74f	routed	K2_0->__note_25 idiom bow
+1ab4c56b11c1117317692bfd001ea74f	routed	A->K1_2 ortho
+1ab4c56b11c1117317692bfd001ea74f	routed	A->__note_27 idiom scubic
+1ab4c56b11c1117317692bfd001ea74f	routed	K1N->K1_2 ortho
+1ab4c56b11c1117317692bfd001ea74f	routed	A->K0 ortho
+1ab4c56b11c1117317692bfd001ea74f	routed	A->K2 ortho
+1ab4c56b11c1117317692bfd001ea74f	routed	K2->A ortho
+1ab4c56b11c1117317692bfd001ea74f	routed	K1->__note_26 idiom scubic
+1ab4c56b11c1117317692bfd001ea74f	routed	K0_0->K0_1 end_cross K0_f->K0_1 at (299,528)
+1ab4c56b11c1117317692bfd001ea74f	routed	K1_1->K1_2 tight __note_19->K1_2 60px
+1ab4c56b11c1117317692bfd001ea74f	routed	K1_1->K1_2 overlap __note_19->K1_2 20px
+1ab4c56b11c1117317692bfd001ea74f	routed	K1_0->K1_f band K1_f->K1_0 120px
+1ab4c56b11c1117317692bfd001ea74f	routed	fan_uneven A Bottom 4 ends, pitch 6.0..15.0
+1ab4c56b11c1117317692bfd001ea74f	routed	fan_x K0_1 Top K0_0->K0_1 x K0_f->K0_1 at (299,528)
+1ab4c56b11c1117317692bfd001ea74f	routed	fan_uneven K1_2 Top 4 ends, pitch 9.3..14.0
+1ab4c56b11c1117317692bfd001ea74f	routed	fan_uneven K1N_0 Top 3 ends, pitch 9.0..45.8
+1ab4c56b11c1117317692bfd001ea74f	routed	K0_0->K0_1 lat_wiggle 28.3
+1ab4c56b11c1117317692bfd001ea74f	routed	A->K1_2 lat_wiggle 92.2
+1ab4c56b11c1117317692bfd001ea74f	routed	K1_1->K1N_0 lateral_x K1N R
+1ab4c56b11c1117317692bfd001ea74f	routed	A->K1_2 lateral_x K1 R
+1ab4c56b11c1117317692bfd001ea74f	routed	A->K1_2 lateral_x K1 R
+1ab4c56b11c1117317692bfd001ea74f	routed	A->K0 pin_corner K0
+1ab4c56b11c1117317692bfd001ea74f	routed	A->K2 side_ends A
+1ab4c56b11c1117317692bfd001ea74f	routed	K2->A chip_crowd 3.2px
+6d8663eee095fa82a8249240d8399ed2	static	36	40	4	0	0	0	0	0	0	0	0	12.29	17.53	0	0	0	0	0	0	0	0	1	0	0	0	0	0.42	1223.15	1231.50	1.01	41841.92	1	0	1	0	0	0	0	0	0	0	0	0	0	0	1	0	0	17	0	4.46	0	0	0	1	12.37	0	0.05	1	7.27	0	0	1	156	0.06	30	6	0	4	2	1	0	1	2	3	14.74	11.04	0.43	0	0	5739.16	23	0.99	94.24	2	10.14	0	1	0	1	0	0	0	0	0	0	0
+6d8663eee095fa82a8249240d8399ed2	static	K0_0->K0_1 ortho
+6d8663eee095fa82a8249240d8399ed2	static	K0_0->K0_2 ortho
+6d8663eee095fa82a8249240d8399ed2	static	K0_0->K0_3 ortho
+6d8663eee095fa82a8249240d8399ed2	static	K0_0->__note_8 idiom scubic
+6d8663eee095fa82a8249240d8399ed2	static	K1_0->K1_1 ortho
+6d8663eee095fa82a8249240d8399ed2	static	K1_0->K1_2 ortho
+6d8663eee095fa82a8249240d8399ed2	static	K1_1->K1_3 ortho
+6d8663eee095fa82a8249240d8399ed2	static	K1_0->__note_16 idiom bow
+6d8663eee095fa82a8249240d8399ed2	static	__note_17->K1_3 idiom scubic
+6d8663eee095fa82a8249240d8399ed2	static	__start_2->K2_0 ortho
+6d8663eee095fa82a8249240d8399ed2	static	K2N_0->K2N_f ortho
+6d8663eee095fa82a8249240d8399ed2	static	K2N_f->K2N_0 ortho
+6d8663eee095fa82a8249240d8399ed2	static	K2N_f->K2N_0 ortho
+6d8663eee095fa82a8249240d8399ed2	static	__note_23->K2N_0 idiom bow
+6d8663eee095fa82a8249240d8399ed2	static	K2_0->K2_f ortho
+6d8663eee095fa82a8249240d8399ed2	static	K2_f->K2_0 ortho
+6d8663eee095fa82a8249240d8399ed2	static	__note_25->K2_0 ortho
+6d8663eee095fa82a8249240d8399ed2	static	__note_26->K2_0 idiom bow
+6d8663eee095fa82a8249240d8399ed2	static	K2N_0->__note_27 idiom scubic
+6d8663eee095fa82a8249240d8399ed2	static	K2N_0->__end_2 ortho
+6d8663eee095fa82a8249240d8399ed2	static	__note_30->B0 idiom bow
+6d8663eee095fa82a8249240d8399ed2	static	K2_0->K2N ortho
+6d8663eee095fa82a8249240d8399ed2	static	A->K0 ortho
+6d8663eee095fa82a8249240d8399ed2	static	K1->K2N ortho
+6d8663eee095fa82a8249240d8399ed2	static	__note_31->K2N idiom scubic
+6d8663eee095fa82a8249240d8399ed2	static	__note_32->K2N idiom scubic
+6d8663eee095fa82a8249240d8399ed2	static	__note_34->K0 idiom scubic
+6d8663eee095fa82a8249240d8399ed2	static	K0_0->K0_1 band K0_0->K0_2 156px
+6d8663eee095fa82a8249240d8399ed2	static	port K0 __note_33 __note_34
+6d8663eee095fa82a8249240d8399ed2	static	fan_x K2_0 Top K2_0->K2_f x K2_f->K2_0 at (457,374)
+6d8663eee095fa82a8249240d8399ed2	static	fan_uneven K2N_0 Top 5 ends, pitch 4.0..25.4
+6d8663eee095fa82a8249240d8399ed2	static	fan_uneven K2N_f Bottom 3 ends, pitch 29.4..57.0
+6d8663eee095fa82a8249240d8399ed2	static	fan_x K2_f Bottom K2_f->K2_0 x K2_0->K2_f at (457,374)
+6d8663eee095fa82a8249240d8399ed2	static	fan_uneven K2N Bottom 4 ends, pitch 14.0..126.0
+6d8663eee095fa82a8249240d8399ed2	static	K2N_0->__end_2 end_tilt end on __end_2 12.4deg
+6d8663eee095fa82a8249240d8399ed2	static	K2N_0->__end_2 end_kink end on __end_2 12.4deg
+6d8663eee095fa82a8249240d8399ed2	static	__note_25->K2_0 lat_wiggle 7.3
+6d8663eee095fa82a8249240d8399ed2	static	K2N_0->__end_2 lateral_x K2N R
+6d8663eee095fa82a8249240d8399ed2	static	K2N_0->__end_2 side_ends __end_2
+6d8663eee095fa82a8249240d8399ed2	static	K0_0->K0_1 chip_crowd 10.3px
+6d8663eee095fa82a8249240d8399ed2	static	K1_0->K1_2 chip_crowd 10.1px
+6d8663eee095fa82a8249240d8399ed2	routed	36	40	4	0	0	0	0	1	0	0	0	14	31.53	0	0	0	0	0	0	0	0	0	0	0	0	0	0.42	1223.15	1231.50	1.01	41841.92	0	1.75	1	0	0	0	0	0	0	0	0	0	0	1	1	0	0	17	0	0	0	0	0	1	12.37	0	0.05	1	7.27	0	0	1	156	0.06	29	7	0	4	3	1	0	1	3	3	14.74	11.04	0.43	0	0	5685.08	23	0.98	86.63	2	10.14	0	1	0	1	0	0	1	0.00	8	0	0
+6d8663eee095fa82a8249240d8399ed2	routed	K0_0->K0_1 ortho
+6d8663eee095fa82a8249240d8399ed2	routed	K0_0->K0_2 ortho
+6d8663eee095fa82a8249240d8399ed2	routed	K0_0->K0_3 ortho
+6d8663eee095fa82a8249240d8399ed2	routed	K0_0->__note_8 idiom scubic
+6d8663eee095fa82a8249240d8399ed2	routed	K1_0->K1_1 ortho
+6d8663eee095fa82a8249240d8399ed2	routed	K1_0->K1_2 ortho
+6d8663eee095fa82a8249240d8399ed2	routed	K1_1->K1_3 ortho
+6d8663eee095fa82a8249240d8399ed2	routed	K1_0->__note_16 idiom bow
+6d8663eee095fa82a8249240d8399ed2	routed	__note_17->K1_3 idiom scubic
+6d8663eee095fa82a8249240d8399ed2	routed	__start_2->K2_0 ortho
+6d8663eee095fa82a8249240d8399ed2	routed	K2N_0->K2N_f ortho
+6d8663eee095fa82a8249240d8399ed2	routed	K2N_f->K2N_0 ortho
+6d8663eee095fa82a8249240d8399ed2	routed	K2N_f->K2N_0 ortho
+6d8663eee095fa82a8249240d8399ed2	routed	__note_23->K2N_0 idiom bow
+6d8663eee095fa82a8249240d8399ed2	routed	K2_0->K2_f ortho
+6d8663eee095fa82a8249240d8399ed2	routed	K2_f->K2_0 ortho
+6d8663eee095fa82a8249240d8399ed2	routed	__note_25->K2_0 ortho
+6d8663eee095fa82a8249240d8399ed2	routed	__note_26->K2_0 idiom bow
+6d8663eee095fa82a8249240d8399ed2	routed	K2N_0->__note_27 idiom scubic
+6d8663eee095fa82a8249240d8399ed2	routed	K2N_0->__end_2 ortho
+6d8663eee095fa82a8249240d8399ed2	routed	__note_30->B0 idiom bow
+6d8663eee095fa82a8249240d8399ed2	routed	K2_0->K2N ortho
+6d8663eee095fa82a8249240d8399ed2	routed	A->K0 ortho
+6d8663eee095fa82a8249240d8399ed2	routed	K1->K2N ortho
+6d8663eee095fa82a8249240d8399ed2	routed	__note_31->K2N idiom scubic
+6d8663eee095fa82a8249240d8399ed2	routed	__note_32->K2N idiom scubic
+6d8663eee095fa82a8249240d8399ed2	routed	__note_33->K0 idiom scubic
+6d8663eee095fa82a8249240d8399ed2	routed	__note_34->K0 idiom scubic
+6d8663eee095fa82a8249240d8399ed2	routed	K0_0->K0_1 band K0_0->K0_2 156px
+6d8663eee095fa82a8249240d8399ed2	routed	K2N_0->__note_27 end_cross K2N_0->__end_2 at (249,194)
+6d8663eee095fa82a8249240d8399ed2	routed	fan_x K2_0 Top K2_0->K2_f x K2_f->K2_0 at (457,374)
+6d8663eee095fa82a8249240d8399ed2	routed	fan_x K2N_0 Top K2N_0->__end_2 x K2N_0->__note_27 at (249,194)
+6d8663eee095fa82a8249240d8399ed2	routed	fan_uneven K2N_f Bottom 3 ends, pitch 29.4..57.0
+6d8663eee095fa82a8249240d8399ed2	routed	fan_x K2_f Bottom K2_f->K2_0 x K2_0->K2_f at (457,374)
+6d8663eee095fa82a8249240d8399ed2	routed	fan_uneven K0 Bottom 3 ends, pitch 43.7..173.6
+6d8663eee095fa82a8249240d8399ed2	routed	fan_uneven K2N Bottom 4 ends, pitch 14.0..44.6
+6d8663eee095fa82a8249240d8399ed2	routed	K2N_0->__end_2 end_tilt end on __end_2 12.4deg
+6d8663eee095fa82a8249240d8399ed2	routed	K2N_0->__end_2 end_kink end on __end_2 12.4deg
+6d8663eee095fa82a8249240d8399ed2	routed	__note_25->K2_0 lat_wiggle 7.3
+6d8663eee095fa82a8249240d8399ed2	routed	K2N_0->__end_2 lateral_x K2N R
+6d8663eee095fa82a8249240d8399ed2	routed	K2N_0->__end_2 side_ends __end_2
+6d8663eee095fa82a8249240d8399ed2	routed	K0_0->K0_1 chip_crowd 10.3px
+6d8663eee095fa82a8249240d8399ed2	routed	K1_0->K1_2 chip_crowd 10.1px
+7ed9bc09d2b69e265c79043ced998c89	static	14	14	1	0	0	0	0	1	0	0	0	30.79	40	0	0	0	0	0	0	0	0	0	0	0	0	0	0.45	634	785	1.24	35549.29	0	0	1	0	0	0	0	0	0	0	0	0	0	1	0	0	0	6	0	0.98	0	0	0	0	0	0	0.04	0	0	0	0	1	106	0.06	11	1	0	2	1	0	0	0	0	0	9.01	9.01	0.49	0	0	2447.25	5	1.61	435.92	0	40	0	0	0	0	0	0	0	0	0	0	0
+7ed9bc09d2b69e265c79043ced998c89	static	__start_0->C0i0 ortho
+7ed9bc09d2b69e265c79043ced998c89	static	C0i0->C0i2 ortho
+7ed9bc09d2b69e265c79043ced998c89	static	C0i1->C0i3 ortho
+7ed9bc09d2b69e265c79043ced998c89	static	__note_7->C0i3 idiom bow
+7ed9bc09d2b69e265c79043ced998c89	static	__note_8->C0i0 idiom bow
+7ed9bc09d2b69e265c79043ced998c89	static	__note_11->T1 ortho
+7ed9bc09d2b69e265c79043ced998c89	static	__note_13->T1 idiom scubic
+7ed9bc09d2b69e265c79043ced998c89	static	T1->S0 ortho
+7ed9bc09d2b69e265c79043ced998c89	static	C0->T1 ortho
+7ed9bc09d2b69e265c79043ced998c89	static	__note_11->T1 end_cross T1->S0 at (225,156)
+7ed9bc09d2b69e265c79043ced998c89	static	__note_11->T1 band T1->S0 106px
+7ed9bc09d2b69e265c79043ced998c89	routed	14	14	1	0	0	0	0	0	0	0	0	30.79	40	0	0	0	0	0	0	0	0	0	0	0	0	0	0.45	634	785	1.24	35549.29	0	0.38	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	5	0	0	0	0	0	0	0	0	0.04	0	0	0	0	0	0	0.06	10	1	0	3	0	0	0	0	0	0	9.01	9.01	0.49	0	0	2373.86	5	1.58	455.00	0	40	0	0	0	0	0	0	1	0	2	0	0
+7ed9bc09d2b69e265c79043ced998c89	routed	__start_0->C0i0 ortho
+7ed9bc09d2b69e265c79043ced998c89	routed	C0i0->C0i2 ortho
+7ed9bc09d2b69e265c79043ced998c89	routed	C0i1->C0i3 ortho
+7ed9bc09d2b69e265c79043ced998c89	routed	__note_7->C0i3 idiom bow
+7ed9bc09d2b69e265c79043ced998c89	routed	__note_8->C0i0 idiom bow
+7ed9bc09d2b69e265c79043ced998c89	routed	__note_11->T1 idiom bow
+7ed9bc09d2b69e265c79043ced998c89	routed	__note_13->T1 idiom scubic
+7ed9bc09d2b69e265c79043ced998c89	routed	T1->S0 ortho
+7ed9bc09d2b69e265c79043ced998c89	routed	C0->T1 ortho
+a01181cbd7a61eedac068ecfdf275621	static	10	13	1	0	0	0	0	1	1	0	0	14	0.06	0	0	0	0	0	0	0	0	1	0	0	0	0	0.01	397.80	813.83	2.05	32374.29	2	0	1	1	0	0	0	0	0	0	0	0	0	1	0	0	0	9	0	1.65	0	0	0	0	0	0	0.05	1	40.30	0	0	0	0	0.08	12	1	0	0	1	0	0	0	0	0	9.42	9.42	0.46	0	0	2069.16	4	1.38	70.91	2	4.99	0	0	0	0	0	0	0	0	0	0	0
+a01181cbd7a61eedac068ecfdf275621	static	__start_0->K0_0 ortho
+a01181cbd7a61eedac068ecfdf275621	static	K0_0->K0_1 ortho
+a01181cbd7a61eedac068ecfdf275621	static	K0_0->K0_c ortho
+a01181cbd7a61eedac068ecfdf275621	static	K0_c->K0_0 ortho
+a01181cbd7a61eedac068ecfdf275621	static	K0_c->K0_1 ortho
+a01181cbd7a61eedac068ecfdf275621	static	A->B0 ortho
+a01181cbd7a61eedac068ecfdf275621	static	K0_1->B0 ortho
+a01181cbd7a61eedac068ecfdf275621	static	A->K0_0 ortho
+a01181cbd7a61eedac068ecfdf275621	static	A->K0 ortho
+a01181cbd7a61eedac068ecfdf275621	static	K0->__note_8 idiom scubic
+a01181cbd7a61eedac068ecfdf275621	static	K0_1->B0 touch K0->__note_8 0.1px
+a01181cbd7a61eedac068ecfdf275621	static	K0_1->B0 edge_gap K0->__note_8 0.1px
+a01181cbd7a61eedac068ecfdf275621	static	K0->__note_7 end_cross K0->__note_8 at (194,589)
+a01181cbd7a61eedac068ecfdf275621	static	port K0 __note_7 __note_8
+a01181cbd7a61eedac068ecfdf275621	static	K0_0->K0_1 lat_wiggle 40.3
+a01181cbd7a61eedac068ecfdf275621	static	K0_c->K0_0 chip_crowd 11.5px
+a01181cbd7a61eedac068ecfdf275621	static	A->K0 chip_crowd 5.0px
+a01181cbd7a61eedac068ecfdf275621	routed	10	13	1	0	0	0	0	1	0	0	0	14	34.55	0	0	0	0	0	0	0	0	0	0	0	0	0	0.10	397.80	813.83	2.05	32374.29	0	0.82	1	0	0	0	0	0	0	1	32.42	32.42	1	0	0	0	0	7	0	0	0	0	0	0	0	0	0.05	0	0	0	0	0	0	0.08	11	2	0	0	1	0	0	0	0	0	7.44	7.44	0.46	0	0	1946.62	4	0.99	84.47	2	6.03	0	0	0	0	0	1	1	31.15	2	0	0
+a01181cbd7a61eedac068ecfdf275621	routed	__start_0->K0_0 ortho
+a01181cbd7a61eedac068ecfdf275621	routed	K0_0->K0_c ortho
+a01181cbd7a61eedac068ecfdf275621	routed	K0_c->K0_0 ortho
+a01181cbd7a61eedac068ecfdf275621	routed	K0_c->K0_1 ortho
+a01181cbd7a61eedac068ecfdf275621	routed	A->B0 ortho
+a01181cbd7a61eedac068ecfdf275621	routed	K0_1->B0 ortho
+a01181cbd7a61eedac068ecfdf275621	routed	A->K0_0 hug K0 32px
+a01181cbd7a61eedac068ecfdf275621	routed	A->K0_0 edge_chip K0
+a01181cbd7a61eedac068ecfdf275621	routed	A->K0_0 ortho
+a01181cbd7a61eedac068ecfdf275621	routed	K0->__note_7 idiom scubic
+a01181cbd7a61eedac068ecfdf275621	routed	K0->__note_8 idiom scubic
+a01181cbd7a61eedac068ecfdf275621	routed	K0->__note_8 pin_corner K0
+a01181cbd7a61eedac068ecfdf275621	routed	K0_0->K0_1 chip_crowd 8.1px
+a01181cbd7a61eedac068ecfdf275621	routed	K0_c->K0_0 chip_crowd 6.0px
+cc75ae62af84b3b9f2f05c9c7bf75d4e	static	9	10	1	2	3	0	0	4	2	62	0	14	27.77	0	0	0	0	0	0	0	0	4	0	0	0	3	0.69	593.15	378	1.57	24912.30	12	0	1	0	0	0	32	1	62	0	0	0	1	3	1	0	0	2	0	0.64	0	0	0	0	0	0	0.04	0	0	0	0	0	0	0.08	6	4	0	0	4	0	0	0	4	0	5.57	5.57	0.50	0	0	879.48	12	0	0	0	40	0	0	0	0	0	1	0	0	0	0	0
+cc75ae62af84b3b9f2f05c9c7bf75d4e	static	C0->C0i0 edge_chip C0
+cc75ae62af84b3b9f2f05c9c7bf75d4e	static	C0->C0i0 ortho
+cc75ae62af84b3b9f2f05c9c7bf75d4e	static	C0->C0i0 ortho
+cc75ae62af84b3b9f2f05c9c7bf75d4e	static	C0->__note_5 idiom scubic
+cc75ae62af84b3b9f2f05c9c7bf75d4e	static	C0->__note_6 edge_node __note_5
+cc75ae62af84b3b9f2f05c9c7bf75d4e	static	C0->__note_6 idiom scubic
+cc75ae62af84b3b9f2f05c9c7bf75d4e	static	C0->__note_7 edge_node __note_5
+cc75ae62af84b3b9f2f05c9c7bf75d4e	static	C0->__note_7 edge_node __note_6
+cc75ae62af84b3b9f2f05c9c7bf75d4e	static	C0->__note_7 idiom scubic
+cc75ae62af84b3b9f2f05c9c7bf75d4e	static	__note_8->C0 idiom scubic
+cc75ae62af84b3b9f2f05c9c7bf75d4e	static	__start_0->C0i0 overlap C0->C0i0 30px
+cc75ae62af84b3b9f2f05c9c7bf75d4e	static	C0->__note_5 end_cross C0->__note_6 at (466,124)
+cc75ae62af84b3b9f2f05c9c7bf75d4e	static	C0->__note_5 end_cross C0->__note_7 at (466,124)
+cc75ae62af84b3b9f2f05c9c7bf75d4e	static	C0->__note_6 end_cross C0->__note_7 at (466,124)
+cc75ae62af84b3b9f2f05c9c7bf75d4e	static	C0->__note_6 tight C0->__note_7 62px
+cc75ae62af84b3b9f2f05c9c7bf75d4e	static	C0->__note_6 overlap C0->__note_7 32px
+cc75ae62af84b3b9f2f05c9c7bf75d4e	static	port C0i0 __start_0 C0
+cc75ae62af84b3b9f2f05c9c7bf75d4e	static	port C0 __note_5 __note_6
+cc75ae62af84b3b9f2f05c9c7bf75d4e	static	port C0 __note_5 __note_7
+cc75ae62af84b3b9f2f05c9c7bf75d4e	static	port C0 __note_6 __note_7
+cc75ae62af84b3b9f2f05c9c7bf75d4e	static	fan_x C0i0 Left __start_0->C0i0 x C0->C0i0 at (271,89)
+cc75ae62af84b3b9f2f05c9c7bf75d4e	static	fan_x C0 Bottom C0->__note_5 x C0->__note_6 at (466,124)
+cc75ae62af84b3b9f2f05c9c7bf75d4e	static	fan_x C0 Bottom C0->__note_5 x C0->__note_7 at (466,124)
+cc75ae62af84b3b9f2f05c9c7bf75d4e	static	fan_x C0 Bottom C0->__note_6 x C0->__note_7 at (466,124)
+cc75ae62af84b3b9f2f05c9c7bf75d4e	static	C0->__note_5 frame_side
+cc75ae62af84b3b9f2f05c9c7bf75d4e	static	C0->__note_6 frame_side
+cc75ae62af84b3b9f2f05c9c7bf75d4e	static	C0->__note_7 frame_side
+cc75ae62af84b3b9f2f05c9c7bf75d4e	static	C0->C0i0 pin_corner C0
+cc75ae62af84b3b9f2f05c9c7bf75d4e	routed	9	10	1	2	3	0	0	4	2	70	1	6.78	28.85	0	0	0	0	0	0	0	0	5	1	0	0	3	0.69	593.15	378	1.57	24912.30	13	0.35	1	0	0	0	38	1	62	0	0	0	1	3	1	0	0	2	0	0	0	0	0	0	0	0	0.04	0	0	0	0	0	0	0.08	6	4	0	0	4	0	0	0	4	0	5.57	5.57	0.50	0	0	896.91	12	0	0	0	40	0	0	0	0	0	1	1	0	0	0	0
+cc75ae62af84b3b9f2f05c9c7bf75d4e	routed	C0->C0i0 edge_chip C0
+cc75ae62af84b3b9f2f05c9c7bf75d4e	routed	C0->C0i0 ortho
+cc75ae62af84b3b9f2f05c9c7bf75d4e	routed	C0->C0i0 ortho
+cc75ae62af84b3b9f2f05c9c7bf75d4e	routed	C0->__note_5 idiom scubic
+cc75ae62af84b3b9f2f05c9c7bf75d4e	routed	C0->__note_6 edge_node __note_5
+cc75ae62af84b3b9f2f05c9c7bf75d4e	routed	C0->__note_6 idiom scubic
+cc75ae62af84b3b9f2f05c9c7bf75d4e	routed	C0->__note_7 edge_node __note_5
+cc75ae62af84b3b9f2f05c9c7bf75d4e	routed	C0->__note_7 edge_node __note_6
+cc75ae62af84b3b9f2f05c9c7bf75d4e	routed	C0->__note_7 idiom scubic
+cc75ae62af84b3b9f2f05c9c7bf75d4e	routed	__note_8->C0 idiom scubic
+cc75ae62af84b3b9f2f05c9c7bf75d4e	routed	__start_0->C0i0 overlap C0->C0i0 38px
+cc75ae62af84b3b9f2f05c9c7bf75d4e	routed	C0->__note_5 end_cross C0->__note_6 at (466,124)
+cc75ae62af84b3b9f2f05c9c7bf75d4e	routed	C0->__note_5 end_cross C0->__note_7 at (466,124)
+cc75ae62af84b3b9f2f05c9c7bf75d4e	routed	C0->__note_6 end_cross C0->__note_7 at (466,124)
+cc75ae62af84b3b9f2f05c9c7bf75d4e	routed	C0->__note_6 tight C0->__note_7 62px
+cc75ae62af84b3b9f2f05c9c7bf75d4e	routed	C0->__note_6 overlap C0->__note_7 32px
+cc75ae62af84b3b9f2f05c9c7bf75d4e	routed	port C0i0 __start_0 C0
+cc75ae62af84b3b9f2f05c9c7bf75d4e	routed	port C0 S0 C0i0
+cc75ae62af84b3b9f2f05c9c7bf75d4e	routed	port C0 __note_5 __note_6
+cc75ae62af84b3b9f2f05c9c7bf75d4e	routed	port C0 __note_5 __note_7
+cc75ae62af84b3b9f2f05c9c7bf75d4e	routed	port C0 __note_6 __note_7
+cc75ae62af84b3b9f2f05c9c7bf75d4e	routed	fan_x C0i0 Left __start_0->C0i0 x C0->C0i0 at (280,91)
+cc75ae62af84b3b9f2f05c9c7bf75d4e	routed	fan_x C0 Bottom C0->__note_5 x C0->__note_6 at (466,124)
+cc75ae62af84b3b9f2f05c9c7bf75d4e	routed	fan_x C0 Bottom C0->__note_5 x C0->__note_7 at (466,124)
+cc75ae62af84b3b9f2f05c9c7bf75d4e	routed	fan_x C0 Bottom C0->__note_6 x C0->__note_7 at (466,124)
+cc75ae62af84b3b9f2f05c9c7bf75d4e	routed	C0->__note_5 frame_side
+cc75ae62af84b3b9f2f05c9c7bf75d4e	routed	C0->__note_6 frame_side
+cc75ae62af84b3b9f2f05c9c7bf75d4e	routed	C0->__note_7 frame_side
+cc75ae62af84b3b9f2f05c9c7bf75d4e	routed	C0->C0i0 pin_corner C0
+TOTAL	static	119	141	14	2	3	0	0	10	4	84	0	12.29	0.06	0	0	0	0	0	0	0	0	6	0	0	0	3	0.43	1223.15	1548.50	2.05	40522.52	16	0	1	1	0	0	32	4	210	0	0	0	1	5	1	0	0	61	0	5.14	0	0	0	2	42.75	0	0.05	4	188.00	0	0	5	650	0.06	113	16	0	12	12	2	0	2	8	5	25.46	10.21	0.78	0	0	22035.48	23	1.61	131.45	8	3.74	1	3	0	2	0	2	0	0	0	0	0
+TOTAL	routed	119	141	14	2	3	0	0	9	4	106	1	6.78	3.51	0	0	0	0	0	0	0	0	5	1	0	0	3	0.45	1223.15	1548.50	2.05	40522.52	15	2.71	1	0	0	0	38	4	240	1	32.42	32.42	2	5	1	0	0	61	0	0	0	0	0	2	42.75	0	0.05	3	127.72	0	0	3	468	0.06	107	21	0	13	11	2	0	1	8	6	20.48	9.27	0.78	0	0	22061.69	23	1.58	138.14	9	3.19	1	5	1	3	0	4	6	228.75	25	0	0

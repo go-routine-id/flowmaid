@@ -1,0 +1,11 @@
+stateDiagram-v2
+    [*] --> First
+    state First {
+        [*] --> fir
+    }
+    First --> Second
+    state Second {
+        a --> b
+    }
+    note left of a : left of first member
+    Second --> [*]

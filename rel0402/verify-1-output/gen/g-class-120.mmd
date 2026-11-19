@@ -1,0 +1,17 @@
+classDiagram
+C1 ..> C1 : 日本語
+C0 -- C1
+C1 -- C0
+C0 "1" <|-- "*" C0 : beta
+C0 o-- C0
+C0 *-- C0
+C0 "1" o-- "*" C1 : <b>bold</b>
+C0 <--> C1
+C0 "1" ..|> "*" C1
+C0 ..|> C1 : Customer Order
+C0 "1" <--> "*" C0
+C1 *-- C0 : Long label here
+C0 "1" -- "*" C1
+C0 <--> C0
+note "a&b"
+note "alpha"

@@ -1,0 +1,48 @@
+diff --git a/src/router.rs b/src/router.rs
+index d952ca3..6ab1a2e 100644
+--- a/src/router.rs
++++ b/src/router.rs
+@@ -3139,6 +3139,43 @@ fn route_edge(
+                         ..t
+                     }),
+             );
++        } else if env.blocks && glyph {
++            // In a block layout's static scene a glyph end on a side
++            // across the flow also gets the long stub, the plain one at
++            // [`SHORT_STUB_COST`]: a reroute that turned into such a
++            // side on the plain stub left the corner's rounding under
++            // the head (bench-75 drawn LR as blocks: `svc1 --> logs`
++            // into the bottom of `logs` on a 12.5 px stub, its head 52
++            // deg off square, `end_kink` in the static
++            // `DEFECT_BASELINE`). A side facing along the flow keeps its
++            // plain stub: its corner is the ortho stage's, a head clear
++            // ([`crate::ortho::HEAD_LEG`]).
++            let flank = |o: (i64, i64)| {
++                let horizontal = matches!(
++                    w.dir,
++                    crate::model::Direction::LR | crate::model::Direction::RL
++                );
++                (o.0 != 0) != horizontal
++            };
++            let more = ARROW_MARKER_PX + CORNER_R - plain;
++            if more > 0.0 {
++                let long: Vec<Term> = found
++                    .iter()
++                    .filter(|t| flank(t.out))
++                    .map(|t| Term {
++                        stub: (
++                            t.stub.0 + t.out.0 as f64 * more,
++                            t.stub.1 + t.out.1 as f64 * more,
++                        ),
++                        ..*t
++                    })
++                    .filter(usable)
++                    .collect();
++                for t in found.iter_mut().filter(|t| flank(t.out)) {
++                    t.cost += SHORT_STUB_COST;
++                }
++                found.extend(long);
++            }
+         }
+         found
+     };

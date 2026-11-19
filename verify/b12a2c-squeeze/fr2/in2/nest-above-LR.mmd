@@ -1,0 +1,14 @@
+flowchart LR
+  s[Start] --> p0
+  subgraph P[Parent block]
+    p0[parent head] --> a1
+    p0 --> b1
+    subgraph A[Short first row]
+      a1[a] --> a2["a tall<br/>last<br/>member<br/>node"]
+    end
+    subgraph B[Tall first row]
+      b1["b tall<br/>first<br/>member<br/>node"] --> b2[b]
+    end
+  end
+  a2 --> z[End]
+  b2 --> z

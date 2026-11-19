@@ -1,0 +1,22 @@
+flowchart LR
+  subgraph Outer[Outer platform]
+    subgraph InA[Inner A]
+      a1 --> a2
+    end
+    subgraph InB[Inner B]
+      b1 --> b2
+    end
+    a2 --> b1
+  end
+  subgraph Side
+    c1 --> c2
+  end
+  src([source]) --> a1
+  b2 e1@==> c1
+  e1@{ curve: linear }
+  c2 -.->|back| a1
+  src --> c1
+  classDef hot fill:#fdd,stroke:#c00,stroke-width:3px
+  class b1,c2 hot
+  linkStyle 3 stroke:#0a0,stroke-width:4px
+  linkStyle 5 interpolate basis

@@ -1,0 +1,25 @@
+   Compiling flowmaid v0.38.0 (/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a1-structure/r5/pre)
+    Finished `release` profile [optimized] target(s) in 1m 22s
+     Running unittests src/lib.rs (/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b12a1-structure/r5/t-prerel/release/deps/flowmaid-e879d16ae13d6102)
+
+running 1 test
+test router::tests::fixture_drag_perf_guard ... dense-lr: route_partial worst 8.56 ms (node 14); route() worst 14.74 ms (node 14), 8 frames over 8 ms (route() reported, not asserted)
+
+thread 'router::tests::fixture_drag_perf_guard' (1878) panicked at src/router.rs:6277:13:
+dense-lr route_partial: 8.56 ms
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: flowmaid::router::tests::fixture_drag_perf_guard
+   3: <flowmaid::router::tests::fixture_drag_perf_guard::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+FAILED
+
+failures:
+
+failures:
+    router::tests::fixture_drag_perf_guard
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1090 filtered out; finished in 16.29s
+
+error: test failed, to rerun pass `--lib`

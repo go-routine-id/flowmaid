@@ -1,0 +1,133 @@
+same 
+same 
+same flowchart
+same architecture-beta
+same classDiagram
+same flowchart
+same erDiagram
+same flowchart
+same gitGraph
+same journey
+same flowchart
+same flowchart
+same mindmap
+same pie
+same sankey
+same sequenceDiagram
+same flowchart
+same stateDiagram-v2
+same flowchart
+same flowchart
+same timeline
+same flowchart
+same architecture-beta
+same flowchart
+DIFF flowchart /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/cmp/corpus/bench-75.mmd
+same classDiagram
+same flowchart
+DIFF flowchart /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/cmp/corpus/dense-lr.mmd
+DIFF flowchart /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/cmp/corpus/dense-td.mmd
+same erDiagram
+same flowchart
+same flowchart
+same gitGraph
+same journey
+same flowchart
+same flowchart
+same mindmap
+same pie
+same sankey
+same sequenceDiagram
+same flowchart
+same stateDiagram-v2
+same flowchart
+same flowchart
+same timeline
+same flowchart
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same erDiagram
+same sequenceDiagram
+same pie
+same journey
+same gitGraph
+same timeline
+same sankey-beta
+same mindmap
+same architecture-beta
+same flowchart
+DIFF flowchart /home/user/flowmaid/tests/fixtures/quality/dense-lr.mmd
+DIFF flowchart /home/user/flowmaid/tests/fixtures/quality/bench-75.mmd
+same flowchart
+DIFF flowchart /home/user/flowmaid/tests/fixtures/quality/dense-td.mmd
+same flowchart
+DIFF stateDiagram-v2 /home/user/flowmaid/tests/fixtures/notes/wide-frames.mmd
+DIFF stateDiagram-v2 /home/user/flowmaid/tests/fixtures/notes/spread-face.mmd
+DIFF stateDiagram-v2 /home/user/flowmaid/tests/fixtures/notes/nested-composite.mmd
+same stateDiagram-v2
+DIFF stateDiagram-v2 /home/user/flowmaid/tests/fixtures/notes/fork-twins.mmd
+DIFF stateDiagram-v2 /home/user/flowmaid/tests/fixtures/notes/spread-bottom.mmd
+same stateDiagram-v2
+DIFF stateDiagram-v2 /home/user/flowmaid/tests/fixtures/notes/routed-around.mmd
+same flowchart
+same flowchart
+same flowchart
+same flowchart
+same flowchart

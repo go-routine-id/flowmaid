@@ -1,0 +1,8 @@
+stateDiagram-v2
+  [*] --> Working
+  Working --> Working : tick
+  Working --> Checking
+  Working --> Paused
+  Checking --> Done
+  Done --> Working : again
+  Paused --> [*]

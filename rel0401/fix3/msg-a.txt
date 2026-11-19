@@ -1,0 +1,60 @@
+fix(route): a drawing that overflows the top-left on one axis keeps the other axis too (#76)
+
+Verifier finding (fix round 2, blocking): when a flowchart or state drag
+reached past the top-left margin on one axis only, to_svg kept the
+caller's coordinates on that axis but still moved the drawing onto the
+margin on the other, by an offset that neither the viewBox (0 there)
+nor Scene::origin carried. The dragged node was then drawn off the
+caller's position and a pick at its drawn centre missed it: on
+blocks-overview-lr 'cart service' dragged to x = -60 was drawn 33.6 px
+off on y and picked Cluster(2); on demo.mmd 'Start' dragged to
+(-80, y + 60) every node moved up 60 px.
+
+Now view_shift decides for both axes at once: once a routed drawing
+reaches past the margin on either axis by as much as the SVG shows, the
+drawing keeps its coordinates on both axes and the viewBox starts the
+margin before it, before zero on an overflowing axis (Scene::origin
+there) and after zero on an axis where the drawing starts further in.
+SVG user space is then scene space on both axes. A drawing that does
+not overflow is written exactly as before (viewBox 0 0), so that rule
+of the patch still holds. Scene::origin is unchanged (it is the scene
+canvas, 0 on an axis that does not overflow); its docs, to_svg's and
+view_shift's say what the viewBox does now.
+
+Tests: drag_past_top_left_keeps_every_position now reads each labelled
+node's drawn centre straight off the SVG (no crate-private shift
+subtracted, as a host does through the viewBox) and checks it equals
+the caller's position and that node_at / hit_test there pick that node.
+It adds the verifier's three repros (blocks-overview-lr, demo, stress)
+and a drag that overflows y while the drawing starts 40 px in on x.
+routed_offset_under_print_precision_is_written_as_before checks the
+both-axes rule. assert_drawn_inside_canvas skips arrowhead <marker>
+internals (their own 0 0 10 10 box, which a viewBox after zero need not
+hold; hop masks are still checked) and reads an arc's end point, not
+its radii and flags, as a point.
+
+identity.tsv: one row re-recorded, turned-blocks route_partial (its
+drag frame overflows on one axis; it already differed from origin/dev).
+
+Corpus, origin/dev against this commit (158 inputs: examples,
+tests/fixtures, cmp corpus, flowcorpus; 3728 SVGs, all drags):
+- render and scene() byte-identical: 298 of 298.
+- every routed SVG with a 0 0 viewBox byte-identical: 1100 of 1100.
+- 2330 routed SVGs changed, all with a non-zero viewBox origin: 2326
+  are origin/dev's SVG translated by that origin on both axes (0.1 px),
+  4 are class cardinality moves (class.mmd, already in 48e9073).
+- in all 2314 flowchart/state SVGs with a non-zero viewBox, 17554
+  labelled nodes are drawn at their scene position and picked there:
+  0 off (48e9073: 475 SVGs off, 390 with a missed pick).
+- against 48e9073: 1835 the same, 475 changed on the newly kept axis,
+  20 by 0.1 px (a sub-0.05 px shift no longer applied).
+Bulk (11075 inputs, lite drags; 47701 SVGs): render and scene() 10928
+of 10928 identical, routed 0 0 viewBox 14083 of 14083 identical; 22690
+changed, all with a non-zero viewBox origin: 22435 exact translations,
+235 class cardinality moves, 20 flowchart/state float-rounding cases
+(a 29.9 px arrowhead marker for 30, a duplicate path point). 20346
+flowchart/state SVGs with a non-zero viewBox, 201917 labelled nodes:
+0 drawn off their position, 0 missed picks. 0 panics.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

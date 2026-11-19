@@ -1,0 +1,46 @@
+stateDiagram-v2
+  direction LR
+  [*] --> S0
+  state C {
+    c0 --> c1
+    c1 --> c2
+    c2 --> c0
+    [*] --> c0
+  }
+  S19 --> S16
+  S5 --> S5 : ev1
+  S9 --> S1 : ev2
+  S13 --> S4
+  S8 --> S18 : ev4
+  S3 --> S8 : ev5
+  S7 --> S5
+  S8 --> S1 : ev7
+  S13 --> S3
+  S4 --> S0 : ev9
+  S2 --> S4 : ev10
+  S9 --> S14
+  S4 --> S1
+  S16 --> C : ev13
+  S4 --> S10
+  S13 --> S12
+  S11 --> S8 : ev16
+  S5 --> S20
+  S2 --> S17
+  S18 --> S2
+  S18 --> S10 : ev20
+  S3 --> S1
+  S0 --> S12
+  C --> S16 : ev23
+  S0 --> S18 : ev24
+  S7 --> S13
+  S11 --> S7 : ev26
+  S15 --> S5
+  S8 --> S19
+  S0 --> S4 : ev29
+  S5 --> S10
+  S19 --> S16
+  S2 --> S2 : ev32
+  S2 --> S2 : ev33
+  S20 --> S19 : ev34
+  note right of S17 : a note here
+  S19 --> [*]

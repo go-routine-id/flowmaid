@@ -1,0 +1,13 @@
+classDiagram
+A ..|> B
+B -- C : x
+C ..|> D : has many of
+C ..|> E
+B "1" --> "*" B : b0
+B "1" --> "*" B
+B --> B : b2
+E ..> E : e0
+E "1" --> "*" E : e1
+E "1" --> "*" E : e2
+E --> E
+E o-- E

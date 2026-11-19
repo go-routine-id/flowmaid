@@ -1,0 +1,11 @@
+[package]
+name = "bench-c5932b77"
+version = "0.1.0"
+edition = "2021"
+[[bin]]
+name = "bench"
+path = "../main.rs"
+[dependencies]
+flowmaid = { path = "/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b2-subgraph-bbox/wt-5932b77" }
+[profile.release]
+debug = false

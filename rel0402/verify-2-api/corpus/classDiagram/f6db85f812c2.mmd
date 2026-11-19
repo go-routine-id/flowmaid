@@ -1,0 +1,15 @@
+classDiagram
+A ..|> B : uses
+A *-- C : x
+C "1" *-- "*" D
+B <|-- E
+A "1" ..|> "*" F
+F *-- G : owns
+A ..> H
+B --|> I
+H --> C
+C <|-- D
+C --|> F
+D o-- D
+D o-- D : d1
+D ..> D : d2

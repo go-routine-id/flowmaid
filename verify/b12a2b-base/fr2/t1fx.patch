@@ -1,0 +1,57 @@
+commit 360c5883728eedee74f6bcbc4ee3493ca6091c6a
+Author: rhyanz46 <<author-email>>
+Date:   Tue Nov 17 17:03:35 2026 +0000
+
+    fix(blocks): a channel's steps are split by their plain rooms, so a labelled step keeps its channel's fallback and turn order (b12a2b-base item 1, regress)
+    
+    In a block layout `ortho::split_by_room` split a channel's steps into
+    sets whose rooms chain, reading each step's room above its label. A
+    labelled step left alone in its set kept that narrower room beside an
+    unlabelled one, and the sets were stacked in the order of their rooms
+    instead of their turns: a two-way pair between two blocks crossed,
+    `uncross` swapped its ends, and the return ran up the target block's
+    wall to a stepped end. The sets are now taken by each step's plain room
+    (`Jog::plain`, the widest `place_channel` may give it; the room above a
+    label is a clip of it), so steps whose plain rooms meet are one channel
+    again with its fallback to plain rooms and its turn order; sets whose
+    plain rooms do not chain still lie apart (a frame border or title strip
+    between them: the t9c two-way pair's jog-room steps stay apart).
+    
+    Block mode only (behind the switch); outside a block layout the
+    function returns the channel as it is, so the default build is
+    byte-identical (off-identity test green).
+    
+    New fixture tests/fixtures/blocks/twoway-noted.mmd (a state pair of
+    composites with a labelled return and two notes) and test
+    blockcheck::a_two_way_pair_between_blocks_keeps_its_steps_in_one_channel
+    (LR and RL: no border run, no crossing, both pair edges one straight
+    run; fails before this change). Registering the fixture adds its row to
+    tests/fixtures/identity.tsv (hashes of the default build, blocks off;
+    the static hash equals the start release's CLI output) and a
+    BLOCK_CEILINGS row (all 0, the drawing's own numbers before the block
+    layout, default quality example). No existing fixture copy changes in
+    any direction, static or routed; no gate or snapshot changes.
+    
+    Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+    Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5
+
+diff --git a/tests/fixtures/blocks/twoway-noted.mmd b/tests/fixtures/blocks/twoway-noted.mmd
+new file mode 100644
+index 0000000..c394734
+--- /dev/null
++++ b/tests/fixtures/blocks/twoway-noted.mmd
+@@ -0,0 +1,14 @@
++stateDiagram-v2
++direction LR
++state K0 {
++  [*] --> a
++}
++state K1 {
++  direction TB
++  [*] --> b
++  b --> c : t1
++}
++K0 --> K1
++K1 --> K0 : back
++note left of K1 : one
++note left of K1 : two

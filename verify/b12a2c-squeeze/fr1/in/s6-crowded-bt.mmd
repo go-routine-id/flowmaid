@@ -1,0 +1,14 @@
+flowchart BT
+  subgraph Store [Storefront]
+    c[Catalog] --> k[Cart]
+    k --> o[Checkout]
+  end
+  subgraph Ops [Operations]
+    w[Warehouse] --> s[Shipping]
+    s --> r[Returns]
+  end
+  o -->|place order| w
+  k -->|reserve stock| w
+  c -->|price feed| s
+  o -->|refund request| r
+  r -->|restock| c

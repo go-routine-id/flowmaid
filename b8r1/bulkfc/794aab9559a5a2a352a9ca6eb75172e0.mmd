@@ -1,0 +1,22 @@
+flowchart TD
+  subgraph F0 [Frame 0]
+    n11{Node 11}
+    n0([Node 0])
+    n7[/Node 7/]
+  end
+  n0 --o n6
+  n11 -.->|dot| n1
+  n10 -->|lbl| n0
+  n10 --o n6
+  n10 <--> n0
+  n1 --> n3
+  n9 o--o n13
+  n6 --x n4
+  n13 -.->|dot| n0
+  n6 --> n2
+  n8 ==>|thick lbl| n7
+  n2 --o n12
+  n1 <--> F0
+  n0 <==> n2
+  n4 --- n11
+  linkStyle 4 stroke:#3a3,stroke-width:24px

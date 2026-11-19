@@ -1,0 +1,2 @@
+22:pub struct Placed { 
+35:pub struct LayoutResult { 

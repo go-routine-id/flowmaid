@@ -1,0 +1,43 @@
+stateDiagram-v2
+  [*] --> f
+  state f <<fork>>
+  f --> P
+  f --> Q
+  state P {
+    direction LR
+    p0 --> p1
+    p1 --> p2
+    p2 --> p3
+    p3 --> p4
+    p4 --> p5
+    p5 --> p6
+    p6 --> p7
+    p7 --> p8
+    p8 --> p9
+    p9 --> p10
+    p10 --> p11
+    p11 --> p12
+    p12 --> p13
+    p13 --> p14
+    p14 --> p15
+    p15 --> p16
+    p16 --> p17
+    p17 --> p18
+    p18 --> p19
+    p19 --> p20
+    p20 --> p21
+    p21 --> p22
+    p22 --> p23
+    p23 --> p24
+    p4 --> p9 : x0
+    p13 --> p4 : x1
+    p17 --> p3 : x2
+    p18 --> p9 : x3
+    p17 --> p21 : x4
+    p5 --> p3 : x5
+    p20 --> p6 : x7
+  }
+  state j <<join>>
+  P --> j
+  Q --> j
+  j --> [*]

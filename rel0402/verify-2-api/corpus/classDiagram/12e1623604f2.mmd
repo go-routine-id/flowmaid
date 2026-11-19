@@ -1,0 +1,12 @@
+classDiagram
+direction BT
+A o-- B
+A ..|> C : has many of
+A -- D
+B o-- E
+D ..|> F
+C *-- G : has many of
+A ..|> H
+D <|-- G
+A --|> D
+G o-- G : g0

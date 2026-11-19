@@ -1,0 +1,31 @@
+flowchart TD
+  n1["api ingest ingest<br/>api"]
+  n2["index"]
+  subgraph B0["Storefront"]
+    n3["mail<br/>ingest"]
+  end
+  subgraph B1["Ingest"]
+    n4["parse"]
+    n5["api"]
+    n6["billing"]
+    subgraph B1s0["Ingest 0"]
+      n7["ingest"]
+      n8["report"]
+    end
+  end
+  subgraph B2["Data tier"]
+    n9["pack"]
+  end
+  n10["worker"]
+  n5 --> n9
+  n8 -.-> n4
+  n8 -->|db| n7
+  n4 --> n7
+  n9 --> n8
+  n4 -.-> n3
+  n3 -->|billing| n5
+  n3 ==> n1
+  n10 --> n2
+  n7 ==>|merge| n8
+  n6 --> n9
+  n4 --> n5

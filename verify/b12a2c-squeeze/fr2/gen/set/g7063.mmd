@@ -1,0 +1,66 @@
+flowchart TD
+  n1["queue<br/>ship"]
+  subgraph B0["Ops"]
+    n2["audit"]
+  end
+  subgraph B1["Storefront"]
+    n3["cache"]
+    n4["db"]
+    subgraph B1s0["Platform 0"]
+      n5["report"]
+      n6["report<br/>search"]
+    end
+    subgraph B1s1["Core 1"]
+      n7["api"]
+    end
+  end
+  subgraph B2["Analytics"]
+    n8["index"]
+    n9["queue parse db"]
+    n10["db"]
+    n11["pack"]
+    subgraph B2s0["Storefront 0"]
+      n12["parse"]
+      n13["index"]
+      n14["worker"]
+    end
+    subgraph B2s1["Fulfilment desk 1"]
+      n15["audit"]
+      n16["search"]
+    end
+  end
+  subgraph B3["Data tier"]
+    n17["search"]
+    n18["auth"]
+  end
+  n19["api"]
+  n16 ==> n5
+  n13 --> n12
+  n2 --> n8
+  n13 --> n4
+  n10 --> n12
+  n12 ==> n4
+  n18 --> n14
+  n13 -.-> n7
+  n8 ==> n7
+  n4 --> n11
+  n3 --> n10
+  n13 --> n18
+  n14 -.-> n9
+  n4 --> B2s0
+  n4 -->|worker| n16
+  n7 --> n2
+  n11 --> n1
+  n19 -->|db| n11
+  n17 --> n1
+  n6 ==> n3
+  n14 -.->|parse| n1
+  n9 -.->|report| n10
+  n1 --> n7
+  n6 --> n2
+  n2 --> n12
+  n13 ==> n14
+  n6 --> n5
+  n15 ==> n16
+  n1 -->|api| n11
+  n1 --> n9

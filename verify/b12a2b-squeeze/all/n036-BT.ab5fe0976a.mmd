@@ -1,0 +1,20 @@
+flowchart BT
+    subgraph A[Inventory management]
+        a0[a0]
+        a1[a1 wide node]
+        a2[a2]
+    end
+    subgraph B[Inventory management backend]
+        b0[b0]
+        b1[b1]
+    end
+    a0 --> b1
+    a1 -- "x" --> b0
+    a1 --> b1
+    a2 --> b0
+    p[p] --> B
+    p --> b1
+    q[q] --> B
+    q --> b0
+    r[r] --> A
+    r --> a1

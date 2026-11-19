@@ -1,0 +1,18 @@
+flowchart LR
+  subgraph Build[Build and release pipeline]
+    src[repo] -->|push| ci[CI runner] -->|image| reg[(registry)]
+  end
+  subgraph Run[Runtime services]
+    web[web] -->|read| db[(db)]
+    api[api] -->|write| db
+    job[job] -->|write| db
+    cron[cron] -->|purge| db
+  end
+  reg -->|deploy| web
+  reg -->|deploy| api
+  reg -->|deploy| job
+  reg -->|deploy| cron
+  mon[monitor] -.->|probe| web
+  mon -.->|probe| api
+  mon -.->|probe| job
+  mon -.->|probe| cron

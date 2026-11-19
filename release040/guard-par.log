@@ -1,0 +1,6 @@
+== fmt
+== clippy
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 22.58s
+== test
+GUARD EXIT 143
+guard-par stopped (one gate will run on the release tree instead)

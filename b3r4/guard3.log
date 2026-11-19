@@ -1,0 +1,35 @@
+== fmt
+== clippy
+FAILED: cargo clippy --all-targets -- -D warnings
+    Checking flowmaid v0.33.0 (/home/user/flowmaid)
+error: the use of negated comparison operators on partially ordered types produces code that is hard to read and refactor, please consider using the `partial_cmp` method instead, to make it clear that the two values could be incomparable
+    --> src/scene.rs:6450:23
+     |
+6450 |     if side == 0.0 || !(len > 0.0) || dir.0 == 0.0 {
+     |                       ^^^^^^^^^^^^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#neg_cmp_op_on_partial_ord
+     = note: `-D clippy::neg-cmp-op-on-partial-ord` implied by `-D warnings`
+     = help: to override `-D warnings` add `#[allow(clippy::neg_cmp_op_on_partial_ord)]`
+
+error: the use of negated comparison operators on partially ordered types produces code that is hard to read and refactor, please consider using the `partial_cmp` method instead, to make it clear that the two values could be incomparable
+    --> src/scene.rs:6468:8
+     |
+6468 |     if !(missing >= 1.0) {
+     |        ^^^^^^^^^^^^^^^^^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#neg_cmp_op_on_partial_ord
+
+error: could not compile `flowmaid` (lib) due to 2 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `flowmaid` (lib test) due to 2 previous errors
+== test
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+== doctest
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.31s
+== msrv
+    Finished dev [unoptimized + debuginfo] target(s) in 5.40s
+== wasm
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.51s
+== rustdoc
+GUARD: FAILURES

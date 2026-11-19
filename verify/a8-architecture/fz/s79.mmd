@@ -1,0 +1,25 @@
+architecture-beta
+    group g0(monitoring)[Private API]
+    group g1(server)[Data Storage Layer]
+    group g2(internet)[Data Storage Layer]
+    group g3(internet)[Edge]
+    service s0(internet)[Service 0]
+    service s1(server)[Service 1] in g3
+    service s2(monitoring)[Service 2] in g0
+    service s3(database)[Service 3]
+    service s4(monitoring)[Service 4] in g3
+    service s5(database)[Service 5] in g2
+    service s6(database)[Service 6] in g3
+    service s7(cloud)[Service 7]
+    s4:R --> B:s7
+    s2:T -- B:s4
+    s2:T --> B:s6
+    s1:R --> L:s6
+    s5:T --> L:s6
+    s7:R --> L:s2
+    s6:T -- B:s7
+    s2:L --> T:s5
+    s3:R -- L:s1
+    s1:T -- R:s7
+    s2:R -- L:s4
+    s6:L --> R:s3

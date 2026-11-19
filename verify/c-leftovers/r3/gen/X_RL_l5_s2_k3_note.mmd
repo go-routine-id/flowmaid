@@ -1,0 +1,16 @@
+classDiagram
+direction RL
+P <|-- S0
+P <|-- M
+P <|-- S1
+M --> K0
+M --> K1
+M --> K2
+M --> M : loop0
+M --> M : loop1
+M --> M : loop2
+M --> M : loop3
+M --> M : loop4
+note for M "a note\non M"
+note for S0 "sib note"
+S0 --> S0 : s

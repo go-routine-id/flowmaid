@@ -1,0 +1,8 @@
+flowchart TD
+    Client --> GW
+    GW --> platform
+    subgraph platform [Platform]
+        direction LR
+        Auth[Auth service] --> Users[User DB]
+        Users --> Bus
+    end

@@ -1,0 +1,17 @@
+flowchart LR
+    N0{Validate}
+    N1(Archive)
+    N2(Notify)
+    N3(Load)
+    N4{Fetch fetch}
+    N5{Fetch report}
+    N0 --> N1
+    N0 -->|yes| N2
+    N0 --> N3
+    N2 --> N4
+    N2 --> N5
+    N1 --> N5
+    N4 --> N5
+    N4 --> N1
+    N1 -.->|back| N0
+    N5 ==> N3

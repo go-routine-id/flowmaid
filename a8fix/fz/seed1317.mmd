@@ -1,0 +1,18 @@
+architecture-beta
+    group g0(disk)[Edge]
+    service s0(database)[Service 0] in g0
+    service s1(cloud)[Service 1]
+    service s2(disk)[Service 2]
+    service s3(cloud)[Service 3]
+    service s4(internet)[Service 4]
+    service s5(database)[Service 5] in g0
+    s5:R -- L:s2
+    s0:B --> T:s3
+    s3:B --> T:s4
+    s3:L --> R:s4
+    s4:T --> B:s0
+    s2:T -- B:s0
+    s3:L -- R:s0
+    s4:L --> R:s5
+    s5:B --> T:s3
+    s4:B --> T:s3

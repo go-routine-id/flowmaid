@@ -1,0 +1,174 @@
+r00_250.flowmaid.svg: 
+  LABEL/NODE Agriculture | rect Useful energy
+  LABEL/NODE Nuclear power | rect Hydro
+  LABEL/NODE Nuclear power | rect District heating networks
+  LABEL/NODE Hydro | rect District heating networks
+  LABEL/NODE District heating networks | rect Services and commerce
+  LABEL/NODE Useful energy | rect Agriculture
+  LABEL/NODE Useful energy | rect Coal
+r01_450.flowmaid.svg: clean
+r02_600.flowmaid.svg: clean
+r03_450.flowmaid.svg: 
+  LABEL/NODE Electricity grid (52) | rect Hydro
+r04_450.flowmaid.svg: clean
+r05_450.flowmaid.svg: clean
+r06_300.flowmaid.svg: clean
+r07_600.flowmaid.svg: clean
+r08_600.flowmaid.svg: clean
+r09_450.flowmaid.svg: clean
+r10_600.flowmaid.svg: clean
+r11_350.flowmaid.svg: 
+  LABEL/NODE Coal (21) | rect Exports
+  LABEL/NODE Exports (16) | rect Coal
+  LABEL/NODE Refineries and upgraders (48) | rect Useful energy
+  LABEL/NODE Refineries and upgraders (48) | rect Imports from abroad
+  LABEL/NODE Imports from abroad (61) | rect Coal
+r12_450.flowmaid.svg: 
+  LABEL/NODE Rejected energy and losses | rect Gas
+r13_350.flowmaid.svg: 
+  LABEL/NODE Industry and manufacturing | rect Transport
+r14_600.flowmaid.svg: clean
+r15_250.flowmaid.svg: 
+  LABEL/LABEL Refineriesandupgraders | Offshore windfarms
+  LABEL/NODE Electricity grid | rect Imports from abroad
+  LABEL/NODE Industry andmanufacturing | rect Oil
+  LABEL/NODE Services andcommerce | rect Imports from abroad
+  LABEL/NODE Refineriesandupgraders | rect Offshore wind farms
+  LABEL/NODE Nuclearpower | rect Services and commerce
+  LABEL/NODE Offshore windfarms | rect Industry and manufacturing
+  LABEL/NODE Offshore windfarms | rect Refineries and upgraders
+  LABEL/NODE Offshore windfarms | rect Oil
+r16_600.flowmaid.svg: clean
+r17_350.flowmaid.svg: 
+  LABEL/NODE Hydro (76) | rect Nuclear power
+  LABEL/NODE Rejected energy and losses (65) | rect Agriculture
+  LABEL/NODE Rejected energy and losses (65) | rect Gas
+  LABEL/NODE Offshore wind farms (48) | rect Transport
+  LABEL/NODE Offshore wind farms (48) | rect Thermal power plants
+  LABEL/NODE District heating networks (45) | rect Hydro
+  LABEL/NODE District heating networks (45) | rect Transport
+  LABEL/NODE Transport (94) | rect Offshore wind farms
+  LABEL/NODE Thermal power plants (97) | rect Biomass and waste
+  LABEL/NODE Thermal power plants (97) | rect Offshore wind farms
+r18_600.flowmaid.svg: clean
+r19_350.flowmaid.svg: clean
+r20_300.flowmaid.svg: 
+  LABEL/NODE Electricity grid | rect Industry and manufacturing
+  LABEL/NODE Exports | rect Transport
+  LABEL/NODE Offshore wind farms | rect Industry and manufacturing
+  LABEL/NODE Offshore wind farms | rect Households
+  LABEL/NODE Refineries and upgraders | rect Gas
+  LABEL/NODE Services and commerce | rect Industry and manufacturing
+  LABEL/NODE Thermal power plants | rect Industry and manufacturing
+  LABEL/NODE Thermal power plants | rect Electricity grid
+r21_250.flowmaid.svg: 
+  LABEL/NODE Refineriesandupgraders | rect Biomass and waste
+  LABEL/NODE Refineriesandupgraders | rect Rejected energy and losses
+  LABEL/NODE Services andcommerce | rect Rejected energy and losses
+  LABEL/NODE Rejectedenergy andlosses | rect Refineries and upgraders
+  LABEL/NODE Rejectedenergy andlosses | rect Services and commerce
+r22_350.flowmaid.svg: 
+  LABEL/NODE Offshore windfarms | rect Thermal power plants
+  LABEL/NODE Electricity grid | rect Rejected energy and losses
+r23_300.flowmaid.svg: 
+  LABEL/NODE Biomass andwaste (52) | rect District heating networks
+  LABEL/NODE Useful energy(99) | rect Rejected energy and losses
+  LABEL/NODE Rejectedenergy andlosses (115) | rect Useful energy
+  LABEL/NODE Rejectedenergy andlosses (115) | rect Transport
+r24_250.flowmaid.svg: 
+  LABEL/LABEL Coal (36) | Offshore wind farms (94)
+  LABEL/NODE Biomass and waste (53) | rect Households
+  LABEL/NODE Biomass and waste (53) | rect Oil
+  LABEL/NODE Biomass and waste (53) | rect Hydro
+  LABEL/NODE Thermal power plants (75) | rect Rejected energy and losses
+  LABEL/NODE Coal (36) | rect Offshore wind farms
+  LABEL/NODE Industry and manufacturing (94) | rect Hydro
+  LABEL/NODE Transport (68) | rect Exports
+  LABEL/NODE Transport (68) | rect Households
+  LABEL/NODE Services and commerce (60) | rect Industry and manufacturing
+  LABEL/NODE Services and commerce (60) | rect Refineries and upgraders
+  LABEL/NODE Services and commerce (60) | rect Hydro
+  LABEL/NODE Exports (51) | rect Industry and manufacturing
+  LABEL/NODE Households (93) | rect Biomass and waste
+  LABEL/NODE Households (93) | rect Hydrogen
+  LABEL/NODE Oil (74) | rect Hydro
+  LABEL/NODE Imports from abroad (115) | rect Thermal power plants
+  LABEL/NODE Imports from abroad (115) | rect Solar
+  LABEL/NODE Imports from abroad (115) | rect Rejected energy and losses
+  LABEL/NODE Offshore wind farms (94) | rect Useful energy
+  LABEL/NODE Offshore wind farms (94) | rect Hydro
+  LABEL/NODE Refineries and upgraders (58) | rect Industry and manufacturing
+  LABEL/NODE Refineries and upgraders (58) | rect Services and commerce
+  LABEL/NODE Useful energy (60) | rect Imports from abroad
+  LABEL/NODE Useful energy (60) | rect Offshore wind farms
+  LABEL/NODE Rejected energy and losses (77) | rect Thermal power plants
+  LABEL/NODE Rejected energy and losses (77) | rect Imports from abroad
+  LABEL/NODE Rejected energy and losses (77) | rect Nuclear power
+r25_250.flowmaid.svg: 
+  LABEL/NODE Agriculture | rect Imports from abroad
+  LABEL/NODE Districtheatingnetworks | rect Oil
+  LABEL/NODE Refineriesandupgraders | rect Useful energy
+  LABEL/NODE Rejectedenergy andlosses | rect Useful energy
+  LABEL/NODE Oil | rect Thermal power plants
+  LABEL/NODE Hydrogen | rect Imports from abroad
+  LABEL/NODE Solar | rect Transport
+  LABEL/NODE Solar | rect Exports
+  LABEL/NODE Thermalpower plants | rect Exports
+  LABEL/NODE Thermalpower plants | rect Oil
+r26_450.flowmaid.svg: clean
+r27_350.flowmaid.svg: 
+  LABEL/LABEL Thermal power plants (162) | Industry and manufacturing (54)
+  LABEL/LABEL Useful energy (67) | Refineries and upgraders (101)
+  LABEL/NODE Biomass and waste (53) | rect Hydrogen
+  LABEL/NODE Biomass and waste (53) | rect Transport
+  LABEL/NODE District heating networks (91) | rect Gas
+  LABEL/NODE District heating networks (91) | rect Hydrogen
+  LABEL/NODE District heating networks (91) | rect Refineries and upgraders
+  LABEL/NODE Thermal power plants (162) | rect Industry and manufacturing
+  LABEL/NODE Thermal power plants (162) | rect Solar
+  LABEL/NODE Gas (58) | rect District heating networks
+  LABEL/NODE Offshore wind farms (46) | rect Thermal power plants
+  LABEL/NODE Offshore wind farms (46) | rect Nuclear power
+  LABEL/NODE Useful energy (67) | rect Thermal power plants
+  LABEL/NODE Useful energy (67) | rect Gas
+  LABEL/NODE Useful energy (67) | rect Refineries and upgraders
+  LABEL/NODE Hydrogen (79) | rect Refineries and upgraders
+  LABEL/NODE Industry and manufacturing (54) | rect Thermal power plants
+  LABEL/NODE Industry and manufacturing (54) | rect Households
+  LABEL/NODE Nuclear power (51) | rect Offshore wind farms
+  LABEL/NODE Services and commerce (46) | rect Thermal power plants
+r28_250.flowmaid.svg: clean
+r29_600.flowmaid.svg: clean
+r30_600.flowmaid.svg: clean
+r31_600.flowmaid.svg: clean
+r32_600.flowmaid.svg: clean
+r33_250.flowmaid.svg: 
+  LABEL/NODE Refineries and upgraders | rect Exports
+  LABEL/NODE Refineries and upgraders | rect Solar
+  LABEL/NODE Thermal power plants | rect Oil
+  LABEL/NODE Thermal power plants | rect Hydro
+r34_250.flowmaid.svg: 
+  LABEL/NODE Districtheatingnetworks | rect Electricity grid
+  LABEL/NODE Households | rect Services and commerce
+  LABEL/NODE Industry andmanufacturing | rect Gas
+  LABEL/NODE Nuclearpower | rect Services and commerce
+r35_450.flowmaid.svg: clean
+r36_300.flowmaid.svg: 
+  LABEL/NODE Thermalpower plants | rect Agriculture
+  LABEL/NODE Biomass andwaste | rect Hydro
+  LABEL/NODE Imports fromabroad | rect Industry and manufacturing
+  LABEL/NODE Industry andmanufacturing | rect Transport
+  LABEL/NODE Services andcommerce | rect Useful energy
+r37_350.flowmaid.svg: clean
+r38_350.flowmaid.svg: 
+  LABEL/NODE Services and commerce (165) | rect Imports from abroad
+  LABEL/NODE Useful energy (86) | rect Biomass and waste
+  LABEL/NODE Rejected energy and losses (73) | rect Services and commerce
+  LABEL/NODE Rejected energy and losses (73) | rect Imports from abroad
+  LABEL/NODE Thermal power plants (89) | rect Services and commerce
+  LABEL/NODE Thermal power plants (89) | rect Exports
+  LABEL/NODE Exports (36) | rect Services and commerce
+  LABEL/NODE Imports from abroad (68) | rect Rejected energy and losses
+  LABEL/NODE Imports from abroad (68) | rect Hydro
+r39_350.flowmaid.svg: 
+  LABEL/NODE Electricity grid | rect Gas

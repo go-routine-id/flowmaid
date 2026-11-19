@@ -1,0 +1,8 @@
+architecture-beta
+    group backend(server)[Backend]
+    service api(server)[API Gateway] in backend
+    service svc(cpu)[Business Logic] in backend
+    service db(database)[PostgreSQL]
+
+    api:R --> L:svc
+    svc:R <--> L:db

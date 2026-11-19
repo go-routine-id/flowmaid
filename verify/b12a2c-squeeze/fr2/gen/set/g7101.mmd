@@ -1,0 +1,30 @@
+flowchart BT
+  n1["parse"]
+  n2["notify"]
+  n3["store"]
+  subgraph B0["Ops"]
+    n4["ingest<br/>billing"]
+    subgraph B0s0["Core 0"]
+      n5["api"]
+      n6["split"]
+      n7["audit report notify"]
+    end
+  end
+  subgraph B1["Analytics"]
+    n8["auth"]
+    n9["billing"]
+    n10["parse report audit"]
+    n11["notify"]
+  end
+  n12["index"]
+  n13["db"]
+  n7 -->|worker| n4
+  n8 -.->|report| n5
+  n7 --> n1
+  n4 --> n2
+  n1 -->|worker| n12
+  n10 -.-> n9
+  n6 ==>|ship| n7
+  n10 ==> n5
+  n7 -->|ingest| n8
+  n2 --> n4

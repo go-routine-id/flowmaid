@@ -1,0 +1,17 @@
+flowchart BT
+    N0([Load])
+    N1[Check queue]
+    N2[Parse]
+    N3[Notify]
+    N4(Archive)
+    N5{{Load}}
+    N6([Fetch])
+    N0 --> N1
+    N0 --> N2
+    N2 -->|ok| N3
+    N3 --> N4
+    N3 --> N5
+    N5 -->|next| N6
+    N2 --> N6
+    N0 --> N3
+    N3 -->|back| N2

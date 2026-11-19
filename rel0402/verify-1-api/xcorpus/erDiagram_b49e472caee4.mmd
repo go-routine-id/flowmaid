@@ -1,0 +1,68 @@
+erDiagram
+  E0 {
+    int id PK
+    string name
+  }
+  E1 {
+    int id PK
+    string name
+  }
+  E2 {
+    int id PK
+    string name
+  }
+  E3 {
+    int id PK
+    string name
+  }
+  E4 {
+    int id PK
+    string name
+  }
+  E5 {
+    int id PK
+    string name
+  }
+  E6 {
+    int id PK
+    string name
+  }
+  E7 {
+    int id PK
+    string name
+  }
+  E8 {
+    int id PK
+    string name
+  }
+  E9 {
+    int id PK
+    string name
+  }
+  E10 {
+    int id PK
+    string name
+  }
+  E2 }o..o{ E0 : "rel0"
+  E5 }o..o{ E7 : "rel1"
+  E9 }|..|{ E8 : "rel2"
+  E8 |o--o| E2 : "rel3"
+  E2 |o--o| E8 : "rel4"
+  E0 }o--|| E7 : "rel5"
+  E9 }o--|| E0 : "rel6"
+  E2 }|..|{ E10 : "rel7"
+  E9 |o--o| E1 : "rel8"
+  E0 }o..o{ E5 : "rel9"
+  E8 |o--o| E10 : "rel10"
+  E7 |o--o| E1 : "rel11"
+  E0 }o--|| E3 : "rel12"
+  E4 ||--o{ E0 : "rel13"
+  E8 |o--o| E7 : "rel14"
+  E0 }|..|{ E1 : "rel15"
+  E5 |o--o| E9 : "rel16"
+  E9 }o--|| E8 : "rel17"
+  E4 |o--o| E7 : "rel18"
+  E8 |o--o| E7 : "rel19"
+  E3 ||--|| E8 : "rel20"
+  E8 }|..|{ E3 : "rel21"
+  E2 ||--o{ E6 : "rel22"

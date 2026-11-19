@@ -1,0 +1,4 @@
+   Q routed B->C end_kink end on C 14.7deg
+   Q routed B->D end_kink end on D 32.8deg
+   Q static B->C end_kink end on C 13.0deg
+   Q static B->D end_kink end on D 15.0deg

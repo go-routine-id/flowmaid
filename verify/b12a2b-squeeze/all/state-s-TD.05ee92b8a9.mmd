@@ -1,0 +1,13 @@
+stateDiagram-v2
+    direction TB
+    [*] --> A
+    A --> X
+    B --> X
+    C --> G
+    state "Shipping and returns desk" as G {
+        X --> Y
+        Y --> [*]
+    }
+    G --> D
+    A --> B
+    B --> C

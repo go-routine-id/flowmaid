@@ -1,0 +1,1 @@
+chain_50.mmd: n=50 canvas 104x8516 boxfill 8.3% root@(52,44) rel (0.50,0.01) trunks 140-140 spokes(all) 140-140 ratio 1.00 time 0.08ms

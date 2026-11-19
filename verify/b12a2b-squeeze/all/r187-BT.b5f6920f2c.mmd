@@ -1,0 +1,14 @@
+flowchart BT
+    subgraph G[Order processing]
+        m0[ledger]
+        m1[queue]
+        m2[w]
+        m0 --> m1
+    end
+    s0[src0] -- "lbl6" --> m1
+    s0 --> m2
+    s1[src1] --> G
+    s2[src2] --> m1
+    s3[src3] --> G
+    s3 --> m0
+    m2 --> z[end]

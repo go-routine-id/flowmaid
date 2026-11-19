@@ -1,0 +1,11 @@
+flowchart TD
+    a[入口] --> b1
+    a --> c1
+    subgraph CJK["データ処理パイプライン 東京 本社"]
+        b1[処理] --> b2[保存]
+    end
+    subgraph EMO["Δ deploy ✓ → prod ★ release"]
+        c1[ship] --> c2[done]
+    end
+    b2 --> z[出口]
+    c2 --> z

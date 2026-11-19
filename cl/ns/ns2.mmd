@@ -1,0 +1,9 @@
+classDiagram
+    class com.example.Order {
+        +int id
+        +total() float
+    }
+    class com.example.Customer
+    com.example.Customer "1" --> "*" com.example.Order : places
+    com.example.Order <|-- shop.SpecialOrder
+    note for com.example.Order "an order"

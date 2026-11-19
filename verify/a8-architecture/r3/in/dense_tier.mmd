@@ -1,0 +1,32 @@
+architecture-beta
+    group edge(internet)[Edge Tier]
+    group app(server)[Application Tier]
+    group data(database)[Data Tier]
+    group ops(monitoring)[Ops]
+    service cdn(cloud)[CDN] in edge
+    service lb(network)[Load Balancer] in edge
+    service waf(firewall)[WAF] in edge
+    service web1(server)[Web 1] in app
+    service web2(server)[Web 2] in app
+    service worker(cpu)[Worker] in app
+    service queue(queue)[Queue] in app
+    service pg(database)[Postgres] in data
+    service redis(cache)[Redis] in data
+    service s3(disk)[Object Store] in data
+    service prom(monitoring)[Prometheus] in ops
+    service logs(log)[Loki] in ops
+    cdn:B -- T:waf
+    waf:R -- L:lb
+    lb:B --> T:web1
+    lb:B --> T:web2
+    web1:R -- L:queue
+    web2:R -- L:queue
+    queue:B --> T:worker
+    worker:R --> L:pg
+    web1:B -- T:pg
+    web2:B -- T:redis
+    worker:B -- T:s3
+    prom:L -- R:web1
+    prom:B -- T:logs
+    logs:L -- R:worker
+    pg:R -- L:redis

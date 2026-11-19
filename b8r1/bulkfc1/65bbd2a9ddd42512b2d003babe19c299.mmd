@@ -1,0 +1,24 @@
+flowchart RL
+    N0[(Archive store)]
+    N1{Validate}
+    N2([Fetch retry])
+    N3(Queue)
+    N4(Retry)
+    N5{Validate}
+    N6([Validate])
+    N7([Store report])
+    N8(Done)
+    N9{Notify}
+    N0 -->|yes| N1
+    N1 --> N2
+    N1 -->|next| N3
+    N3 --> N4
+    N2 --> N5
+    N4 --> N6
+    N5 -->|next| N7
+    N6 --> N8
+    N8 --> N9
+    N0 --> N4
+    N2 --> N7
+    N4 ==>|retry| N1
+    N7 --> N2

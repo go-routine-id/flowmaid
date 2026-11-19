@@ -1,0 +1,17 @@
+stateDiagram-v2
+  [*] --> Idle
+  Idle --> Running : start
+  Running --> Paused : pause
+  Paused --> Running : resume
+  Running --> Idle : stop
+  Paused --> Idle : stop
+  Running --> [*]
+  state Running {
+    [*] --> Fetch
+    Fetch --> Decode
+    Decode --> Exec
+    Exec --> Fetch : loop
+    Exec --> [*]
+  }
+  note right of Paused : waits for input
+  note left of Idle : initial

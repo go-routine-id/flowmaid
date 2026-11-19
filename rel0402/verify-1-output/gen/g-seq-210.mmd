@@ -1,0 +1,27 @@
+sequenceDiagram
+autonumber
+actor P0 as Customer Order
+actor P1 as gamma
+actor P2 as x
+participant P3 as beta
+participant P4 as Customer Order
+participant P5 as Customer Order
+actor P6 as Long label here
+participant P7 as beta
+P7-xP4: beta
+alt gamma
+activate P0
+P0->>P7: act
+deactivate P0
+end
+activate P0
+P0->>P0: act
+deactivate P0
+P4->P1: <b>bold</b>
+activate P7
+P7->>P4: act
+deactivate P7
+activate P6
+P6->>P5: act
+deactivate P6
+P7--)P3: Long label here

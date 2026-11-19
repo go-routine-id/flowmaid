@@ -1,0 +1,13 @@
+flowchart LR
+    N0{Check}
+    N1([Check done])
+    N2([Notify parse])
+    N3((Fetch store))
+    N4[/Validate check/]
+    N0 --> N1
+    N1 --> N2
+    N2 --> N3
+    N3 -->|next| N4
+    N2 -->|rollback| N1
+    N4 -->|back| N2
+    N3 --> N0

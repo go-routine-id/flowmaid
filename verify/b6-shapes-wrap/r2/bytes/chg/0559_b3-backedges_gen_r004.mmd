@@ -1,0 +1,22 @@
+flowchart TD
+    N0(Load)
+    N1([Report])
+    N2[/Fetch check/]
+    N3[Validate]
+    N4(Check queue)
+    N5[Emit]
+    N6([Archive])
+    N7[Retry load]
+    N8([Fetch parse])
+    N0 --> N1
+    N0 --> N2
+    N1 --> N3
+    N2 --> N4
+    N2 --> N5
+    N4 --> N6
+    N4 --> N7
+    N5 --> N8
+    N5 --> N7
+    N1 --> N3
+    N1 --> N6
+    N4 --> N1

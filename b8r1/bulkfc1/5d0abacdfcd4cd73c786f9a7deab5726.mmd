@@ -1,0 +1,18 @@
+flowchart LR
+    N0{Queue load}
+    N1{{Retry}}
+    N2{Emit queue}
+    N3([Store retry])
+    N4([Archive])
+    N5([Report])
+    N6{Archive store}
+    N0 --> N1
+    N1 --> N2
+    N1 -->|fail| N3
+    N3 --> N4
+    N2 --> N5
+    N3 --> N6
+    N5 --> N6
+    N5 ==> N4
+    N3 --> N2
+    N5 -->|retry| N2

@@ -1,0 +1,32 @@
+flowchart RL
+  n1["queue parse mail"]
+  n2["report"]
+  n3["notify"]
+  subgraph B0["Platform"]
+    n4["store"]
+  end
+  subgraph B1["Edge services"]
+    n5["audit"]
+    n6["report pack api<br/>db"]
+    n7["db"]
+    n8["report parse db"]
+  end
+  subgraph B2["Platform"]
+    n9["auth"]
+    n10["worker auth parse"]
+  end
+  n11["report"]
+  n11 -.-> n4
+  n2 -->|ingest| n10
+  n8 ==> n9
+  n2 ==> n8
+  n7 --> n6
+  n10 ==>|ship| n11
+  n7 -->|cache| n10
+  n3 -->|db| n10
+  n8 -->|report| n10
+  n7 -->|notify| n5
+  n4 --> n1
+  n3 ==> n8
+  n11 --> n9
+  n2 --> n9

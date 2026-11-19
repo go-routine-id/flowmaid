@@ -1,0 +1,80 @@
+11002b70612b171bd5d55253fc28d820	routed	S0->C0 end_cross C0->S0 at (253,198)
+1ab4c56b11c1117317692bfd001ea74f	routed	A->K1_2 lat_wiggle 92.2
+1ab4c56b11c1117317692bfd001ea74f	routed	K0_0->K0_1 end_cross K0_f->K0_1 at (299,528)
+1ab4c56b11c1117317692bfd001ea74f	routed	K0_0->K0_1 lat_wiggle 28.3
+1ab4c56b11c1117317692bfd001ea74f	routed	K1_1->K1_2 overlap __note_19->K1_2 20px
+1ab4c56b11c1117317692bfd001ea74f	routed	K1_1->K1_2 tight __note_19->K1_2 60px
+1ab4c56b11c1117317692bfd001ea74f	static	K0_0->K0_1 lat_wiggle 15.5
+1ab4c56b11c1117317692bfd001ea74f	static	K1_1->K1_2 lat_wiggle 124.9
+1ab4c56b11c1117317692bfd001ea74f	static	__note_15->K1N_0 overlap K1_1->K1N_0 22px
+1ab4c56b11c1117317692bfd001ea74f	static	__note_15->K1N_0 tight K1_1->K1N_0 30px
+1d5f0857211ebb7386ca9e4fbcc3fc59	routed	C1->C1i2 edge_node C1ch
+1d5f0857211ebb7386ca9e4fbcc3fc59	routed	C1->C1i2 hug C1ch 26px
+1d5f0857211ebb7386ca9e4fbcc3fc59	routed	C1ch->C1i2 tight C1->C1i2 126px
+1d5f0857211ebb7386ca9e4fbcc3fc59	routed	C2->C0 edge_frame C1
+1d5f0857211ebb7386ca9e4fbcc3fc59	routed	C2->C0 edge_frame C1D
+1d5f0857211ebb7386ca9e4fbcc3fc59	routed	__note_30->C1D edge_chip C1D
+1d5f0857211ebb7386ca9e4fbcc3fc59	static	C1->C1i2 edge_node C1ch
+1d5f0857211ebb7386ca9e4fbcc3fc59	static	C1->C1i2 hug C1ch 26px
+1d5f0857211ebb7386ca9e4fbcc3fc59	static	C1ch->C1i2 tight C1->C1i2 58px
+1d5f0857211ebb7386ca9e4fbcc3fc59	static	C1ch->C1i2 tight C1->C1i2 82px
+1d5f0857211ebb7386ca9e4fbcc3fc59	static	C1ch->C1i2 tight C1ch->C1i2 32px
+1d5f0857211ebb7386ca9e4fbcc3fc59	static	C2->C0 edge_frame C1
+1d5f0857211ebb7386ca9e4fbcc3fc59	static	C2->C0 edge_frame C1D
+20ef169cd209e888bb8f9b5790bc893d	routed	C0i0->T0 lat_wiggle 32.5
+20ef169cd209e888bb8f9b5790bc893d	routed	C0i0->__end_0 end_kink end on __end_0 36.1deg
+20ef169cd209e888bb8f9b5790bc893d	routed	C0i0->__end_0 end_tilt end on __end_0 36.1deg
+20ef169cd209e888bb8f9b5790bc893d	routed	C1ch->C1i0 lbl_crowd C1ch->C1i0
+20ef169cd209e888bb8f9b5790bc893d	routed	C1ch->C1i0 tight C1ch->C1i0 42px
+20ef169cd209e888bb8f9b5790bc893d	static	C0i0->T0 lat_wiggle 133.8
+20ef169cd209e888bb8f9b5790bc893d	static	C0i0->__end_0 end_kink end on __end_0 36.1deg
+20ef169cd209e888bb8f9b5790bc893d	static	C0i0->__end_0 end_tilt end on __end_0 36.1deg
+20ef169cd209e888bb8f9b5790bc893d	static	C0i0->__note_9 tight C0i0->T0 36px
+20ef169cd209e888bb8f9b5790bc893d	static	C1ch->C1i0 tight C1ch->C1i0 32px
+54ce379a673544fbf53dda87e73e360a	routed	K0_0->K0_2 tight K0_0->K0_f 28px
+54ce379a673544fbf53dda87e73e360a	routed	K1->B0 frame_side
+54ce379a673544fbf53dda87e73e360a	routed	K1->B0 hug K0 46px
+54ce379a673544fbf53dda87e73e360a	routed	K1->B0 lat_wiggle 25.5
+54ce379a673544fbf53dda87e73e360a	routed	K1->B1 frame_side
+54ce379a673544fbf53dda87e73e360a	routed	K1_c->K1_0 border K1 top 388px
+54ce379a673544fbf53dda87e73e360a	routed	K1_c->K1_0 hug K1 393px
+54ce379a673544fbf53dda87e73e360a	routed	port K1_0 __note_13 __note_14
+54ce379a673544fbf53dda87e73e360a	static	K0_0->K0_2 lat_wiggle 30.4
+54ce379a673544fbf53dda87e73e360a	static	K1->B0 frame_side
+54ce379a673544fbf53dda87e73e360a	static	K1->B0 hug K0 45px
+54ce379a673544fbf53dda87e73e360a	static	K1->B0 lat_wiggle 27.0
+54ce379a673544fbf53dda87e73e360a	static	K1->B1 frame_side
+54ce379a673544fbf53dda87e73e360a	static	port K1_0 __note_13 __note_14
+60d1b3611f9d76ab3b8258e4bb7a1b14	routed	n2->n6 lat_wiggle 24.4
+b62ce5f38c1a155d285309a65d3d67cc	static	C0i0->C0i1 tight S0->C0i1 222px
+b62ce5f38c1a155d285309a65d3d67cc	static	__note_20->C1 end_cross __note_21->C1 at (276,511)
+b62ce5f38c1a155d285309a65d3d67cc	static	port C1 __note_20 __note_21
+e3206e05e27c9df5b07b2bf3069a4401	routed	C1->C2 frame_side
+e3206e05e27c9df5b07b2bf3069a4401	routed	C1->C2 frame_side
+e3206e05e27c9df5b07b2bf3069a4401	routed	C1i0->__end_1 end_kink end on __end_1 32.2deg
+e3206e05e27c9df5b07b2bf3069a4401	routed	C1i0->__end_1 end_tilt end on __end_1 32.2deg
+e3206e05e27c9df5b07b2bf3069a4401	routed	C2i1->__end_3 end_kink end on __end_3 14.3deg
+e3206e05e27c9df5b07b2bf3069a4401	routed	C2i1->__end_3 end_tilt end on __end_3 14.3deg
+e3206e05e27c9df5b07b2bf3069a4401	routed	C2i3->C1 frame_side
+e3206e05e27c9df5b07b2bf3069a4401	routed	S0->C0 lat_wiggle 132.8
+e3206e05e27c9df5b07b2bf3069a4401	static	C1->C2 frame_side
+e3206e05e27c9df5b07b2bf3069a4401	static	C1->C2 frame_side
+e3206e05e27c9df5b07b2bf3069a4401	static	C1i0->__end_1 end_kink end on __end_1 32.2deg
+e3206e05e27c9df5b07b2bf3069a4401	static	C1i0->__end_1 end_tilt end on __end_1 32.2deg
+e3206e05e27c9df5b07b2bf3069a4401	static	C2i1->__end_3 end_kink end on __end_3 14.3deg
+e3206e05e27c9df5b07b2bf3069a4401	static	C2i1->__end_3 end_tilt end on __end_3 14.3deg
+e3206e05e27c9df5b07b2bf3069a4401	static	C2i3->C1 frame_side
+e3206e05e27c9df5b07b2bf3069a4401	static	S0->C0 lat_wiggle 34.1
+eb044f1eb04ada84352c8832bf8474e7	routed	N0->N1 lat_wiggle 6.5
+eb044f1eb04ada84352c8832bf8474e7	routed	N1->N3 lat_wiggle 14.5
+eb044f1eb04ada84352c8832bf8474e7	static	N0->N1 lat_wiggle 7.3
+eb044f1eb04ada84352c8832bf8474e7	static	N1->N3 lat_wiggle 49.5
+fddce8b7b41ff4bb30803e35ca296a9e	routed	C1i0->C1i1 overlap C1D->C1i0 18px
+fddce8b7b41ff4bb30803e35ca296a9e	routed	C1i0->__note_15 touch C1D->C1i0 0.5px
+fddce8b7b41ff4bb30803e35ca296a9e	routed	C2i0->__end_3 end_kink end on __end_3 40.2deg
+fddce8b7b41ff4bb30803e35ca296a9e	routed	C2i0->__end_3 end_tilt end on __end_3 40.2deg
+fddce8b7b41ff4bb30803e35ca296a9e	routed	S0->C1 end_cross C2i1->C1 at (295,874)
+fddce8b7b41ff4bb30803e35ca296a9e	routed	S0->C1 lat_wiggle 115.3
+fddce8b7b41ff4bb30803e35ca296a9e	routed	T0->C1i1 hug C1D 275px
+fddce8b7b41ff4bb30803e35ca296a9e	static	C2i0->__end_3 end_kink end on __end_3 40.2deg
+fddce8b7b41ff4bb30803e35ca296a9e	static	C2i0->__end_3 end_tilt end on __end_3 40.2deg

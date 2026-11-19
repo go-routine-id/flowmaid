@@ -1,0 +1,14 @@
+sequenceDiagram
+participant P0 as 日本語
+actor P1 as Long label here
+participant P2 as a&b
+participant P3 as a&b
+Note left of P2: a&b
+P0->P1: Customer Order
+P0--xP1: a&b
+P1->>P3: Long label here
+P1-->>P2: a&b
+P3-->>P1: 日本語
+activate P1
+P1->>P1: act
+deactivate P1

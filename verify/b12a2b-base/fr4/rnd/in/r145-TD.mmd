@@ -1,0 +1,11 @@
+flowchart TD
+    subgraph G[Data ingestion workers]
+        m0[ledger]
+        m1[x wide member node]
+        m2[queue]
+        m0 --> m1
+    end
+    s0[src0] --> G
+    s0 --> m1
+    s1[src1] -- "lbl6" --> G
+    s1 -- "lbl9" --> m2

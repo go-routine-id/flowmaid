@@ -1,0 +1,8 @@
+stateDiagram-v2
+direction LR
+state c <<choice>>
+[*] --> Order
+Order --> c
+c --> A : one
+c --> B : two
+c --> C : three

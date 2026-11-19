@@ -1,0 +1,78 @@
+stateDiagram-v2
+direction LR
+[*] --> A
+state K0 {
+  [*] --> K0_0
+  K0_0 --> K0_1 : t1
+  K0_0 --> K0_2
+  K0_0 --> K0_3 : t3
+  note right of K0_1 : in540
+  note right of K0_2 : in283
+  note right of K0_1
+    in24 line one
+    second line
+  end note
+}
+state K1 {
+  [*] --> K1_0
+  K1_0 --> K1_1 : t1
+  state K1N {
+    [*] --> K1N_0
+    K1N_0 --> K1N_1 : t1
+    K1N_0 --> K1N_2 : t2
+    note left of K1N_1
+      in665 line one
+      second line
+    end note
+    note left of K1N_1 : in719
+    note right of K1N_0 : in543
+  }
+  K1_0 --> K1N
+  K1_0 --> K1N_1
+}
+state K2 {
+  direction LR
+  [*] --> K2_0
+  K2_0 --> K2_1
+  K2_0 --> K2_2
+  K2_2 --> K2_3
+  state K2N {
+    [*] --> K2N_0
+    K2N_0 --> K2N_1
+    K2N_1 --> K2N_2 : t2
+    state K2NN {
+      direction TB
+      [*] --> K2NN_0
+      K2NN_0 --> K2NN_1 : t1
+      K2NN_1 --> K2NN_2
+      K2NN_0 --> K2NN_3
+      note right of K2NN_2 : in82
+      note left of K2NN_1
+        in10 line one
+        second line
+      end note
+      note left of K2NN_0 : in772
+      K2NN_0 --> [*]
+    }
+    K2N_1 --> K2NN
+    state K2N_f <<fork>>
+    K2N_0 --> K2N_f
+    K2N_f --> K2NN_2
+    K2N_f --> K2NN_3
+    state K2N_c <<choice>>
+    K2NN_3 --> K2N_c
+    K2N_c --> K2NN_0 : a
+    K2N_c --> K2N_1 : b
+    note right of K2NN_1 : in268
+  }
+  K2_2 --> K2N
+}
+A --> K0 : g1
+K0 --> K1
+K1 --> K2
+A --> B0 : g4
+K2 --> B1
+K1 --> B2
+K2NN --> K2N : cc
+B0 --> A : back
+note left of A : on363

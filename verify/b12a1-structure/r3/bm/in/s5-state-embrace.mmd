@@ -1,0 +1,17 @@
+stateDiagram-v2
+  [*] --> Outer
+  state Outer {
+    state InnerA {
+      [*] --> a1
+      a1 --> a2
+      a2 --> a3
+    }
+    state InnerB {
+      [*] --> b1
+      b1 --> b2
+    }
+    InnerA --> InnerB
+    a1 --> b2
+  }
+  Outer --> Done
+  Done --> [*]

@@ -1,0 +1,26 @@
+flowchart TD
+  s0["search"]
+  subgraph g0["queue metric zone"]
+    m0["api index index"]
+    m1["cart"]
+    m2["metric"]
+    m3["queue metric db"]
+    m0 --> m1
+    m1 --> m2
+    m2 --> m3
+  end
+  subgraph g1["cache zone"]
+    direction TB
+    m4["billing trace"]
+  end
+  subgraph g2["trace zone"]
+    direction LR
+    m5["log db api"]
+  end
+  subgraph g3["web zone"]
+    m6["api ship"]
+  end
+  s0 --> m0
+  s0 --> g1
+  s0 --> m5
+  s0 --> g3

@@ -1,0 +1,14 @@
+flowchart TD
+    a[Client portal] --> p1
+    b[Partner feed] --> p1
+    c[Batch import] --> p2
+    d[Ops console] --> p2
+    a --> p3
+    subgraph core["A very long block title that covers its first row of members"]
+        p1[Ingest] --> q1[Validate]
+        p2[Queue] --> q1
+        p3[Audit] --> q2[Archive]
+        q1 --> q2
+    end
+    q2 --> out[Report]
+    q1 --> out

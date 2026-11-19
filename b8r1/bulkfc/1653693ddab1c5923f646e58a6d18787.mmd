@@ -1,0 +1,26 @@
+flowchart LR
+    N0[Notify report]
+    N1{Notify}
+    N2(Load)
+    N3{Retry}
+    N4{Queue}
+    N5(Retry)
+    N6{{Check}}
+    N7{Emit store}
+    N8[Parse load]
+    N9[Emit check]
+    N0 -->|no| N1
+    N0 --> N2
+    N0 --> N3
+    N2 --> N4
+    N2 --> N5
+    N3 -->|yes| N6
+    N5 -->|ok| N7
+    N5 --> N8
+    N7 -->|yes| N9
+    N5 --> N8
+    N2 --> N9
+    N5 --> N6
+    N7 -->|back| N2
+    N5 --> N2
+    N1 -->|back| N0

@@ -1,0 +1,12 @@
+sequenceDiagram
+actor P0 as Long label here
+participant P1 as <b>bold</b>
+actor P2 as gamma
+par gamma
+P2->P1: alpha
+par delta
+Note left of P1: 日本語
+Note over P0,P2: delta
+end
+P2->>P2: self a&b
+end

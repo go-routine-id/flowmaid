@@ -1,0 +1,10 @@
+classDiagram
+    direction RL
+    class Shape {
+      +area() double
+    }
+    Shape <|-- Circle
+    Shape <|-- Square
+    Shape <|-- Triangle
+    Shape <|-- Hexagon
+    note for Shape "Base of every shape"

@@ -1,0 +1,520 @@
+diff --git a/src/layout.rs b/src/layout.rs
+index 01a253d..aedd026 100644
+--- a/src/layout.rs
++++ b/src/layout.rs
+@@ -1723,6 +1723,7 @@ fn layout_core(
+         work: SEARCH_WORK,
+     };
+     if !search {
++        G3_AT.with(|c| *c.borrow_mut() = st.best.g3_at.clone());
+         let blocks = st.rk.blocks.map(|b| (b.paths, st.best.title_jog));
+         return (st.best.lo, st.best.groups, blocks);
+     }
+@@ -1730,6 +1731,7 @@ fn layout_core(
+         narrow(g, sizes, node_cluster, &mut st);
+     }
+     centre_largest(g, sizes, node_cluster, &mut st);
++    G3_AT.with(|c| *c.borrow_mut() = st.best.g3_at.clone());
+     let blocks = st.rk.blocks.map(|b| (b.paths, st.best.title_jog));
+     (st.best.lo, st.best.groups, blocks)
+ }
+@@ -4105,6 +4107,14 @@ struct Placement {
+     /// A block layout's jog room per subgraph ([`title_jogs`]; empty
+     /// outside block layouts and in LR / RL).
+     title_jog: Vec<f64>,
++    /// G3 PROTOTYPE: per edge, its gap label's band (top?) and chip centre.
++    g3_at: Vec<Option<(bool, f64, f64)>>,
++}
++
++thread_local! {
++    /// G3 PROTOTYPE side channel: the kept placement's band labels.
++    pub(crate) static G3_AT: std::cell::RefCell<Vec<Option<(bool, f64, f64)>>> =
++        const { std::cell::RefCell::new(Vec::new()) };
+ }
+ 
+ /// Steps 3 to 5 for one layering: dummy chains, ordering and
+@@ -5668,6 +5678,207 @@ fn place(
+         }
+         need
+     };
++    // G3 PROTOTYPE (design study, not for commit): a block layout's gap
++    // labels in bands. A label whose edge has no run of its own at its
++    // common-ancestor level (an adjacent-band edge, a stand-in cut to a
++    // frame across one gap, a chain whose run is empty) sits in the gap it
++    // crosses: in a band at the top of the gap on its upper leg when no
++    // other line crosses that band within its chip plus CLEAR_GAP, else in
++    // a band at the bottom on its lower leg; the tracks of the gap lie
++    // between the bands. TD only in this prototype.
++    let g3_on = block_paths.is_some()
++        && node_cluster.is_some()
++        && matches!(g.direction, Direction::TD)
++        && std::env::var("FM_G3_OFF").is_err();
++    // Per gap (lower layer): (edge, upper unit, lower unit, upper col, lower col).
++    let mut g3_cols: Vec<Vec<(usize, usize, usize, f64, f64)>> = vec![Vec::new(); nlayers];
++    // Per edge: its gap label's window (gap, upper unit, lower unit).
++    let mut g3_win: Vec<Option<(usize, usize, usize)>> = vec![None; g.edges.len()];
++    if g3_on {
++        let nc = node_cluster.unwrap_or(&[]);
++        for (ei, e) in g.edges.iter().enumerate() {
++            if e.from == e.to || matches!(e.kind, EdgeKind::Invisible) || no_channel(ei) {
++                continue;
++            }
++            let chain = &edge_chain[ei];
++            let up = alayer[e.from] > alayer[e.to];
++            let (uend, lend) = if up { (e.to, e.from) } else { (e.from, e.to) };
++            let path: Vec<usize> = if !up {
++                std::iter::once(e.from)
++                    .chain(chain.iter().copied())
++                    .chain(std::iter::once(e.to))
++                    .collect()
++            } else {
++                std::iter::once(e.to)
++                    .chain(chain.iter().rev().copied())
++                    .chain(std::iter::once(e.from))
++                    .collect()
++            };
++            let cut = g.frame_cut.get(ei).copied().unwrap_or([None, None]);
++            let (ucut, lcut) = if up { (cut[1], cut[0]) } else { (cut[0], cut[1]) };
++            let pin = |c: Option<usize>, b: f64| -> f64 {
++                let Some(c) = c else { return b };
++                let (lo, hi) = (0..n).filter(|&v| apath[v].contains(&c)).fold(
++                    (f64::INFINITY, f64::NEG_INFINITY),
++                    |(lo, hi), v| (lo.min(bpos[v] - absize[v] / 2.0), hi.max(bpos[v] + absize[v] / 2.0)),
++                );
++                if lo <= hi { b.max(lo).min(hi) } else { b }
++            };
++            let last = path.len() - 1;
++            for (j, w) in path.windows(2).enumerate() {
++                let (a, b) = (w[0], w[1]);
++                if alayer[b] != alayer[a] + 1 {
++                    continue;
++                }
++                // (A pin's column: the other end's, held to the block's
++                // members, as `track_need` reads it.)
++                let pa = if j == 0 && ucut.is_some() { pin(ucut, bpos[b]) } else { bpos[a] };
++                let pb = if j + 1 == last && lcut.is_some() { pin(lcut, bpos[a]) } else { bpos[b] };
++                g3_cols[alayer[b]].push((ei, a, b, pa, pb));
++            }
++            if e.label.is_none() {
++                continue;
++            }
++            let common = common_prefix(&nc[e.from], &nc[e.to]);
++            if chain.is_empty() {
++                if path.len() == 2 && alayer[path[1]] == alayer[path[0]] + 1 {
++                    g3_win[ei] = Some((alayer[path[1]], path[0], path[1]));
++                }
++                continue;
++            }
++            // A chain with a run of its own keeps its slot (the dummy).
++            if chain.iter().any(|&d| apath[d] == common) {
++                continue;
++            }
++            // Its border gap: where the path leaves the upper end's blocks
++            // for the lower end's.
++            let upper_side = |v: usize| {
++                let p = &apath[v];
++                p.len() > common.len() && nc[uend].starts_with(p)
++            };
++            let lower_side = |v: usize| {
++                let p = &apath[v];
++                p.len() > common.len() && nc[lend].starts_with(p)
++            };
++            for w in path.windows(2) {
++                let (a, b) = (w[0], w[1]);
++                if alayer[b] == alayer[a] + 1 && (a == uend || upper_side(a)) && (b == lend || lower_side(b)) && !(upper_side(b)) {
++                    g3_win[ei] = Some((alayer[b], a, b));
++                    break;
++                }
++            }
++        }
++    }
++    // Per edge: (top band?, gap, row, chip width); per gap: extra room.
++    let mut g3_band: Vec<Option<(bool, usize, usize, f64)>> = vec![None; g.edges.len()];
++    let mut g3_rows: Vec<(usize, usize)> = vec![(0, 0); nlayers];
++    if g3_on {
++        let air = crate::clearance::CLEAR_GAP + 1.0;
++        // Frame walls that cross a gap: a column a chip keeps off too.
++        let walls = |li: usize, layer_of: usize| -> Vec<f64> {
++            layers[layer_of]
++                .iter()
++                .filter(|&&v| border_side.get(v).copied().unwrap_or(0) != 0)
++                .filter(|&&v| {
++                    apath[v].last().and_then(|c| cluster_span.get(c)).is_some_and(|s| s.0 < li && s.1 >= li)
++                })
++                .map(|&v| bpos[v])
++                .collect()
++        };
++        let mut chips: Vec<Vec<(bool, usize, f64, f64)>> = vec![Vec::new(); nlayers];
++        for (ei, win) in g3_win.iter().enumerate() {
++            let Some((li, a, b)) = *win else { continue };
++            let Some(lbl) = &g.edges[ei].label else { continue };
++            let w = text_width(lbl) + LABEL_PAD_W;
++            let own = g3_cols[li].iter().find(|c| c.0 == ei && c.1 == a && c.2 == b).copied();
++            let Some((_, _, _, pa, pb)) = own else {
++                if std::env::var("FMDBG_G3").is_ok() { eprintln!("G3 e{} no own window", ei); }
++                continue
++            };
++            let room = |top: bool| -> bool {
++                let (me, unit) = if top { (pa, a) } else { (pb, b) };
++                // A pin on a frame (a stand-in cut there) is no port of the
++                // member it was ranked to.
++                let cut = g.frame_cut.get(ei).copied().unwrap_or([None, None]);
++                let up = alayer[g.edges[ei].from] > alayer[g.edges[ei].to];
++                let pinned = if top == !up { cut[0].is_some() } else { cut[1].is_some() };
++                let shared = g3_cols[li].iter().filter(|c| c.0 != ei && (if top { c.1 } else { c.2 }) == unit && unit < n && !pinned).count();
++                if shared > 0 {
++                    return false;
++                }
++                let foreign = g3_cols[li]
++                    .iter()
++                    .filter(|c| c.0 != ei)
++                    .map(|c| if top { c.3 } else { c.4 })
++                    .chain(walls(li, if top { li - 1 } else { li }));
++                let fv: Vec<f64> = foreign.into_iter().collect();
++                if std::env::var("FMDBG_G3").is_ok() {
++                    let bad: Vec<f64> = fv.iter().copied().filter(|x| (x - me).abs() < w / 2.0 + air).collect();
++                    eprintln!("G3   e{} top {} me {:.1} bad {:?}", ei, top, me, bad);
++                }
++                fv.into_iter().all(|x| (x - me).abs() >= w / 2.0 + air)
++            };
++            let side = if room(true) {
++                Some(true)
++            } else if room(false) {
++                Some(false)
++            } else {
++                None
++            };
++            if std::env::var("FMDBG_G3").is_ok() {
++                eprintln!("G3 e{} {}>{} gap {} w {:.0} top {} bottom {} -> {:?}", ei, g.nodes.get(g.edges[ei].from).map_or("?", |x| x.id.as_str()), g.nodes.get(g.edges[ei].to).map_or("?", |x| x.id.as_str()), li, w, room(true), room(false), side);
++            }
++            if let Some(top) = side {
++                chips[li].push((top, ei, if top { pa } else { pb }, w));
++            }
++        }
++        for (li, list) in chips.iter_mut().enumerate() {
++            list.sort_by(|x, y| (x.2 - x.3 / 2.0).total_cmp(&(y.2 - y.3 / 2.0)));
++            for top in [true, false] {
++                let mut rows: Vec<f64> = Vec::new();
++                for &(t, ei, c, w) in list.iter() {
++                    if t != top {
++                        continue;
++                    }
++                    let left = c - w / 2.0;
++                    let r = match rows.iter().position(|&end| end + crate::labels::LABEL_GAP + 1.0 <= left) {
++                        Some(r) => r,
++                        None => {
++                            rows.push(f64::NEG_INFINITY);
++                            rows.len() - 1
++                        }
++                    };
++                    rows[r] = c + w / 2.0;
++                    g3_band[ei] = Some((top, li, r, w));
++                }
++                if top {
++                    g3_rows[li].0 = rows.len();
++                } else {
++                    g3_rows[li].1 = rows.len();
++                }
++            }
++        }
++    }
++    let g3_row_h = |k: usize| -> f64 {
++        if k == 0 { 0.0 } else { k as f64 * LABEL_BOX_H + (k - 1) as f64 * (crate::labels::LABEL_GAP + 1.0) }
++    };
++    let g3_need: Vec<f64> = (0..nlayers)
++        .map(|li| {
++            let (t, b) = g3_rows[li];
++            if t == 0 && b == 0 {
++                return 0.0;
++            }
++            let steps = if track_need[li] > 0.0 {
++                track_need[li] - crate::ortho::ROW_CLEAR - crate::ortho::HEAD_LEG
++            } else {
++                0.0
++            };
++            let clear = crate::clearance::CLEAR_GAP + 0.5;
++            let top = if t > 0 { g3_row_h(t) + clear } else { 0.0 };
++            let bot = if b > 0 { clear + g3_row_h(b) + crate::labels::LABEL_GAP } else { 0.0 };
++            crate::ortho::ROW_CLEAR + top + steps + bot + crate::ortho::HEAD_LEG
++        })
++        .collect();
+     // The layer lines and the depth they span. `judged`: as the layout
+     // search judges a candidate (crossings, node hits, the ribbon tests)
+     // — a title strip's slot grown on both sides, a labelled gap only as
+@@ -5838,6 +6049,10 @@ fn place(
+                     cursor = cursor.max(at - before);
+                 }
+             }
++            if !judged && li > 0 && g3_need[li] > 0.0 {
++                let at = lcoord[li - 1] + reach_of(li - 1, 1) + g3_need[li] + reach_of(li, 0);
++                cursor = cursor.max(at - before);
++            }
+             prev_after = after;
+             lcoord[li] = cursor + before;
+             cursor += before + after + gap_l;
+@@ -5845,6 +6060,25 @@ fn place(
+         (lcoord, cursor - gap_l + MARGIN)
+     };
+     let (lcoord, total_l) = layer_lines(false);
++    // G3 PROTOTYPE: each band label's chip centre (breadth, flow), layout
++    // coordinates (breadth normalised below with the nodes).
++    let mut g3_at: Vec<Option<(bool, f64, f64)>> = g3_band
++        .iter()
++        .enumerate()
++        .map(|(ei, b)| {
++            let (top, li, row, _) = (*b)?;
++            let (_, a, bb) = g3_win[ei]?;
++            let own = g3_cols[li].iter().find(|c| c.0 == ei && c.1 == a && c.2 == bb)?;
++            let step = LABEL_BOX_H + crate::labels::LABEL_GAP + 1.0;
++            if top {
++                let l = lcoord[li - 1] + reach_of(li - 1, 1) + crate::ortho::ROW_CLEAR + row as f64 * step + LABEL_BOX_H / 2.0;
++                Some((true, own.3, l))
++            } else {
++                let l = lcoord[li] - reach_of(li, 0) - crate::ortho::HEAD_LEG - crate::labels::LABEL_GAP - row as f64 * step - LABEL_BOX_H / 2.0;
++                Some((false, own.4, l))
++            }
++        })
++        .collect();
+ 
+     // Normalise so the diagram starts at MARGIN (real-node extent).
+     let mut minb = f64::INFINITY;
+@@ -5861,6 +6095,9 @@ fn place(
+     for v in 0..na {
+         bpos[v] += shift;
+     }
++    for a in g3_at.iter_mut().flatten() {
++        a.1 += shift;
++    }
+     let total_b = (maxb - minb) + 2.0 * MARGIN;
+ 
+     let nodes = (0..n)
+@@ -5948,6 +6185,7 @@ fn place(
+         depth,
+         order,
+         title_jog,
++        g3_at,
+     }
+ }
+ 
+diff --git a/src/ortho.rs b/src/ortho.rs
+index 6fc1dad..7927f40 100644
+--- a/src/ortho.rs
++++ b/src/ortho.rs
+@@ -97,6 +97,18 @@ const ALIGNED: f64 = 0.5;
+ /// Float tolerance.
+ const EPS: f64 = 1e-6;
+ 
++thread_local! {
++    /// G3 PROTOTYPE side channel: per scene edge of the static block
++    /// scene being finished, its gap label's band (top?), set by
++    /// `scene::scene_clustered`.
++    pub(crate) static G3_SIDE: std::cell::RefCell<Vec<Option<bool>>> =
++        const { std::cell::RefCell::new(Vec::new()) };
++}
++
++fn g3_side(edge: usize) -> Option<bool> {
++    G3_SIDE.with(|c| c.borrow().get(edge).copied().flatten())
++}
++
+ /// A point in flow coordinates: (breadth, along the flow), the flow
+ /// running towards larger values (see [`to_flow`]).
+ fn to_flow(dir: Direction, p: Pt) -> Pt {
+@@ -989,6 +1001,56 @@ fn ortho_pass(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
+         }
+         plans.push((i, plan));
+     }
++    // G3 PROTOTYPE: no foreign track within CLEAR_GAP of a band label's
++    // chip along the flow, where the track passes the chip's breadth.
++    if cx.blocks && mode == Mode::Static {
++        let clear = crate::clearance::CLEAR_GAP + SEP_AIR;
++        let mut chips: Vec<(usize, bool, Rect)> = Vec::new();
++        for (i, plan) in &plans {
++            let Some(top) = g3_side(*i) else { continue };
++            let Some((_, at, w)) = sc.edges[*i].label.as_ref() else { continue };
++            let ends: Vec<Pt> = plan
++                .iter()
++                .filter_map(|c| match *c {
++                    Corner::At(p) => Some(p),
++                    Corner::Jog(..) => None,
++                })
++                .collect();
++            if ends.len() < 2 {
++                continue;
++            }
++            let (f0, f3) = (ends[0], ends[ends.len() - 1]);
++            let (upper, lower) = if f0.1 <= f3.1 { (f0, f3) } else { (f3, f0) };
++            let col = if top { upper.0 } else { lower.0 };
++            let a = to_flow(dir, *at).1;
++            let (bh, fh) = match dir {
++                Direction::TD | Direction::BT => (w / 2.0, crate::layout::LABEL_BOX_H / 2.0),
++                Direction::LR | Direction::RL => (crate::layout::LABEL_BOX_H / 2.0, w / 2.0),
++            };
++            chips.push((*i, top, (col - bh, col + bh, a - fh, a + fh)));
++        }
++        for j in jogs.iter_mut() {
++            for &(i, top, r) in &chips {
++                let (s0, s1) = j.span();
++                if s1 < r.0 - clear || s0 > r.1 + clear {
++                    continue;
++                }
++                let shrink = |room: (f64, f64)| -> (f64, f64) {
++                    if room.1 < r.2 - clear || room.0 > r.3 + clear {
++                        return room;
++                    }
++                    let n = if top { (room.0.max(r.3 + clear), room.1) } else { (room.0, room.1.min(r.2 - clear)) };
++                    if n.0 <= n.1 { n } else { room }
++                };
++                let _ = i;
++                j.room = shrink(j.room);
++                j.want = j.want.max(j.room.0).min(j.room.1);
++                j.at = j.want;
++                j.plain.0 = shrink(j.plain.0);
++                j.plain.1 = j.plain.1.max(j.plain.0 .0).min(j.plain.0 .1);
++            }
++        }
++    }
+     place_tracks(&mut jogs, &kept, cx.blocks);
+     uncross(&mut jogs, &kept_lines);
+ 
+@@ -1033,6 +1095,15 @@ fn ortho_pass(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
+                 let (a, b) = (screen[2], screen[3]);
+                 *at = ((a.0 + b.0) / 2.0, (a.1 + b.1) / 2.0);
+             }
++        } else if let (true, Some(top), true, false) = (cx.blocks, g3_side(i), mode == Mode::Static, chain[i]) {
++            // G3 PROTOTYPE: on its upper (top band) or lower leg, at its band.
++            if let Some((_, at, _)) = e.label.as_mut() {
++                let (a, b) = (to_flow(dir, screen[0]), to_flow(dir, screen[screen.len() - 1]));
++                let (upper, lower) = if a.1 <= b.1 { (a, b) } else { (b, a) };
++                let col = if top { upper.0 } else { lower.0 };
++                let me = to_flow(dir, *at);
++                *at = from_flow(dir, (col, me.1));
++            }
+         } else if cx.blocks && chain[i] {
+             // A block layout's long edge: its label keeps the slot the
+             // layout reserved on the run between its two end blocks
+@@ -2201,8 +2272,23 @@ fn plan_jog(
+     // rides the straight run into the target instead of the step, and the
+     // steps of a labelled fan nest by their source, clear of the chips.
+     let mut above_label = false;
+-    let plain = ((lo, hi), want);
+-    if let Some((at, half)) = label {
++    let mut plain = ((lo, hi), want);
++    let g3 = if cx.blocks { g3_side(edge) } else { None };
++    if let (Some(top), Some((at, half))) = (g3, label) {
++        // G3 PROTOTYPE: a band label keeps its edge's own step on the far
++        // side of its chip, CLEAR_GAP off (flow coordinates).
++        let clear = crate::clearance::CLEAR_GAP + SEP_AIR;
++        let (a, b) = if top {
++            (lo.max(at + half + clear), hi)
++        } else {
++            (lo, hi.min(at - half - clear))
++        };
++        if b >= a {
++            (lo, hi, want) = (a, b, want.max(a).min(b));
++            plain = ((lo, hi), want);
++            above_label = true;
++        }
++    } else if let Some((at, half)) = label {
+         let (a, b) = if h > 0.0 {
+             (lo, hi.min(at - half - LABEL_SEP))
+         } else {
+@@ -2224,7 +2310,7 @@ fn plan_jog(
+         at: want,
+         above_label,
+         plain,
+-        label_half: label.map_or(0.0, |l| l.1),
++        label_half: if g3.is_some() { 0.0 } else { label.map_or(0.0, |l| l.1) },
+         runs: (l0, l1),
+     }
+ }
+diff --git a/src/scene.rs b/src/scene.rs
+index d3ee1af..2208e44 100644
+--- a/src/scene.rs
++++ b/src/scene.rs
+@@ -3493,6 +3493,7 @@ pub(crate) fn scene_labelled(g: &Graph, sizes: &[(f64, f64)], labels: &[String])
+     };
+     // (A block layout's edge stages know which upstream edges are lanes.)
+     crate::edgepass::finish_blocks(g, &mut sc, blocks.as_deref());
++    crate::ortho::G3_SIDE.with(|c| c.borrow_mut().clear());
+     if blocks.is_some() && embrace_own_edges(g, &mut sc) {
+         crate::edgepass::refit(
+             &mut sc,
+@@ -4423,6 +4424,30 @@ fn scene_clustered(
+             }
+         }
+     }
++    if std::env::var("FMDBG_LBL").is_ok() {
++        let mut ys: Vec<f64> = sc.nodes.iter().map(|p| p.y).collect();
++        ys.sort_by(f64::total_cmp);
++        ys.dedup_by(|a, b| (*a - *b).abs() < 0.01);
++        eprintln!("LAYERS {:?}", ys.iter().map(|y| (y * 10.0).round() / 10.0).collect::<Vec<_>>());
++        for (ei, (ge, se)) in ga.edges.iter().zip(sc.edges.iter()).enumerate() {
++            let Some(lbl) = se.label.as_ref() else { continue };
++            let name = |v: usize| ga.nodes.get(v).map(|n| n.id.clone()).unwrap_or_default();
++            let common: Vec<usize> = node_cluster[ge.from]
++                .iter()
++                .zip(&node_cluster[ge.to])
++                .take_while(|(a, b)| a == b)
++                .map(|(a, _)| *a)
++                .collect();
++            let run = groups[ei].iter().filter(|p| p.as_slice() == common.as_slice()).count();
++            let slot = if groups[ei].is_empty() { usize::MAX } else { crate::layout::label_slot(&groups[ei], &common) };
++            eprintln!(
++                "LBL e{} {}>{} chain {} run {} slot {} at ({:.1},{:.1}) w {:.1} wps {:?} paths {:?} from_l {:.1} to_l {:.1}",
++                ei, name(ge.from), name(ge.to), groups[ei].len(), run, slot, lbl.1 .0, lbl.1 .1, lbl.2,
++                se.waypoints.iter().map(|p| ((p.0 * 10.0).round() / 10.0, (p.1 * 10.0).round() / 10.0)).collect::<Vec<_>>(),
++                groups[ei], sc.nodes.get(ge.from).map_or(-1.0, |n| n.y), sc.nodes.get(ge.to).map_or(-1.0, |n| n.y)
++            );
++        }
++    }
+     let horizontal = matches!(g.direction, Direction::LR | Direction::RL);
+ 
+     // Wrap boxes around the laid-out members, then widen each box to
+@@ -4663,6 +4688,39 @@ fn scene_clustered(
+         }
+     }
+ 
++    // G3 PROTOTYPE: a gap label goes to the band the layout reserved for
++    // it, on its upper (top band) or lower (bottom band) leg; the ortho
++    // stage keeps the gap's tracks off it (`crate::ortho`).
++    let mut g3_side: Vec<Option<bool>> = vec![None; sc.edges.len()];
++    if block_paths.is_some() && matches!(g.direction, Direction::TD) {
++        let at = crate::layout::G3_AT.with(|c| std::mem::take(&mut *c.borrow_mut()));
++        // Scene index per augmented edge.
++        let mut idx: Vec<Option<usize>> = (0..ga.edges.len()).map(|ei| (ei < ne).then_some(ei)).collect();
++        let id_of = |end: End| -> String {
++            match end {
++                End::Node(v) => g.nodes[v].id.clone(),
++                End::Sub(si) => g.subgraphs[si].id.clone(),
++            }
++        };
++        let mut k = ne;
++        for (i, e) in g.sub_edges.iter().enumerate() {
++            if k < sc.edges.len() && sc.edges[k].from == id_of(e.from) && sc.edges[k].to == id_of(e.to) {
++                if let Some(ei) = stand_in[i] {
++                    if ei < idx.len() {
++                        idx[ei] = Some(k);
++                    }
++                }
++                k += 1;
++            }
++        }
++        for (ei, a) in at.iter().enumerate() {
++            let (Some((top, b, l)), Some(Some(si))) = (*a, idx.get(ei)) else { continue };
++            if let Some(lbl) = sc.edges[*si].label.as_mut() {
++                lbl.1 = (b, l);
++                g3_side[*si] = Some(top);
++            }
++        }
++    }
+     // Labels last, once every edge (sub-edges too) is drawn.
+     let moved = avoid_label_overlaps(&sc.nodes, &sc.clusters, &mut sc.edges, LABEL_STATIC_WORK);
+     fit_moved_labels(&mut sc, &moved);
+@@ -4680,6 +4738,7 @@ fn scene_clustered(
+         sc.width = (maxx - minx) + 2.0 * MARGIN;
+         sc.height = (maxy - miny) + 2.0 * MARGIN;
+     }
++    crate::ortho::G3_SIDE.with(|c| *c.borrow_mut() = g3_side);
+     (sc, block_paths)
+ }
+ 

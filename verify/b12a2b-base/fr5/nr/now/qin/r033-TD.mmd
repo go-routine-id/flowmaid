@@ -1,0 +1,20 @@
+flowchart TD
+    subgraph O[Shipping and returns desk]
+        subgraph G[Core]
+            m0[queue]
+            m1[ledger]
+            m2[db]
+        end
+        k[k]
+    end
+    m0 --> k
+    m2 --> k
+    s0[src0] --> O
+    s0 --> O
+    s1[src1] --> G
+    s2[src2] --> m0
+    s3[src3] --> m2
+    s3 --> m2
+    s4[src4] --> m2
+    s4 --> G
+    m2 --> z[end]

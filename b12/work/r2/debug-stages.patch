@@ -1,0 +1,78 @@
+diff --git a/src/edgepass.rs b/src/edgepass.rs
+index bc81bd1..7a582ed 100644
+--- a/src/edgepass.rs
++++ b/src/edgepass.rs
+@@ -367,27 +367,40 @@ pub(crate) fn finish_held(g: &Graph, sc: &mut Scene, mode: Mode, fixed: &[bool],
+         *f = x;
+     }
+     let mut moved = vec![false; sc.edges.len()];
++    let xxdbg = |tag: &str, sc: &Scene| { if std::env::var("FM_XXDBG4").is_ok() { let m = crate::quality::measure(g, sc); eprintln!("XXDBG stage {tag}: x {} x_drawn {} fan_x {} edge_node {} edge_frame {}", m.edge_edge_x, m.x_drawn, m.fan_x, m.edge_node_x, m.edge_frame_x); } };
++    xxdbg("builder", sc);
++    if let Ok(pat) = std::env::var("FM_XXDBG5") { for e in sc.edges.iter() { let n = format!("{}>{}", e.from, e.to); if pat.split(',').any(|p| p == n) { eprintln!("XXDBG edge {n} bez {:?} wp {:?}", e.bezier, e.waypoints); } } }
++    if std::env::var("FM_XXSTOP").is_ok() { refit(sc, mode, g.edge_paint_width.is_none()); return; }
+     crate::ports::assign(g, sc, &cx, mode, &mut moved);
++    xxdbg("ports", sc);
+     // Every edge on the axes, its corners rounded (report §2.1): from the
+     // ends the ports stage settled, before the router judges them.
+     crate::ortho::orthogonalize(g, sc, &mut cx, mode);
++    xxdbg("ortho", sc);
++    if let Ok(pat) = std::env::var("FM_XXDBG5") { for e in sc.edges.iter() { let n = format!("{}>{}", e.from, e.to); if pat.split(',').any(|p| p == n) { eprintln!("XXDBG ortho edge {n} corners {:?}", crate::router::ortho_corners(e)); } } }
++    if std::env::var("FM_XXSTOP2").is_ok() { refit(sc, mode, g.edge_paint_width.is_none()); return; }
+     crate::router::repair(g, sc, &cx, mode, &mut moved);
++    xxdbg("repair", sc);
+     // A rerouted end may have switched to another side of its node and
+     // landed on a port another edge already holds: space those groups
+     // again. Groups the router left alone are already spaced and stay
+     // byte-identical.
+     crate::ports::respace(g, sc, &cx, mode, &mut moved);
++    xxdbg("respace", sc);
+     // After the ports are spaced again, so the channel nudge sees (and
+     // keeps) the final ends; in the static scene it ends by putting each
+     // side's ends in the order their paths now head (G9).
+     crate::router::nudge(g, sc, &cx, mode, &mut moved);
++    xxdbg("nudge", sc);
+     // Then two unrelated edges the nudge (or the builder) left side by
+     // side under the spacing get one moved clear, where that costs
+     // nothing else (G4).
+     crate::router::spread_close(g, sc, &cx, mode, &mut moved);
++    xxdbg("spread", sc);
+     // Then a fan's teeth nest: the ports, the tracks and the turns of
+     // each side's ends in one order (report B4, see [`crate::comb`]).
+     crate::comb::comb(sc, &cx, &mut moved);
++    xxdbg("comb", sc);
+     glyph_stubs(sc, &cx, &mut moved);
+     straight_cubics(sc, &cx);
+     square_s_cubics(sc, &cx);
+diff --git a/src/ortho.rs b/src/ortho.rs
+index 17600f7..ab51bf0 100644
+--- a/src/ortho.rs
++++ b/src/ortho.rs
+@@ -798,7 +798,9 @@ fn ortho_pass(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
+                     own: [ends_of(from), ends_of(to)],
+                     edge: i,
+                 };
+-                straighten(&room, f0.0, &cols, f3.0)
++                let xxs = straighten(&room, f0.0, &cols, f3.0);
++                if let Ok(pat) = std::env::var("FM_XXDBG5") { let n = format!("{}>{}", e.from, e.to); if pat.split(',').any(|p| p == n) { eprintln!("XXDBG cols {n} f0 {:?} f3 {:?} before {:?} slots {:?} after {:?}", f0, f3, cols, cols.iter().map(|&q| room.slot(q)).collect::<Vec<_>>(), xxs); } }
++                xxs
+             }
+         } else {
+             Vec::new()
+@@ -917,6 +919,7 @@ fn ortho_pass(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
+                 beside[i] = Some((tb + away * (across + TWIN_AIR), away, j));
+             }
+         }
++        if let Ok(pat) = std::env::var("FM_XXDBG5") { let n = format!("{}>{}", e.from, e.to); if pat.split(',').any(|p| p == n) { eprintln!("XXDBG flow_path {n} f0 {:?} n0 {:?} cols {:?} f3 {:?} n3 {:?} wp {:?}", f0, n0, cols, f3, n3, e.waypoints); } }
+         let plan = flow_path(
+             &ctx,
+             i,
+@@ -947,7 +950,9 @@ fn ortho_pass(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
+         plans.push((i, plan));
+     }
+     place_tracks(&mut jogs, &kept);
++    if let Ok(pat) = std::env::var("FM_XXDBG5") { for j in jogs.iter() { let e = &sc.edges[j.edge]; let n = format!("{}>{}", e.from, e.to); if pat.split(',').any(|p| p == n) { eprintln!("XXDBG jog {n} gap {} room {:?} want {} at {} span {:?} lo_at {} hi_at {}", j.gap, j.room, j.want, j.at, j.span(), j.lo_at, j.hi_at); } } }
+     uncross(&mut jogs, &kept_lines);
++    if let Ok(pat) = std::env::var("FM_XXDBG5") { for j in jogs.iter() { let e = &sc.edges[j.edge]; let n = format!("{}>{}", e.from, e.to); if pat.split(',').any(|p| p == n) { eprintln!("XXDBG jog-uncrossed {n} gap {} at {}", j.gap, j.at); } } }
+ 
+     for (i, plan) in plans {
+         let corners: Vec<Pt> = plan

@@ -1,0 +1,12 @@
+gitGraph
+    commit id: "init"
+    branch dev order: 2
+    branch feat order: 1
+    checkout dev
+    commit id: "d1"
+    checkout feat
+    commit id: "f1"
+    checkout main
+    commit id: "m1"
+    merge dev id: "md" type: HIGHLIGHT
+    merge feat id: "mf" type: REVERSE tag: "v2"

@@ -1,0 +1,14 @@
+flowchart LR
+    N0[Fetch parse]
+    N1{Archive}
+    N2([Emit check])
+    N3(Validate)
+    N4(Fetch)
+    N5{Emit}
+    N0 -->|no| N1
+    N0 --> N2
+    N2 --> N3
+    N3 --> N4
+    N2 --> N5
+    N2 --> N3
+    N3 -.->|again| N2

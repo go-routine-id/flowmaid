@@ -1,0 +1,24 @@
+flowchart TD
+  subgraph F0 [Frame 0]
+    n1[[Node 1]]
+    n4[[Node 4]]
+  end
+  subgraph F1 [Frame 1]
+    n3[Node 3]
+    n0[/Node 0/]
+  end
+  subgraph F2 [Frame 2]
+    direction LR
+  end
+  n3 --> F1
+  n3 --x n3
+  n0 <--> n1
+  n1 -.->|dot| n2
+  n0 ==>|thick lbl| n4
+  n0 <-.-> n2
+  n3 ==> n1
+  n1 --- n4
+  n4 --x n0
+  n0 --o n2
+  n0 ==>|thick lbl| n4
+  linkStyle 4 stroke:#c33,stroke-width:16px

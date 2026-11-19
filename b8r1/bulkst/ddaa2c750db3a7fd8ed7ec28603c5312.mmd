@@ -1,0 +1,10 @@
+stateDiagram-v2
+    direction BT
+    state c <<choice>>
+    [*] --> Start
+    Start --> c
+    c --> One : first option
+    c --> Two : second option
+    c --> Three : third
+    c --> Four : fourth option here
+    c --> Five : 5

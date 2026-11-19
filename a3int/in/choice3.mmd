@@ -1,0 +1,8 @@
+stateDiagram-v2
+state c <<choice>>
+[*] --> Order
+Order --> c
+c --> Express : priority customer
+c --> Standard : regular customer
+c --> Hold : payment pending
+c --> Cancel : fraud suspected

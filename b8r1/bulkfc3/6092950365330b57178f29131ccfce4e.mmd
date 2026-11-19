@@ -1,0 +1,23 @@
+flowchart TD
+  subgraph F0 [Frame 0]
+    n6(Node 6)
+  end
+  n0 --x n4
+  n2 --->|yes| n3
+  n5 <==>|x| n7
+  n4 <==> n2
+  n3 <-.-> n4
+  n2 <==> n3
+  n3 --x n3
+  n1 o--o n1
+  n4 --x|yes| n6
+  n6 === n0
+  n3 --->|a longer label| n4
+  n6 --o n6
+  n6 x--x n3
+  linkStyle 0 stroke-width:30px
+  linkStyle 2 stroke-width:15px,stroke:#c33
+  linkStyle 3 stroke-width:15px,stroke:#36c,stroke-dasharray:6 3
+  linkStyle 9 stroke-width:30px,stroke:#3a3
+  linkStyle 11 interpolate natural stroke-width:2px
+  linkStyle 12 stroke-width:20px,stroke:#c33

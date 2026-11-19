@@ -1,0 +1,28 @@
+flowchart LR
+  s0["cart api"]
+  s1["web cart trace"]
+  subgraph g0["db pay auth zone"]
+    m0["web index report"]
+    m1["metric store ship"]
+    m2["log"]
+    m3["log"]
+    m1 --> m2
+    m1 --> m3
+  end
+  subgraph g1["log billing zone"]
+    direction LR
+    m4["auth order"]
+    m5["store"]
+  end
+  subgraph g2["trace zone"]
+    direction LR
+    m6["metric metric"]
+    m7["ship metric metric"]
+    m6 --> m7
+  end
+  s0 --> m0
+  s1 --> g1
+  s1 --> m6
+  s1 --> L8["log ship"]
+  s0 --> L9["billing search"]
+  s0 --> L10["pay report cart"]

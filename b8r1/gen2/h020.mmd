@@ -1,0 +1,26 @@
+flowchart LR
+  s0["metric db"]
+  s1["db trace"]
+  subgraph g0["user cart zone"]
+    m0["cart api"]
+    m1["queue api"]
+    m2["ship db cart"]
+    m0 --> m1
+    m1 --> m2
+  end
+  subgraph g1["notify web zone"]
+    m3["order index"]
+  end
+  subgraph g2["report zone"]
+    direction TB
+    m4["index search"]
+    m5["api log"]
+    m4 --> m5
+  end
+  s1 --> m0
+  s1 --> g1
+  s0 --> m4
+  m3 --> m4
+  m3 --> m5
+  s0 --> L6["trace"]
+  s0 --> L7["log db billing"]

@@ -1,0 +1,13 @@
+flowchart TD
+    subgraph pool [Worker pool]
+        direction LR
+        W1[Worker one] --> W2[Worker two]
+        W2 --> W3[Worker three]
+    end
+    Q[Queue] --> W1
+    Q --> W3
+    W1 --> R[(Results)]
+    W2 --> R
+    W3 --> R
+    R ==> S[Report]
+    S -.-> Q

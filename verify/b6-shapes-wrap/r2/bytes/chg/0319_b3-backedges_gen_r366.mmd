@@ -1,0 +1,20 @@
+flowchart LR
+    N0(Archive parse)
+    N1(Check)
+    N2([Notify])
+    N3([Parse])
+    N4(Check validate)
+    N5{Emit}
+    N6[Validate notify]
+    N7[Done fetch]
+    N0 --> N1
+    N1 -->|fail| N2
+    N0 --> N3
+    N3 --> N4
+    N2 --> N5
+    N5 --> N6
+    N4 --> N7
+    N1 --> N4
+    N7 -->|back| N0
+    N5 --> N1
+    N6 -.-> N3

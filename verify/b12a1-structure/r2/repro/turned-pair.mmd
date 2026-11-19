@@ -1,0 +1,20 @@
+flowchart TD
+  subgraph A[First]
+    a1 --> a2
+  end
+  subgraph B[Second]
+    b1
+    b2
+    subgraph BB[Inner]
+      x1 --> x2
+    end
+    b2 --> x1
+  end
+  subgraph C[Third]
+    c1 --> c2
+  end
+  A --> B
+  B --> C
+  C --> A
+  BB --> A
+  c2 --> b1

@@ -1,0 +1,77 @@
+back-edge	static	min_edge_gap=40.00	defects=0	edge_frame_pairs=0	edge_node_x=0
+back-edge	routed	min_edge_gap=40.00	defects=0	edge_frame_pairs=0	edge_node_x=0
+bench-75	static	min_edge_gap=16.09	defects=5	edge_frame_pairs=2	edge_node_x=0
+bench-75	routed	min_edge_gap=2.46	defects=25	edge_frame_pairs=0	edge_node_x=0
+dense-lr	static	min_edge_gap=9.53	defects=13	edge_frame_pairs=11	edge_node_x=0
+dense-lr	routed	min_edge_gap=9.74	defects=18	edge_frame_pairs=13	edge_node_x=0
+dense-td	static	min_edge_gap=12.16	defects=42	edge_frame_pairs=28	edge_node_x=0
+dense-td	routed	min_edge_gap=6.60	defects=43	edge_frame_pairs=28	edge_node_x=0
+fanout-frames	static	min_edge_gap=40.00	defects=0	edge_frame_pairs=0	edge_node_x=0
+fanout-frames	routed	min_edge_gap=40.00	defects=0	edge_frame_pairs=0	edge_node_x=0
+wide-labels	static	min_edge_gap=40.00	defects=0	edge_frame_pairs=0	edge_node_x=0
+wide-labels	routed	min_edge_gap=40.00	defects=0	edge_frame_pairs=0	edge_node_x=0
+TOT	area_per_node	625793.66	608454.11
+TOT	arrow_on_start	0.00	0.00
+TOT	aspect	11.97	11.88
+TOT	backtrack	0.00	0.00
+TOT	band_len	41034.00	47034.00
+TOT	band_pairs	91.00	101.00
+TOT	border_len	1021.30	2063.95
+TOT	border_runs	10.00	22.00
+TOT	center_off	1.86	1.71
+TOT	corner_touch	0.00	8.00
+TOT	dash_edges	0.00	0.00
+TOT	edge_chip	0.00	3.00
+TOT	edge_edge_x	495.00	497.00
+TOT	edge_frame_pairs	41.00	41.00
+TOT	edge_frame_x	20.00	19.00
+TOT	edge_node_pairs	0.00	0.00
+TOT	edge_node_x	0.00	0.00
+TOT	edges	185.00	185.00
+TOT	end_cross	4.00	14.00
+TOT	end_gap_max	0.05	0.05
+TOT	end_gaps	0.00	0.00
+TOT	end_kink	54.00	71.00
+TOT	end_tilt	8.00	11.00
+TOT	end_tilt_max	76.75	128.37
+TOT	frame_overlap	0.00	0.00
+TOT	frame_side	0.00	0.00
+TOT	frames	32.00	32.00
+TOT	height	3467.50	3467.50
+TOT	hug_len	2969.28	3449.08
+TOT	hug_max	766.19	548.05
+TOT	hug_runs	17.00	34.00
+TOT	idiom_bow	2.00	1.00
+TOT	idiom_ortho	100.00	81.00
+TOT	idiom_scubic	60.00	81.00
+TOT	idiom_spline	23.00	22.00
+TOT	ink	0.69	0.69
+TOT	ink_out	0.00	0.00
+TOT	lat_backtrack	1812.82	694.44
+TOT	lat_wiggles	16.00	16.00
+TOT	lbl_arrow	0.00	0.00
+TOT	lbl_chip	0.00	0.00
+TOT	lbl_crowd	0.00	0.00
+TOT	lbl_edge	0.00	3.00
+TOT	lbl_lbl	0.00	0.00
+TOT	lbl_node	0.00	0.00
+TOT	min_edge_gap	9.53	2.46
+TOT	min_node_gap	4.00	3.16
+TOT	node_frame	0.00	0.00
+TOT	node_near	2.00	1.00
+TOT	node_overlap	0.00	0.00
+TOT	nodes	153.00	153.00
+TOT	ortho_edges	89.00	71.00
+TOT	overlap_len	2396.00	6744.00
+TOT	overlap_max	378.00	1288.00
+TOT	overlap_pairs	19.00	45.00
+TOT	own_frame_len	0.00	0.00
+TOT	own_frame_x	0.00	0.00
+TOT	shared_ports	0.00	0.00
+TOT	tight_len	8070.00	18994.00
+TOT	tight_pairs	39.00	71.00
+TOT	width	4249.10	4224.10
+TOT	wiggles	0.00	0.00
+TOT	x_drawn	505.00	504.00
+TOT	xgap_max	13.00	11.00
+TOT	xnotches	0.00	0.00

@@ -1,0 +1,22 @@
+flowchart RL
+    N0(Store)
+    N1(Notify check)
+    N2([Parse])
+    N3((Retry emit))
+    N4([Check report])
+    N5([Emit load])
+    N6(Notify store)
+    N7{Queue parse}
+    N0 --> N1
+    N1 --> N2
+    N2 --> N3
+    N2 --> N4
+    N4 -->|ok| N5
+    N5 --> N6
+    N6 --> N7
+    N3 --> N5
+    N2 --> N7
+    N4 --> N5
+    N6 -->|rollback| N0
+    N5 ==> N2
+    N5 ==>|rollback| N4

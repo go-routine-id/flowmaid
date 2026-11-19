@@ -1,0 +1,33 @@
+d1.r MISMATCH 9
+d1.r TRANSLATION 76
+d4.r MISMATCH 11
+d4.r TRANSLATION 74
+d6 same 79
+d6.r TRANSLATION 6
+d9.r MISMATCH 22
+d9.r TRANSLATION 63
+r0 TRANSLATION 7
+r0 same 78
+render same 150
+scene same 85
+== MISMATCH: 42
+   /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/small2-class-twoway/fz/f152.mmd d1.r {'ox': -136.0, 'oy': -94.0, 'bvb': [0.0, 0.0], 'verdict': 'MISMATCH'}
+       ('num', 74, '<text x="#" y="#" dy="#em" text-anchor="middle" fill="##" font-size="#">', 'x', 167.5, 120.5, -136.0)
+   /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/small2-class-twoway/fz/f152.mmd d9.r {'ox': -40.0, 'oy': -25.0, 'bvb': [0.0, 0.0], 'verdict': 'MISMATCH'}
+       ('num', 74, '<text x="#" y="#" dy="#em" text-anchor="middle" fill="##" font-size="#">', 'x', 96.5, 15.5, -40.0)
+   /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/small2-class-twoway/fz/f156.mmd d9.r {'ox': -40.0, 'oy': -25.0, 'bvb': [0.0, 0.0], 'verdict': 'MISMATCH'}
+       ('num', 44, '<text x="#" y="#" dy="#em" text-anchor="middle" fill="##" font-size="#">', 'x', 58.7, 53.3, -40.0)
+   /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/small2-class-twoway/fz/f164.mmd d1.r {'ox': -136.0, 'oy': -94.0, 'bvb': [0.0, 0.0], 'verdict': 'MISMATCH'}
+       ('num', 78, '<text x="#" y="#" dy="#em" text-anchor="middle" fill="##" font-size="#">', 'x', 127.8, -39.8, -136.0)
+   /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/small2-class-twoway/fz/f164.mmd d9.r {'ox': -40.0, 'oy': -25.0, 'bvb': [0.0, 0.0], 'verdict': 'MISMATCH'}
+       ('num', 74, '<text x="#" y="#" dy="#em" text-anchor="middle" fill="##" font-size="#">', 'x', 103.5, 8.5, -40.0)
+   /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/small2-class-twoway/fz/f165.mmd d9.r {'ox': -40.0, 'oy': -25.0, 'bvb': [0.0, 0.0], 'verdict': 'MISMATCH'}
+       ('num', 118, '<text x="#" y="#" dy="#em" text-anchor="middle" fill="##" font-size="#">', 'x', 104.5, 7.5, -40.0)
+   /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/small2-class-twoway/fz/f168.mmd d9.r {'ox': -40.0, 'oy': -25.0, 'bvb': [0.0, 0.0], 'verdict': 'MISMATCH'}
+       ('num', 40, '<text x="#" y="#" dy="#em" text-anchor="middle" fill="##" font-size="#">', 'x', 96.5, 15.5, -40.0)
+   /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/small2-class-twoway/fz/f171.mmd d1.r {'ox': -136.0, 'oy': -94.0, 'bvb': [0.0, 0.0], 'verdict': 'MISMATCH'}
+       ('num', 92, '<text x="#" y="#" dy="#em" text-anchor="middle" fill="##" font-size="#">', 'x', 160.2, 55.8, -136.0)
+   /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/small2-class-twoway/fz/f171.mmd d9.r {'ox': -40.0, 'oy': -25.0, 'bvb': [0.0, 0.0], 'verdict': 'MISMATCH'}
+       ('num', 92, '<text x="#" y="#" dy="#em" text-anchor="middle" fill="##" font-size="#">', 'x', 60.2, 51.8, -40.0)
+   /tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/small2-class-twoway/fz/f172.mmd d4.r {'ox': -150.0, 'oy': 0.0, 'bvb': [0.0, 0.0], 'verdict': 'MISMATCH'}
+       ('num', 90, '<text x="#" y="#" dy="#em" text-anchor="middle" fill="##" font-size="#">', 'x', 84.1, -34.1, -150.0)

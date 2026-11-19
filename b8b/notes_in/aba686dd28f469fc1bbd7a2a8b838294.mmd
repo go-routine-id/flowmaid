@@ -1,0 +1,11 @@
+stateDiagram-v2
+direction RL
+state c <<choice>>
+[*] --> A
+A --> c
+c --> B : yes
+c --> B : maybe
+c --> C : no
+note right of A : right of A
+note left of B : left of B
+note right of C : right of C

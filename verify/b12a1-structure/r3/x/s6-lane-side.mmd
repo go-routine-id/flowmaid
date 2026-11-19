@@ -1,0 +1,22 @@
+stateDiagram-v2
+  [*] --> Idle
+  state Work {
+    [*] --> Load
+    Load --> Check
+    Check --> Fix
+    Check --> Skip
+    Fix --> Ship
+    Skip --> Ship
+    state Retry {
+      [*] --> Plan
+      Plan --> Run
+      Run --> Report : ok
+      Run --> Verify : again
+      Verify --> Run : redo
+      Verify --> Plan : restart
+      Report --> Plan : loop
+    }
+    Check --> Retry
+    Retry --> Ship
+  }
+  Idle --> Work

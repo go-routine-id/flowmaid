@@ -1,0 +1,94 @@
+class A.
+----
+class .A
+----
+class A..B
+----
+class A...B
+----
+class A....B
+----
+class A.B.
+----
+class .A.B
+----
+class a.b.C
+----
+class A.B
+----
+class com.example.Order
+----
+class A. B
+----
+class A .B
+----
+class A . B
+----
+class A~T~.
+----
+class A.B~T~
+----
+class `A`.B
+----
+class A.`B`
+----
+class `A.`
+----
+class Map~a.b~
+----
+class A["x.y"]
+----
+class A:::foo.
+----
+class A.:::foo
+----
+class A, B.
+----
+class A. {
+}
+----
+class A.B {
++x int
+}
+----
+<<interface>> A.
+----
+class A
+<<interface>> A
+----
+A.B --> C
+----
+class A.-B
+----
+class A-.B
+----
+class A.1
+----
+class 1.A
+----
+class A.-
+----
+class A..
+----
+class ..A
+----
+class A.$
+----
+class A.;
+----
+class A..B {
+}
+----
+class A.B.C~T~
+----
+class A
+class B.
+----
+note for A "x."
+class A
+----
+class A.B["lbl"]
+----
+class A_.B
+----
+class A._B

@@ -1,0 +1,568 @@
+Scene {
+    nodes: [
+        SceneNode {
+            id: "Client",
+            x: 190.9,
+            y: 47.0,
+            w: 68.0,
+            h: 38.0,
+            shape: Rect,
+            label: "Client",
+            style: NodeStyle {
+                fill: Some(
+                    "#fff3bf",
+                ),
+                stroke: Some(
+                    "#f08c00",
+                ),
+                stroke_width: None,
+                color: None,
+            },
+            link: None,
+        },
+        SceneNode {
+            id: "GW",
+            x: 190.9,
+            y: 145.0,
+            w: 113.29999999999998,
+            h: 38.0,
+            shape: Rounded,
+            label: "API Gateway",
+            style: NodeStyle {
+                fill: None,
+                stroke: None,
+                stroke_width: None,
+                color: None,
+            },
+            link: None,
+        },
+        SceneNode {
+            id: "Auth",
+            x: 190.9,
+            y: 269.0,
+            w: 109.8,
+            h: 38.0,
+            shape: Rect,
+            label: "Auth service",
+            style: NodeStyle {
+                fill: None,
+                stroke: None,
+                stroke_width: None,
+                color: None,
+            },
+            link: None,
+        },
+        SceneNode {
+            id: "Users",
+            x: 190.9,
+            y: 367.0,
+            w: 84.5,
+            h: 38.0,
+            shape: Rect,
+            label: "User DB",
+            style: NodeStyle {
+                fill: None,
+                stroke: None,
+                stroke_width: None,
+                color: None,
+            },
+            link: None,
+        },
+        SceneNode {
+            id: "Bus",
+            x: 190.9,
+            y: 491.0,
+            w: 73.7,
+            h: 38.0,
+            shape: Rect,
+            label: "Broker",
+            style: NodeStyle {
+                fill: None,
+                stroke: None,
+                stroke_width: None,
+                color: None,
+            },
+            link: None,
+        },
+        SceneNode {
+            id: "C1",
+            x: 110.95,
+            y: 589.0,
+            w: 109.9,
+            h: 38.0,
+            shape: Rect,
+            label: "Consumer A",
+            style: NodeStyle {
+                fill: None,
+                stroke: None,
+                stroke_width: None,
+                color: None,
+            },
+            link: None,
+        },
+        SceneNode {
+            id: "C2",
+            x: 270.85,
+            y: 589.0,
+            w: 109.9,
+            h: 38.0,
+            shape: Rect,
+            label: "Consumer B",
+            style: NodeStyle {
+                fill: None,
+                stroke: None,
+                stroke_width: None,
+                color: None,
+            },
+            link: None,
+        },
+        SceneNode {
+            id: "Store",
+            x: 190.9,
+            y: 711.0,
+            w: 103.69999999999999,
+            h: 38.0,
+            shape: Rect,
+            label: "Warehouse",
+            style: NodeStyle {
+                fill: None,
+                stroke: None,
+                stroke_width: None,
+                color: None,
+            },
+            link: None,
+        },
+    ],
+    edges: [
+        SceneEdge {
+            from: "Client",
+            to: "GW",
+            bezier: [
+                (
+                    190.9,
+                    66.0,
+                ),
+                (
+                    190.9,
+                    96.0,
+                ),
+                (
+                    190.9,
+                    96.0,
+                ),
+                (
+                    190.9,
+                    126.0,
+                ),
+            ],
+            waypoints: [],
+            kind: Arrow,
+            ends: EdgeEnds {
+                start: None,
+                end: None,
+            },
+            meta: EdgeMeta {
+                id: None,
+                animation: None,
+                curve: None,
+                style: LinkStyle {
+                    stroke: None,
+                    stroke_width: None,
+                    stroke_dasharray: None,
+                    fill: None,
+                    color: None,
+                },
+            },
+            label: None,
+            paint_width: None,
+        },
+        SceneEdge {
+            from: "GW",
+            to: "Auth",
+            bezier: [
+                (
+                    190.9,
+                    164.0,
+                ),
+                (
+                    190.9,
+                    207.0,
+                ),
+                (
+                    190.9,
+                    207.0,
+                ),
+                (
+                    190.9,
+                    250.0,
+                ),
+            ],
+            waypoints: [],
+            kind: Arrow,
+            ends: EdgeEnds {
+                start: None,
+                end: None,
+            },
+            meta: EdgeMeta {
+                id: None,
+                animation: None,
+                curve: None,
+                style: LinkStyle {
+                    stroke: None,
+                    stroke_width: None,
+                    stroke_dasharray: None,
+                    fill: None,
+                    color: None,
+                },
+            },
+            label: None,
+            paint_width: None,
+        },
+        SceneEdge {
+            from: "Auth",
+            to: "Users",
+            bezier: [
+                (
+                    190.9,
+                    288.0,
+                ),
+                (
+                    190.9,
+                    318.0,
+                ),
+                (
+                    190.9,
+                    318.0,
+                ),
+                (
+                    190.9,
+                    348.0,
+                ),
+            ],
+            waypoints: [],
+            kind: Arrow,
+            ends: EdgeEnds {
+                start: None,
+                end: None,
+            },
+            meta: EdgeMeta {
+                id: None,
+                animation: None,
+                curve: None,
+                style: LinkStyle {
+                    stroke: None,
+                    stroke_width: None,
+                    stroke_dasharray: None,
+                    fill: None,
+                    color: None,
+                },
+            },
+            label: None,
+            paint_width: None,
+        },
+        SceneEdge {
+            from: "Users",
+            to: "Bus",
+            bezier: [
+                (
+                    190.9,
+                    386.0,
+                ),
+                (
+                    190.9,
+                    429.0,
+                ),
+                (
+                    190.9,
+                    429.0,
+                ),
+                (
+                    190.9,
+                    472.0,
+                ),
+            ],
+            waypoints: [],
+            kind: Arrow,
+            ends: EdgeEnds {
+                start: None,
+                end: None,
+            },
+            meta: EdgeMeta {
+                id: None,
+                animation: None,
+                curve: None,
+                style: LinkStyle {
+                    stroke: None,
+                    stroke_width: None,
+                    stroke_dasharray: None,
+                    fill: None,
+                    color: None,
+                },
+            },
+            label: None,
+            paint_width: None,
+        },
+        SceneEdge {
+            from: "Bus",
+            to: "C1",
+            bezier: [
+                (
+                    166.05,
+                    510.0,
+                ),
+                (
+                    166.05,
+                    540.0,
+                ),
+                (
+                    110.95,
+                    540.0,
+                ),
+                (
+                    110.95,
+                    570.0,
+                ),
+            ],
+            waypoints: [
+                (
+                    166.05,
+                    510.0,
+                ),
+                (
+                    166.05,
+                    526.0,
+                ),
+                (
+                    166.05,
+                    540.0,
+                ),
+                (
+                    152.05,
+                    540.0,
+                ),
+                (
+                    124.95,
+                    540.0,
+                ),
+                (
+                    110.95,
+                    540.0,
+                ),
+                (
+                    110.95,
+                    554.0,
+                ),
+                (
+                    110.95,
+                    570.0,
+                ),
+            ],
+            kind: Arrow,
+            ends: EdgeEnds {
+                start: None,
+                end: None,
+            },
+            meta: EdgeMeta {
+                id: None,
+                animation: None,
+                curve: None,
+                style: LinkStyle {
+                    stroke: None,
+                    stroke_width: None,
+                    stroke_dasharray: None,
+                    fill: None,
+                    color: None,
+                },
+            },
+            label: None,
+            paint_width: None,
+        },
+        SceneEdge {
+            from: "Bus",
+            to: "C2",
+            bezier: [
+                (
+                    215.75,
+                    510.0,
+                ),
+                (
+                    215.75,
+                    540.0,
+                ),
+                (
+                    270.85,
+                    540.0,
+                ),
+                (
+                    270.85,
+                    570.0,
+                ),
+            ],
+            waypoints: [
+                (
+                    215.75,
+                    510.0,
+                ),
+                (
+                    215.75,
+                    526.0,
+                ),
+                (
+                    215.75,
+                    540.0,
+                ),
+                (
+                    229.75,
+                    540.0,
+                ),
+                (
+                    256.85,
+                    540.0,
+                ),
+                (
+                    270.85,
+                    540.0,
+                ),
+                (
+                    270.85,
+                    554.0,
+                ),
+                (
+                    270.85,
+                    570.0,
+                ),
+            ],
+            kind: Arrow,
+            ends: EdgeEnds {
+                start: None,
+                end: None,
+            },
+            meta: EdgeMeta {
+                id: None,
+                animation: None,
+                curve: None,
+                style: LinkStyle {
+                    stroke: None,
+                    stroke_width: None,
+                    stroke_dasharray: None,
+                    fill: None,
+                    color: None,
+                },
+            },
+            label: None,
+            paint_width: None,
+        },
+        SceneEdge {
+            from: "C1",
+            to: "Store",
+            bezier: [
+                (
+                    147.05,
+                    608.0,
+                ),
+                (
+                    147.05,
+                    636.0,
+                ),
+                (
+                    147.05,
+                    664.0,
+                ),
+                (
+                    147.05,
+                    692.0,
+                ),
+            ],
+            waypoints: [],
+            kind: Arrow,
+            ends: EdgeEnds {
+                start: None,
+                end: None,
+            },
+            meta: EdgeMeta {
+                id: None,
+                animation: None,
+                curve: None,
+                style: LinkStyle {
+                    stroke: None,
+                    stroke_width: None,
+                    stroke_dasharray: None,
+                    fill: None,
+                    color: None,
+                },
+            },
+            label: None,
+            paint_width: None,
+        },
+        SceneEdge {
+            from: "C2",
+            to: "Store",
+            bezier: [
+                (
+                    234.75,
+                    608.0,
+                ),
+                (
+                    234.75,
+                    636.0,
+                ),
+                (
+                    234.75,
+                    664.0,
+                ),
+                (
+                    234.75,
+                    692.0,
+                ),
+            ],
+            waypoints: [],
+            kind: Arrow,
+            ends: EdgeEnds {
+                start: None,
+                end: None,
+            },
+            meta: EdgeMeta {
+                id: None,
+                animation: None,
+                curve: None,
+                style: LinkStyle {
+                    stroke: None,
+                    stroke_width: None,
+                    stroke_dasharray: None,
+                    fill: None,
+                    color: None,
+                },
+            },
+            label: None,
+            paint_width: None,
+        },
+    ],
+    clusters: [
+        SceneCluster {
+            id: "platform",
+            x: 28.0,
+            y: 210.0,
+            w: 325.8,
+            h: 426.0,
+            title: "Platform",
+            depth: 0,
+        },
+        SceneCluster {
+            id: "events",
+            x: 42.0,
+            y: 432.0,
+            w: 297.8,
+            h: 190.0,
+            title: "Event bus",
+            depth: 1,
+        },
+    ],
+    width: 381.8,
+    height: 758.0,
+    origin: (
+        0.0,
+        0.0,
+    ),
+    routed: false,
+    plain_crossings: false,
+}

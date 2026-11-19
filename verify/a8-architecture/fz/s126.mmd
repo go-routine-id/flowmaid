@@ -1,0 +1,33 @@
+architecture-beta
+    group g0(disk)[Frontend]
+    group g1(database)[Private API]
+    group g2(internet)[Data] in g1
+    group g3(cloud)[Frontend]
+    service s0(internet)[Service 0] in g1
+    service s1(server)[Service 1] in g3
+    service s2(internet)[Service 2] in g3
+    service s3(server)[Service 3] in g3
+    service s4(monitoring)[Service 4] in g0
+    service s5(internet)[Service 5] in g2
+    service s6(cloud)[Service 6]
+    service s7(server)[Service 7] in g1
+    service s8(disk)[Service 8] in g1
+    service s9(disk)[Service 9] in g1
+    service s10(database)[Service 10] in g3
+    service s11(database)[Service 11] in g3
+    service s12(server)[Service 12] in g0
+    service s13(internet)[Service 13] in g0
+    service s14(internet)[Service 14] in g0
+    s4:R --> B:s5
+    s11:B --> T:s2
+    s11:T --> B:s10
+    s3:T -- L:s4
+    s4:L --> R:s10
+    s0:L -- L:s13
+    s0:B --> T:s4
+    s10:B -- T:s12
+    s4:T --> R:s3
+    s5:L -- B:s6
+    s9:L --> R:s14
+    s0:L -- R:s10
+    s7:T --> B:s8

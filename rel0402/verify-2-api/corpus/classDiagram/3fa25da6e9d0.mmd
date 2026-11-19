@@ -1,0 +1,26 @@
+classDiagram
+direction RL
+A *-- B : uses
+B --> C
+A "1" ..> "*" D : x
+B *-- E
+E ..|> F
+C --> G : x
+D --> C
+C ..> C : c0
+C ..> C : c1
+C *-- C : c2
+C --> C : c3
+D --> D : d0
+D *-- D : d1
+D "1" --> "*" D : d2
+D --> D : d3
+D ..> D
+B "1" --> "*" B
+B --> B : b1
+B --> B : b2
+class E {
+ +int id
+ +run() void
+ +stop()
+}

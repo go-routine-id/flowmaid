@@ -1,0 +1,14 @@
+sequenceDiagram
+    participant A
+    participant B
+    B->>+A: go
+    loop outer
+        opt mid
+            loop inner
+                par deep
+                    A->>B: x
+                end
+            end
+        end
+    end
+    A-->>-B: z

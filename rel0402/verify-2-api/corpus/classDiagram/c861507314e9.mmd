@@ -1,0 +1,15 @@
+classDiagram
+A ..> B
+B *-- C
+B ..> D : owns
+A ..|> E
+B *-- A
+D *-- C
+D "1" --> "*" D : d0
+D *-- D
+D *-- D : d2
+class D {
+ +int id
+ +run() void
+ +stop()
+}

@@ -1,0 +1,24 @@
+flowchart BT
+    N0([Archive report])
+    N1{Check}
+    N2((Retry))
+    N3[Queue]
+    N4[Archive]
+    N5(Retry)
+    N6{Done}
+    N7(Emit archive)
+    N8([Load])
+    N9([Parse report])
+    N0 --> N1
+    N0 --> N2
+    N0 -->|no| N3
+    N2 -->|fail| N4
+    N3 -->|ok| N5
+    N4 --> N6
+    N5 --> N7
+    N5 -->|ok| N8
+    N8 --> N9
+    N0 --> N2
+    N2 --> N3
+    N1 --> N6
+    N6 --> N5

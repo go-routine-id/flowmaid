@@ -1,0 +1,32 @@
+flowchart LR
+    cli([CLI]) --> gw
+    web([Web app]) --> gw
+    subgraph front[Front door with a rather long title]
+        gw[gateway]
+        auth[auth]
+    end
+    subgraph svc[Services]
+        a[orders]
+        b[billing]
+        c[catalog]
+        d[search]
+    end
+    subgraph data[Data]
+        pg[(postgres)]
+        es[(elastic)]
+        mq[[bus]]
+    end
+    es -.->|stale| c
+    b -->|receipt| gw
+    mq -.->|reindex| d
+    mq -->|invoice| b
+    a -->|order placed| mq
+    d --> es
+    c --> pg
+    b --> pg
+    a --> pg
+    gw -->|/search| d
+    gw -->|/catalog| c
+    gw -->|/billing| b
+    gw -->|/orders| a
+    gw -->|token| auth

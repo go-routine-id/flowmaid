@@ -1,0 +1,20 @@
+flowchart RL
+    N0{Emit store}
+    N1([Queue validate])
+    N2([Done])
+    N3(Parse)
+    N4{Load}
+    N5(Parse)
+    N6{Fetch validate}
+    N7[Archive]
+    N8(Emit emit)
+    N0 -->|no| N1
+    N1 -->|ok| N2
+    N2 --> N3
+    N2 --> N4
+    N2 --> N5
+    N3 -->|next| N6
+    N5 --> N7
+    N7 -->|yes| N8
+    N4 --> N7
+    N4 ==>|rollback| N0

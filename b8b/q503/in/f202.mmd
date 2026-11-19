@@ -1,0 +1,57 @@
+flowchart TB
+  n0["adipiscing adipiscing incididunt ipsum<br/>labore labore ipsum aliqua"]
+  subgraph g0["elit magna incididunt eiusmod"]
+    direction LR
+    n1["sed labore<br/>magna sed ipsum consectetur<br/>ipsum"]
+    n2("consectetur<br/>adipiscing sit")
+    n3[("laboris adipiscing")]
+    n4("laboris tempor adipiscing")
+    n1 --> n2
+  end
+  subgraph g1["elit tempor ipsum ullamco incididunt incididunt"]
+    direction LR
+    n5("veniam tempor")
+    n6[("nostrud eiusmod")]
+    n7["nostrud eiusmod sit do"]
+  end
+  subgraph g2["ullamco magna do"]
+    n8(["veniam labore<br/>labore ipsum<br/>consectetur"])
+    n9[("labore ullamco amet lorem<br/>sit adipiscing nostrud consectetur<br/>ipsum")]
+    n10["lorem tempor adipiscing aliqua<br/>adipiscing"]
+    n11("veniam<br/>ut magna elit")
+    n12(["ullamco consectetur dolor elit<br/>magna ullamco elit dolor<br/>lorem ipsum"])
+    n13("aliqua laboris ullamco")
+  end
+  subgraph g3["nostrud magna tempor do elit adipiscing"]
+    direction LR
+    n14("sed<br/>laboris do<br/>veniam sit ullamco sed")
+    n15(["ullamco labore amet ipsum<br/>magna eiusmod"])
+    n16[("elit dolor")]
+    n17[("laboris adipiscing adipiscing<br/>adipiscing consectetur labore<br/>ipsum")]
+  end
+  subgraph g4["adipiscing amet amet lorem lorem ipsum do"]
+    n18("nostrud dolor<br/>ipsum nostrud labore tempor")
+    n19(["veniam ut eiusmod<br/>adipiscing sed"])
+    n20(["labore laboris elit<br/>adipiscing lorem laboris"])
+    n21("adipiscing veniam<br/>tempor<br/>adipiscing dolor aliqua")
+    n22(["adipiscing tempor ullamco<br/>consectetur labore nostrud"])
+    n23("incididunt nostrud sed veniam<br/>dolor dolor")
+  end
+  subgraph g5["consectetur ipsum ut nostrud magna elit lorem"]
+    n24["ipsum<br/>incididunt eiusmod aliqua"]
+  end
+  subgraph g6["tempor ipsum adipiscing"]
+    direction LR
+    n25(["amet adipiscing tempor<br/>lorem aliqua amet lorem<br/>amet"])
+    n26(["veniam ullamco ullamco sed<br/>do magna sed"])
+    n27(["tempor nostrud adipiscing"])
+    n28[("labore<br/>aliqua")]
+    n29("amet laboris elit amet<br/>sed amet aliqua tempor")
+  end
+  n0 --> g0
+  n0 --> n6
+  n0 -.-> g2
+  n0 --> g3
+  n0 ==> n18
+  n0 --> g5
+  n0 ==> g6

@@ -1,0 +1,35 @@
+flowchart BT
+  n1["mail"]
+  n2["pack report mail"]
+  n3["cache search index"]
+  subgraph B0["Data tier"]
+    n4["audit"]
+    n5["queue"]
+    n6["api mail mail"]
+  end
+  subgraph B1["Ingest"]
+    n7["auth"]
+    n8["cache pack search<br/>db"]
+    n9["ship"]
+    n10["notify"]
+  end
+  subgraph B2["Core"]
+    n11["audit"]
+    n12["store auth mail"]
+    subgraph B2s0["Storefront 0"]
+      n13["merge"]
+    end
+  end
+  n14["auth"]
+  n7 ==>|report| n13
+  n10 ==> n5
+  n5 --> n2
+  n3 -.->|store| n7
+  n4 ==> n1
+  n4 -.-> n11
+  n9 --> n5
+  n10 --> n3
+  n12 --> n3
+  n12 -.-> n4
+  n5 --> n14
+  n9 -->|split| n7

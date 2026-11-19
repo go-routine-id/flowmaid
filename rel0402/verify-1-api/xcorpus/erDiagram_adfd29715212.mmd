@@ -1,0 +1,11 @@
+erDiagram
+CUSTOMER ||--o{ ORDER : places
+ORDER ||--|{ LINE-ITEM : contains
+CUSTOMER }|..|{ DELIVERY-ADDRESS : uses
+PRODUCT |o--o| LINE-ITEM : "is in"
+CUSTOMER ||--|| CUSTOMER : self
+ORDER }o--|| PAYMENT : paid
+CUSTOMER {
+  string name PK
+  int age
+}

@@ -1,0 +1,35 @@
+classDiagram
+C1 "1" <--> "*" C1
+C6 <|-- C6 : a&b
+C8 "1" o-- "*" C6
+C7 <|-- C2 : 日本語
+C9 *-- C4
+C6 ..> C8
+C8 o-- C2
+C9 "1" o-- "*" C2 : delta
+C9 <|-- C1 : <b>bold</b>
+C7 "1" o-- "*" C6
+C1 ..|> C2
+C8 ..|> C7
+C6 ..> C5
+C9 ..|> C9
+C7 ..> C5
+note "<b>bold</b>"
+note "delta"
+note "Customer Order"
+class C1 {
+  +int id
+  +name() String
+}
+class C2 {
+  +int id
+  +name() String
+}
+class C4 {
+  +int id
+  +name() String
+}
+class C6 {
+  +int id
+  +name() String
+}

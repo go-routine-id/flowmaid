@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="242" height="542" viewBox="0 0 242 542" font-family="Helvetica, Arial, sans-serif" font-size="14" role="img" aria-label="State diagram">
+<title>State diagram</title>
+<rect width="242" height="542" fill="#ffffff"/>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 1 L 9 5 L 0 9 z" fill="#44507a"/></marker></defs>
+<rect x="28.0" y="28.0" width="186.0" height="486.0" rx="8" fill="#f7f8fd" stroke="#c9cfe8" stroke-width="1.4"/>
+<path d="M 69.0 82.0 C 69.0 125.0, 69.0 125.0, 69.0 168.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>start → a</title></path>
+<path d="M 69.0 206.0 C 69.0 236.0, 69.0 236.0, 69.0 266.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>a → b</title></path>
+<path d="M 69.0 304.0 C 69.0 334.0, 69.0 334.0, 69.0 364.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>b → c</title></path>
+<path d="M 84.0 402.0 C 84.0 432.0, 106.0 432.0, 106.0 462.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>c → d</title></path>
+<path d="M 158.0 402.0 C 158.0 432.0, 136.0 432.0, 136.0 462.0" fill="none" stroke="#44507a" stroke-width="1.7" stroke-dasharray="5 4"><title>note → d</title></path>
+<g><title>start</title>
+<circle cx="69.0" cy="75.0" r="7.0" fill="#44507a" stroke="#44507a" stroke-width="1.6"/>
+<text x="69.0" y="75.0" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<g><title>a</title>
+<rect x="42.0" y="168.0" width="54.0" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="69.0" y="187.0" dy="0.33em" text-anchor="middle" fill="#232840">a</text>
+</g>
+<g><title>b</title>
+<rect x="42.0" y="266.0" width="54.0" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="69.0" y="285.0" dy="0.33em" text-anchor="middle" fill="#232840">b</text>
+</g>
+<g><title>c</title>
+<rect x="42.0" y="364.0" width="54.0" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="69.0" y="383.0" dy="0.33em" text-anchor="middle" fill="#232840">c</text>
+</g>
+<g><title>d</title>
+<rect x="94.0" y="462.0" width="54.0" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="121.0" y="481.0" dy="0.33em" text-anchor="middle" fill="#232840">d</text>
+</g>
+<g><title>ld</title>
+<rect x="146.0" y="364.0" width="54.0" height="38.0" rx="3.0" fill="#fff8c5" stroke="#9c8a2c" stroke-width="1.6"/>
+<text x="173.0" y="383.0" dy="0.33em" text-anchor="middle" fill="#232840">ld</text>
+</g>
+<rect x="34.0" y="33.0" width="16.3" height="16" rx="4" fill="#f7f8fd" fill-opacity="0.9"/>
+<text x="38.0" y="45.0" font-size="12" font-weight="bold" fill="#6a7086">S</text>
+</svg>

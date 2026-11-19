@@ -1,0 +1,18 @@
+flowchart LR
+    N0([Retry fetch])
+    N1[(Notify done)]
+    N2{Validate}
+    N3{Validate}
+    N4[Archive]
+    N5[Check]
+    N0 --> N1
+    N0 --> N2
+    N1 --> N3
+    N1 -->|fail| N4
+    N2 --> N5
+    N0 --> N4
+    N1 --> N3
+    N0 --> N2
+    N4 -.-> N2
+    N5 -->|back| N3
+    N4 --> N3

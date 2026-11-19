@@ -1,0 +1,48 @@
+flowchart BT
+  n1["auth"]
+  subgraph B0["Core"]
+    n2["cache"]
+    n3["parse"]
+    n4["db"]
+  end
+  subgraph B1["Data tier"]
+    n5["split mail billing"]
+    n6["ship notify ship"]
+    subgraph B1s0["Storefront 0"]
+      n7["queue"]
+      n8["audit report mail"]
+    end
+  end
+  subgraph B2["Platform"]
+    n9["notify"]
+    n10["parse<br/>billing"]
+    subgraph B2s0["Back office and finance 0"]
+      n11["notify"]
+      n12["search"]
+    end
+    subgraph B2s1["Edge services 1"]
+      n13["db ingest cache"]
+      n14["queue"]
+    end
+  end
+  n15["store"]
+  n16["api"]
+  n4 --> n3
+  n11 --> n3
+  n1 -->|ingest| B0
+  n2 ==> n12
+  n5 -->|report| n10
+  n2 --> B0
+  n11 --> n15
+  n1 -->|api| n16
+  n12 ==>|audit| n10
+  n3 -.-> n2
+  n14 --> n2
+  n6 -.->|search| n3
+  n2 -.-> n9
+  n10 --> n16
+  n15 -->|index| n1
+  n1 -.-> n2
+  n11 --> n4
+  n13 --> n5
+  n11 -.-> n14

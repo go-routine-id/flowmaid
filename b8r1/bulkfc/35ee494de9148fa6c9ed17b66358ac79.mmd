@@ -1,0 +1,18 @@
+flowchart BT
+  subgraph F0 [Frame 0]
+    n0[/Node 0/]
+  end
+  subgraph F1 [Frame 1]
+    n2[/Node 2/]
+    n3{{Node 3}}
+  end
+  n0 -->|x| n1
+  n1 -.-> n0
+  n0 ==>|a longer label| F0
+  n2 e3@o--o|yes| F1
+  e3@{ curve: monotoneX }
+  n3 o--o n3
+  n0 --> n0
+  linkStyle 2 stroke-width:24px,stroke:#3a3
+  linkStyle 5 stroke-width:8px,stroke:#3a3
+  linkStyle default stroke-width:15px

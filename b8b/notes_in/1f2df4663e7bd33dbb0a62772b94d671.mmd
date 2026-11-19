@@ -1,0 +1,16 @@
+stateDiagram-v2
+direction BT
+[*] --> S0
+state C0 {
+  [*] --> C0i0
+  C0i0 --> C0i1 : e1
+  C0i1 --> C0i2
+  note left of C0i2 : n508
+  note right of C0i1 : n432
+}
+S0 --> C0
+S0 --> T0 : go2
+S0 --> T1 : go3
+T1 --> T2 : go4
+note left of C0 : m882
+S0 --> [*]

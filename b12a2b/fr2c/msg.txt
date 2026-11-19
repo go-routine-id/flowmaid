@@ -1,0 +1,81 @@
+fix(blocks): a title-row member's ports and the frame's pin columns clear the title's bold ink, not the chip measured at the regular width (b12a2b-base fix round 2 #1; completes 58d64c2)
+
+Item 3 (4d374f8, lateral X1 + e2) set a block layout's title-row member's
+ports, the frame's free pins on its top and the columns
+`ports::title_side_columns` deals a clearance (`ortho::CHIP_CLEAR`) past
+the frame's title chip. A frame not grown to its title measures its chip
+at the regular text width (`scene::title_text_width`), while `to_svg`
+paints every frame title bold, and the bold text runs about a tenth of
+its width past that chip. The first entry past the chip then stood a px
+or two from the title's last letter, or ran through it: the public
+fixture and its seven sibling copies drawn TD (`CART --> QUEUE` 1.97 px
+from `Order processing`, where 7122a53 kept 11.96), quality/dense-lr drawn
+BT and TD (1.60 and 1.71 px; 26.09 and 32.90 at 7122a53), a hub's entry
+into a long-titled block's title row (through the title). Cluster titles
+never struck by edges is one of the things flowmaid keeps (PLAN invariant
+4), and the lead's note of 06:00 asks the chip measured as drawn wherever
+a line can pass under the title.
+
+In a block layout the chips those three rules clear now reach the title's
+ink (`scene::title_head_inked`: the drawn chip or the drawn bold text,
+whichever ends farther). Where the stretch of a title-row side past the
+ink and its clearance cannot hold the side's ends, `place_ports` keeps
+7122a53's cut (`CHIP_SEP` past the chip alone, `unshaded_fit` tells that
+case apart), as it already does on an over-full title side. Outside a
+block layout nothing changes. This finishes the wip commit 58d64c2, which
+held the change unverified when the container restarted; this commit
+adds the unit tests and the verification below.
+
+Title gaps (Chromium getBBox of the painted title to every edge
+centreline, suite-on CLI, before -> after): the public fixture TD family
+1.97 -> 11.96 px (= 7122a53), dense-lr BT 1.60 -> 6.90, dense-lr TD
+1.71 -> 6.71, the hub input 0.00 -> 7.50 (= 7122a53). Over all 364
+direction copies no title gap is under 4 px that was not so at 7122a53
+(those, unchanged: the public fixture drawn BT 1.45, blocks/lr BT 0.00,
+dense-td copies, bench-75 BT; all pre-existing, not from this package).
+
+What it gives back of item 3: on the public fixture drawn TD the stretch
+of QUEUE's top past `Order processing` holds two columns, not three, so
+`CART --> QUEUE` comes into QUEUE's left side again as at 7122a53
+(`QUEUE --> CHARGE` keeps item 3's way): harness lateral_x 1 -> 2
+(3 at 7122a53), side_ends 3 -> 4 (5), chip_crowd 1 -> 2 (2); judge
+lateral_x and lbl_crowd 1 -> 2 on the fixture and its four permutations
+(3 and 2 at 7122a53). blocks/lr drawn BT: pager's top past the ink cannot
+hold its two entries, the side keeps 7122a53's cut and the 2.2 px S-jog
+of `cart --> pager` is back (byte-equal to 7122a53; the line strikes the
+long title there at 7122a53, at item 3 and now). blocks/nested drawn TD:
+the `emit` line moves 1.3 px and its label is found inside Platform
+instead of in the gap below it (chip_crowd 0 -> 1; the label stage's scan
+has no G3 rule, item 5). Other block drawings: ports 0.1-8 px (nested BT,
+nested-cases, p14, swimlane BT, swimlane-nested BT, dense-td BT/TD,
+fanout-frames TD, lr TD, the public fixture BT family), dense-lr BT
+`n22 --> n44` on another track of its gap; blocks/p04-to-cluster TD
+byte-equal to 7122a53.
+
+Checks against 7122a53 (b12/tools-a2b, tree build): cells no worse
+(must-fail 89 -> 86, A1 0, routed 37 -> 37); gate messages no worse
+(14 failing tests, the same names; the new tests pass); direction copies:
+static lateral_x 216 -> 201, side_ends 231 -> 216, the other verdict
+columns unchanged, routed unchanged; the one copy marked worse is still
+blocks/swimlane-nested TD min_edge_gap 40 -> 25 (item 3's X1, untouched
+here, awaiting the lead's ruling).
+
+Tests: blockcheck::a_title_rows_ports_clear_the_titles_ink (from 58d64c2;
+its text box now named by the chip constants; fails before this change:
+`CART -> QUEUE` 1.5 px from the title), scene::tests::
+an_inked_title_head_reaches_the_bold_text_of_a_frame_not_grown_to_it,
+ports::tests::a_cut_that_leaves_no_room_for_the_ends_is_told_apart.
+Changed test (58d64c2, named here): blockcheck::
+a_frames_pins_and_its_title_rows_entries_take_columns_apart now titles
+the fixture's ORD frame `Orders`, so the stretch past the ink still holds
+the pin and both entries and the test still pins e2's one column set; on
+the fixture's own title that stretch holds two columns and the entry
+keeps 7122a53's way, which the new test pins. No snapshot or gate
+changes. Block mode only (behind the switch); default build
+byte-identical (off-identity test green; render.sh: 25 / 25 corpus SVGs
+equal to the pre-package render). The harness's edge_chip measures the
+chip at the regular width too (quality.rs), which is why the three
+checks did not see the graze; not changed here.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

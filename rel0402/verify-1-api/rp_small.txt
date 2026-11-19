@@ -1,0 +1,84 @@
+empty "mindmap\n" parse: Some(ParseError { line: 1, message: "mindmap has no nodes (expected an indented tree under the header)" })
+files: {"class": 2, "er": 2, "mind": 2}
+class.base_count_fallback                               24 fail 0
+class.canvas_covers_moved                               68 fail 0
+class.chain_unattached_identical                       224 fail 0
+class.count_like_route                                  24 fail 0
+class.count_ok_no_panic_if_route_ok                      4 fail 0
+class.edit_add_is_route                                 12 fail 0
+class.edit_label_is_route                                2 fail 0
+class.edit_remove_note_is_route                          2 fail 0
+class.edit_remove_rel_is_route                           2 fail 0
+class.edit_rename_is_route                               2 fail 0
+class.nomove_classonly_is_base                           2 fail 0
+class.nomove_is_base                                     2 fail 0
+class.nonfinite_base_fallback                            6 fail 2
+class.nonfinite_no_new_panic                             6 fail 0
+class.nonfinite_try_none                                 6 fail 0
+class.only_dragged_moved                                36 fail 0
+class.panic                                             68 fail 0
+class.positions_verbatim                                68 fail 0
+class.try_count_like_try_route                          28 fail 0
+class.try_matches                                       68 fail 0
+class.unattached_card_spot_identical                   416 fail 54
+class.unattached_edge_identical                        224 fail 0
+class.unattached_edge_identical(classonly)             192 fail 86
+empty.class                                              1 fail 0
+empty.class.try                                          1 fail 0
+empty.er                                                 1 fail 0
+empty.er.try                                             1 fail 0
+er.base_count_fallback                                  16 fail 0
+er.canvas_covers_moved                                  24 fail 0
+er.chain_unattached_identical                           12 fail 0
+er.count_like_route                                     18 fail 2
+er.edit_add_is_route                                     4 fail 0
+er.edit_label_is_route                                   2 fail 0
+er.edit_remove_rel_is_route                              2 fail 0
+er.nomove_is_base                                        2 fail 0
+er.nonfinite_base_fallback                               8 fail 0
+er.nonfinite_no_new_panic                                8 fail 0
+er.nonfinite_try_none                                    8 fail 0
+er.overflow_origin_like_route                            8 fail 0
+er.panic                                                24 fail 0
+er.positions_verbatim                                   24 fail 0
+er.routebase_unattached_identical                        2 fail 0
+er.tables_cards_same                                    24 fail 0
+er.try_count_like_try_route                             18 fail 2
+er.try_matches                                          24 fail 0
+er.unattached_edge_identical                            12 fail 0
+mind.base_count_fallback                                44 fail 0
+mind.count_like_route                                   44 fail 0
+mind.edit_add_is_route                                   2 fail 0
+mind.edit_reparent_is_route                              2 fail 0
+mind.edit_text_is_route                                  2 fail 0
+mind.equals_route_approx                                24 fail 0
+mind.link_ends_geometry                                 34 fail 0
+mind.link_ends_len                                       2 fail 0
+mind.moved_position                                     24 fail 0
+mind.nomove_is_base                                      2 fail 0
+mind.nonfinite_base_fallback                             6 fail 0
+mind.nonfinite_no_panic                                  6 fail 0
+mind.nonfinite_try_none                                  6 fail 0
+mind.other_nodes_identical                             408 fail 0
+mind.panic                                              24 fail 0
+mind.try_count_like_try_route                           46 fail 0
+mind.try_matches                                        24 fail 0
+mind.unattached_identical                              356 fail 0
+  class.unattached_edge_identical(classonly): cmp__class.mmd i=0 (40.0, 25.0) e3
+  class.unattached_card_spot_identical: cmp__class.mmd i=0 (40.0, 25.0) e3 [Some((227.72500000000005, 312.5)), Some((186.29375000000005, 379.5))] vs [Some((231.51437500000003, 312.5)), Some((186.29375000000005, 379.5))]
+  class.unattached_edge_identical(classonly): cmp__class.mmd i=0 (-3000.0, -2000.0) e0
+  class.unattached_edge_identical(classonly): cmp__class.mmd i=0 (-3000.0, -2000.0) e3
+  class.unattached_card_spot_identical: cmp__class.mmd i=0 (-3000.0, -2000.0) e3 [Some((205.13125000000002, 312.5)), Some((107.85000000000005, 379.5))] vs [Some((231.51437500000003, 312.5)), Some((186.29375000000005, 379.5))]
+  class.unattached_edge_identical(classonly): cmp__class.mmd i=0 (-3000.0, -2000.0) e4
+  class.unattached_card_spot_identical: cmp__class.mmd i=0 (-3000.0, -2000.0) e4 [Some((134.05000000000004, 607.5)), Some((102.35000000000004, 540.5))] vs [Some((72.20000000000002, 607.5)), Some((72.30000000000003, 540.5))]
+  class.unattached_edge_identical(classonly): cmp__class.mmd i=0 (-3000.0, -2000.0) e5
+  class.unattached_edge_identical(classonly): cmp__class.mmd i=1 (40.0, 25.0) e3
+  class.unattached_card_spot_identical: cmp__class.mmd i=1 (40.0, 25.0) e3 [Some((227.72500000000005, 312.5)), Some((186.29375000000005, 379.5))] vs [Some((231.51437500000003, 312.5)), Some((186.29375000000005, 379.5))]
+  class.unattached_card_spot_identical: cmp__class.mmd i=1 (40.0, 25.0) e6 [Some((410.88333333333344, 608.5)), Some((311.32500000000005, 312.5))] vs [Some((380.80000000000007, 608.5)), Some((318.90375000000006, 312.5))]
+  class.unattached_card_spot_identical: cmp__class.mmd i=1 (-3000.0, -2000.0) e3 [Some((227.72500000000005, 312.5)), Some((186.29375000000005, 379.5))] vs [Some((231.51437500000003, 312.5)), Some((186.29375000000005, 379.5))]
+  class.nonfinite_base_fallback: cmp__class.mmd inf
+  er.count_like_route: cmp__er.mmd k=4 n=4 pr_panic=false r_panic=false
+  er.try_count_like_try_route: cmp__er.mmd k=4
+  class.nonfinite_base_fallback: repo__examples_class.mmd inf
+  er.count_like_route: repo__examples_er.mmd k=4 n=4 pr_panic=false r_panic=false
+  er.try_count_like_try_route: repo__examples_er.mmd k=4

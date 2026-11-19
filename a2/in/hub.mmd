@@ -1,0 +1,9 @@
+erDiagram
+    CUSTOMER ||--o{ ORDER : places
+    CUSTOMER ||--|{ ADDRESS : has
+    CUSTOMER }|--o| ACCOUNT : owns
+    CUSTOMER ||--o{ TICKET : opens
+    CUSTOMER ||--o{ REVIEW : writes
+    ORDER ||--|{ LINE : contains
+    PRODUCT ||--o{ LINE : "ordered in"
+    PRODUCT ||--o{ REVIEW : "reviewed in"

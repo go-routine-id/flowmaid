@@ -1,0 +1,12 @@
+sequenceDiagram
+  participant A as Agent runtime
+  participant O as Orchestrator
+  participant C as Chat service
+  actor U as User
+  A->>O: canUseTool(Bash, npm test)
+  O->>C: kartu izin
+  C->>U: approve / deny
+  U->>C: approve
+  C->>O: keputusan
+  O-->>A: allow
+  A->>A: jalankan tool

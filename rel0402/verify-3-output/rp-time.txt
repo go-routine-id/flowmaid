@@ -1,0 +1,8 @@
+class	158	route_ms=13.606 partial_ms=4.831	a1/in/huge.mmd
+class	158	route_ms=13.946 partial_ms=4.903	a1/in/huge.mmd
+er	76	route_ms=2.593 partial_ms=1.490 chained_ms=1.465	rel0402/verify-1-output/gen/g-er-032.mmd
+er	76	route_ms=2.658 partial_ms=1.962 chained_ms=1.445	rel0402/verify-1-output/gen/g-er-032.mmd
+er	5	route_ms=0.054 partial_ms=0.071 chained_ms=0.059	rel0402/wt/examples/er.mmd
+er	5	route_ms=0.046 partial_ms=0.063 chained_ms=0.067	rel0402/wt/examples/er.mmd
+class	17	route_ms=0.176 partial_ms=0.201	rel0402/wt/examples/class.mmd
+class	17	route_ms=0.177 partial_ms=0.234	rel0402/wt/examples/class.mmd

@@ -1,0 +1,27 @@
+flowchart TD
+  s0["trace db ship"]
+  subgraph g0["cart billing trace zone"]
+    m0["metric queue"]
+    m1["index index"]
+    m2["log"]
+    m3["web"]
+    m0 --> m1
+    m2 --> m3
+  end
+  subgraph g1["metric store zone"]
+    m4["notify metric"]
+  end
+  subgraph g2["cart zone"]
+    direction TB
+    m5["queue search"]
+    m6["search notify auth"]
+    m7["index"]
+    m5 --> m6
+    m6 --> m7
+  end
+  s0 --> g0
+  s0 --> m4
+  s0 --> g2
+  m6 --> m3
+  m4 --> m2
+  s0 --> L8["notify"]

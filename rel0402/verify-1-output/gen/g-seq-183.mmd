@@ -1,0 +1,14 @@
+sequenceDiagram
+autonumber
+participant P0 as a&b
+actor P1 as delta
+participant P2 as x
+participant P3 as a&b
+P2-xP3: Customer Order
+activate P3
+P3->>P3: act
+deactivate P3
+activate P1
+P1->>P0: act
+deactivate P1
+P1-)P0: x

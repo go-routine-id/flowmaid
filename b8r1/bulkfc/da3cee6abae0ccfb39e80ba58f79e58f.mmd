@@ -1,0 +1,21 @@
+flowchart LR
+  A[Source] ==> B[Thick target]
+  A -->|wide| C[Wide 8px]
+  A --> D[Wide 14px]
+  A -.-> E[Dotted]
+  A --o F[Circle end]
+  A --x G[Cross end]
+  B <--> C
+  D o--o E
+  F x--x G
+  C ==> H((Round))
+  D --> I{Decide}
+  E --> I
+  e1@{ curve: step }
+  H e9@--> J[/Slanted/]
+  I e10@--> J
+  e10@{ curve: linear }
+  linkStyle 1 stroke:#e33,stroke-width:8px
+  linkStyle 2 stroke:#3a3,stroke-width:14px
+  linkStyle 8 stroke:#00f,stroke-width:4px,stroke-dasharray:6 3
+  linkStyle 11 interpolate basis

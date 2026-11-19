@@ -1,0 +1,35 @@
+feat(blocks): the free pins of one frame side take the order their channels come in (B12.11 free pins, pulled forward; B12 fix round 4 #1, #7)
+
+Spec 2.8 "Free pins": the entries of a frame side stand in the order
+their channels come in, so the steps into them nest. The ports stage of
+a block layout now ends with `ports::order_pins` after `free_pins`: the
+pins of one frame side that stand next to each other (nothing else
+crosses the side between them: a member entry, a channel, another
+edge) exchange places so they stand in the order of the first point
+their paths come from along the side. Only the pins' own places are
+exchanged and no pin passes anything else on the side, so nothing else
+is crossed instead; a run's new order is kept when the run's edges, as
+the builders drew them, cross each other less. A note card's link is
+never moved (its end is a pin of its own, NOTE_WEIGHT). Outside block
+layouts nothing runs (default build byte-identical).
+
+Suite-on, static: blocks/state-note fan_x 1 -> 0, x_drawn 1 -> 0
+(`Active --> Review` and `Review --> Active` crossed above `Review`);
+the verifier's stress diagram of three producers into one pool block
+crossing 1 -> 0, fan_x 1 -> 0 (verify round 3 #7); the other repository
+fixtures unchanged. On the verifier's 1,077 block-mode bulk inputs:
+crossings -15 (fewer on 12, more on none), fan_x -13 (fewer on 10,
+more on none), hard zeros unchanged.
+
+What b12a2-geometry (B12.11) still builds of free pins: the even band
+of a side's pins (equal pitch between PORT_SPACING and PORT_EVEN_MAX,
+centred in the free interval), the corners' rule (`pin_corner`), and
+pins in `route()`.
+
+Test: ports::tests::a_frame_sides_free_pins_take_the_order_their_channels_come_in
+(blocks/state-note as blocks). Suite-on failing tests: the same ten
+library tests and six quality gates as before the round, none new. No
+snapshot or gate changed.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

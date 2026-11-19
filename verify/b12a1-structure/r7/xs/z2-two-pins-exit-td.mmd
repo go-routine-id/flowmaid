@@ -1,0 +1,17 @@
+flowchart TD
+    hub[Hub] --> a[Stage A]
+    a --> b[Stage B]
+    s1[Source one] --> G
+    s2[Source two] --> G
+    subgraph G[Shared platform services<br/>second title line]
+        m[Gateway]
+        n[Worker]
+        k[Store]
+        m --> k
+        n --> k
+    end
+    b --> m
+    b --> n
+    m --> hub
+    n -->|retry| hub
+    hub --> k

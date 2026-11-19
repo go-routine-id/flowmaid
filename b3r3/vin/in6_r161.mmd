@@ -1,0 +1,16 @@
+flowchart RL
+    N0([Fetch check])
+    N1([Load])
+    N2[Done]
+    N3(Archive)
+    N4[/Parse parse/]
+    N5([Archive])
+    N0 -->|yes| N1
+    N0 --> N2
+    N2 --> N3
+    N3 --> N4
+    N4 --> N5
+    N2 --> N3
+    N0 --> N5
+    N4 ==> N1
+    N5 -->|rollback| N2

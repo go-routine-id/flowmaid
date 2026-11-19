@@ -1,0 +1,20 @@
+flowchart LR
+  s0["cache"]
+  subgraph g0["db zone"]
+    m0["log api metric"]
+  end
+  subgraph g1["web trace cart zone"]
+    m1["cache web web"]
+  end
+  subgraph g2["cache search auth zone"]
+    direction LR
+    m2["billing billing"]
+    m3["queue api"]
+    m2 --> m3
+  end
+  s0 --> m0
+  s0 --> g1
+  s0 --> g2
+  m1 --> m0
+  s0 --> L4["cache ship"]
+  s0 --> L5["trace notify"]

@@ -1,0 +1,7 @@
+architecture-beta
+    group g(cloud)[G]
+    service a(server)[A] in g
+    service b(database)[B]
+    junction j
+    a:R -[label]- L:b
+    a{group}:B --> T:j

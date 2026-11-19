@@ -1,0 +1,14 @@
+flowchart RL
+  n3 --- n4
+  n2 <==> n1
+  n4 e2@=== n2
+  e2@{ curve: natural }
+  n2 --> n3
+  n0 -->|x| n1
+  n3 --- n0
+  n4 --- n4
+  n4 --o n4
+  n2 e8@==>|a longer label| n1
+  e8@{ curve: natural }
+  linkStyle 5 stroke-width:40px
+  linkStyle 7 stroke-width:16px,stroke:#c33

@@ -1,0 +1,50 @@
+flowchart TD
+  n1["audit"]
+  subgraph B0["Back office and finance"]
+    n2["ship"]
+    n3["billing"]
+    n4["mail"]
+    subgraph B0s0["Ingest 0"]
+      n5["search<br/>notify"]
+      n6["split"]
+      n7["parse"]
+    end
+  end
+  subgraph B1["Core"]
+    n8["ship"]
+    n9["parse<br/>queue"]
+    n10["auth ship auth"]
+    n11["merge queue merge"]
+  end
+  subgraph B2["Ops"]
+    n12["parse"]
+    n13["auth<br/>api"]
+    n14["billing merge queue"]
+    n15["split"]
+  end
+  n16["billing"]
+  n17["index pack api"]
+  n4 -->|store| n1
+  n8 -.-> n16
+  n14 ==> n3
+  n10 ==> n16
+  n12 -.-> n13
+  n2 --> n11
+  n11 --> n17
+  n10 ==>|ingest| n2
+  n5 -->|report| n14
+  n5 --> n4
+  n1 --> n3
+  n6 -.-> n7
+  n9 -.-> n2
+  n2 -.-> n13
+  n13 --> n9
+  n7 --> n4
+  n14 --> n6
+  n11 ==> n4
+  n3 --> n11
+  n8 -.-> n4
+  n15 ==>|queue| n4
+  n17 -->|db| n1
+  n3 ==> n13
+  n2 -->|parse| n1

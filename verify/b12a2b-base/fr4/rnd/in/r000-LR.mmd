@@ -1,0 +1,15 @@
+flowchart LR
+    subgraph G[Édition générale des données]
+        m0[charge]
+        m1[db]
+        m2[x wide member node]
+        m0 --> m1
+    end
+    s0[src0] --> m2
+    s1[src1] --> m2
+    s2[src2] -- "lbl8" --> m1
+    s2 --> m1
+    s3[src3] -- "lbl9" --> m1
+    s3 --> G
+    s4[src4] --> G
+    G --> z2[after]

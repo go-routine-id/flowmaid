@@ -1,0 +1,45 @@
+flowchart LR
+  n1["ingest"]
+  n2["cache"]
+  n3["ingest"]
+  subgraph B0["Edge services"]
+    n4["store"]
+    n5["auth notify audit"]
+    n6["auth"]
+    n7["notify"]
+  end
+  subgraph B1["Back office and finance"]
+    n8["billing<br/>pack"]
+    n9["report worker db"]
+    n10["ingest"]
+  end
+  subgraph B2["Core"]
+    n11["queue"]
+    n12["db"]
+    n13["cache<br/>merge"]
+    n14["pack"]
+  end
+  n15["api split search"]
+  n16["parse ingest parse"]
+  n7 --> n5
+  n15 -.-> n10
+  n9 --> n7
+  n9 --> n16
+  n7 -->|report| n13
+  n4 -.->|report| n9
+  n13 -->|index| n10
+  n2 --> n5
+  n2 --> n7
+  n10 -.->|worker| n3
+  n8 -->|db| n10
+  n2 ==>|ship| n16
+  n7 -.-> n8
+  n16 --> n5
+  n3 --> n4
+  n2 --> n6
+  n11 --> n6
+  n15 -.-> n3
+  n10 --> n1
+  n1 --> n3
+  n16 -.-> n3
+  n12 -.->|search| n5

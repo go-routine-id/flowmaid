@@ -1,0 +1,15 @@
+flowchart TD
+    subgraph G[Édition générale des données]
+        m0[x wide member node]
+        m1[auth service]
+        m2[db]
+        m0 --> m1
+    end
+    s0[src0] --> m1
+    s0 --> G
+    s1[src1] --> G
+    s2[src2] --> G
+    s3[src3] --> G
+    s3 --> m2
+    m2 --> z[end]
+    G --> z2[after]

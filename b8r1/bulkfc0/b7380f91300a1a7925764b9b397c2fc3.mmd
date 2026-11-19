@@ -1,0 +1,22 @@
+flowchart TD
+    N0{Queue queue}
+    N1([Store done])
+    N2{Report parse}
+    N3(Check)
+    N4[Notify parse]
+    N5{Archive load}
+    N6{Emit}
+    N7[Store]
+    N8{Store}
+    N9(Store done)
+    N0 --> N1
+    N1 --> N2
+    N2 --> N3
+    N1 --> N4
+    N3 --> N5
+    N5 -->|ok| N6
+    N6 --> N7
+    N5 --> N8
+    N7 --> N9
+    N8 -.-> N6
+    N8 -.-> N1

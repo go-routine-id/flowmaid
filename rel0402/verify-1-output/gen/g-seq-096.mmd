@@ -1,0 +1,19 @@
+sequenceDiagram
+actor P0 as delta
+actor P1 as 日本語
+participant P2 as delta
+actor P3 as beta
+participant P4 as 日本語
+participant P5 as alpha
+participant P6 as gamma
+participant P7 as gamma
+P3--)P5: delta
+P1->>P1: self gamma
+P2--)P1: gamma
+par Long label here
+and Long label here
+par gamma
+P1->P6: <b>bold</b>
+P5-->P5: beta
+end
+end

@@ -1,0 +1,23 @@
+stateDiagram-v2
+direction LR
+[*] --> Outer
+state Outer {
+  direction TB
+  [*] --> I1
+  state c <<choice>>
+  I1 --> c
+  c --> I2 : ok
+  c --> I3 : fail
+  c --> I2 : retry
+  note right of I1 : inner note
+  state Deep {
+    [*] --> D1
+    D1 --> D2
+    note left of D2 : deep note
+  }
+  I3 --> Deep
+}
+I2 --> Done
+note right of Outer : outer note
+note left of Done : done note
+Done --> [*]

@@ -1,0 +1,41 @@
+flowchart TD
+  n1["worker"]
+  n2["audit split db"]
+  subgraph B0["Edge services"]
+    n3["store"]
+    subgraph B0s0["Analytics 0"]
+      n4["split parse ingest"]
+      n5["api"]
+    end
+    subgraph B0s1["Edge services 1"]
+      n6["ship"]
+      n7["search cache db"]
+    end
+  end
+  subgraph B1["Fulfilment desk"]
+    n8["mail worker ingest"]
+  end
+  subgraph B2["Platform"]
+    n9["merge"]
+  end
+  subgraph B3["Core"]
+    n10["merge"]
+    n11["notify billing ship"]
+    n12["audit"]
+    n13["auth"]
+  end
+  n14["cache<br/>split"]
+  n1 --> n12
+  n3 --> n1
+  n11 --> n3
+  n13 --> n5
+  n5 --> n13
+  n10 --> n6
+  n1 -.-> n8
+  n5 --> n1
+  n4 --> n5
+  n7 ==> n5
+  n11 -.->|search| n14
+  n3 --> n6
+  n10 --> n13
+  n13 --> B1

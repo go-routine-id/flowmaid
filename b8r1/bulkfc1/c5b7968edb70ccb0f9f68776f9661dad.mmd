@@ -1,0 +1,17 @@
+flowchart BT
+    N0([Retry check])
+    N1([Check])
+    N2([Check queue])
+    N3([Store report])
+    N4([Notify])
+    N5(Archive)
+    N0 -->|ok| N1
+    N1 --> N2
+    N2 -->|no| N3
+    N1 -->|no| N4
+    N3 --> N5
+    N2 --> N4
+    N1 --> N2
+    N4 -->|rollback| N0
+    N4 ==>|rollback| N2
+    N4 ==>|back| N2

@@ -1,0 +1,11 @@
+flowchart BT
+  n0[Node 0]
+  n1[Node 1]
+  n2[Node 2]
+  n3[Node 3]
+  n4[Node 4]
+  n1 e0@<--> n2
+  e0@{ curve: stepBefore }
+  n3 e1@==> n4
+  e1@{ curve: stepAfter }
+  linkStyle default stroke-width:8px

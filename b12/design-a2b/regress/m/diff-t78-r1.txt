@@ -1,0 +1,23 @@
+=== bulkst t78 -> r1
+1452324cd04d6c62f08635b9aebe3120 static edge_len 10956.26->10955.87; lbl_end_mean 148.60->149.60
+165c1a64c5670c99dc5ac74e24323d3e static edge_len 2001.28->2000.91; chip_crowd 1->0; chip_gap_min 7.16->17.31
+542c7f2041be0c84e465b85d17381bc3 static edge_len 3692.48->3691.29; lbl_end_mean 86.56->88.17
+7133c5d001bdcbb01b1918e87c626ed2 static edge_len 3618.14->3616.81; lbl_end_mean 102.11->105.38; chip_crowd 0->1; chip_gap_min 15.13->11.50
+a57fba359c1ccb2ffc3bdde0678a9b4a static min_node_gap 5.45->5.44; edge_len 714.08->714.20; bends_max 2->1; lbl_end_mean 39.63->33.73; chip_gap_min 15.71->39.88
+=== bulkfc t78 -> r1
+030a05e753dbb7162d733e7f00a30513 static edge_len 975.75->962.53
+2ff701592896dbadddb7bcad347fabd9 static lat_backtrack 123.16->120.96; edge_len 2418.48->2411.94; chip_gap_min 9.07->9.08
+=== all t78 -> r1
+=== dirs t78 -> r1
+blocks.lr-BT routed ends_apart 2->3
+blocks.lr-BT static edge_edge_x 3->1; min_edge_gap 14.29->40; center_off 0.07->0.05; width 411.91->403.86; aspect 2.15->2.20; area_per_node 45644.46->44752.42; end_gap_max 0->0.00; lat_backtrack 177.92->28.50; band_pairs 0->1; band_len 0->208; x_drawn 3->1; xhops 1->0; edge_len 2723.08->2408.81; bends_max 4->3; detour_max 2.80->1.18; lbl_end_mean 143.51->127.02; chip_crowd 1->0; chip_gap_min 4.19->25.38; lateral_x 2->3
+blocks.t9c-frames-8px-two-way-BT static center_off 0.10->0; width 216.79->201.29; aspect 1.95->2.10; area_per_node 45850.18->42571.93; band_len 136->238; edge_len 643.72->554.24; detour_max 1.99->1.53; lateral_x 2->0
+blocks.t9c-frames-8px-two-way-TD static center_off 0.10->0; width 209.41->193.91; aspect 2.02->2.18; area_per_node 44291.12->41012.87; lat_backtrack 49.93->49.91; band_len 128->232; edge_len 616.49->529.21; detour_max 1.90->1.46; lateral_x 2->0
+=== dirsx t78 -> r1
+=== stress t78 -> r1
+x2-title-side routed ends_apart 1->2
+x2-title-side static min_edge_gap 10.59->18.75; tight_pairs 1->0; tight_len 28->0; lat_backtrack 511.63->237.24; band_pairs 2->1; band_len 552->122; ink 0.11->0.10; edge_len 3097.32->2580.77; detour_max 4.70->3.80; chip_gap_min 40->37.01; lateral_x 1->2; side_ends 0->1
+x2-title-side-BT routed ends_apart 2->1
+x2-title-side-BT static edge_edge_x 1->0; min_node_gap 25->30.06; min_edge_gap 40->17.63; xgap_max 1->0; lat_backtrack 124.68->55.50; band_len 168->118; x_drawn 1->0; edge_len 2100.40->1867.88; bends_max 4->3; detour_max 1.83->1.42; chip_gap_min 40->33.18; lateral_x 0->1; side_ends 0->1
+x2-title-side-TD routed ends_apart 1->2
+x2-title-side-TD static min_edge_gap 10.59->18.75; tight_pairs 1->0; tight_len 28->0; lat_backtrack 511.63->237.24; band_pairs 2->1; band_len 552->122; ink 0.11->0.10; edge_len 3097.32->2580.77; detour_max 4.70->3.80; chip_gap_min 40->37.01; lateral_x 1->2; side_ends 0->1

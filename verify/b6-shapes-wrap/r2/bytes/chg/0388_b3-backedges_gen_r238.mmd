@@ -1,0 +1,23 @@
+flowchart LR
+    N0{Store report}
+    N1(Queue)
+    N2([Load])
+    N3(Store check)
+    N4([Load])
+    N5(Check load)
+    N6(Retry store)
+    N7[Retry]
+    N8([Load])
+    N9(Emit)
+    N0 --> N1
+    N1 --> N2
+    N0 --> N3
+    N3 -->|ok| N4
+    N2 -->|yes| N5
+    N4 --> N6
+    N5 -->|ok| N7
+    N5 --> N8
+    N7 --> N9
+    N2 --> N9
+    N9 --> N5
+    N9 ==> N8

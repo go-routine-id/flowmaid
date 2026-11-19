@@ -1,0 +1,26 @@
+classDiagram
+    direction LR
+    class Zoo {
+      +name String
+      +open() bool
+    }
+    Animal <|--|> Zebra
+    Zebra *--* Stripe
+    Zebra o--o Herd
+    Herd "1" <--> "n" Keeper : feeds
+    Keeper <..> Zoo
+    Zoo <|..|> Place
+    Zoo *--> Animal : houses
+    Herd o..|> Group
+    IFeed ()-- Keeper
+    Zoo --() IVisit : visit
+    ITrack ().. Stripe
+    Keeper ()--* Zoo
+    A ()--() B
+    Keeper <--> Keeper : self
+    Zoo "a" *--* "b" Zoo
+    Zebra --() Zebra
+    bar ()-- bar
+    note for Zoo "the zoo"
+    Herd --* Zebra
+    Zebra <-- Herd

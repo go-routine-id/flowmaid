@@ -1,0 +1,145 @@
+diff --git a/src/layout.rs b/src/layout.rs
+index 01a253d..d078b2e 100644
+--- a/src/layout.rs
++++ b/src/layout.rs
+@@ -6245,10 +6245,16 @@ fn title_room(g: &Graph, t: &TitleRows, layers: &[Vec<usize>]) -> Vec<(usize, f6
+ /// `(m0, m1)` (its breadth range) takes beside its block's title chip
+ /// `(lo, hi)` (the chip's breadth interval, widened by
+ /// [`crate::ortho::CHIP_CLEAR`]): one per [`crate::ports::PORT_SPACING`]
+-/// along the longer free stretch, and one more for its first; 0 when
+-/// the chip covers the whole side. The entries past it are displaced
+-/// ([`title_jogs`]).
++/// along the longer free stretch of the side's port span (the side less
++/// [`crate::ports::PORT_INSET`] at each corner, where the ports stage
++/// places them), and one more for its first; 0 when the chip covers the
++/// whole span. Measured on the raw side, a member with 4 px free past
++/// the chip counted one entry there that the ports stage, which has none
++/// there, spread under the chip with the side's others, where nothing
++/// displaced it (dense-td's `n43`). The layout, `route()` and the ports
++/// stage read one stretch.
+ pub(crate) fn title_cap((m0, m1): (f64, f64), (lo, hi): (f64, f64)) -> usize {
++    let (m0, m1) = (m0 + crate::ports::PORT_INSET, m1 - crate::ports::PORT_INSET);
+     let free = (m1 - hi).max(lo - m0);
+     if free < 0.0 {
+         0
+@@ -6257,6 +6263,23 @@ pub(crate) fn title_cap((m0, m1): (f64, f64), (lo, hi): (f64, f64)) -> usize {
+     }
+ }
+ 
++/// How many of a title-row member's `border` entries are displaced
++/// (B12 2.8 rule 2), its side's free stretch holding `cap`
++/// ([`title_cap`]): none when they fit, else all of them. Displaced in
++/// part, the ones kept on the free stretch stood between the chip and
++/// the displaced ones' columns, and every jog back to a port under the
++/// chip crossed their legs inside the frame (cycle2's `b1`, dense-td's
++/// `n43`); so a member whose entries do not fit beside the chip takes
++/// them all under it, each crossing the title side at a column of its
++/// own past the chip.
++pub(crate) fn title_displaced(border: usize, cap: usize) -> usize {
++    if border > cap {
++        border
++    } else {
++        0
++    }
++}
++
+ /// What [`title_jogs`] reads of a placement.
+ struct TitleRows<'a> {
+     nc: &'a [Vec<usize>],
+@@ -6406,9 +6429,7 @@ fn title_entries(g: &Graph, t: &TitleRows) -> (Vec<usize>, Vec<Displaced>) {
+             if border.is_empty() || m1 <= chip_lo || m0 >= chip_hi {
+                 continue;
+             }
+-            let over = border
+-                .len()
+-                .saturating_sub(title_cap((m0, m1), (chip_lo, chip_hi)));
++            let over = title_displaced(border.len(), title_cap((m0, m1), (chip_lo, chip_hi)));
+             k += over;
+             // The free stretch holds the entries nearest it: those on the
+             // chip's side of the member are displaced.
+diff --git a/src/ortho.rs b/src/ortho.rs
+index c2cca9d..18b6a8b 100644
+--- a/src/ortho.rs
++++ b/src/ortho.rs
+@@ -1405,18 +1405,16 @@ impl TitleSides {
+             } else {
+                 vec![to_flow(dir, e.bezier[0]), to_flow(dir, e.bezier[3])]
+             };
+-            // Only an end on a side that lies wholly under the chip: the
+-            // ports stage keeps the others' ends on the free stretch
+-            // beside it (rule 1), and drawn displaced as well, the
+-            // entries of a fan into a narrow block's partly shaded
+-            // member crossed each other above it (dense-td's `n43`).
++            // An end of a member's side the ports stage put under the
++            // chip: a side wholly under it, or a title-row member whose
++            // entries its free stretch cannot hold, all of whose ends go
++            // under it (`layout::title_displaced`); on a side whose ends
++            // fit, they stand on the free stretch beside the chip (rule
++            // 1). (Displaced in part, the entries of a fan into a narrow
++            // block's partly shaded member crossed each other above it:
++            // dense-td's `n43`.)
+             let shaded = |end: Option<EndRef>, k: usize| {
+-                let (Some(EndRef::Node(v)), Some((_, _, _, _, (c0, c1)))) = (end, out.sides[k])
+-                else {
+-                    return false;
+-                };
+-                let r = flow_rect(dir, end_rect(sc, EndRef::Node(v)));
+-                r.0 >= c0 && r.1 <= c1
++                matches!((end, out.sides[k]), (Some(EndRef::Node(_)), Some(_)))
+             };
+             let ends = cx.ends.get(i).copied().flatten();
+             for (k, b, displaced) in out.all_crossings(&pts) {
+diff --git a/src/ports.rs b/src/ports.rs
+index 7d73432..74e8ae3 100644
+--- a/src/ports.rs
++++ b/src/ports.rs
+@@ -2359,6 +2359,9 @@ fn unshaded(
+     };
+     let mut free = vec![(lo, hi)];
+     let mut shaded = false;
++    // The stretch strictly under a title-row chip ([`title_row_side`]):
++    // where the side's ends go when its free part cannot hold them.
++    let mut under: Option<(f64, f64)> = None;
+     for (ci, &h) in heads.iter().enumerate() {
+         let (t0, n0) = split(side, (h.0, h.1));
+         let (t1, n1) = split(side, (h.2, h.3));
+@@ -2369,6 +2372,9 @@ fn unshaded(
+         if c1 <= lo || c0 >= hi {
+             continue;
+         }
++        if deep.get(ci).copied().unwrap_or(false) {
++            under = Some((lo.max(t0 - CHIP_SEP), hi.min(t1 + CHIP_SEP)));
++        }
+         shaded = true;
+         free = free
+             .into_iter()
+@@ -2383,6 +2389,13 @@ fn unshaded(
+         .max_by(|x, y| (x.1 - x.0).total_cmp(&(y.1 - y.0)))
+     {
+         Some((p, q)) if shaded => (p, q, true),
++        // A title-row member whose ends the free part cannot hold takes
++        // them all under the chip, strictly inside `ortho`'s interval, to
++        // be displaced together (`layout::title_displaced`).
++        None => match under {
++            Some((p, q)) if q >= p => (p, q, true),
++            _ => (lo, hi, false),
++        },
+         _ => (lo, hi, false),
+     }
+ }
+diff --git a/src/scene.rs b/src/scene.rs
+index d3ee1af..f026834 100644
+--- a/src/scene.rs
++++ b/src/scene.rs
+@@ -6894,7 +6894,10 @@ fn route_title_jogs(g: &Graph, nodes: &[SceneNode], f1: &[RawBox], bound: &[bool
+                 continue;
+             }
+             if paths[m].last() == Some(&c) && on_row(m) && mx + mw > chip.0 && mx < chip.1 {
+-                k += border.saturating_sub(crate::layout::title_cap((mx, mx + mw), chip));
++                k += crate::layout::title_displaced(
++                    border,
++                    crate::layout::title_cap((mx, mx + mw), chip),
++                );
+             }
+         }
+         if k > 0 {

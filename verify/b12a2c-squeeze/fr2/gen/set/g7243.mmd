@@ -1,0 +1,46 @@
+flowchart BT
+  n1["ship"]
+  subgraph B0["Platform"]
+    n2["ship"]
+    n3["report"]
+    n4["mail billing report"]
+    n5["index"]
+  end
+  subgraph B1["Analytics"]
+    n6["mail"]
+    n7["split mail cache"]
+    n8["api"]
+    n9["billing"]
+  end
+  subgraph B2["Ops"]
+    n10["audit"]
+    n11["store"]
+    n12["billing"]
+  end
+  subgraph B3["Core"]
+    n13["ship ship auth"]
+    subgraph B3s0["Platform 0"]
+      n14["ingest"]
+      n15["split"]
+      n16["pack"]
+    end
+  end
+  n17["report index split<br/>billing"]
+  n18["parse"]
+  n17 -->|report| n8
+  n2 -->|worker| n17
+  n14 --> n10
+  n5 --> n16
+  n18 ==> n4
+  n10 --> n17
+  n2 --> n7
+  n14 --> n1
+  n7 ==>|pack| n18
+  n16 ==>|report| n18
+  n3 --> n18
+  n4 -.-> n8
+  n14 -.-> n9
+  n7 --> n1
+  n7 --> n3
+  n18 -.-> B3
+  n16 -->|billing| n10

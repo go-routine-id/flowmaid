@@ -1,0 +1,19 @@
+stateDiagram-v2
+    [*] --> First
+    state First {
+        [*] --> fir
+        fir --> sec
+        sec --> [*]
+        note right of fir : inside note
+    }
+    First --> Second
+    note left of First : composite note
+    state Second {
+        [*] --> a
+        a --> b
+    }
+    Second --> [*]
+    note right of Second
+        on the box
+    end note
+    note left of b : left of b

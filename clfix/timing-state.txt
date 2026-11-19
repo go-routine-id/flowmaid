@@ -1,0 +1,90 @@
+== hp run 1
+t1_bigblock60.mmd	scene 4.418	route 2.904	drag_route 5.239	partial 2.541
+t2_block25.mmd	scene 1.081	route 0.583	drag_route 0.735	partial 0.685
+t3_fourblocks.mmd	scene 0.783	route 0.336	drag_route 0.421	partial 0.256
+t4_bigblock120.mmd	scene 19.399	route 11.733	drag_route 13.230	partial 4.743
+t5_ctl_nobar60.mmd	scene 0.689	route 0.304	drag_route 0.383	partial 0.419
+x7.mmd	scene 0.072	route 0.039	drag_route 0.070	partial 0.066
+x7b.mmd	scene 0.073	route 0.035	drag_route 0.063	partial 0.066
+s7_bar_outer_holds_block.mmd	scene 0.109	route 0.045	drag_route 0.117	partial 0.144
+r0_y2_state_nested.mmd	scene 1.369	route 0.636	drag_route 1.310	partial 1.369
+== hk run 1
+t1_bigblock60.mmd	scene 4.569	route 7.606	drag_route 12.061	partial 1.941
+t2_block25.mmd	scene 1.088	route 1.570	drag_route 1.779	partial 0.708
+t3_fourblocks.mmd	scene 0.790	route 0.931	drag_route 1.090	partial 0.270
+t4_bigblock120.mmd	scene 19.265	route 30.972	drag_route 32.212	partial 3.871
+t5_ctl_nobar60.mmd	scene 0.685	route 0.307	drag_route 0.399	partial 0.435
+x7.mmd	scene 0.075	route 0.070	drag_route 0.116	partial 0.064
+x7b.mmd	scene 0.074	route 0.070	drag_route 0.117	partial 0.070
+s7_bar_outer_holds_block.mmd	scene 0.119	route 0.046	drag_route 0.118	partial 0.142
+r0_y2_state_nested.mmd	scene 1.386	route 1.319	drag_route 3.260	partial 1.482
+== hn run 1
+t1_bigblock60.mmd	scene 4.678	route 3.158	drag_route 4.087	partial 2.035
+t2_block25.mmd	scene 1.312	route 0.613	drag_route 0.769	partial 0.731
+t3_fourblocks.mmd	scene 0.796	route 0.350	drag_route 0.409	partial 0.250
+t4_bigblock120.mmd	scene 19.262	route 11.698	drag_route 12.110	partial 3.807
+t5_ctl_nobar60.mmd	scene 0.662	route 0.294	drag_route 0.391	partial 0.431
+x7.mmd	scene 0.071	route 0.037	drag_route 0.063	partial 0.063
+x7b.mmd	scene 0.073	route 0.037	drag_route 0.069	partial 0.072
+s7_bar_outer_holds_block.mmd	scene 0.108	route 0.045	drag_route 0.120	partial 0.149
+r0_y2_state_nested.mmd	scene 1.385	route 0.650	drag_route 1.170	partial 0.797
+== hp run 2
+t1_bigblock60.mmd	scene 4.428	route 3.068	drag_route 5.111	partial 2.070
+t2_block25.mmd	scene 1.130	route 0.599	drag_route 0.753	partial 0.692
+t3_fourblocks.mmd	scene 0.760	route 0.348	drag_route 0.433	partial 0.246
+t4_bigblock120.mmd	scene 20.317	route 11.618	drag_route 19.397	partial 4.267
+t5_ctl_nobar60.mmd	scene 0.664	route 0.303	drag_route 0.408	partial 0.452
+x7.mmd	scene 0.079	route 0.040	drag_route 0.072	partial 0.067
+x7b.mmd	scene 0.080	route 0.040	drag_route 0.071	partial 0.069
+s7_bar_outer_holds_block.mmd	scene 0.121	route 0.045	drag_route 0.110	partial 0.140
+r0_y2_state_nested.mmd	scene 1.373	route 0.645	drag_route 1.145	partial 0.795
+== hk run 2
+t1_bigblock60.mmd	scene 4.450	route 7.231	drag_route 10.557	partial 2.259
+t2_block25.mmd	scene 1.084	route 1.665	drag_route 1.906	partial 0.734
+t3_fourblocks.mmd	scene 0.783	route 1.031	drag_route 1.287	partial 0.290
+t4_bigblock120.mmd	scene 19.394	route 31.243	drag_route 32.791	partial 3.871
+t5_ctl_nobar60.mmd	scene 0.691	route 0.331	drag_route 0.536	partial 0.438
+x7.mmd	scene 0.075	route 0.078	drag_route 0.138	partial 0.073
+x7b.mmd	scene 0.085	route 0.079	drag_route 0.113	partial 0.084
+s7_bar_outer_holds_block.mmd	scene 0.124	route 0.045	drag_route 0.171	partial 0.202
+r0_y2_state_nested.mmd	scene 1.668	route 1.327	drag_route 1.896	partial 0.872
+== hn run 2
+t1_bigblock60.mmd	scene 5.104	route 3.084	drag_route 3.983	partial 2.610
+t2_block25.mmd	scene 1.155	route 0.585	drag_route 0.809	partial 0.748
+t3_fourblocks.mmd	scene 0.852	route 0.386	drag_route 0.510	partial 0.279
+t4_bigblock120.mmd	scene 21.614	route 11.934	drag_route 17.530	partial 4.871
+t5_ctl_nobar60.mmd	scene 0.767	route 0.333	drag_route 0.426	partial 0.447
+x7.mmd	scene 0.080	route 0.040	drag_route 0.070	partial 0.071
+x7b.mmd	scene 0.078	route 0.041	drag_route 0.075	partial 0.069
+s7_bar_outer_holds_block.mmd	scene 0.115	route 0.046	drag_route 0.124	partial 0.163
+r0_y2_state_nested.mmd	scene 1.561	route 0.708	drag_route 1.297	partial 0.906
+== hp run 3
+t1_bigblock60.mmd	scene 4.577	route 3.103	drag_route 5.645	partial 2.841
+t2_block25.mmd	scene 1.084	route 0.675	drag_route 0.746	partial 0.757
+t3_fourblocks.mmd	scene 0.763	route 0.341	drag_route 0.408	partial 0.255
+t4_bigblock120.mmd	scene 19.442	route 11.554	drag_route 20.548	partial 5.768
+t5_ctl_nobar60.mmd	scene 0.735	route 0.468	drag_route 0.552	partial 0.642
+x7.mmd	scene 0.074	route 0.036	drag_route 0.072	partial 0.068
+x7b.mmd	scene 0.084	route 0.040	drag_route 0.072	partial 0.073
+s7_bar_outer_holds_block.mmd	scene 0.129	route 0.045	drag_route 0.143	partial 0.148
+r0_y2_state_nested.mmd	scene 1.428	route 0.746	drag_route 1.310	partial 0.893
+== hk run 3
+t1_bigblock60.mmd	scene 4.484	route 8.550	drag_route 12.460	partial 2.661
+t2_block25.mmd	scene 1.105	route 1.626	drag_route 1.796	partial 0.681
+t3_fourblocks.mmd	scene 0.832	route 0.957	drag_route 1.122	partial 0.276
+t4_bigblock120.mmd	scene 20.222	route 32.195	drag_route 32.940	partial 3.762
+t5_ctl_nobar60.mmd	scene 0.685	route 0.308	drag_route 0.428	partial 0.478
+x7.mmd	scene 0.073	route 0.068	drag_route 0.107	partial 0.063
+x7b.mmd	scene 0.073	route 0.069	drag_route 0.114	partial 0.069
+s7_bar_outer_holds_block.mmd	scene 0.116	route 0.045	drag_route 0.122	partial 0.138
+r0_y2_state_nested.mmd	scene 1.396	route 1.416	drag_route 2.147	partial 0.899
+== hn run 3
+t1_bigblock60.mmd	scene 4.553	route 2.979	drag_route 3.686	partial 1.857
+t2_block25.mmd	scene 1.107	route 0.619	drag_route 0.843	partial 0.688
+t3_fourblocks.mmd	scene 0.810	route 0.343	drag_route 0.495	partial 0.292
+t4_bigblock120.mmd	scene 19.462	route 11.670	drag_route 12.144	partial 3.878
+t5_ctl_nobar60.mmd	scene 0.668	route 0.301	drag_route 0.367	partial 0.386
+x7.mmd	scene 0.080	route 0.042	drag_route 0.064	partial 0.066
+x7b.mmd	scene 0.072	route 0.037	drag_route 0.064	partial 0.064
+s7_bar_outer_holds_block.mmd	scene 0.110	route 0.046	drag_route 0.117	partial 0.167
+r0_y2_state_nested.mmd	scene 1.374	route 0.636	drag_route 1.144	partial 0.796

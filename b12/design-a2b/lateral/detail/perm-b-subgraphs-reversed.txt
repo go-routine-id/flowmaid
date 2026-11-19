@@ -1,0 +1,135 @@
+name	engine	dir	W	H	area	aspect	fill	nodes	edges	frames	top_frames	compact_mean	compact_max	compact_max_id	span_max	span_max_id	sib_pairs	sib_side	sib_stacked	sib_stagger	sib_side_linked	frame_overlap	frame_foreign_nodes	xframe_runs	xframe_len	xframe_edges	node_hits	crossings	hops	edge_len	edge_len_n	straight_max	straight_max_edge	bends	lanes_max	lane_gap_min	lbl_n	lbl_off_mean	lbl_off_max	lbl_endpx_mean	lbl_endpx_max	lbl_detach_max	lbl_lbl	lbl_node	lbl_struck	lbl_gap_min	lbl_crowd	membership	edge_ends	warn	lateral_x	lateral_edges	flow_x	bends_max	bends_max_edge	detour_max	detour_max_edge	lbl_in_end	lbl_own_gap_max	breadth	bands_n	bands	band_sets
+perm-b-subgraphs-reversed	fm	TD	3141	1432	4497912	2.19	0.061	22	27	5	5	5.46	9.59	STG	0.303	STG	10	2	8	1	0	0	0	0	0	0	0	18	12	23728	211.7	1721	R2>[DR]	135	6	12.5	20	0.189	0.359	353	738	27.9	0	0	0	3.0	8	struct	struct	0	2	2	34	12	DNS>PSDEV	1.91	LANE>OAI	1	16.5	3141	4	U1 T1 U2 / EXT GH / PROD / DR STG	T1 U1 U2 / EXT GH / PROD / DR STG
+== perm-b-subgraphs-reversed [fm] 3141 x 1432, dir TD, membership struct, edge ends struct
+ frames:
+  id    parent  x       y      w       h      members  node_area  compact  span   foreign_nodes
+  STG   -       1032.2  970.6  1298.8  433.6  4        58693.8    9.595    0.303  0            
+  PROD  -       1566.3  453.5  1269.7  400.1  5        69150.7    7.346    0.279  0            
+  DR    -       28      941.1  948.8   167.6  3        48735.5    3.263    0.117  0            
+  EXT   -       568     165    1436.5  126    5        51859.2    3.490    0.088  0            
+  GH    -       2024.5  173.5  781.7   109    2        23699.5    3.595    0.076  0
+ sibling pairs:
+  a     b     kind           flow_overlap  linked
+  STG   PROD  stacked        -117          edge  
+  STG   DR    side(stagger)  138.1         -     
+  STG   EXT   stacked        -679.6        edge  
+  STG   GH    stacked        -688.1        edge  
+  PROD  DR    stacked        -87.5         edge  
+  PROD  EXT   stacked        -162.5        edge  
+  PROD  GH    stacked        -171          edge  
+  DR    EXT   stacked        -650.1        edge  
+  DR    GH    stacked        -658.6        edge  
+  EXT   GH    side           109           -
+ edges:
+  edge           len     straight_max  bends  detour  hops  xframe_runs  xframe_len  node_hits  lateral_x  flow_x  ends         
+  U1>DNS         297.5   136.2         4      0.976   0     0            0           0          0          1       struct/struct
+  T1>DNS         125     125           0      -       0     0            0           0          0          1       struct/struct
+  U2>DNS         297.5   136.2         4      0.976   0     0            0           0          0          1       struct/struct
+  R1>ARGO        371.3   168           4      0.980   0     0            0           0          0          2       struct/struct
+  DNS>TR2        1274.9  400.4         7      0.988   1     0            0           0          0          2       struct/struct
+  DNS>PSPROD     1103.6  326.9         8      0.986   0     0            0           0          1          1       struct/struct
+  DNS>DRAPP      1325.1  474.7         8      1.205   0     0            0           0          0          2       struct/struct
+  DNS>PSDEV      1845.7  633.8         12     1.259   0     0            0           0          0          2       struct/struct
+  DNS>SITE       748.8   748.8         0      1       0     0            0           0          0          2       struct/struct
+  DNS>TR1        1282.6  693.2         7      1.376   1     0            0           0          0          2       struct/struct
+  DRAPP>TG       1396.4  494.5         8      0.989   4     0            0           0          0          2       struct/struct
+  ARGO>TG        1154.3  722.1         6      0.998   1     0            0           0          0          2       struct/struct
+  PSPROD>TG      1190.0  476.6         8      1.040   0     0            0           0          1          1       struct/struct
+  TR1>LANE       239.1   130.0         3      0.970   0     0            0           0          0          0       struct/struct
+  LANE>PG        181.9   99.3          3      -       0     0            0           0          0          0       struct/struct
+  LANE>OAI       729.4   215.9         7      1.908   0     0            0           0          0          2       struct/struct
+  LANE>AZ        557.2   275.8         3      0.987   0     0            0           0          0          2       struct/struct
+  LANE>GITLAB    1202.4  431.7         7      1.356   0     0            0           0          0          2       struct/struct
+  ARGO>GITLAB    1320.7  680.3         4      0.994   0     0            0           0          0          2       struct/struct
+  PG>DRAPP       1237.3  902.1         4      0.994   3     0            0           0          0          2       struct/struct
+  TR2>PSPROD     248.1   118.9         3      0.970   0     0            0           0          0          0       struct/struct
+  TR2>LANES4     96.5    96.5          0      -       0     0            0           0          0          0       struct/struct
+  LANES4>GITLAB  232.3   113.6         3      0.969   0     0            0           0          0          0       struct/struct
+  PSPROD>GITLAB  499.2   341.4         4      0.985   0     0            0           0          0          0       struct/struct
+  R2>[STG]       1757.8  603.4         8      1.566   0     0            0           0          0          1       struct/struct
+  R2>[DR]        2833.7  1720.6        10     1.171   2     0            0           0          0          1       struct/struct
+  R2>[PROD]      179.5   179.5         0      -       0     0            0           0          0          1       struct/struct
+ crossings of the border of a frame that holds exactly one end:
+  edge         frame  side  kind     at             
+  U1>DNS       EXT    T     flow     (910.4,165.0)  
+  T1>DNS       EXT    T     flow     (938.4,165.0)  
+  U2>DNS       EXT    T     flow     (966.4,165.0)  
+  R1>ARGO      PROD   T     flow     (2255.5,453.5) 
+  R1>ARGO      GH     B     flow     (2137.8,282.5) 
+  DNS>TR2      STG    T     flow     (1509.0,970.6) 
+  DNS>TR2      EXT    B     flow     (976.1,291.0)  
+  DNS>PSPROD   STG    L     lateral  (1032.2,1029.8)
+  DNS>PSPROD   EXT    B     flow     (953.7,291.0)  
+  DNS>DRAPP    DR     T     flow     (549.2,941.1)  
+  DNS>DRAPP    EXT    B     flow     (908.8,291.0)  
+  DNS>PSDEV    DR     T     flow     (361.2,941.1)  
+  DNS>PSDEV    EXT    B     flow     (886.4,291.0)  
+  DNS>SITE     DR     T     flow     (931.3,941.1)  
+  DNS>SITE     EXT    B     flow     (931.3,291.0)  
+  DNS>TR1      PROD   T     flow     (1852.3,453.5) 
+  DNS>TR1      EXT    B     flow     (998.5,291.0)  
+  DRAPP>TG     DR     T     flow     (577.3,941.1)  
+  DRAPP>TG     EXT    B     flow     (1240.3,291.0) 
+  ARGO>TG      PROD   T     flow     (2169.7,453.5) 
+  ARGO>TG      EXT    B     flow     (1274.6,291.0) 
+  PSPROD>TG    STG    L     lateral  (1032.2,1207.3)
+  PSPROD>TG    EXT    B     flow     (1257.4,291.0) 
+  LANE>OAI     PROD   T     flow     (2091.1,453.5) 
+  LANE>OAI     EXT    B     flow     (1910.0,291.0) 
+  LANE>AZ      PROD   T     flow     (1878.4,453.5) 
+  LANE>AZ      EXT    B     flow     (1683.7,291.0) 
+  LANE>GITLAB  STG    T     flow     (2134.7,970.6) 
+  LANE>GITLAB  PROD   B     flow     (2134.7,853.6) 
+  ARGO>GITLAB  STG    T     flow     (2304.4,970.6) 
+  ARGO>GITLAB  PROD   B     flow     (2304.4,853.6) 
+  PG>DRAPP     PROD   B     flow     (1672.7,853.6) 
+  PG>DRAPP     DR     T     flow     (605.3,941.1)  
+  R2>[STG]     GH     B     flow     (2742.8,282.5) 
+  R2>[DR]      GH     B     flow     (2714.8,282.5) 
+  R2>[PROD]    GH     B     flow     (2676.1,282.5)
+ runs through a frame holding neither end:
+  (none)
+ crossings:
+  a            b          x       y     
+  DNS>TR2      DRAPP>TG   976.1   426.5 
+  DNS>TR2      PSPROD>TG  1257.4  459.3 
+  DNS>TR2      PG>DRAPP   1480.8  895.9 
+  DNS>TR2      R2>[DR]    1481.1  916.1 
+  DNS>PSPROD   DRAPP>TG   953.7   426.5 
+  DNS>PSPROD   PSPROD>TG  1017.6  1029.6
+  DNS>PSPROD   PG>DRAPP   1005.1  895.9 
+  DNS>PSPROD   R2>[DR]    1005.1  916.4 
+  DNS>SITE     DRAPP>TG   931.3   426.5 
+  DNS>SITE     PG>DRAPP   931.3   895.9 
+  DNS>TR1      DRAPP>TG   998.7   426.5 
+  DNS>TR1      PSPROD>TG  1257.4  439.0 
+  ARGO>TG      LANE>OAI   2091.1  388.7 
+  ARGO>TG      LANE>AZ    1878.4  393.7 
+  PSPROD>TG    PG>DRAPP   1017.6  895.9 
+  PSPROD>TG    R2>[DR]    1017.6  911.1 
+  LANE>GITLAB  R2>[DR]    2134.7  916.1 
+  ARGO>GITLAB  R2>[DR]    2304.4  916.1
+ labels:
+  edge         text                                                     x       y       w      h   edge_len  s       off    end_px  detach  own_gap  in_end  gap    on_node  struck  on_label_after
+  U1>DNS       a.example.org · *.a.example.org                          772.0   136.5   219.7  20  297.5     73.3    0.254  73.3    26.5    16.5     -       56.6   0        0       0             
+  T1>DNS       *.dev · *.staging · *.product · ops dashboards           938.4   96.2    310.6  20  125       21.7    0.326  21.7    0.000   0        -       3.800  0        0       0             
+  U2>DNS       b.example.org                                            1104.9  136.5   103.2  20  297.5     73.3    0.254  73.3    26.5    16.5     -       114.9  0        0       0             
+  R1>ARGO      deploy controller pull                                   2255.6  346.8   144.1  20  371.3     188.5   0.008  182.8   0.059   0        -       42.2   0        0       0             
+  DNS>TR2      A 203.0.113.36                                           1480.8  688.6   109.5  20  1274.9    908.5   0.213  366.4   0.050   0        -       149.9  0        0       0             
+  DNS>PSPROD   b A 203.0.113.36                                         1001.6  592.1   121.2  20  1103.6    383.0   0.153  383.0   27.9    0        -       4.800  0        0       0             
+  DNS>DRAPP    only on failover: A record changed by hand               429.1   688.6   281.9  20  1325.1    883.7   0.167  441.4   0.050   0        -       70.2   0        0       0             
+  DNS>PSDEV    b.dev A 203.0.113.8                                      160.4   688.6   139.9  20  1845.7    1129.9  0.112  715.8   0.049   0        -       198.7  0        0       0             
+  DNS>SITE     example.org proxied                                      931.3   842.7   141.7  20  748.8     565.7   0.255  183.1   0.050   0        -       3.000  0        0       0             
+  DNS>TR1      A 203.0.113.177                                          1333.9  439     117.3  20  1282.6    493.5   0.115  493.5   0.001   0        -       10.3   0        0       0             
+  DRAPP>TG     standby-check                                            640.2   688.6   104.4  20  1396.4    389.5   0.221  389.5   0.000   0        -       159.0  0        0       0             
+  ARGO>TG      alert manager                                            1722.2  393.7   100.9  20  1154.3    590.9   0.012  563.4   0       0        -       22.7   0        0       0             
+  PSPROD>TG    backup failed: on failure                                1257.4  570.9   163.3  20  1190.0    893.1   0.251  296.9   0.027   0        -       101.6  0        0       0             
+  LANE>OAI     HTTPS                                                    2015.3  336     62.5   20  729.4     565.9   0.276  163.5   0.000   0        -       47.7   0        0       0             
+  LANE>GITLAB  SMTP mail.example.org                                    2130.7  1273.2  166.4  20  1202.4    707.8   0.089  494.7   0.030   0        STG     3.799  0        0       0             
+  ARGO>GITLAB  pull image                                               2304.4  900.1   78.8   20  1320.7    310.0   0.265  310.0   0.001   0        -       6.001  0        0       0             
+  PG>DRAPP     SSH tunnel: streaming replication + mirror every 15 min  1213.5  895.9   361    20  1237.3    511.6   0.087  511.6   0.000   0        -       10.2   0        0       0             
+  R2>[STG]     provisioning                                             3068.0  688.6   89.7   20  1757.8    737.5   0.080  737.5   0.050   0        -       96.6   0        0       0             
+  R2>[DR]      playbooks/standby.yml                                    2926.6  688.6   157.2  20  2833.7    624.2   0.280  624.2   0.000   0        -       62.9   0        0       0             
+  R2>[PROD]    provisioning from a laptop                               2676.1  422.7   175.8  20  179.5     154.2   0.359  25.3    0       0        -       4.600  0        0       0
+ bands: U1 T1 U2 / EXT GH / PROD / DR STG
+ widest bundle of parallel lanes: 6 at y=277,x=886..999

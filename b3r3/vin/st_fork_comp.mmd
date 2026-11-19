@@ -1,0 +1,17 @@
+stateDiagram-v2
+    state f <<fork>>
+    state j <<join>>
+    [*] --> f
+    f --> Work
+    f --> Audit
+    state Work {
+        [*] --> step1
+        step1 --> step2
+        step2 --> [*]
+    }
+    Work --> j
+    Audit --> j
+    j --> Done
+    f --> Log : side
+    Log --> Done
+    note right of Audit : audited separately

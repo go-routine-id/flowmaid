@@ -1,0 +1,26 @@
+flowchart LR
+  n1["ingest"]
+  n2["split"]
+  subgraph B0["Ops"]
+    n3["pack"]
+  end
+  subgraph B1["Core"]
+    n4["merge<br/>audit"]
+    n5["merge<br/>audit"]
+    subgraph B1s0["Data tier 0"]
+      n6["ship"]
+      n7["billing"]
+      n8["parse"]
+    end
+  end
+  n9["db"]
+  n10["split"]
+  n7 -.-> n10
+  n6 --> n8
+  n8 --> n10
+  n8 --> n9
+  n3 --> n4
+  n2 -->|queue| n8
+  n5 -->|queue| n1
+  n3 ==> n8
+  n10 --> n4

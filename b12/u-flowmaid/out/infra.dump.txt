@@ -1,0 +1,62 @@
+== rank: back edges = []
+== rank: layers = ["U1:0", "T1:0", "U2:0", "R1:0", "R2:0", "GW:1", "DNS:1", "TG:6", "OAI:4", "AZ:4", "SITE:2", "DRAPP:5", "PSDEV:2", "ARGO:1", "TR1:2", "VAULT:1", "LANE:3", "PG:4", "TR2:2", "PSPROD:3", "LANES4:3", "GITLAB:4"]
+== first placement: total_b=2687.5 depth=1245.6 ribbon=false crossings=27 hits=6 ckeys=[(0, 0.2857142857142857), (1, 0.42329545454545453), (2, 0.14836309523809524), (3, 0.6058928571428572), (4, 0.8422193877551021)]
+== final placement: total_b=2687.5 depth=1245.6 crossings=27 hits=6 ckeys=[(0, 0.2857142857142857), (1, 0.42329545454545453), (2, 0.14836309523809524), (3, 0.6058928571428572), (4, 0.8422193877551021)] extra_groups=0 hint=None compact=false
+== proxies (sub_edges) ==
+sub_edge 0: Node(4)->Sub(4) from=[R2] to=[TR2] stand_in=Some(("R2", "TR2"))
+sub_edge 1: Node(4)->Sub(2) from=[R2] to=[SITE,DRAPP,PSDEV] stand_in=Some(("R2", "SITE"))
+sub_edge 2: Node(4)->Sub(3) from=[R2] to=[ARGO,TR1,VAULT] stand_in=Some(("R2", "ARGO"))
+== grid pairs == 0
+== nodes: id layer b l bsize lsize path ==
+L 0 b=  884.6 l=   81.5  198.6x55.0  R1       ["GH"]
+L 0 b= 1404.4 l=   81.5  232.3x55.0  R2       ["GH"]
+L 0 b= 1626.6 l=   81.5  160.1x55.0  U1       []
+L 0 b= 1842.9 l=   81.5  172.5x38.0  T1       []
+L 0 b= 2059.2 l=   81.5  160.1x55.0  U2       []
+L 1 b=  864.1 l=  319.6  220.0x55.0  GW       ["EXT"]
+L 1 b= 1190.5 l=  319.6  172.9x72.0  DNS      ["EXT"]
+L 1 b= 1550.9 l=  319.6  291.9x55.0  VAULT    ["PROD"]
+L 1 b= 1908.0 l=  319.6  322.4x55.0  ARGO     ["PROD"]
+L 2 b=  328.5 l=  557.9  236.6x72.0  PSDEV    ["DR"]
+L 2 b=  601.5 l=  557.9  209.3x55.0  SITE     ["DR"]
+L 2 b= 1737.1 l=  557.9  171.1x38.0  TR1      ["PROD"]
+L 2 b= 2548.3 l=  557.9  171.1x38.0  TR2      ["STG"]
+L 3 b= 1737.1 l=  689.9  259.7x72.0  LANE     ["PROD"]
+L 3 b= 2256.0 l=  689.9  262.3x72.0  PSPROD   ["STG"]
+L 3 b= 2548.3 l=  689.9  222.4x55.0  LANES4   ["STG"]
+L 4 b= 1034.7 l=  833.9  161.0x55.0  OAI      ["EXT"]
+L 4 b= 1261.1 l=  833.9  191.7x72.0  AZ       ["EXT"]
+L 4 b= 1737.1 l=  833.9  184.8x55.0  PG       ["PROD"]
+L 4 b= 2365.8 l=  833.9  292.7x72.0  GITLAB   ["STG"]
+L 5 b=  168.2 l=  991.9  280.4x72.0  DRAPP    ["DR"]
+L 6 b=  858.4 l= 1141.4   84.6x55.0  TG       ["EXT"]
+== edges: from->to layers span dummies ==
+e 0 U1     ->DNS     L0->L1 span=1 chain=0 
+e 1 T1     ->DNS     L0->L1 span=1 chain=0 
+e 2 U2     ->DNS     L0->L1 span=1 chain=0 
+e 3 R1     ->ARGO    L0->L1 span=1 chain=0 
+e 4 DNS    ->TR2     L1->L2 span=1 chain=0 
+e 5 DNS    ->PSPROD  L1->L3 span=2 chain=1 
+e 6 DNS    ->DRAPP   L1->L5 span=4 chain=3 
+e 7 DNS    ->PSDEV   L1->L2 span=1 chain=0 
+e 8 DNS    ->SITE    L1->L2 span=1 chain=0 
+e 9 DNS    ->TR1     L1->L2 span=1 chain=0 
+e10 DRAPP  ->TG      L5->L6 span=1 chain=0 
+e11 ARGO   ->TG      L1->L6 span=5 chain=4 
+e12 PSPROD ->TG      L3->L6 span=3 chain=2 
+e13 TR1    ->LANE    L2->L3 span=1 chain=0 
+e14 LANE   ->PG      L3->L4 span=1 chain=0 
+e15 LANE   ->OAI     L3->L4 span=1 chain=0 
+e16 LANE   ->AZ      L3->L4 span=1 chain=0 
+e17 LANE   ->GITLAB  L3->L4 span=1 chain=0 
+e18 ARGO   ->GITLAB  L1->L4 span=3 chain=2 
+e19 PG     ->DRAPP   L4->L5 span=1 chain=0 
+e20 TR2    ->PSPROD  L2->L3 span=1 chain=0 
+e21 TR2    ->LANES4  L2->L3 span=1 chain=0 
+e22 LANES4 ->GITLAB  L3->L4 span=1 chain=0 
+e23 PSPROD ->GITLAB  L3->L4 span=1 chain=0 
+e24 R2     ->TR2     L0->L2 span=2 chain=1 (stand-in)
+e25 R2     ->SITE    L0->L2 span=2 chain=1 (stand-in)
+e26 R2     ->ARGO    L0->L1 span=1 chain=0 (stand-in)
+total_b=2687.5 total_l=1196.9
+saved: u-flowmaid/out/infra.svg

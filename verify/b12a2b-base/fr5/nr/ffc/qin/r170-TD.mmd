@@ -1,0 +1,9 @@
+flowchart TD
+    subgraph G[Order processing]
+        m0[y]
+        m1[charge]
+        m0 --> m1
+    end
+    s0[src0] -- "lbl9" --> G
+    s0 --> G
+    s1[src1] --> m1

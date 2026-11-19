@@ -1,0 +1,50 @@
+fix(blocks): a block layout's chip keeps CLEAR_GAP from other lines where its own line leaves it room (b12a2c-squeeze fix round 2 #3, B12 G3)
+
+The public fixture drawn BT (and its seven BT direction copies) had two
+chips crowding other lines that had been clear at the package start:
+- `deploy` (image registry into the storefront) sat 3 px above the
+  thick `deploy` run under it. X4 levelled the build pipeline (22dac44),
+  its line grew, and the label stage put the chip at the clean spot
+  nearest the line's middle, which now lies on the thick run: clean
+  meant only "no stroke within STROKE_PAD", 1 px of air past a 3.5 px
+  stroke.
+- the shipping worker's `write`, out of Order processing since 7208f50,
+  sat above the ledger's `write` run, and the ledger's chip shifted to
+  4 px from the `scrape` line beside it.
+Mermaid draws both with air. G3 asks a slot to be clear of foreign
+lines by CLEAR_GAP (the yardstick's `lbl_crowd`).
+
+`labels::place_long` in a block layout (static scene and route(); the
+builders' pass and every other diagram are unchanged): a spot ranks, after
+its tier, by how many other edges' strokes come within CLEAR_GAP of the
+chip (`SpotKey::near`, `Field::near`), so a clean chip with a line that
+close is searched on for a clean spot on its line with that air; a spot
+is perfect only with none near. Not for a compact branch point's fan
+(its labels sit among their siblings' strokes by design), and never
+beside the line: a spot beside it ranks as before, so no chip goes off
+its line or farther from it for air (lead ruling on G3, measured at 3 px
+on every block-mode copy, static and routed: none newly off, none
+farther). The head-clear and back-to-the-middle moves of the final pass
+keep the same air.
+
+Public fixture BT: `chip_crowd` 4 -> 1, `chip_gap_min` 3.09 -> 10.0 (the
+one left is the Data tier's `scrape`, 10 px, as at the package start); TD
+and the reorderings: no chip crowded. Over the 332 + 32 direction copies
+`chip_crowd` falls on 71 and rises on none against the package start but
+`cycle2` TD, whose `r3` left its end block in 7208f50 for the gap
+between the frames, where no spot on its line keeps the air (mermaid sets
+it there too).
+
+Tests: blockcheck::a_block_layouts_chips_keep_clear_of_other_lines
+(`deploy`, both `write` chips, public fixture TD and BT; fails without
+the rule: `write` 10.9 px), labels::tests::
+a_spot_on_its_line_beats_one_beside_it_however_near_the_strokes.
+
+Checks against the package start (d99c073), suite-on: cells, gate
+messages and direction copies no worse; gate stdout: quality_gate
+dense-td `chip_crowd` 9 -> 4, dense-lr 5 -> 3, DEFECT_BASELINE static
+17 -> 10. Default build byte-identical (25 corpus SVGs). No snapshot or
+gate changed. Guard green.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

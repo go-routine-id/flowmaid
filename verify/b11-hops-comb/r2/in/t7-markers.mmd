@@ -1,0 +1,18 @@
+flowchart TD
+  P1[Producer 1] <--> Q1[Queue 1]
+  P1 --o Q2[Queue 2]
+  P1 --x Q3[Queue 3]
+  P2[Producer 2] <--> Q3
+  P2 o--o Q1
+  P2 x--x Q2
+  P3[Producer 3] --> Q1
+  P3 <-.-> Q2
+  P3 ==> Q3
+  Q1 --> K1[Sink 1]
+  Q2 --> K1
+  Q3 --> K1
+  Q1 --> K2[Sink 2]
+  Q3 --> K2
+  P1 ~~~ P3
+  P1 -->|skip the queues entirely| K2
+  P3 -->|bypass| K1

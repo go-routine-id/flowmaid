@@ -1,0 +1,30 @@
+flowchart TD
+  s0["web"]
+  subgraph g0["pay queue zone"]
+    direction LR
+    m0["trace"]
+    m1["search ship search"]
+    m2["metric"]
+    m3["auth"]
+    m4["db"]
+    m0 --> m1
+    m1 --> m2
+    m1 --> m3
+    m0 --> m4
+  end
+  subgraph g1["db report zone"]
+    m5["log db auth"]
+    m6["web db"]
+    m7["user log"]
+    m5 --> m6
+    m6 --> m7
+  end
+  subgraph g2["billing zone"]
+    direction TB
+    m8["notify ship"]
+    m9["order store"]
+    m8 --> m9
+  end
+  s0 --> g0
+  s0 --> g1
+  s0 --> m8

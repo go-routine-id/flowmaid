@@ -1,0 +1,14 @@
+stateDiagram-v2
+[*] --> S1
+S1 --> S2
+S2 --> S3
+S3 --> S4
+S4 --> S5
+S5 --> S1 : loop back
+S3 --> S1 : skip back
+note right of S1 : n1
+note left of S2 : n2
+note right of S3 : n3
+note left of S4 : n4
+note right of S5 : n5
+S5 --> [*]

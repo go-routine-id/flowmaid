@@ -1,0 +1,32 @@
+base-7122a53: 7122a53887af5e6498f93fac164100884d5432e1, suite-on (RUSTFLAGS='--cfg flowmaid_blocks'), made 2026-11-17 with the live judge after the bends fix
+
+check 1, local inputs (live judge):
+  --due A2: judge: 444 checks on 95 diagram(s): 89 must-fail, 10 target missed
+  --due A1: judge: 158 checks on 95 diagram(s): 0 must-fail, 7 target missed
+  routed:   judge: 62 checks on 95 diagram(s): 37 must-fail, 0 target missed
+
+check 2, suite-on tests:
+  src=/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/tools-a2b/wt
+  lib exit=101 test result: FAILED. 1180 passed; 8 failed; 5 ignored; 0 measured; 0 filtered out; finished in 31.72s
+  quality exit=101 test result: FAILED. 9 passed; 6 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.69s
+  failing:
+    a_one_px_drag_leaves_unrelated_edges_put
+    block_fixtures_are_not_drawn_worse
+    channels_keep_edges_apart_and_off_chips
+    comb::tests::a_hubs_fan_is_a_comb_in_scene_and_route
+    crossing_gaps_do_not_read_as_dashes
+    defect_baseline_gate
+    ports::tests::a_nearly_straight_pair_is_drawn_straight
+    quality_gate
+    render::tests::advanced_showcase_parses_and_renders
+    scene::tests::a_composite_edge_to_its_own_state_drops_straight_from_the_border
+    scene::tests::a_lane_stays_in_its_frames_in_route_and_on_a_drag_too
+    scene::tests::far_apart_back_edges_and_frame_legs_square_up_alike_in_route
+    scene::tests::note_links_hold_their_ends_and_corners_in_scene_route_and_drag
+    scene::tests::note_links_match_between_scene_and_route
+
+check 3, direction copies (verdict columns, totals):
+  [dirs static] 332 copies  defects 41->41 (+0/-0)  x_drawn 1283->1283 (+0/-0)  lateral_x 216->216 (+0/-0)  fan_x 30->30 (+0/-0)  edge_chip 8->8 (+0/-0)  side_ends 231->231 (+0/-0)  min_edge_gap down 0
+  [dirs routed] 332 copies  defects 169->169 (+0/-0)  x_drawn 1997->1997 (+0/-0)  lateral_x 418->418 (+0/-0)  fan_x 183->183 (+0/-0)  edge_chip 78->78 (+0/-0)  side_ends 361->361 (+0/-0)  min_edge_gap down 0
+  [dirsx static] 32 copies  defects 0->0 (+0/-0)  x_drawn 1->1 (+0/-0)  lateral_x 1->1 (+0/-0)  fan_x 0->0 (+0/-0)  edge_chip 0->0 (+0/-0)  side_ends 2->2 (+0/-0)  min_edge_gap down 0
+  [dirsx routed] 32 copies  defects 0->0 (+0/-0)  x_drawn 1->1 (+0/-0)  lateral_x 1->1 (+0/-0)  fan_x 0->0 (+0/-0)  edge_chip 0->0 (+0/-0)  side_ends 2->2 (+0/-0)  min_edge_gap down 0

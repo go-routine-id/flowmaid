@@ -1,0 +1,17 @@
+flowchart TD
+  h[hub] --> q1
+  h --> q2
+  h --> D
+  c[client] --> D
+  b[batch] --> D
+  b --> q3
+  subgraph D[Distribution and fulfilment desk]
+    q1[queue]
+    q2[charge]
+    q3[ship]
+    q1 --> q4[pack]
+    q2 --> q4
+    q3 --> q4
+  end
+  q4 --> m[metrics]
+  D --> o[outbox]

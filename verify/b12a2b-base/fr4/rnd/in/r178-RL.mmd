@@ -1,0 +1,16 @@
+flowchart RL
+    subgraph G[Core]
+        m0[x wide member node]
+        m1[x wide member node]
+        m2[db]
+        m0 --> m1
+    end
+    s0[src0] --> m0
+    s1[src1] --> G
+    s1 -- "lbl4" --> m1
+    s2[src2] --> G
+    s2 --> m1
+    s3[src3] --> G
+    s3 --> m2
+    s4[src4] -- "lbl4" --> G
+    s4 --> m1

@@ -1,0 +1,20 @@
+architecture-beta
+    service s0(cloud)[Q 0]
+    service s1(server)[PostgreSQL Primary 1]
+    service s2(cloud)[Authentication and Authorization Service 2]
+    service s3(database)[Svc 3]
+    service s4(database)[PostgreSQL Primary 4]
+    service s5(cloud)[Q 5]
+    service s6(disk)[Svc 6]
+    service s7(cloud)[PostgreSQL Primary 7]
+    service s8(database)[Svc 8]
+    junction s9
+    junction s10
+    s4:L --> R:s3
+    s1:R <-[reads config]-> L:s8
+    s6:R -[calls]- L:s1
+    s4:B --> R:s1
+    s1:L --> R:s7
+    s1:B <-[x]-> B:s7
+    s6:L <-[calls]-> R:s4
+    s6:T <--> L:s10

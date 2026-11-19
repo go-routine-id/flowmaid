@@ -1,0 +1,14 @@
+flowchart LR
+    subgraph O[Order processing]
+        subgraph G[Shipping and returns desk]
+            m0[db]
+            m1[auth service]
+        end
+        k[k]
+    end
+    m0 --> k
+    m1 --> k
+    s0[src0] --> G
+    s1[src1] -- "lbl7" --> m0
+    s2[src2] -- "lbl3" --> m0
+    s2 --> G

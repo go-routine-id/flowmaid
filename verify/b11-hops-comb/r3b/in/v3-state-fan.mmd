@@ -1,0 +1,17 @@
+stateDiagram-v2
+  [*] --> Ready
+  Ready --> A : a
+  Ready --> B : b
+  Ready --> C : c
+  Ready --> D : d
+  Ready --> E : e
+  A --> Done
+  B --> Done
+  C --> Done
+  D --> Done
+  E --> Done
+  A --> E : skip
+  E --> A : back
+  B --> D
+  Done --> Ready : again
+  Done --> [*]

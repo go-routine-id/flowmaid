@@ -1,0 +1,45 @@
+flowchart RL
+  n1["ingest"]
+  n2["db"]
+  n3["auth<br/>api"]
+  subgraph B0["Edge services"]
+    n4["mail db cache<br/>store"]
+    n5["pack api pack"]
+  end
+  subgraph B1["Platform"]
+    n6["ingest audit ingest<br/>worker"]
+    n7["report"]
+    n8["billing"]
+    n9["billing audit auth"]
+  end
+  subgraph B2["Ingest"]
+    n10["merge"]
+  end
+  subgraph B3["Analytics"]
+    n11["split worker ingest"]
+    subgraph B3s0["Platform 0"]
+      n12["api"]
+    end
+    subgraph B3s1["Data tier 1"]
+      n13["ingest ingest ship"]
+      n14["split mail split"]
+    end
+  end
+  n15["worker search queue"]
+  n7 -.->|parse| n9
+  n14 -.-> n5
+  n10 -.-> n4
+  n7 --> n3
+  n4 -->|notify| n6
+  n4 -->|store| n9
+  n12 -.->|ingest| n13
+  n11 -->|ship| n6
+  n15 --> n4
+  n9 -.->|search| B3s1
+  n4 ==>|store| n10
+  n9 -->|audit| n8
+  n6 ==> n3
+  n5 --> n9
+  n9 -.-> n4
+  n6 --> n13
+  n11 ==> n13

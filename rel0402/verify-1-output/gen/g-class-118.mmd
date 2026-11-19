@@ -1,0 +1,27 @@
+classDiagram
+direction BT
+C2 "1" *-- "*" C1
+C3 "1" <|-- "*" C2 : 日本語
+C2 "1" --> "*" C1
+C1 *-- C3 : delta
+C4 -- C1
+C0 "1" --> "*" C0
+C4 o-- C4
+C2 <--> C0 : gamma
+C4 *-- C1
+C3 "1" o-- "*" C1 : delta
+C1 ..|> C2
+C0 ..|> C4
+C3 ..> C3 : alpha
+C0 -- C0
+C4 "1" ..> "*" C1
+C1 <--> C4 : a&b
+C1 ..> C0
+C4 -- C3 : beta
+note for C0 "gamma"
+note "x"
+note for C0 "delta"
+class C2 {
+  +int id
+  +name() String
+}

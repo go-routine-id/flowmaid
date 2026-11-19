@@ -1,0 +1,20 @@
+flowchart BT
+    N0(Archive fetch)
+    N1(Fetch)
+    N2{Notify}
+    N3[Queue]
+    N4[Emit]
+    N5([Queue])
+    N6(Emit archive)
+    N7{Check}
+    N8(Notify)
+    N0 -->|yes| N1
+    N1 -->|fail| N2
+    N0 -->|ok| N3
+    N2 -->|ok| N4
+    N3 -->|yes| N5
+    N5 --> N6
+    N5 --> N7
+    N7 --> N8
+    N2 --> N4
+    N4 ==>|back| N2

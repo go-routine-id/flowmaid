@@ -1,0 +1,63 @@
+flowchart RL
+  n1["parse"]
+  n2["ship"]
+  subgraph B0["Storefront"]
+    n3["report"]
+    n4["cache"]
+    subgraph B0s0["Storefront 0"]
+      n5["report"]
+      n6["notify"]
+      n7["billing"]
+    end
+  end
+  subgraph B1["Back office and finance"]
+    n8["ship"]
+    n9["api store store"]
+    n10["split"]
+  end
+  subgraph B2["Platform"]
+    n11["store<br/>audit"]
+    n12["cache"]
+    n13["index"]
+    n14["ship split audit"]
+    subgraph B2s0["Fulfilment desk 0"]
+      n15["report"]
+    end
+    subgraph B2s1["Platform 1"]
+      n16["split"]
+      n17["auth"]
+    end
+  end
+  subgraph B3["Edge services"]
+    n18["audit"]
+    n19["ingest"]
+    n20["worker"]
+    n21["search"]
+  end
+  n22["queue"]
+  n23["pack search db"]
+  n23 --> n7
+  n4 -.-> n21
+  n1 -->|merge| B2s0
+  n10 -->|split| n18
+  n15 --> n10
+  n22 ==> n2
+  n8 --> n4
+  n18 ==>|store| n19
+  n20 -.-> n2
+  n13 -.-> n16
+  n2 ==>|pack| n9
+  n3 -->|cache| n8
+  n21 --> n22
+  n17 --> n14
+  n22 --> n4
+  n12 -.-> n3
+  n2 --> n19
+  n15 --> n12
+  n9 -.->|search| n10
+  n18 -->|merge| n23
+  n10 -.-> n6
+  n14 --> n9
+  n8 --> n3
+  n13 ==> n11
+  n9 ==>|pack| n23

@@ -1,0 +1,15 @@
+flowchart LR
+    subgraph G[Payments]
+        m0[ledger]
+        m1[x wide member node]
+        m2[queue]
+        m0 --> m1
+    end
+    s0[src0] --> m2
+    s0 --> G
+    s1[src1] --> m0
+    s2[src2] --> m0
+    s3[src3] --> m0
+    s3 -- "lbl8" --> m1
+    s4[src4] --> m2
+    m2 --> z[end]

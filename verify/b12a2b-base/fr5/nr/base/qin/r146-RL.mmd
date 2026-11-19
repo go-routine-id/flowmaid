@@ -1,0 +1,14 @@
+flowchart RL
+    subgraph G[MMMM WWWW QQQQ]
+        m0[auth service]
+        m1[y]
+        m2[y]
+        m0 --> m1
+    end
+    s0[src0] --> m1
+    s0 --> G
+    s1[src1] --> G
+    s1 --> G
+    s2[src2] --> m2
+    s3[src3] -- "lbl4" --> G
+    s3 --> G

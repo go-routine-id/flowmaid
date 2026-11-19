@@ -1,0 +1,18 @@
+flowchart TD
+  subgraph P[Platform]
+    m1[router]
+    subgraph N[Nested services]
+      n1[auth]
+      n2[billing]
+      n1 --> n2
+    end
+    m2[reporter]
+    m3[exporter]
+    m1 --> m2
+    m1 --> n1
+    n2 --> m3
+    m1 --> m3
+  end
+  ext([client]) --> m1
+  m3 --> sink[(warehouse)]
+  n2 -.-> sink

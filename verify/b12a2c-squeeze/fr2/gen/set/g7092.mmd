@@ -1,0 +1,21 @@
+flowchart BT
+  n1["store"]
+  n2["report pack auth<br/>cache"]
+  n3["cache"]
+  subgraph B0["Fulfilment desk"]
+    n4["cache"]
+  end
+  subgraph B1["Analytics"]
+    n5["ingest ship auth"]
+    n6["mail"]
+    n7["report ship cache"]
+  end
+  n8["ship"]
+  n3 ==> n1
+  n2 --> n1
+  n8 -->|ingest| n5
+  n6 -.->|search| n1
+  n3 -->|split| n2
+  n2 ==> n7
+  n6 ==>|merge| n4
+  n5 -->|notify| n4

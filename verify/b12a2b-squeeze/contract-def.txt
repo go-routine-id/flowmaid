@@ -1,0 +1,164 @@
+  miss edge 15 Users->Mon at (238.3,1007.5) wp 0
+advanced scene: edge_at missed 1, hits_in_rect missed 1 of 16
+  miss edge 15 Users->Mon at (246.3,1014.5) wp 4
+advanced route@scene: edge_at missed 1, hits_in_rect missed 1 of 16
+  miss edge 15 Users->Mon at (246.3,1014.5) wp 4
+advanced route mv0: edge_at missed 1, hits_in_rect missed 1 of 16
+  miss edge 15 Users->Mon at (246.3,1014.5) wp 4
+advanced partial mv0: edge_at missed 1, hits_in_rect missed 1 of 16
+advanced mv0: route 1.12 ms, partial 0.50 ms
+  miss edge 15 Users->Mon at (264.8,1019.0) wp 0
+advanced route mv7: edge_at missed 1, hits_in_rect missed 1 of 16
+  miss edge 15 Users->Mon at (258.3,1019.0) wp 0
+advanced partial mv7: edge_at missed 1, hits_in_rect missed 1 of 16
+advanced mv7: route 1.02 ms, partial 0.82 ms
+  miss edge 15 Users->Mon at (246.3,1014.5) wp 4
+advanced route mv13: edge_at missed 1, hits_in_rect missed 1 of 16
+  miss edge 15 Users->Mon at (246.3,1014.5) wp 4
+advanced partial mv13: edge_at missed 1, hits_in_rect missed 1 of 16
+advanced mv13: route 0.93 ms, partial 0.54 ms
+back-edge mv0: route 0.24 ms, partial 0.10 ms
+back-edge mv3: route 0.36 ms, partial 0.14 ms
+back-edge mv5: route 0.22 ms, partial 0.14 ms
+bench-75 mv0: route 16.79 ms, partial 2.67 ms
+bench-75 mv10: route 14.91 ms, partial 3.45 ms
+bench-75 mv20: route 16.83 ms, partial 2.00 ms
+blocks-overview mv0: route 4.64 ms, partial 1.11 ms
+blocks-overview mv10: route 4.54 ms, partial 2.04 ms
+blocks-overview mv20: route 4.48 ms, partial 1.90 ms
+demo mv0: route 0.24 ms, partial 0.11 ms
+demo mv3: route 0.25 ms, partial 0.13 ms
+demo mv5: route 0.26 ms, partial 0.11 ms
+dense-lr scene: edge_at missed 0, hits_in_rect missed 1 of 40
+dense-lr route@scene: edge_at missed 0, hits_in_rect missed 1 of 40
+dense-lr route mv0: edge_at missed 0, hits_in_rect missed 1 of 40
+dense-lr partial mv0: edge_at missed 0, hits_in_rect missed 1 of 40
+dense-lr mv0: route 6.92 ms, partial 1.80 ms
+dense-lr route mv26: edge_at missed 0, hits_in_rect missed 1 of 40
+dense-lr partial mv26: edge_at missed 0, hits_in_rect missed 1 of 40
+dense-lr mv26: route 7.19 ms, partial 1.50 ms
+dense-lr route mv51: edge_at missed 0, hits_in_rect missed 1 of 40
+dense-lr partial mv51: edge_at missed 0, hits_in_rect missed 1 of 40
+dense-lr mv51: route 6.97 ms, partial 1.84 ms
+dense-td mv0: route 11.11 ms, partial 1.86 ms
+dense-td mv23: route 11.11 ms, partial 2.21 ms
+dense-td mv45: route 11.43 ms, partial 3.21 ms
+fanout-frames mv0: route 1.19 ms, partial 1.01 ms
+fanout-frames mv11: route 0.64 ms, partial 0.20 ms
+fanout-frames mv21: route 0.60 ms, partial 0.40 ms
+fanout mv0: route 0.73 ms, partial 0.51 ms
+fanout mv4: route 0.56 ms, partial 0.36 ms
+fanout mv8: route 0.42 ms, partial 0.24 ms
+infra-overview-v2 mv0: route 6.55 ms, partial 1.33 ms
+infra-overview-v2 mv11: route 6.28 ms, partial 2.67 ms
+infra-overview-v2 mv21: route 5.49 ms, partial 1.12 ms
+infra-overview mv0: route 3.89 ms, partial 1.23 ms
+infra-overview mv11: route 3.46 ms, partial 1.46 ms
+infra-overview mv21: route 3.44 ms, partial 1.32 ms
+long-labels mv0: route 0.18 ms, partial 0.07 ms
+long-labels mv2: route 0.19 ms, partial 0.09 ms
+long-labels mv4: route 0.16 ms, partial 0.08 ms
+lr mv0: route 0.24 ms, partial 0.14 ms
+lr mv3: route 0.33 ms, partial 0.27 ms
+lr mv6: route 0.25 ms, partial 0.13 ms
+shapes mv0: route 0.14 ms, partial 0.10 ms
+shapes mv5: route 0.15 ms, partial 0.10 ms
+shapes mv10: route 0.13 ms, partial 0.09 ms
+stress mv0: route 0.52 ms, partial 0.42 ms
+stress mv2: route 0.49 ms, partial 0.14 ms
+stress mv3: route 0.40 ms, partial 0.21 ms
+subgraph mv0: route 0.20 ms, partial 0.11 ms
+subgraph mv4: route 0.24 ms, partial 0.13 ms
+subgraph mv7: route 0.18 ms, partial 0.12 ms
+wide-labels mv0: route 1.15 ms, partial 0.28 ms
+wide-labels mv3: route 0.97 ms, partial 0.23 ms
+wide-labels mv5: route 2.26 ms, partial 1.42 ms
+state mv0: route 0.67 ms, partial 0.36 ms
+state mv7: route 0.64 ms, partial 0.38 ms
+state mv14: route 0.63 ms, partial 0.40 ms
+state: scene of to_mermaid output differs
+  miss edge 15 Users->Mon at (238.3,1007.5) wp 0
+advanced scene: edge_at missed 1, hits_in_rect missed 1 of 16
+  miss edge 15 Users->Mon at (246.3,1014.5) wp 4
+advanced route@scene: edge_at missed 1, hits_in_rect missed 1 of 16
+  miss edge 15 Users->Mon at (246.3,1014.5) wp 4
+advanced route mv0: edge_at missed 1, hits_in_rect missed 1 of 16
+  miss edge 15 Users->Mon at (246.3,1014.5) wp 4
+advanced partial mv0: edge_at missed 1, hits_in_rect missed 1 of 16
+advanced mv0: route 1.11 ms, partial 0.53 ms
+  miss edge 15 Users->Mon at (264.8,1019.0) wp 0
+advanced route mv7: edge_at missed 1, hits_in_rect missed 1 of 16
+  miss edge 15 Users->Mon at (258.3,1019.0) wp 0
+advanced partial mv7: edge_at missed 1, hits_in_rect missed 1 of 16
+advanced mv7: route 1.00 ms, partial 0.80 ms
+  miss edge 15 Users->Mon at (246.3,1014.5) wp 4
+advanced route mv13: edge_at missed 1, hits_in_rect missed 1 of 16
+  miss edge 15 Users->Mon at (246.3,1014.5) wp 4
+advanced partial mv13: edge_at missed 1, hits_in_rect missed 1 of 16
+advanced mv13: route 0.95 ms, partial 0.55 ms
+drum-BT mv0: route 0.83 ms, partial 0.30 ms
+drum-BT mv4: route 0.79 ms, partial 0.49 ms
+drum-BT mv8: route 1.11 ms, partial 0.28 ms
+drum-LR mv0: route 1.01 ms, partial 0.24 ms
+drum-LR mv4: route 0.84 ms, partial 0.36 ms
+drum-LR mv8: route 1.18 ms, partial 0.51 ms
+drum-RL mv0: route 1.03 ms, partial 0.59 ms
+drum-RL mv4: route 0.73 ms, partial 0.36 ms
+drum-RL mv8: route 1.02 ms, partial 0.20 ms
+drum-TD mv0: route 1.06 ms, partial 0.26 ms
+drum-TD mv4: route 1.07 ms, partial 0.26 ms
+drum-TD mv8: route 1.13 ms, partial 0.45 ms
+n109x-BT mv0: route 0.66 ms, partial 0.34 ms
+n109x-BT mv3: route 0.57 ms, partial 0.34 ms
+n109x-BT mv5: route 0.51 ms, partial 0.15 ms
+n109x-LR mv0: route 0.30 ms, partial 0.19 ms
+n109x-LR mv3: route 0.38 ms, partial 0.40 ms
+n109x-LR mv5: route 0.55 ms, partial 0.12 ms
+n109x-RL mv0: route 0.54 ms, partial 0.13 ms
+n109x-RL mv3: route 0.31 ms, partial 0.26 ms
+n109x-RL mv5: route 0.57 ms, partial 0.13 ms
+n109x-TD mv0: route 0.51 ms, partial 0.36 ms
+n109x-TD mv3: route 0.62 ms, partial 0.52 ms
+n109x-TD mv5: route 0.61 ms, partial 0.13 ms
+xing-BT mv0: route 1.05 ms, partial 0.38 ms
+xing-BT mv5: route 1.03 ms, partial 0.40 ms
+xing-BT mv9: route 1.06 ms, partial 0.43 ms
+xing-LR mv0: route 1.35 ms, partial 0.72 ms
+xing-LR mv5: route 1.58 ms, partial 1.10 ms
+xing-LR mv9: route 1.30 ms, partial 0.47 ms
+xing-RL mv0: route 1.29 ms, partial 0.83 ms
+xing-RL mv5: route 1.37 ms, partial 0.68 ms
+xing-RL mv9: route 1.35 ms, partial 0.47 ms
+xing-TD mv0: route 0.88 ms, partial 0.38 ms
+xing-TD mv5: route 1.43 ms, partial 0.72 ms
+xing-TD mv9: route 1.01 ms, partial 0.44 ms
+n109-BT.e5321c90a8 mv0: route 0.64 ms, partial 0.36 ms
+n109-BT.e5321c90a8 mv3: route 0.69 ms, partial 0.37 ms
+n109-BT.e5321c90a8 mv5: route 0.52 ms, partial 0.11 ms
+r087-TD.b0163c0f84 mv0: route 0.61 ms, partial 0.23 ms
+r087-TD.b0163c0f84 mv4: route 0.76 ms, partial 0.14 ms
+r087-TD.b0163c0f84 mv8: route 0.54 ms, partial 0.13 ms
+r262-TD.89e91185f1 mv0: route 1.31 ms, partial 1.35 ms
+r262-TD.89e91185f1 mv5: route 1.31 ms, partial 0.66 ms
+r262-TD.89e91185f1 mv9: route 1.44 ms, partial 0.32 ms
+r221-TD.b016663668 mv0: route 0.30 ms, partial 0.25 ms
+r221-TD.b016663668 mv3: route 0.29 ms, partial 0.12 ms
+r221-TD.b016663668 mv6: route 0.41 ms, partial 0.11 ms
+quality.bench-75-BT.b18a559a97 mv0: route 30.44 ms, partial 2.24 ms
+quality.bench-75-BT.b18a559a97 route mv10: edge_at missed 0, hits_in_rect missed 1 of 75
+quality.bench-75-BT.b18a559a97 mv10: route 20.25 ms, partial 3.76 ms
+quality.bench-75-BT.b18a559a97 route mv20: edge_at missed 0, hits_in_rect missed 2 of 75
+quality.bench-75-BT.b18a559a97 mv20: route 18.63 ms, partial 4.25 ms
+quality.dense-lr-RL.77a21dafbf scene: edge_at missed 0, hits_in_rect missed 1 of 40
+quality.dense-lr-RL.77a21dafbf route@scene: edge_at missed 0, hits_in_rect missed 1 of 40
+quality.dense-lr-RL.77a21dafbf route mv0: edge_at missed 0, hits_in_rect missed 1 of 40
+quality.dense-lr-RL.77a21dafbf partial mv0: edge_at missed 0, hits_in_rect missed 1 of 40
+quality.dense-lr-RL.77a21dafbf mv0: route 7.98 ms, partial 1.62 ms
+quality.dense-lr-RL.77a21dafbf route mv26: edge_at missed 0, hits_in_rect missed 1 of 40
+quality.dense-lr-RL.77a21dafbf partial mv26: edge_at missed 0, hits_in_rect missed 1 of 40
+quality.dense-lr-RL.77a21dafbf mv26: route 8.25 ms, partial 1.59 ms
+quality.dense-lr-RL.77a21dafbf route mv51: edge_at missed 0, hits_in_rect missed 1 of 40
+quality.dense-lr-RL.77a21dafbf partial mv51: edge_at missed 0, hits_in_rect missed 1 of 40
+quality.dense-lr-RL.77a21dafbf mv51: route 8.10 ms, partial 1.82 ms
+WORST route_partial 4.25 ms
+TOTAL problems 51

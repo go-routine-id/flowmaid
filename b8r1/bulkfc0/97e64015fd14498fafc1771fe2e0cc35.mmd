@@ -1,0 +1,28 @@
+flowchart RL
+  subgraph F0 [Frame 0]
+    n5{{Node 5}}
+    n0([Node 0])
+    n10((Node 10))
+  end
+  n1 --x F0
+  n1 x--x n0
+  n3 o--o n11
+  n9 ==> n7
+  n9 --o n7
+  n10 --x n1
+  n11 --o n9
+  n10 -.->|dot| n10
+  n6 <==> n8
+  n11 x--x n4
+  n10 ==>|thick lbl| n4
+  n10 <==> n4
+  n10 --o F0
+  n10 -.-> n11
+  n11 ==> F0
+  n0 ==> n9
+  n10 x--x n4
+  n3 <-.-> F0
+  n2 ==> F0
+  n1 <==> n10
+  n11 --o n7
+  linkStyle 2 stroke:#3a3,stroke-width:24px

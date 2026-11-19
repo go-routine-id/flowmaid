@@ -1,0 +1,20 @@
+stateDiagram-v2
+[*] --> S1
+state fork1 <<fork>>
+state join1 <<join>>
+state ch <<choice>>
+S1 --> fork1
+fork1 --> A
+fork1 --> B
+A --> join1
+B --> join1
+join1 --> ch
+ch --> S1 : again
+ch --> [*]
+state Comp {
+  [*] --> X
+  X --> Y
+  Y --> [*]
+}
+A --> Comp
+note right of A : hi

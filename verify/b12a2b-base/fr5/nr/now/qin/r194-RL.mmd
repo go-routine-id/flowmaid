@@ -1,0 +1,16 @@
+flowchart RL
+    subgraph O[Core]
+        subgraph G[Data ingestion workers]
+            m0[w]
+            m1[queue]
+        end
+        k[k]
+    end
+    m1 --> k
+    s0[src0] --> m1
+    s0 --> O
+    s1[src1] --> G
+    s1 --> m0
+    s2[src2] --> G
+    s2 --> O
+    m1 --> z[end]

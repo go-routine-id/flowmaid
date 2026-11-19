@@ -1,0 +1,36 @@
+flowchart LR
+  subgraph F0 [Frame 0]
+    n9((Node 9))
+  end
+  n7 -.- n10
+  n7 x--x n10
+  n1 -.- n9
+  n6 -.-> n0
+  n10 ==>|x| n4
+  n8 --->|no| n6
+  n1 o--o n10
+  n3 -.- n2
+  n6 <--> n4
+  n3 --x n6
+  n7 --x n7
+  n5 -.-> n6
+  n4 -.-> n0
+  n2 --> n5
+  n1 ==> n4
+  n2 <-->|x| n5
+  n2 -.-> n9
+  n10 ==> n3
+  n7 ==> n1
+  n2 --- n8
+  n7 -->|a longer label| n2
+  linkStyle 3 interpolate natural stroke-width:30px
+  linkStyle 4 stroke-width:30px,stroke:#3a3
+  linkStyle 6 stroke-width:24px
+  linkStyle 9 stroke-width:2px,stroke:#36c,stroke-dasharray:6 3
+  linkStyle 12 stroke-width:40px,stroke:#36c,stroke-dasharray:6 3
+  linkStyle 14 stroke-width:30px,stroke:#3a3
+  linkStyle 15 stroke-width:55px,stroke:#c33
+  linkStyle 16 stroke-width:12px,stroke:#36c,stroke-dasharray:6 3
+  linkStyle 17 stroke-width:1px,stroke:#3a3
+  linkStyle 18 stroke-width:16px,stroke:#36c,stroke-dasharray:6 3
+  linkStyle 19 stroke-width:8px,stroke:#3a3

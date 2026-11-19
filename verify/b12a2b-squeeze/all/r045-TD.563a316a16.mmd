@@ -1,0 +1,11 @@
+flowchart TD
+    subgraph G[Core]
+        m0[y]
+        m1[ledger]
+        m0 --> m1
+    end
+    s0[src0] --> G
+    s0 -- "lbl7" --> m1
+    s1[src1] -- "lbl9" --> G
+    m1 --> z[end]
+    G --> z2[after]

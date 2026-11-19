@@ -1,0 +1,17 @@
+flowchart BT
+    N0(Store check)
+    N1[Notify]
+    N2[Queue validate]
+    N3(Done store)
+    N4(Queue)
+    N5([Load notify])
+    N6{Fetch}
+    N0 --> N1
+    N0 -->|yes| N2
+    N0 --> N3
+    N2 --> N4
+    N3 --> N5
+    N4 --> N6
+    N6 -->|retry| N3
+    N3 --> N2
+    N3 -->|again| N2

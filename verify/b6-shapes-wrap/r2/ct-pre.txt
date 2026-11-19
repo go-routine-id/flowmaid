@@ -1,0 +1,79 @@
+advanced: wrapped=0 det=true/true/true par(scene)=0 static_pick=415/0/0 gaps s/r=0/0 drag: par=0 sparse=269 bez=10 gaps=10 pick=39785/0/4 corner_pick=24 rt=same scene_ms=1.18 route_worst=1.24 partial_worst=0.54 partial_mean=0.35
+   wrong Mon → Done: yes picked Rollback->Platform at (194.1,1171.2)
+   wrong Mon → Done: yes picked Rollback->Platform at (193.7,1172.2)
+   wrong Mon → Done: yes picked Rollback->Platform at (194.1,1171.2)
+   wrong Mon → Done: yes picked Rollback->Platform at (193.7,1172.2)
+back-edge: wrapped=0 det=true/true/true par(scene)=0 static_pick=133/0/0 gaps s/r=0/0 drag: par=0 sparse=38 bez=0 gaps=0 pick=5173/0/0 corner_pick=4 rt=same scene_ms=0.21 route_worst=0.41 partial_worst=0.29 partial_mean=0.09
+bench-75: wrapped=0 det=true/true/true par(scene)=0 static_pick=4770/0/30 gaps s/r=0/0 drag: par=0 sparse=9507 bez=1366 gaps=0 pick=348551/0/2277 corner_pick=4 rt=same scene_ms=35.48 route_worst=19.62 partial_worst=5.46 partial_mean=3.70
+   wrong gw → svc2 picked svc3->logs at (479.5,402.4)
+   wrong gw → svc2 picked svc1->cache at (570.7,492.4)
+   wrong lb → svc2 picked job1->svc1 at (469.0,619.9)
+   wrong lb → svc2 picked svc1->db at (491.0,619.2)
+   wrong gw → svc4 picked svc1->db at (492.1,834.0)
+   wrong lb → svc4 picked svc3->db at (458.6,654.5)
+   wrong gw → svc2 picked job1->svc1 at (467.9,610.0)
+   wrong lb → svc2 picked svc1->db at (476.5,624.5)
+   wrong gw → svc2 picked job1->svc1 at (467.9,610.0)
+   wrong lb → svc4 picked svc1->db at (473.1,854.0)
+demo: wrapped=0 det=true/true/true par(scene)=0 static_pick=133/0/0 gaps s/r=0/0 drag: par=0 sparse=35 bez=0 gaps=0 pick=5146/0/0 corner_pick=4 rt=same scene_ms=0.26 route_worst=0.43 partial_worst=0.29 partial_mean=0.09
+dense-lr: wrapped=0 det=true/true/true par(scene)=0 static_pick=2119/0/4 gaps s/r=2/3 drag: par=0 sparse=1861 bez=268 gaps=195 pick=101136/0/195 corner_pick=56 rt=same scene_ms=32.40 route_worst=10.02 partial_worst=3.90 partial_mean=1.74
+   wrong n12 → n30: tempor eiusmod picked n12->n38 at (1007.9,2200.9)
+   wrong n12 → n33: eiusmod nostrud picked n12->n38 at (891.8,1419.6)
+   wrong n12 → n16: sit ullamco picked n12->n46 at (994.2,1251.5)
+   wrong n12 → n44: nostrud laboris dolor picked n43->n44 at (1599.2,116.9)
+   wrong n43 → n48 picked n16->n42 at (1427.2,298.3)
+   wrong n43 → n48 picked n16->n42 at (1428.7,298.6)
+   wrong n43 → n48 picked n16->n42 at (1427.2,298.3)
+   wrong n43 → n48 picked n16->n42 at (1428.7,298.6)
+dense-td: wrapped=0 det=true/true/true par(scene)=0 static_pick=2291/0/37 gaps s/r=0/0 drag: par=0 sparse=3063 bez=72 gaps=0 pick=149797/0/707 corner_pick=52 rt=same scene_ms=30.47 route_worst=11.87 partial_worst=3.99 partial_mean=2.30
+   wrong n16 → n32: dolor ullamco picked n22->n40 at (783.6,1096.9)
+   wrong n16 → n41: labore incididunt picked n16->n44 at (3599.1,1018.2)
+   wrong n16 → n41: labore incididunt picked n43->n16 at (3600.8,1032.5)
+   wrong n16 → n41: labore incididunt picked n16->n43 at (3600.9,1046.4)
+   wrong n16 → n35: laboris picked n16->n23 at (1021.4,1131.9)
+   wrong n16 → n35: laboris picked n16->n29 at (1021.4,1157.8)
+   wrong n16 → n41: labore incididunt picked n43->n16 at (3615.3,1032.0)
+   wrong n16 → n41: labore incididunt picked n16->n43 at (3615.4,1152.7)
+   wrong n16 → n41: labore incididunt picked n43->n16 at (3615.3,1032.0)
+   wrong n16 → n41: labore incididunt picked n16->n43 at (3615.4,1152.7)
+fanout-frames: wrapped=0 det=true/true/true par(scene)=0 static_pick=329/0/0 gaps s/r=0/0 drag: par=0 sparse=358 bez=0 gaps=0 pick=19439/0/3 corner_pick=32 rt=same scene_ms=2.55 route_worst=0.80 partial_worst=0.61 partial_mean=0.23
+   wrong n0 → n21 picked n0->g6 at (148.1,979.0)
+   wrong n0 → n21 picked n0->g6 at (148.1,979.0)
+   wrong n0 → g2 picked n0->g3 at (253.6,862.3)
+fanout: wrapped=0 det=true/true/true par(scene)=0 static_pick=303/0/0 gaps s/r=0/0 drag: par=0 sparse=213 bez=0 gaps=0 pick=18474/0/2 corner_pick=4 rt=same scene_ms=0.40 route_worst=0.82 partial_worst=0.41 partial_mean=0.21
+   wrong B1 → C picked B2->C at (277.6,207.5)
+   wrong B1 → C picked B2->C at (277.6,207.5)
+long-labels: wrapped=0 det=true/true/true par(scene)=0 static_pick=62/0/0 gaps s/r=0/0 drag: par=0 sparse=0 bez=0 gaps=0 pick=2120/0/0 corner_pick=0 rt=same scene_ms=0.14 route_worst=0.46 partial_worst=0.35 partial_mean=0.10
+lr: wrapped=0 det=true/true/true par(scene)=0 static_pick=128/0/0 gaps s/r=0/0 drag: par=0 sparse=4 bez=0 gaps=0 pick=5823/0/0 corner_pick=4 rt=same scene_ms=0.25 route_worst=0.61 partial_worst=0.64 partial_mean=0.14
+shapes: wrapped=0 det=true/true/true par(scene)=0 static_pick=90/0/0 gaps s/r=3/3 drag: par=0 sparse=0 bez=0 gaps=226 pick=7296/0/0 corner_pick=12 rt=same scene_ms=0.12 route_worst=0.15 partial_worst=0.08 partial_mean=0.06
+stress: wrapped=0 det=true/true/true par(scene)=0 static_pick=221/0/0 gaps s/r=0/0 drag: par=0 sparse=86 bez=0 gaps=0 pick=5596/0/2 corner_pick=0 rt=same scene_ms=0.51 route_worst=1.41 partial_worst=1.33 partial_mean=0.38
+   wrong C → A: no picked A->D at (226.2,200.5)
+   wrong C → A: no picked A->D at (226.2,200.5)
+subgraph: wrapped=0 det=true/true/true par(scene)=0 static_pick=124/0/0 gaps s/r=0/0 drag: par=0 sparse=192 bez=102 gaps=0 pick=9534/0/0 corner_pick=0 rt=same scene_ms=0.18 route_worst=0.17 partial_worst=0.11 partial_mean=0.07
+wide-labels: wrapped=0 det=true/true/true par(scene)=0 static_pick=151/0/0 gaps s/r=0/0 drag: par=0 sparse=49 bez=0 gaps=0 pick=6389/0/0 corner_pick=4 rt=same scene_ms=1.09 route_worst=2.01 partial_worst=1.13 partial_mean=0.38
+state: wrapped=0 det=true/true/true par(scene)=0 static_pick=236/0/9 gaps s/r=0/0 drag: par=0 sparse=90 bez=0 gaps=4 pick=22606/0/810 corner_pick=0 rt=- scene_ms=0.55 route_worst=0.90 partial_worst=0.54 partial_mean=0.23
+   wrong Rejected → note picked Rejected->__note_13 at (350.1,747.5)
+   wrong Rejected → note picked Rejected->__note_13 at (350.1,754.2)
+   wrong Rejected → note picked Rejected->__note_13 at (350.1,759.8)
+   wrong Rejected → note picked Rejected->__note_13 at (350.1,764.7)
+   wrong Rejected → note picked Rejected->__note_13 at (350.1,769.3)
+   wrong Rejected → note picked Rejected->__note_13 at (350.1,773.9)
+   wrong Rejected → note picked Rejected->__note_13 at (350.1,746.8)
+   wrong Rejected → note picked Rejected->__note_13 at (350.1,753.3)
+   wrong Rejected → note picked Rejected->__note_13 at (350.1,746.8)
+   wrong Rejected → note picked Rejected->__note_13 at (350.1,753.3)
+fans-lr: wrapped=0 det=true/true/true par(scene)=0 static_pick=364/0/0 gaps s/r=14/14 drag: par=0 sparse=240 bez=0 gaps=904 pick=25697/0/0 corner_pick=20 rt=same scene_ms=0.34 route_worst=0.58 partial_worst=0.29 partial_mean=0.20
+fans: wrapped=0 det=true/true/true par(scene)=0 static_pick=264/0/0 gaps s/r=6/6 drag: par=0 sparse=48 bez=0 gaps=342 pick=17220/0/0 corner_pick=20 rt=same scene_ms=0.21 route_worst=0.30 partial_worst=0.22 partial_mean=0.11
+loops: wrapped=0 det=true/true/true par(scene)=0 static_pick=191/0/0 gaps s/r=0/0 drag: par=0 sparse=55 bez=0 gaps=2 pick=5947/0/0 corner_pick=12 rt=same scene_ms=0.17 route_worst=0.15 partial_worst=0.14 partial_mean=0.06
+shapes-lr: wrapped=0 det=true/true/true par(scene)=0 static_pick=349/0/0 gaps s/r=11/11 drag: par=0 sparse=265 bez=0 gaps=732 pick=23195/0/2 corner_pick=12 rt=same scene_ms=0.24 route_worst=0.32 partial_worst=0.32 partial_mean=0.16
+   wrong R → P picked C->H at (489.5,44.3)
+   wrong R → P picked C->H at (397.7,128.3)
+shapes-td: wrapped=0 det=true/true/true par(scene)=0 static_pick=222/0/0 gaps s/r=2/2 drag: par=0 sparse=116 bez=0 gaps=106 pick=12948/0/0 corner_pick=12 rt=same scene_ms=0.22 route_worst=0.29 partial_worst=0.17 partial_mean=0.09
+y1-decisions: wrapped=0 det=true/true/true par(scene)=0 static_pick=272/0/0 gaps s/r=0/0 drag: par=0 sparse=181 bez=0 gaps=0 pick=18087/0/0 corner_pick=4 rt=same scene_ms=0.45 route_worst=0.68 partial_worst=0.44 partial_mean=0.20
+y2-shapes-fan: wrapped=0 det=true/true/true par(scene)=0 static_pick=464/0/0 gaps s/r=16/16 drag: par=0 sparse=289 bez=0 gaps=789 pick=23170/0/4 corner_pick=16 rt=same scene_ms=1.11 route_worst=0.69 partial_worst=0.43 partial_mean=0.22
+   wrong A → F picked A->G at (227.6,476.3)
+   wrong A → F picked A->G at (227.6,476.3)
+   wrong G → H picked H->A at (419.5,482.5)
+y3-wrapmix: wrapped=0 det=true/true/true par(scene)=0 static_pick=98/0/0 gaps s/r=0/0 drag: par=0 sparse=0 bez=0 gaps=0 pick=6072/0/0 corner_pick=8 rt=same scene_ms=0.31 route_worst=0.83 partial_worst=0.66 partial_mean=0.13
+y4-state: wrapped=0 det=true/true/true par(scene)=0 static_pick=168/0/0 gaps s/r=0/0 drag: par=0 sparse=101 bez=0 gaps=0 pick=6438/0/0 corner_pick=0 rt=- scene_ms=0.40 route_worst=1.35 partial_worst=0.65 partial_mean=0.17
+y5-default-long: wrapped=0 det=true/true/true par(scene)=0 static_pick=106/0/0 gaps s/r=1/1 drag: par=0 sparse=0 bez=0 gaps=36 pick=3998/0/0 corner_pick=4 rt=same scene_ms=0.28 route_worst=0.25 partial_worst=0.12 partial_mean=0.08

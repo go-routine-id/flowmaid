@@ -1,0 +1,22 @@
+flowchart TD
+    subgraph O[WWW Mammoth Wombat Overview]
+        subgraph G[Data ingestion workers]
+            m0[queue]
+            m1[y]
+            m2[x wide member node]
+        end
+        k[k]
+    end
+    m0 --> k
+    m1 --> k
+    m2 --> k
+    s0[src0] --> m0
+    s0 --> G
+    s1[src1] --> m2
+    s1 --> m1
+    s2[src2] --> m0
+    s2 --> G
+    s3[src3] --> G
+    s4[src4] -- "lbl9" --> m0
+    m2 --> z[end]
+    G --> z2[after]

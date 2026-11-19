@@ -1,0 +1,13 @@
+architecture-beta
+    group g0(server)[Data Storage Layer]
+    service s0(server)[Service 0] in g0
+    service s1(cloud)[Service 1] in g0
+    service s2(server)[Service 2] in g0
+    service s3(monitoring)[Service 3] in g0
+    service s4(server)[Service 4] in g0
+    s1:R --> L:s2
+    s2:B --> T:s3
+    s1:T -- B:s2
+    s3:B --> T:s0
+    s1:T --> B:s3
+    s2:B -- T:s3

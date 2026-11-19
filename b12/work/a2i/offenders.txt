@@ -1,0 +1,98 @@
+== infra-overview
+  label U1>DNS 'a.example.org · *.a.example.or' end_px 73.2: own_gap 16.5
+  label T1>DNS '*.dev · *.staging · *.product ' end_px 21.7: crowd gap 3.8
+  label U2>DNS 'b.example.org' end_px 73.2: own_gap 16.5
+  label LANE>GITLAB 'SMTP mail.example.org' end_px 289.3: crowd gap 6.6, in_end STG
+  label PG>DRAPP 'SSH tunnel: streaming replicat' end_px 478.6: crowd gap 0.0, struck
+  label R2>[PROD] 'provisioning from a laptop' end_px 48.4: crowd gap 10.2
+  bends_max 13 DNS>PSDEV; bends total 141
+  detour_max 1.723 LANE>AZ
+  straight_max 1590.3 R2>[DR]
+  lateral_x edges: DNS>PSPROD
+== infra-overview-v2
+  label T1>DNS '*.dev · *.staging · *.product ' end_px 59.7: crowd gap 0.0, struck
+  label DNS>DRAPP 'only on failover: A record cha' end_px 91.3: crowd gap 0.0, struck
+  label DNS>PSDEV 'b.dev A 203.0.113.8' end_px 242.2: crowd gap 10.3
+  label DNS>SITE 'example.org proxied' end_px 377.4: crowd gap 6.546
+  label DRAPP>TG 'standby-check' end_px 573.4: crowd gap 10.2
+  label ARGO>GITLAB 'pull image' end_px 465.5: in_end PROD
+  label DRAPP>PG 'SSH tunnel: streaming replicat' end_px 348.8: crowd gap 6.5
+  bends_max 13 DNS>PSPROD; bends total 147
+  detour_max 1.473 R2>[STG]
+  straight_max 1145.7 ARGO>TG
+  lateral_x edges: LANE>AZ
+== perm-a-edges-reversed
+  label PG>DRAPP 'SSH tunnel: streaming replicat' end_px 478.6: crowd gap 0.0, struck
+  label LANE>GITLAB 'SMTP mail.example.org' end_px 289.3: crowd gap 6.6, in_end STG
+  label U2>DNS 'b.example.org' end_px 73.2: own_gap 16.5
+  label T1>DNS '*.dev · *.staging · *.product ' end_px 21.7: crowd gap 3.8
+  label U1>DNS 'a.example.org · *.a.example.or' end_px 73.2: own_gap 16.5
+  label R2>[PROD] 'provisioning from a laptop' end_px 48.4: crowd gap 10.2
+  bends_max 13 DNS>PSDEV; bends total 141
+  detour_max 1.723 LANE>AZ
+  straight_max 1590.3 R2>[DR]
+  lateral_x edges: DNS>PSPROD
+== perm-b-subgraphs-reversed
+  label U1>DNS 'a.example.org · *.a.example.or' end_px 73.3: own_gap 16.5
+  label T1>DNS '*.dev · *.staging · *.product ' end_px 21.7: crowd gap 3.8
+  label U2>DNS 'b.example.org' end_px 73.3: own_gap 16.5
+  label DNS>PSPROD 'b A 203.0.113.36' end_px 383.0: crowd gap 4.8
+  label DNS>SITE 'example.org proxied' end_px 183.1: crowd gap 3.0
+  label DNS>TR1 'A 203.0.113.177' end_px 493.5: crowd gap 10.3
+  label LANE>GITLAB 'SMTP mail.example.org' end_px 494.7: crowd gap 3.799, in_end STG
+  label ARGO>GITLAB 'pull image' end_px 310.0: crowd gap 6.001
+  label PG>DRAPP 'SSH tunnel: streaming replicat' end_px 511.6: crowd gap 10.2
+  label R2>[PROD] 'provisioning from a laptop' end_px 25.3: crowd gap 4.6
+  bends_max 12 DNS>PSDEV; bends total 135
+  detour_max 1.908 LANE>OAI
+  straight_max 1720.6 R2>[DR]
+  lateral_x edges: DNS>PSPROD PSPROD>TG
+== perm-c-actors-reversed
+  label U1>DNS 'a.example.org · *.a.example.or' end_px 73.3: own_gap 16.5
+  label T1>DNS '*.dev · *.staging · *.product ' end_px 21.7: crowd gap 3.8
+  label U2>DNS 'b.example.org' end_px 73.3: own_gap 16.5
+  label LANE>GITLAB 'SMTP mail.example.org' end_px 289.3: crowd gap 6.6, in_end STG
+  label PG>DRAPP 'SSH tunnel: streaming replicat' end_px 478.6: crowd gap 0.0, struck
+  label R2>[PROD] 'provisioning from a laptop' end_px 48.4: crowd gap 10.2
+  bends_max 13 DNS>PSDEV; bends total 141
+  detour_max 1.723 LANE>AZ
+  straight_max 1590.3 R2>[DR]
+  lateral_x edges: DNS>PSPROD
+== perm-d-edges-rotated
+  label LANE>GITLAB 'SMTP mail.example.org' end_px 289.3: crowd gap 6.6, in_end STG
+  label PG>DRAPP 'SSH tunnel: streaming replicat' end_px 478.6: crowd gap 0.0, struck
+  label U1>DNS 'a.example.org · *.a.example.or' end_px 73.2: own_gap 16.5
+  label T1>DNS '*.dev · *.staging · *.product ' end_px 21.7: crowd gap 3.8
+  label U2>DNS 'b.example.org' end_px 73.2: own_gap 16.5
+  label R2>[PROD] 'provisioning from a laptop' end_px 48.4: crowd gap 10.2
+  bends_max 13 DNS>PSDEV; bends total 141
+  detour_max 1.723 LANE>AZ
+  straight_max 1590.3 R2>[DR]
+  lateral_x edges: DNS>PSPROD
+== perm-e-one-more-inner-edge
+  label U1>DNS 'a.example.org · *.a.example.or' end_px 73.2: own_gap 16.5
+  label T1>DNS '*.dev · *.staging · *.product ' end_px 21.7: crowd gap 3.8
+  label U2>DNS 'b.example.org' end_px 73.2: own_gap 16.5
+  label ARGO>TG 'alert manager' end_px 515.1: crowd gap 10.3
+  label LANE>OAI 'HTTPS' end_px 145.8: crowd gap 9.6
+  label LANE>GITLAB 'SMTP mail.example.org' end_px 158.9: in_end STG
+  label PG>DRAPP 'SSH tunnel: streaming replicat' end_px 584.2: crowd gap 10.2
+  label R2>[PROD] 'provisioning from a laptop' end_px 48.4: crowd gap 10.2
+  bends_max 13 DNS>PSDEV; bends total 143
+  detour_max 1.901 LANE>AZ
+  straight_max 1755.9 R2>[DR]
+  lateral_x edges: DNS>PSPROD
+== blocks-overview
+  label LB>QUEUE 'webhooks' end_px 261.9: crowd gap 7.4
+  label CART>QUEUE 'place order' end_px 147.9: crowd gap 4.5
+  bends_max 8 OPS>[OBS]; bends total 83
+  detour_max 1.224 SHOP>CDN
+  straight_max 1409.6 ALERT>MAIL
+  lateral_x edges: QUEUE>CHARGE CART>QUEUE [WEB]>METRICS
+== blocks-overview-actors-reversed
+  label LB>QUEUE 'webhooks' end_px 261.9: crowd gap 7.4
+  label CART>QUEUE 'place order' end_px 147.9: crowd gap 4.5
+  bends_max 8 OPS>[OBS]; bends total 83
+  detour_max 1.224 SHOP>CDN
+  straight_max 1409.6 ALERT>MAIL
+  lateral_x edges: QUEUE>CHARGE CART>QUEUE [WEB]>METRICS

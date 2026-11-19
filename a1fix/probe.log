@@ -1,0 +1,411 @@
+x1_generics_notes/scene: nodes=7 edges=5 through=0 zero_polys=0 w=778 h=404
+x1_generics_notes/route-id: nodes=7 edges=5 through=0 zero_polys=0 w=778 h=338
+x1_generics_notes: drag route+to_svg 0.239 ms (acc 286246)
+x1_generics_notes/swap01: nodes=7 edges=5 through=0 zero_polys=0 w=778 h=386
+  x1_generics_notes/overlap: pick at mid of edge 0 returned None
+x1_generics_notes/overlap: nodes=7 edges=5 through=0 zero_polys=0 w=778 h=343
+x1_generics_notes/negative: nodes=7 edges=5 through=0 zero_polys=0 w=596 h=338
+  x1_generics_notes/flipped: pick at mid of edge 4 returned None
+x1_generics_notes/flipped: nodes=7 edges=5 through=0 zero_polys=0 w=778 h=316
+x1m.BT/scene: nodes=7 edges=5 through=0 zero_polys=0 w=480 h=640
+x1m.BT/route-id: nodes=7 edges=5 through=0 zero_polys=0 w=364 h=579
+x1m.BT: drag route+to_svg 0.328 ms (acc 298192)
+x1m.BT/swap01: nodes=7 edges=5 through=0 zero_polys=0 w=381 h=645
+  x1m.BT/overlap: edge 4 note-1->Shape through node 3 Circle
+x1m.BT/overlap: nodes=7 edges=5 through=1 zero_polys=0 w=380 h=585
+x1m.BT/negative: nodes=7 edges=5 through=0 zero_polys=0 w=364 h=579
+  x1m.BT/flipped: pick at mid of edge 0 returned None
+  x1m.BT/flipped: pick at mid of edge 1 returned None
+  x1m.BT/flipped: pick at mid of edge 2 returned None
+x1m.BT/flipped: nodes=7 edges=5 through=0 zero_polys=0 w=388 h=558
+x1m.LR/scene: nodes=7 edges=5 through=0 zero_polys=0 w=778 h=404
+x1m.LR/route-id: nodes=7 edges=5 through=0 zero_polys=0 w=778 h=338
+x1m.LR: drag route+to_svg 0.235 ms (acc 286246)
+x1m.LR/swap01: nodes=7 edges=5 through=0 zero_polys=0 w=778 h=386
+  x1m.LR/overlap: pick at mid of edge 0 returned None
+x1m.LR/overlap: nodes=7 edges=5 through=0 zero_polys=0 w=778 h=343
+x1m.LR/negative: nodes=7 edges=5 through=0 zero_polys=0 w=596 h=338
+  x1m.LR/flipped: pick at mid of edge 4 returned None
+x1m.LR/flipped: nodes=7 edges=5 through=0 zero_polys=0 w=778 h=316
+x1m.RL/scene: nodes=7 edges=5 through=0 zero_polys=0 w=778 h=404
+x1m.RL/route-id: nodes=7 edges=5 through=0 zero_polys=0 w=697 h=338
+x1m.RL: drag route+to_svg 0.231 ms (acc 300000)
+  x1m.RL/swap01: pick at mid of edge 0 returned None
+x1m.RL/swap01: nodes=7 edges=5 through=0 zero_polys=0 w=759 h=386
+x1m.RL/overlap: nodes=7 edges=5 through=0 zero_polys=0 w=698 h=343
+x1m.RL/negative: nodes=7 edges=5 through=0 zero_polys=0 w=697 h=338
+  x1m.RL/flipped: pick at mid of edge 4 returned None
+x1m.RL/flipped: nodes=7 edges=5 through=0 zero_polys=0 w=697 h=316
+x1m.TB/scene: nodes=7 edges=5 through=0 zero_polys=0 w=480 h=640
+x1m.TB/route-id: nodes=7 edges=5 through=0 zero_polys=0 w=364 h=640
+x1m.TB: drag route+to_svg 0.210 ms (acc 296608)
+x1m.TB/swap01: nodes=7 edges=5 through=0 zero_polys=0 w=381 h=640
+  x1m.TB/overlap: edge 0 Box->Shape through node 3 Circle
+x1m.TB/overlap: nodes=7 edges=5 through=1 zero_polys=0 w=380 h=640
+x1m.TB/negative: nodes=7 edges=5 through=0 zero_polys=0 w=364 h=504
+  x1m.TB/flipped: pick at mid of edge 0 returned None
+  x1m.TB/flipped: pick at mid of edge 1 returned None
+  x1m.TB/flipped: pick at mid of edge 2 returned None
+x1m.TB/flipped: nodes=7 edges=5 through=0 zero_polys=0 w=388 h=492
+x1m/scene: nodes=7 edges=5 through=0 zero_polys=0 w=778 h=404
+x1m/route-id: nodes=7 edges=5 through=0 zero_polys=0 w=778 h=338
+x1m: drag route+to_svg 0.191 ms (acc 286246)
+x1m/swap01: nodes=7 edges=5 through=0 zero_polys=0 w=778 h=386
+  x1m/overlap: pick at mid of edge 0 returned None
+x1m/overlap: nodes=7 edges=5 through=0 zero_polys=0 w=778 h=343
+x1m/negative: nodes=7 edges=5 through=0 zero_polys=0 w=596 h=338
+  x1m/flipped: pick at mid of edge 4 returned None
+x1m/flipped: nodes=7 edges=5 through=0 zero_polys=0 w=778 h=316
+x2_bt_cycle.BT/scene: nodes=6 edges=9 through=0 zero_polys=0 w=556 h=532
+  x2_bt_cycle.BT/route-id: pick at mid of edge 4 returned None
+x2_bt_cycle.BT/route-id: nodes=6 edges=9 through=0 zero_polys=0 w=556 h=532
+x2_bt_cycle.BT: drag route+to_svg 0.638 ms (acc 488597)
+x2_bt_cycle.BT/swap01: nodes=6 edges=9 through=0 zero_polys=0 w=556 h=524
+x2_bt_cycle.BT/overlap: nodes=6 edges=9 through=0 zero_polys=0 w=556 h=532
+  x2_bt_cycle.BT/negative: pick at mid of edge 2 returned None
+x2_bt_cycle.BT/negative: nodes=6 edges=9 through=0 zero_polys=0 w=556 h=532
+  x2_bt_cycle.BT/flipped: pick at mid of edge 2 returned None
+  x2_bt_cycle.BT/flipped: pick at mid of edge 5 returned None
+x2_bt_cycle.BT/flipped: nodes=6 edges=9 through=0 zero_polys=0 w=556 h=510
+x2_bt_cycle.LR/scene: nodes=6 edges=9 through=0 zero_polys=0 w=692 h=427
+  x2_bt_cycle.LR/route-id: pick at mid of edge 2 returned None
+  x2_bt_cycle.LR/route-id: pick at mid of edge 4 returned None
+x2_bt_cycle.LR/route-id: nodes=6 edges=9 through=0 zero_polys=0 w=692 h=419
+x2_bt_cycle.LR: drag route+to_svg 0.697 ms (acc 473830)
+x2_bt_cycle.LR/swap01: nodes=6 edges=9 through=0 zero_polys=0 w=692 h=419
+  x2_bt_cycle.LR/overlap: pick at mid of edge 0 returned None
+x2_bt_cycle.LR/overlap: nodes=6 edges=9 through=0 zero_polys=0 w=692 h=419
+  x2_bt_cycle.LR/negative: pick at mid of edge 8 returned 4 (d=7.0)
+x2_bt_cycle.LR/negative: nodes=6 edges=9 through=0 zero_polys=0 w=692 h=419
+  x2_bt_cycle.LR/flipped: pick at mid of edge 2 returned None
+  x2_bt_cycle.LR/flipped: pick at mid of edge 4 returned None
+x2_bt_cycle.LR/flipped: nodes=6 edges=9 through=0 zero_polys=0 w=692 h=322
+x2_bt_cycle.RL/scene: nodes=6 edges=9 through=0 zero_polys=0 w=692 h=427
+  x2_bt_cycle.RL/route-id: pick at mid of edge 4 returned None
+x2_bt_cycle.RL/route-id: nodes=6 edges=9 through=0 zero_polys=0 w=692 h=419
+x2_bt_cycle.RL: drag route+to_svg 0.873 ms (acc 488034)
+  x2_bt_cycle.RL/swap01: pick at mid of edge 1 returned None
+x2_bt_cycle.RL/swap01: nodes=6 edges=9 through=0 zero_polys=0 w=692 h=419
+  x2_bt_cycle.RL/overlap: pick at mid of edge 2 returned None
+x2_bt_cycle.RL/overlap: nodes=6 edges=9 through=0 zero_polys=0 w=716 h=419
+  x2_bt_cycle.RL/negative: pick at mid of edge 8 returned None
+x2_bt_cycle.RL/negative: nodes=6 edges=9 through=0 zero_polys=0 w=692 h=419
+  x2_bt_cycle.RL/flipped: pick at mid of edge 2 returned None
+  x2_bt_cycle.RL/flipped: pick at mid of edge 4 returned None
+x2_bt_cycle.RL/flipped: nodes=6 edges=9 through=0 zero_polys=0 w=692 h=322
+x2_bt_cycle.TB/scene: nodes=6 edges=9 through=0 zero_polys=0 w=556 h=532
+  x2_bt_cycle.TB/route-id: pick at mid of edge 4 returned None
+x2_bt_cycle.TB/route-id: nodes=6 edges=9 through=0 zero_polys=0 w=556 h=532
+x2_bt_cycle.TB: drag route+to_svg 0.663 ms (acc 477775)
+x2_bt_cycle.TB/swap01: nodes=6 edges=9 through=0 zero_polys=0 w=556 h=532
+x2_bt_cycle.TB/overlap: nodes=6 edges=9 through=0 zero_polys=0 w=556 h=532
+  x2_bt_cycle.TB/negative: pick at mid of edge 8 returned None
+x2_bt_cycle.TB/negative: nodes=6 edges=9 through=0 zero_polys=0 w=556 h=532
+  x2_bt_cycle.TB/flipped: pick at mid of edge 2 returned None
+  x2_bt_cycle.TB/flipped: pick at mid of edge 5 returned None
+x2_bt_cycle.TB/flipped: nodes=6 edges=9 through=0 zero_polys=0 w=556 h=518
+x2_bt_cycle/scene: nodes=6 edges=9 through=0 zero_polys=0 w=556 h=532
+  x2_bt_cycle/route-id: pick at mid of edge 4 returned None
+x2_bt_cycle/route-id: nodes=6 edges=9 through=0 zero_polys=0 w=556 h=532
+x2_bt_cycle: drag route+to_svg 0.664 ms (acc 488597)
+x2_bt_cycle/swap01: nodes=6 edges=9 through=0 zero_polys=0 w=556 h=524
+x2_bt_cycle/overlap: nodes=6 edges=9 through=0 zero_polys=0 w=556 h=532
+  x2_bt_cycle/negative: pick at mid of edge 2 returned None
+x2_bt_cycle/negative: nodes=6 edges=9 through=0 zero_polys=0 w=556 h=532
+  x2_bt_cycle/flipped: pick at mid of edge 2 returned None
+  x2_bt_cycle/flipped: pick at mid of edge 5 returned None
+x2_bt_cycle/flipped: nodes=6 edges=9 through=0 zero_polys=0 w=556 h=510
+x3_rl_fan.BT/scene: nodes=10 edges=9 through=0 zero_polys=0 w=736 h=562
+x3_rl_fan.BT/route-id: nodes=10 edges=9 through=0 zero_polys=0 w=736 h=562
+x3_rl_fan.BT: drag route+to_svg 0.539 ms (acc 553945)
+  x3_rl_fan.BT/swap01: pick at mid of edge 7 returned 0 (d=59.3)
+x3_rl_fan.BT/swap01: nodes=10 edges=9 through=0 zero_polys=0 w=736 h=562
+x3_rl_fan.BT/overlap: nodes=10 edges=9 through=0 zero_polys=0 w=736 h=499
+  x3_rl_fan.BT/negative: pick at mid of edge 3 returned None
+x3_rl_fan.BT/negative: nodes=10 edges=9 through=0 zero_polys=0 w=736 h=562
+  x3_rl_fan.BT/flipped: pick at mid of edge 0 returned None
+  x3_rl_fan.BT/flipped: pick at mid of edge 2 returned 3 (d=28.2)
+  x3_rl_fan.BT/flipped: pick at mid of edge 4 returned None
+  x3_rl_fan.BT/flipped: pick at mid of edge 5 returned None
+  x3_rl_fan.BT/flipped: pick at mid of edge 6 returned None
+x3_rl_fan.BT/flipped: nodes=10 edges=9 through=0 zero_polys=0 w=736 h=548
+x3_rl_fan.LR/scene: nodes=10 edges=9 through=0 zero_polys=0 w=702 h=516
+x3_rl_fan.LR/route-id: nodes=10 edges=9 through=0 zero_polys=0 w=702 h=516
+x3_rl_fan.LR: drag route+to_svg 0.902 ms (acc 541719)
+  x3_rl_fan.LR/swap01: edge 4 Van->Vehicle through node 2 Truck
+  x3_rl_fan.LR/swap01: edge 4 Van->Vehicle through node 3 Bike
+  x3_rl_fan.LR/swap01: edge 4 Van->Vehicle through node 4 Bus
+  x3_rl_fan.LR/swap01: pick at mid of edge 7 returned 0 (d=77.5)
+x3_rl_fan.LR/swap01: nodes=10 edges=9 through=3 zero_polys=0 w=706 h=516
+  x3_rl_fan.LR/overlap: pick at mid of edge 0 returned None
+  x3_rl_fan.LR/overlap: pick at mid of edge 1 returned None
+  x3_rl_fan.LR/overlap: pick at mid of edge 2 returned None
+  x3_rl_fan.LR/overlap: pick at mid of edge 3 returned None
+x3_rl_fan.LR/overlap: nodes=10 edges=9 through=0 zero_polys=0 w=702 h=516
+x3_rl_fan.LR/negative: nodes=10 edges=9 through=0 zero_polys=0 w=702 h=516
+x3_rl_fan.LR/flipped: nodes=10 edges=9 through=0 zero_polys=0 w=702 h=502
+x3_rl_fan.RL/scene: nodes=10 edges=9 through=0 zero_polys=0 w=702 h=516
+x3_rl_fan.RL/route-id: nodes=10 edges=9 through=0 zero_polys=0 w=702 h=516
+x3_rl_fan.RL: drag route+to_svg 0.942 ms (acc 567118)
+  x3_rl_fan.RL/swap01: edge 4 Van->Vehicle through node 2 Truck
+  x3_rl_fan.RL/swap01: edge 4 Van->Vehicle through node 3 Bike
+  x3_rl_fan.RL/swap01: edge 4 Van->Vehicle through node 4 Bus
+  x3_rl_fan.RL/swap01: pick at mid of edge 7 returned 0 (d=77.5)
+x3_rl_fan.RL/swap01: nodes=10 edges=9 through=3 zero_polys=0 w=702 h=516
+x3_rl_fan.RL/overlap: nodes=10 edges=9 through=0 zero_polys=0 w=655 h=516
+  x3_rl_fan.RL/negative: pick at mid of edge 3 returned None
+x3_rl_fan.RL/negative: nodes=10 edges=9 through=0 zero_polys=0 w=702 h=516
+x3_rl_fan.RL/flipped: nodes=10 edges=9 through=0 zero_polys=0 w=702 h=502
+x3_rl_fan.TB/scene: nodes=10 edges=9 through=0 zero_polys=0 w=736 h=562
+x3_rl_fan.TB/route-id: nodes=10 edges=9 through=0 zero_polys=0 w=736 h=562
+x3_rl_fan.TB: drag route+to_svg 0.733 ms (acc 543115)
+  x3_rl_fan.TB/swap01: edge 2 Bike->Vehicle through node 2 Truck
+  x3_rl_fan.TB/swap01: pick at mid of edge 7 returned 0 (d=59.3)
+x3_rl_fan.TB/swap01: nodes=10 edges=9 through=1 zero_polys=0 w=736 h=585
+x3_rl_fan.TB/overlap: nodes=10 edges=9 through=0 zero_polys=0 w=736 h=562
+  x3_rl_fan.TB/negative: pick at mid of edge 3 returned None
+x3_rl_fan.TB/negative: nodes=10 edges=9 through=0 zero_polys=0 w=736 h=562
+  x3_rl_fan.TB/flipped: pick at mid of edge 4 returned None
+  x3_rl_fan.TB/flipped: pick at mid of edge 5 returned None
+  x3_rl_fan.TB/flipped: pick at mid of edge 6 returned None
+x3_rl_fan.TB/flipped: nodes=10 edges=9 through=0 zero_polys=0 w=736 h=548
+x3_rl_fan/scene: nodes=10 edges=9 through=0 zero_polys=0 w=702 h=516
+x3_rl_fan/route-id: nodes=10 edges=9 through=0 zero_polys=0 w=702 h=516
+x3_rl_fan: drag route+to_svg 0.786 ms (acc 567118)
+  x3_rl_fan/swap01: edge 4 Van->Vehicle through node 2 Truck
+  x3_rl_fan/swap01: edge 4 Van->Vehicle through node 3 Bike
+  x3_rl_fan/swap01: edge 4 Van->Vehicle through node 4 Bus
+  x3_rl_fan/swap01: pick at mid of edge 7 returned 0 (d=77.5)
+x3_rl_fan/swap01: nodes=10 edges=9 through=3 zero_polys=0 w=702 h=516
+x3_rl_fan/overlap: nodes=10 edges=9 through=0 zero_polys=0 w=655 h=516
+  x3_rl_fan/negative: pick at mid of edge 3 returned None
+x3_rl_fan/negative: nodes=10 edges=9 through=0 zero_polys=0 w=702 h=516
+x3_rl_fan/flipped: nodes=10 edges=9 through=0 zero_polys=0 w=702 h=502
+x4_tb_dense.BT/scene: nodes=14 edges=17 through=0 zero_polys=0 w=868 h=954
+x4_tb_dense.BT/route-id: nodes=14 edges=17 through=0 zero_polys=0 w=847 h=954
+x4_tb_dense.BT: drag route+to_svg 1.611 ms (acc 984292)
+  x4_tb_dense.BT/swap01: pick at mid of edge 4 returned None
+  x4_tb_dense.BT/swap01: pick at mid of edge 13 returned None
+x4_tb_dense.BT/swap01: nodes=14 edges=17 through=0 zero_polys=0 w=893 h=969
+  x4_tb_dense.BT/overlap: edge 16 Updated->Event through node 0 Service
+x4_tb_dense.BT/overlap: nodes=14 edges=17 through=1 zero_polys=0 w=847 h=954
+x4_tb_dense.BT/negative: nodes=14 edges=17 through=0 zero_polys=0 w=847 h=954
+  x4_tb_dense.BT/flipped: pick at mid of edge 16 returned None
+x4_tb_dense.BT/flipped: nodes=14 edges=17 through=0 zero_polys=0 w=853 h=940
+x4_tb_dense.LR/scene: nodes=14 edges=17 through=0 zero_polys=0 w=1366 h=599
+x4_tb_dense.LR/route-id: nodes=14 edges=17 through=0 zero_polys=0 w=1366 h=557
+x4_tb_dense.LR: drag route+to_svg 3.342 ms (acc 1018035)
+  x4_tb_dense.LR/swap01: pick at mid of edge 13 returned None
+x4_tb_dense.LR/swap01: nodes=14 edges=17 through=0 zero_polys=0 w=1366 h=580
+  x4_tb_dense.LR/overlap: edge 16 Updated->Event through node 0 Service
+x4_tb_dense.LR/overlap: nodes=14 edges=17 through=1 zero_polys=0 w=1366 h=557
+  x4_tb_dense.LR/negative: pick at mid of edge 8 returned None
+x4_tb_dense.LR/negative: nodes=14 edges=17 through=0 zero_polys=0 w=1366 h=557
+x4_tb_dense.LR/flipped: nodes=14 edges=17 through=0 zero_polys=0 w=1366 h=536
+x4_tb_dense.RL/scene: nodes=14 edges=17 through=0 zero_polys=0 w=1366 h=599
+x4_tb_dense.RL/route-id: nodes=14 edges=17 through=0 zero_polys=0 w=1366 h=557
+x4_tb_dense.RL: drag route+to_svg 2.499 ms (acc 1041955)
+  x4_tb_dense.RL/swap01: pick at mid of edge 13 returned None
+x4_tb_dense.RL/swap01: nodes=14 edges=17 through=0 zero_polys=0 w=1433 h=580
+  x4_tb_dense.RL/overlap: edge 16 Updated->Event through node 0 Service
+x4_tb_dense.RL/overlap: nodes=14 edges=17 through=1 zero_polys=0 w=1366 h=557
+x4_tb_dense.RL/negative: nodes=14 edges=17 through=0 zero_polys=0 w=1366 h=557
+x4_tb_dense.RL/flipped: nodes=14 edges=17 through=0 zero_polys=0 w=1366 h=540
+x4_tb_dense.TB/scene: nodes=14 edges=17 through=0 zero_polys=0 w=868 h=954
+x4_tb_dense.TB/route-id: nodes=14 edges=17 through=0 zero_polys=0 w=847 h=954
+x4_tb_dense.TB: drag route+to_svg 1.704 ms (acc 975893)
+  x4_tb_dense.TB/swap01: pick at mid of edge 13 returned None
+x4_tb_dense.TB/swap01: nodes=14 edges=17 through=0 zero_polys=0 w=893 h=954
+  x4_tb_dense.TB/overlap: edge 16 Updated->Event through node 0 Service
+x4_tb_dense.TB/overlap: nodes=14 edges=17 through=1 zero_polys=0 w=847 h=954
+x4_tb_dense.TB/negative: nodes=14 edges=17 through=0 zero_polys=0 w=847 h=954
+  x4_tb_dense.TB/flipped: pick at mid of edge 16 returned None
+x4_tb_dense.TB/flipped: nodes=14 edges=17 through=0 zero_polys=0 w=853 h=940
+x4_tb_dense/scene: nodes=14 edges=17 through=0 zero_polys=0 w=868 h=954
+x4_tb_dense/route-id: nodes=14 edges=17 through=0 zero_polys=0 w=847 h=954
+x4_tb_dense: drag route+to_svg 1.450 ms (acc 975893)
+  x4_tb_dense/swap01: pick at mid of edge 13 returned None
+x4_tb_dense/swap01: nodes=14 edges=17 through=0 zero_polys=0 w=893 h=954
+  x4_tb_dense/overlap: edge 16 Updated->Event through node 0 Service
+x4_tb_dense/overlap: nodes=14 edges=17 through=1 zero_polys=0 w=847 h=954
+x4_tb_dense/negative: nodes=14 edges=17 through=0 zero_polys=0 w=847 h=954
+  x4_tb_dense/flipped: pick at mid of edge 16 returned None
+x4_tb_dense/flipped: nodes=14 edges=17 through=0 zero_polys=0 w=853 h=940
+  x5_big/scene: pick at mid of edge 11 returned None
+  x5_big/scene: pick at mid of edge 24 returned 68 (d=336.5)
+  x5_big/scene: pick at mid of edge 38 returned None
+  x5_big/scene: pick at mid of edge 41 returned None
+  x5_big/scene: pick at mid of edge 45 returned None
+  x5_big/scene: pick at mid of edge 50 returned None
+  x5_big/scene: pick at mid of edge 59 returned None
+  x5_big/scene: pick at mid of edge 63 returned None
+  x5_big/scene: pick at mid of edge 68 returned None
+x5_big/scene: nodes=57 edges=90 through=0 zero_polys=0 w=3980 h=2692
+  x5_big/route-id: pick at mid of edge 23 returned None
+  x5_big/route-id: pick at mid of edge 45 returned None
+  x5_big/route-id: pick at mid of edge 58 returned None
+  x5_big/route-id: pick at mid of edge 62 returned None
+  x5_big/route-id: pick at mid of edge 63 returned None
+  x5_big/route-id: pick at mid of edge 67 returned None
+  x5_big/route-id: pick at mid of edge 68 returned 56 (d=175.7)
+  x5_big/route-id: pick at mid of edge 79 returned None
+x5_big/route-id: nodes=57 edges=90 through=0 zero_polys=0 w=3682 h=2692
+x5_big: drag route+to_svg 19.912 ms (acc 5047966)
+  x5_big/swap01: pick at mid of edge 22 returned None
+  x5_big/swap01: pick at mid of edge 45 returned None
+  x5_big/swap01: pick at mid of edge 47 returned None
+  x5_big/swap01: pick at mid of edge 54 returned None
+  x5_big/swap01: pick at mid of edge 58 returned None
+  x5_big/swap01: pick at mid of edge 62 returned None
+  x5_big/swap01: pick at mid of edge 63 returned None
+  x5_big/swap01: pick at mid of edge 67 returned None
+  x5_big/swap01: pick at mid of edge 68 returned 56 (d=175.7)
+  x5_big/swap01: pick at mid of edge 79 returned None
+x5_big/swap01: nodes=57 edges=90 through=0 zero_polys=0 w=3682 h=2692
+  x5_big/overlap: pick at mid of edge 8 returned None
+  x5_big/overlap: pick at mid of edge 22 returned None
+  x5_big/overlap: pick at mid of edge 23 returned None
+  x5_big/overlap: pick at mid of edge 45 returned None
+  x5_big/overlap: pick at mid of edge 54 returned None
+  x5_big/overlap: pick at mid of edge 58 returned None
+  x5_big/overlap: pick at mid of edge 59 returned None
+  x5_big/overlap: pick at mid of edge 62 returned None
+  x5_big/overlap: pick at mid of edge 67 returned None
+  x5_big/overlap: pick at mid of edge 74 returned None
+  x5_big/overlap: pick at mid of edge 75 returned None
+  x5_big/overlap: pick at mid of edge 79 returned None
+  x5_big/overlap: pick at mid of edge 80 returned None
+x5_big/overlap: nodes=57 edges=90 through=0 zero_polys=0 w=3682 h=2692
+  x5_big/negative: pick at mid of edge 23 returned None
+  x5_big/negative: pick at mid of edge 45 returned None
+  x5_big/negative: pick at mid of edge 58 returned None
+  x5_big/negative: pick at mid of edge 62 returned None
+  x5_big/negative: pick at mid of edge 63 returned None
+  x5_big/negative: pick at mid of edge 67 returned None
+  x5_big/negative: pick at mid of edge 68 returned 56 (d=175.7)
+  x5_big/negative: pick at mid of edge 79 returned None
+x5_big/negative: nodes=57 edges=90 through=0 zero_polys=0 w=3682 h=2692
+  x5_big/flipped: pick at mid of edge 6 returned None
+  x5_big/flipped: pick at mid of edge 8 returned None
+  x5_big/flipped: pick at mid of edge 16 returned None
+  x5_big/flipped: pick at mid of edge 17 returned None
+  x5_big/flipped: pick at mid of edge 26 returned None
+  x5_big/flipped: pick at mid of edge 27 returned None
+  x5_big/flipped: pick at mid of edge 29 returned None
+  x5_big/flipped: pick at mid of edge 34 returned None
+  x5_big/flipped: pick at mid of edge 41 returned None
+  x5_big/flipped: pick at mid of edge 45 returned None
+  x5_big/flipped: pick at mid of edge 54 returned None
+  x5_big/flipped: pick at mid of edge 56 returned None
+  x5_big/flipped: pick at mid of edge 58 returned None
+  x5_big/flipped: pick at mid of edge 63 returned None
+  x5_big/flipped: pick at mid of edge 64 returned None
+  x5_big/flipped: pick at mid of edge 77 returned None
+  x5_big/flipped: pick at mid of edge 78 returned None
+  x5_big/flipped: pick at mid of edge 82 returned None
+x5_big/flipped: nodes=57 edges=90 through=0 zero_polys=0 w=3706 h=2678
+  x6_realistic.BT/scene: pick at mid of edge 14 returned None
+x6_realistic.BT/scene: nodes=16 edges=17 through=0 zero_polys=0 w=1076 h=1148
+x6_realistic.BT/route-id: nodes=16 edges=17 through=0 zero_polys=0 w=1076 h=1148
+x6_realistic.BT: drag route+to_svg 1.169 ms (acc 1104918)
+x6_realistic.BT/swap01: nodes=16 edges=17 through=0 zero_polys=0 w=1076 h=1122
+  x6_realistic.BT/overlap: pick at mid of edge 15 returned None
+x6_realistic.BT/overlap: nodes=16 edges=17 through=0 zero_polys=0 w=986 h=1148
+x6_realistic.BT/negative: nodes=16 edges=17 through=0 zero_polys=0 w=1076 h=1148
+  x6_realistic.BT/flipped: pick at mid of edge 3 returned None
+  x6_realistic.BT/flipped: pick at mid of edge 4 returned None
+  x6_realistic.BT/flipped: pick at mid of edge 9 returned None
+x6_realistic.BT/flipped: nodes=16 edges=17 through=0 zero_polys=0 w=1100 h=1108
+x6_realistic.LR/scene: nodes=16 edges=17 through=0 zero_polys=0 w=1462 h=808
+x6_realistic.LR/route-id: nodes=16 edges=17 through=0 zero_polys=0 w=1462 h=801
+x6_realistic.LR: drag route+to_svg 1.791 ms (acc 1081771)
+  x6_realistic.LR/swap01: edge 9 Address->User through node 2 Guest
+  x6_realistic.LR/swap01: edge 9 Address->User through node 3 Session
+  x6_realistic.LR/swap01: edge 9 Address->User through node 8 Review
+x6_realistic.LR/swap01: nodes=16 edges=17 through=3 zero_polys=0 w=1462 h=801
+  x6_realistic.LR/overlap: pick at mid of edge 7 returned None
+x6_realistic.LR/overlap: nodes=16 edges=17 through=0 zero_polys=0 w=1462 h=733
+x6_realistic.LR/negative: nodes=16 edges=17 through=0 zero_polys=0 w=1282 h=801
+x6_realistic.LR/flipped: nodes=16 edges=17 through=0 zero_polys=0 w=1462 h=777
+x6_realistic.RL/scene: nodes=16 edges=17 through=0 zero_polys=0 w=1462 h=808
+x6_realistic.RL/route-id: nodes=16 edges=17 through=0 zero_polys=0 w=1462 h=801
+x6_realistic.RL: drag route+to_svg 1.292 ms (acc 1120200)
+  x6_realistic.RL/swap01: edge 9 Address->User through node 2 Guest
+  x6_realistic.RL/swap01: edge 9 Address->User through node 3 Session
+  x6_realistic.RL/swap01: edge 9 Address->User through node 8 Review
+x6_realistic.RL/swap01: nodes=16 edges=17 through=3 zero_polys=0 w=1458 h=801
+  x6_realistic.RL/overlap: edge 15 Supplier->Product through node 0 User
+  x6_realistic.RL/overlap: edge 15 Supplier->Product through node 3 Session
+x6_realistic.RL/overlap: nodes=16 edges=17 through=2 zero_polys=0 w=1468 h=733
+x6_realistic.RL/negative: nodes=16 edges=17 through=0 zero_polys=0 w=1462 h=801
+x6_realistic.RL/flipped: nodes=16 edges=17 through=0 zero_polys=0 w=1462 h=781
+  x6_realistic.TB/scene: pick at mid of edge 14 returned None
+x6_realistic.TB/scene: nodes=16 edges=17 through=0 zero_polys=0 w=1076 h=1148
+x6_realistic.TB/route-id: nodes=16 edges=17 through=0 zero_polys=0 w=1076 h=1148
+x6_realistic.TB: drag route+to_svg 1.476 ms (acc 1087344)
+x6_realistic.TB/swap01: nodes=16 edges=17 through=0 zero_polys=0 w=1076 h=1148
+  x6_realistic.TB/overlap: pick at mid of edge 15 returned None
+x6_realistic.TB/overlap: nodes=16 edges=17 through=0 zero_polys=0 w=986 h=1148
+x6_realistic.TB/negative: nodes=16 edges=17 through=0 zero_polys=0 w=1076 h=1012
+  x6_realistic.TB/flipped: pick at mid of edge 3 returned None
+  x6_realistic.TB/flipped: pick at mid of edge 4 returned None
+  x6_realistic.TB/flipped: pick at mid of edge 9 returned None
+x6_realistic.TB/flipped: nodes=16 edges=17 through=0 zero_polys=0 w=1100 h=1134
+  x6_realistic/scene: pick at mid of edge 14 returned None
+x6_realistic/scene: nodes=16 edges=17 through=0 zero_polys=0 w=1076 h=1148
+x6_realistic/route-id: nodes=16 edges=17 through=0 zero_polys=0 w=1076 h=1148
+x6_realistic: drag route+to_svg 1.313 ms (acc 1087344)
+x6_realistic/swap01: nodes=16 edges=17 through=0 zero_polys=0 w=1076 h=1148
+  x6_realistic/overlap: pick at mid of edge 15 returned None
+x6_realistic/overlap: nodes=16 edges=17 through=0 zero_polys=0 w=986 h=1148
+x6_realistic/negative: nodes=16 edges=17 through=0 zero_polys=0 w=1076 h=1012
+  x6_realistic/flipped: pick at mid of edge 3 returned None
+  x6_realistic/flipped: pick at mid of edge 4 returned None
+  x6_realistic/flipped: pick at mid of edge 9 returned None
+x6_realistic/flipped: nodes=16 edges=17 through=0 zero_polys=0 w=1100 h=1134
+t1/scene: nodes=9 edges=11 through=0 zero_polys=0 w=540 h=788
+t1/route-id: nodes=9 edges=11 through=0 zero_polys=0 w=528 h=788
+t1: drag route+to_svg 0.751 ms (acc 583123)
+  t1/swap01: pick at mid of edge 6 returned None
+t1/swap01: nodes=9 edges=11 through=0 zero_polys=0 w=528 h=788
+  t1/overlap: pick at mid of edge 1 returned None
+  t1/overlap: pick at mid of edge 8 returned None
+  t1/overlap: pick at mid of edge 10 returned None
+t1/overlap: nodes=9 edges=11 through=0 zero_polys=0 w=528 h=788
+  t1/negative: pick at mid of edge 6 returned None
+t1/negative: nodes=9 edges=11 through=0 zero_polys=0 w=528 h=788
+t1/flipped: nodes=9 edges=11 through=0 zero_polys=0 w=552 h=774
+class.BT/scene: nodes=9 edges=8 through=0 zero_polys=0 w=610 h=940
+class.BT/route-id: nodes=9 edges=8 through=0 zero_polys=0 w=520 h=1013
+class.BT: drag route+to_svg 0.379 ms (acc 594118)
+  class.BT/swap01: pick at mid of edge 1 returned None
+  class.BT/swap01: pick at mid of edge 2 returned None
+class.BT/swap01: nodes=9 edges=8 through=0 zero_polys=0 w=520 h=1020
+class.BT/overlap: nodes=9 edges=8 through=0 zero_polys=0 w=490 h=1013
+class.BT/negative: nodes=9 edges=8 through=0 zero_polys=0 w=520 h=1013
+class.BT/flipped: nodes=9 edges=8 through=0 zero_polys=0 w=520 h=981
+class.LR/scene: nodes=9 edges=8 through=0 zero_polys=0 w=1247 h=398
+class.LR/route-id: nodes=9 edges=8 through=0 zero_polys=0 w=1247 h=398
+class.LR: drag route+to_svg 0.796 ms (acc 591472)
+  class.LR/swap01: pick at mid of edge 1 returned None
+class.LR/swap01: nodes=9 edges=8 through=0 zero_polys=0 w=1247 h=398
+class.LR/overlap: nodes=9 edges=8 through=0 zero_polys=0 w=1247 h=372
+class.LR/negative: nodes=9 edges=8 through=0 zero_polys=0 w=1247 h=398
+class.LR/flipped: nodes=9 edges=8 through=0 zero_polys=0 w=1247 h=384
+class.RL/scene: nodes=9 edges=8 through=0 zero_polys=0 w=1247 h=398
+class.RL/route-id: nodes=9 edges=8 through=0 zero_polys=0 w=1446 h=398
+class.RL: drag route+to_svg 0.755 ms (acc 594179)
+  class.RL/swap01: pick at mid of edge 1 returned None
+class.RL/swap01: nodes=9 edges=8 through=0 zero_polys=0 w=1484 h=398
+class.RL/overlap: nodes=9 edges=8 through=0 zero_polys=0 w=1446 h=372
+class.RL/negative: nodes=9 edges=8 through=0 zero_polys=0 w=1446 h=398
+class.RL/flipped: nodes=9 edges=8 through=0 zero_polys=0 w=1446 h=384
+class.TB/scene: nodes=9 edges=8 through=0 zero_polys=0 w=610 h=940
+class.TB/route-id: nodes=9 edges=8 through=0 zero_polys=0 w=520 h=940
+class.TB: drag route+to_svg 0.707 ms (acc 598412)
+  class.TB/swap01: pick at mid of edge 1 returned None
+  class.TB/swap01: pick at mid of edge 2 returned None
+class.TB/swap01: nodes=9 edges=8 through=0 zero_polys=0 w=520 h=940
+class.TB/overlap: nodes=9 edges=8 through=0 zero_polys=0 w=490 h=940
+class.TB/negative: nodes=9 edges=8 through=0 zero_polys=0 w=520 h=940
+class.TB/flipped: nodes=9 edges=8 through=0 zero_polys=0 w=520 h=898

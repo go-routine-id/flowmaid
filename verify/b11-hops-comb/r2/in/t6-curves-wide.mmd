@@ -1,0 +1,18 @@
+flowchart TD
+  A --> B & C & D
+  B --> E & F
+  C --> E & G
+  D --> F & G
+  A e1@--> G
+  B e2@--> G
+  D e3@-.-> E
+  e1@{ curve: basis }
+  e2@{ curve: stepAfter }
+  e3@{ animate: true }
+  C --> F
+  E --> A
+  linkStyle default stroke-width:3px
+  linkStyle 3 stroke-width:9px,stroke:#d35400
+  linkStyle 8 interpolate linear
+  classDef hot fill:#fee,stroke:#c00
+  class A,G hot

@@ -1,0 +1,14 @@
+classDiagram
+    direction RL
+    class A {
+      +int x
+    }
+    A "1" --> "0..*" B : owns
+    B "1" --> "1" C : uses
+    C ..> A : calls back
+    C --> C : self
+    A <|-- D
+    A <|-- E
+    A <|-- F
+    D o-- E : agg
+    B -- D

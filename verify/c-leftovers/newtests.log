@@ -1,0 +1,17 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.00s
+     Running unittests src/lib.rs (target/debug/deps/flowmaid-424aeb99af01af07)
+
+running 8 tests
+test class::tests::dotted_names_in_relations ... ok
+test compound::tests::a_drag_inside_a_block_resizes_no_bar ... ok
+test scene::tests::a_choice_twins_middle_label_keeps_beside_its_line ... ok
+test scene::tests::a_wide_choice_label_keeps_off_its_siblings_lines ... ok
+test class::tests::self_loops_keep_off_a_neighbours_loops ... ok
+test class::tests::a_fan_of_six_nests_without_a_curve ... ok
+test scene::tests::routing_stays_finite_for_any_node_sizes_and_coincident_centres ... ok
+test scene::tests::edge_picking_matches_the_painted_strokes_on_every_fixture has been running for over 60 seconds
+test scene::tests::edge_picking_matches_the_painted_strokes_on_every_fixture ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 1087 filtered out; finished in 73.61s
+
+EXIT 0

@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="412" height="496" viewBox="0 0 412 496" font-family="Helvetica, Arial, sans-serif" font-size="14" role="img" aria-label="State diagram">
+<title>State diagram</title>
+<rect width="412" height="496" fill="#ffffff"/>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 1 L 9 5 L 0 9 z" fill="#44507a"/></marker><mask id="flowmaid-f0a5ad8c47f5ff5e-x2" maskUnits="userSpaceOnUse" x="99.5" y="124.7" width="259.0" height="116.1"><rect x="99.5" y="124.7" width="259.0" height="116.1" fill="#fff"/><circle cx="238.1" cy="199.9" r="4.47" fill="#000"/></mask></defs>
+<path d="M 234.9 42.0 C 234.9 76.2, 234.9 76.2, 234.9 110.5" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>start → Still</title></path>
+<path d="M 215.0 148.5 C 215.0 182.8, 109.2 182.8, 109.2 217.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>Still → Moving</title></path>
+<path d="M 123.2 217.0 C 384.5 177.0, 377.8 188.5, 243.0 148.5" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)" mask="url(#flowmaid-f0a5ad8c47f5ff5e-x2)"><title>Moving → Still</title></path>
+<path d="M 92.5 255.0 C 92.5 285.0, 92.5 285.0, 92.5 315.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>Moving → Crash</title></path>
+<path d="M 73.1 353.0 C 73.1 392.8, 41.3 392.8, 41.3 432.5" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>Crash → end</title></path>
+<path d="M 229.0 148.5 C 229.0 182.8, 239.2 182.8, 239.2 217.0" fill="none" stroke="#44507a" stroke-width="1.7" stroke-dasharray="5 4"><title>Still → note</title></path>
+<path d="M 92.5 157.0 C 92.5 187.0, 92.5 187.0, 92.5 217.0" fill="none" stroke="#44507a" stroke-width="1.7" stroke-dasharray="5 4"><title>note → Moving</title></path>
+<path d="M 111.9 353.0 C 111.9 383.0, 128.5 383.0, 128.5 413.0" fill="none" stroke="#44507a" stroke-width="1.7" stroke-dasharray="5 4"><title>Crash → note</title></path>
+<g><title>start</title>
+<circle cx="234.9" cy="35.0" r="7.0" fill="#44507a" stroke="#44507a" stroke-width="1.6"/>
+<text x="234.9" y="35.0" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<g><title>Still</title>
+<rect x="207.0" y="110.5" width="55.8" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="234.9" y="129.5" dy="0.33em" text-anchor="middle" fill="#232840">Still</text>
+</g>
+<g><title>Moving</title>
+<rect x="53.8" y="217.0" width="77.5" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="92.5" y="236.0" dy="0.33em" text-anchor="middle" fill="#232840">Moving</text>
+</g>
+<g><title>Crash</title>
+<rect x="58.0" y="315.0" width="69.0" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="92.5" y="334.0" dy="0.33em" text-anchor="middle" fill="#232840">Crash</text>
+</g>
+<g><title>end</title>
+<circle cx="37.1" cy="440.5" r="9.0" fill="#ffffff" stroke="#44507a" stroke-width="1.6"/>
+<circle cx="37.1" cy="440.5" r="5.0" fill="#44507a" stroke="#44507a" stroke-width="1.6"/>
+<text x="37.1" y="440.5" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<g><title>a resting state</title>
+<rect x="181.2" y="217.0" width="120.4" height="38.0" rx="3.0" fill="#fff8c5" stroke="#9c8a2c" stroke-width="1.6"/>
+<text x="241.4" y="236.0" dy="0.33em" text-anchor="middle" fill="#232840">a resting state</text>
+</g>
+<g><title>Moving is the main state here</title>
+<rect x="28.0" y="102.0" width="129.0" height="55.0" rx="3.0" fill="#fff8c5" stroke="#9c8a2c" stroke-width="1.6"/>
+<text x="92.5" y="121.0" text-anchor="middle" fill="#232840"><tspan x="92.5" dy="0.33em">Moving is the</tspan><tspan x="92.5" dy="17.0">main state here</tspan></text>
+</g>
+<g><title>boom second line</title>
+<rect x="96.1" y="413.0" width="103.5" height="55.0" rx="3.0" fill="#fff8c5" stroke="#9c8a2c" stroke-width="1.6"/>
+<text x="147.9" y="432.0" text-anchor="middle" fill="#232840"><tspan x="147.9" dy="0.33em">boom</tspan><tspan x="147.9" dy="17.0">second line</tspan></text>
+</g>
+</svg>

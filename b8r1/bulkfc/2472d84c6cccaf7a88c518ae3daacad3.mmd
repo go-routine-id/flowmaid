@@ -1,0 +1,17 @@
+flowchart LR
+    N0([Notify store])
+    N1([Parse])
+    N2([Store])
+    N3[(Check check)]
+    N4(Store)
+    N5[Check archive]
+    N6([Queue])
+    N0 --> N1
+    N0 --> N2
+    N0 --> N3
+    N2 -->|ok| N4
+    N4 --> N5
+    N3 --> N6
+    N1 --> N6
+    N1 ==>|rollback| N0
+    N4 -.->|rollback| N1

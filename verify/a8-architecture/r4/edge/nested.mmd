@@ -1,0 +1,9 @@
+architecture-beta
+    group g(cloud)[G]
+    group h(cloud)[H] in g
+    service a(server)[A] in h
+    service b(server)[B] in g
+    service c(server)[C]
+    a{group}:B -[nested out]-> T:c
+    b{group}:R -[outer]-> L:c
+    a:R -[in]-> L:b

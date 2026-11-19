@@ -1,0 +1,67 @@
+name	engine	dir	W	H	area	aspect	fill	nodes	edges	frames	top_frames	compact_mean	compact_max	compact_max_id	span_max	span_max_id	sib_pairs	sib_side	sib_stacked	sib_stagger	sib_side_linked	frame_overlap	frame_foreign_nodes	xframe_runs	xframe_len	xframe_edges	node_hits	crossings	hops	edge_len	edge_len_n	straight_max	straight_max_edge	bends	lanes_max	lane_gap_min	lbl_n	lbl_off_mean	lbl_off_max	lbl_endpx_mean	lbl_endpx_max	lbl_detach_max	lbl_lbl	lbl_node	lbl_struck	lbl_gap_min	lbl_crowd	membership	edge_ends	warn	lateral_x	lateral_edges	flow_x	bends_max	bends_max_edge	detour_max	detour_max_edge	lbl_in_end	lbl_own_gap_max	breadth	bands_n	bands	band_sets
+hub5	fm	TD	490	1091	534590	0.45	0.056	11	14	5	5	5.22	9.81	E	0.174	A	10	1	9	0	0	0	0	0	0	0	0	0	0	3975	76.5	620	e2>a1	21	3	14.0	6	0.090	0.257	228	426	24.4	0	0	0	7.9	1	struct	struct	0	3	3	10	5	HUB>e1	1.09	HUB>d1	0	0.0	490	5	HUB / C A / B / D / E	HUB / A C / B / D / E
+== hub5 [fm] 490 x 1091, dir TD, membership struct, edge ends struct
+ frames:
+  id  parent  x      y    w      h    members  node_area  compact  span   foreign_nodes
+  A   -       299.8  141  143.8  190  2        4883       5.595    0.174  0            
+  B   -       257.2  385  104.2  190  2        5605       3.532    0.174  0            
+  C   -       28     141  102.1  190  2        5316.2     3.649    0.174  0            
+  D   -       213.3  629  102.1  190  2        5513.8     3.518    0.174  0            
+  E   -       178.5  873  265    190  2        5130       9.815    0.174  0
+ sibling pairs:
+  a  b  kind     flow_overlap  linked
+  A  B  stacked  -54           edge  
+  A  C  side     190           -     
+  A  D  stacked  -298          -     
+  A  E  stacked  -542          edge  
+  B  C  stacked  -54           -     
+  B  D  stacked  -54           edge  
+  B  E  stacked  -298          -     
+  C  D  stacked  -298          -     
+  C  E  stacked  -542          -     
+  D  E  stacked  -54           edge
+ edges:
+  edge    len    straight_max  bends  detour  hops  xframe_runs  xframe_len  node_hits  lateral_x  flow_x  ends         
+  a1>a2   68.6   22.3          1      -       0     0            0           0          0          0       struct/struct
+  b1>b2   54.5   54.5          0      -       0     0            0           0          0          0       struct/struct
+  c1>c2   54.5   54.5          0      -       0     0            0           0          0          0       struct/struct
+  d1>d2   54.5   54.5          0      -       0     0            0           0          0          0       struct/struct
+  e1>e2   54.5   54.5          0      -       0     0            0           0          0          0       struct/struct
+  HUB>a1  258.9  110.2         3      0.972   0     0            0           0          0          1       struct/struct
+  HUB>b1  411.7  293.0         2      0.979   0     0            0           0          1          0       struct/struct
+  HUB>c1  184.4  57.9          2      -       0     0            0           0          0          1       struct/struct
+  HUB>d1  692.2  531.9         3      1.088   0     0            0           0          1          0       struct/struct
+  HUB>e1  942.9  422.8         5      1.079   0     0            0           0          1          0       struct/struct
+  a2>b1   102.5  102.5         0      -       0     0            0           0          0          2       struct/struct
+  b2>d1   102.5  102.5         0      -       0     0            0           0          0          2       struct/struct
+  d2>e1   102.5  102.5         0      -       0     0            0           0          0          2       struct/struct
+  e2>a1   891.0  620.2         5      0.992   0     0            0           0          0          2       struct/struct
+ crossings of the border of a frame that holds exactly one end:
+  edge    frame  side  kind     at           
+  HUB>a1  A      T     flow     (393.9,141.0)
+  HUB>b1  B      L     lateral  (257.2,444.0)
+  HUB>c1  C      T     flow     (98.7,141.0) 
+  HUB>d1  D      L     lateral  (213.3,688.0)
+  HUB>e1  E      L     lateral  (178.5,932.0)
+  a2>b1   A      B     flow     (324.6,331.0)
+  a2>b1   B      T     flow     (324.6,385.0)
+  b2>d1   B      B     flow     (290.8,575.0)
+  b2>d1   D      T     flow     (290.8,629.0)
+  d2>e1   D      B     flow     (243.4,819.0)
+  d2>e1   E      T     flow     (243.4,873.0)
+  e2>a1   A      B     flow     (407.1,331.0)
+  e2>a1   E      T     flow     (407.1,873.0)
+ runs through a frame holding neither end:
+  (none)
+ crossings:
+  (none)
+ labels:
+  edge    text    x      y      w     h   edge_len  s      off    end_px  detach  own_gap  in_end  gap    on_node  struck  on_label_after
+  HUB>a1  auth    315.4  113.4  41.3  20  258.9     122.1  0.029  122.1   0.000   0        -       71.8   0        0       0             
+  HUB>b1  bill    232.9  370.5  32    20  411.7     311.7  0.257  100.0   0       0        -       7.901  0        0       0             
+  HUB>c1  find    129.8  113.4  36.9  20  184.4     94.9   0.015  89.5    0       0        -       46.8   0        0       0             
+  HUB>d1  ship    209    444    40    20  692.2     378.0  0.046  314.2   0.001   0        -       13.8   0        0       0             
+  HUB>e1  mail    150.1  542    40.3  20  942.9     516.6  0.048  426.3   3.150   0        -       38.8   0        0       0             
+  e2>a1   bounce  431.5  542    60    20  891.0     573.5  0.144  317.5   24.4    0        -       93.3   0        0       0
+ bands: HUB / C A / B / D / E
+ widest bundle of parallel lanes: 3 at y=219,x=195..223

@@ -1,0 +1,7 @@
+flowchart TD
+    Client[Client] --> GW(API Gateway)
+    GW --> Auth
+    subgraph platform [Platform]
+        direction LR
+        Auth[Auth service] --> Users[User DB]
+    end

@@ -1,0 +1,13 @@
+classDiagram
+class com.shop.Order {
+  +int id
+  +total() float
+}
+com.shop.Order : +lines List~com.shop.Line~
+com.shop.Order "1" *-- "many" com.shop.Line : holds
+com.shop.Customer --> com.shop.Order : places
+com.shop.Order ..> com.pay.Gateway~T~
+com.pay.Gateway <|-- com.pay.Stripe
+note for com.shop.Order "an order\nwith lines"
+`com.shop.Order` --> Audit
+A.B..>C

@@ -1,0 +1,24 @@
+flowchart LR
+    N0[Archive]
+    N1[Load]
+    N2(Queue emit)
+    N3[Emit]
+    N4(Report parse)
+    N5{Done}
+    N6([Load])
+    N7([Store])
+    N8([Notify fetch])
+    N9[Load report]
+    N0 --> N1
+    N1 -->|yes| N2
+    N1 --> N3
+    N3 -->|yes| N4
+    N4 -->|yes| N5
+    N5 -->|no| N6
+    N6 -->|next| N7
+    N7 --> N8
+    N8 -->|ok| N9
+    N2 --> N9
+    N2 --> N3
+    N6 --> N5
+    N5 -.->|back| N4

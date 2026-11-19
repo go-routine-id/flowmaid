@@ -1,0 +1,32 @@
+architecture-beta
+    group g0(cloud)[Data]
+    group g1(nonsense)[Telemetry and Logging Platform]
+    service s0(database)[Web App 0]
+    service s1(cloud)[Web App 1] in g0
+    service s2(monitoring)[Authentication and Authorization Service 2] in g1
+    service s3(server)[Svc 3] in g1
+    service s4(cloud)[PostgreSQL Primary 4] in g0
+    service s5(disk)[Authentication and Authorization Service 5] in g1
+    service s6(cloud)[Q 6] in g1
+    service s7(monitoring)[Web App 7] in g1
+    service s8(monitoring)[PostgreSQL Primary 8] in g0
+    service s9(nonsense)[Svc 9] in g0
+    service s10(internet)[PostgreSQL Primary 10] in g1
+    service s11(nonsense)[Svc 11] in g0
+    service s12(internet)[Web App 12] in g1
+    service s13(monitoring)[Svc 13]
+    junction s14 in g0
+    s2:L --> R:s3
+    s9:T -[calls]-> B:s1
+    s14:T <--> B:s6
+    s13:T <--> L:s8
+    s10:B --> T:s14
+    s1:B -- T:s14
+    s2:B --> T:s1
+    s4:L --> R:s6
+    s10:R <--> L:s11{group}
+    s5:R -[sync]- L:s6
+    s11:B -- L:s10
+    s8{group}:L -[x]-> B:s13
+    s14:T <--> B:s10
+    s6:T -- B:s1{group}

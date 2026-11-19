@@ -1,0 +1,26 @@
+flowchart TB
+  H0 -.-> N10
+  H0 -.-> N4
+  H0 --> N7
+  H0 -.-> N7
+  H0 ---|ok| N10
+  H1 --> N8
+  H1 ==> N16
+  H1 -.->|ok| N6
+  H1 -->|a much longer label here| N5
+  H1 ---|no| N7
+  H1 -.->|express| N17
+  H1 --- N11
+  H1 --- N15
+  H1 --- N17
+  H1 -->|express| N8
+  H1 -.->|ok| N10
+  N14 --> N0
+  N12 -->|yes| N13
+  N1 --> N1
+  N17 -->|ok| N5
+  N0 --> N6
+  N15 --> N0
+  N2 --> N4
+  N4 --> N17
+  N14 --> N1

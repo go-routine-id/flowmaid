@@ -1,0 +1,30 @@
+flowchart RL
+  n1["notify"]
+  n2["db ship queue"]
+  subgraph B0["Fulfilment desk"]
+    n3["notify"]
+  end
+  subgraph B1["Edge services"]
+    n4["mail"]
+    n5["api"]
+  end
+  subgraph B2["Storefront"]
+    n6["index report cache"]
+    n7["cache"]
+  end
+  n8["ship"]
+  n9["audit"]
+  n9 -.->|merge| n7
+  n5 -.->|split| n7
+  n3 ==> n7
+  n7 ==>|auth| n3
+  n1 ==>|merge| n3
+  n7 -.->|ingest| n2
+  n9 --> n2
+  n8 -->|notify| B0
+  n1 -.-> n6
+  n4 --> n9
+  n5 -->|store| n4
+  n8 --> n4
+  n2 ==>|search| n9
+  n7 --> n8

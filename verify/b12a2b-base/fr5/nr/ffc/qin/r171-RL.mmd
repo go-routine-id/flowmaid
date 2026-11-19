@@ -1,0 +1,17 @@
+flowchart RL
+    subgraph G[WWW Mammoth Wombat Overview]
+        m0[ledger]
+        m1[auth service]
+        m2[x wide member node]
+        m0 --> m1
+    end
+    s0[src0] --> m0
+    s0 --> m2
+    s1[src1] --> m2
+    s1 --> G
+    s2[src2] --> m1
+    s2 --> m1
+    s3[src3] --> G
+    s3 --> m0
+    s4[src4] --> m2
+    s4 --> m1

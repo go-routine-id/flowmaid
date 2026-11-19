@@ -1,0 +1,46 @@
+flowchart LR
+  n1["queue"]
+  subgraph B0["Fulfilment desk"]
+    n2["db"]
+    n3["audit"]
+    n4["db"]
+    n5["store"]
+  end
+  subgraph B1["Ops"]
+    n6["ingest<br/>auth"]
+  end
+  subgraph B2["Ops"]
+    n7["notify"]
+    n8["queue"]
+    n9["report split queue"]
+    n10["store"]
+  end
+  subgraph B3["Ingest"]
+    n11["merge ship report"]
+    subgraph B3s0["Back office and finance 0"]
+      n12["search"]
+      n13["merge"]
+      n14["report"]
+    end
+  end
+  n15["auth cache api"]
+  n16["worker"]
+  n4 --> B2
+  n3 --> n15
+  n4 --> n16
+  n5 --> n10
+  n8 -.-> n12
+  n6 --> n8
+  n16 --> n10
+  n13 -->|ingest| n11
+  n13 ==> n6
+  n12 -->|store| n9
+  n11 --> n6
+  n14 -.-> n7
+  n10 ==>|notify| B3s0
+  n12 --> n6
+  n7 -.-> n5
+  n10 --> n3
+  n13 --> B3
+  n14 --> n8
+  n2 --> n14

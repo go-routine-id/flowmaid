@@ -1,0 +1,17 @@
+flowchart TD
+    subgraph A[Customer data platform]
+        a0[a0]
+        a1[a1]
+    end
+    subgraph B[Customer data platform east]
+        b0[b0]
+        b1[b1 wide node]
+    end
+    a0 -- "x" --> b0
+    a1 --> b1
+    p[p] --> B
+    p --> b1
+    q[q] --> B
+    q --> b1
+    r[r] --> B
+    r --> b1

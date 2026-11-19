@@ -1,0 +1,93 @@
+diff --git a/src/layout.rs b/src/layout.rs
+index 47020a2..dfd5ea5 100644
+--- a/src/layout.rs
++++ b/src/layout.rs
+@@ -2420,6 +2420,78 @@ fn place(
+         Vec::new()
+     };
+     let par_reach = parallel_reach(g, &par);
++    // A back-edge's lane leaves its source and enters its target by a
++    // leg across the gap beside that end, `crate::lanes::LANE_STUB` out
++    // (one `LANE_STAGGER` more per lane nested round it there), from a
++    // port at the edge of the side's usable span (one `LANE_STAGGER`
++    // further in per twin lane) to the lane past the node. A label
++    // centred in that gap on an edge of the same node, reaching across
++    // that span edge, keeps that leg's depth clear at both ends of the
++    // gap, or it lies on the legs (x6-rl-loops: `forward` over both
++    // `Gamma -> Alpha` lanes). Per labelled short edge: the room the
++    // legs take, summed for both ends of the gap. Only in LR / RL, where
++    // the label lies along the flow and fills the gap's length; a TD /
++    // BT label is a row tall and slides along its line past the legs.
++    let lane_par = if horizontal && par.is_empty() && back.iter().any(|&b| b) {
++        crate::scene::parallel_offsets(g)
++    } else {
++        par.clone()
++    };
++    let lane_legs = |ei: usize, lo: usize, hi: usize, across: f64| -> f64 {
++        if !horizontal {
++            return 0.0;
++        }
++        let e = &g.edges[ei];
++        let off = lane_par.get(ei).copied().unwrap_or(0.0);
++        let centre = (bpos[lo] + bpos[hi]) / 2.0 + off;
++        let (c0, c1) = (centre - across / 2.0, centre + across / 2.0);
++        let mut deepest = 0.0f64;
++        for v in [lo, hi] {
++            // Lanes with a leg on `v`'s side facing this gap: into `lo`
++            // (its downstream side), out of `hi` (its upstream side).
++            let legs: Vec<usize> = g
++                .edges
++                .iter()
++                .enumerate()
++                .filter(|&(bj, b)| {
++                    back[bj]
++                        && b.from != b.to
++                        && alayer[b.from].abs_diff(alayer[b.to]) > 1
++                        && if v == lo { b.to == v } else { b.from == v }
++                })
++                .map(|(bj, _)| bj)
++                .collect();
++            if legs.is_empty() || (e.from != v && e.to != v) {
++                continue;
++            }
++            let p = Placed {
++                b: bpos[v],
++                l: 0.0,
++                bsize: absize[v],
++                lsize: alsize[v],
++                layer: alayer[v],
++            };
++            let span = crate::lanes::port_span(g.nodes[v].shape, &p);
++            // Twin lanes (same far end) step their ports inward.
++            let twins = legs
++                .iter()
++                .map(|&bj| {
++                    let far = |b: &crate::model::Edge| if b.from == v { b.to } else { b.from };
++                    legs.iter()
++                        .filter(|&&bk| far(&g.edges[bk]) == far(&g.edges[bj]))
++                        .count()
++                })
++                .max()
++                .unwrap_or(1);
++            let inward = (twins - 1) as f64 * crate::lanes::LANE_STAGGER;
++            if c1 > span.1 - inward || c0 < span.0 + inward {
++                let depth =
++                    crate::lanes::LANE_STUB + (legs.len() - 1) as f64 * crate::lanes::LANE_STAGGER;
++                deepest = deepest.max(depth);
++            }
++        }
++        2.0 * deepest
++    };
+     for (ei, e) in g.edges.iter().enumerate() {
+         let short = alayer[e.from].abs_diff(alayer[e.to]) == 1;
+         // A back-edge between adjacent layers is drawn across their gap
+@@ -2498,7 +2570,8 @@ fn place(
+         // either end of a labelled edge (`Graph::label_end_room`: glyph
+         // and cardinalities) is kept at both.
+         let label_room = 2.0 * g.label_end_room.get(ei).copied().unwrap_or(0.0);
+-        short_labels[alayer[hi]].push((lo, hi, ext, room + label_room, fan.is_some()));
++        let room = (room + label_room).max(lane_legs(ei, lo, hi, across));
++        short_labels[alayer[hi]].push((lo, hi, ext, room, fan.is_some()));
+         // In LR/RL a row along the layer axis costs a label's whole
+         // width, and the scene never uses it: colliding labels there
+         // slide apart ACROSS the flow (they are only LABEL_BOX_H tall),

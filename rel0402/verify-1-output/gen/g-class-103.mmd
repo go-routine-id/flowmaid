@@ -1,0 +1,50 @@
+classDiagram
+direction BT
+C9 "1" o-- "*" C8
+C6 ..|> C9 : a&b
+C9 o-- C11 : Customer Order
+C9 "1" <--> "*" C3
+C15 *-- C0
+C4 ..> C1 : x
+C1 <--> C7 : x
+C9 <--> C0 : beta
+C5 "1" <--> "*" C18
+C13 "1" *-- "*" C15
+C10 *-- C4 : beta
+C2 <|-- C13
+C2 -- C8
+C15 "1" --> "*" C0 : beta
+C7 ..|> C6
+C15 "1" <|-- "*" C11
+class C1 {
+  +int id
+  +name() String
+}
+class C8 {
+  +int id
+  +name() String
+}
+class C9 {
+  +int id
+  +name() String
+}
+class C10 {
+  +int id
+  +name() String
+}
+class C12 {
+  +int id
+  +name() String
+}
+class C13 {
+  +int id
+  +name() String
+}
+class C17 {
+  +int id
+  +name() String
+}
+class C18 {
+  +int id
+  +name() String
+}

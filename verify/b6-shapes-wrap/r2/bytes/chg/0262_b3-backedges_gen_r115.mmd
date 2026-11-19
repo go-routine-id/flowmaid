@@ -1,0 +1,13 @@
+flowchart RL
+    N0([Retry])
+    N1[Validate]
+    N2{Store}
+    N3(Store report)
+    N4([Queue notify])
+    N0 -->|ok| N1
+    N0 --> N2
+    N2 --> N3
+    N3 --> N4
+    N1 --> N3
+    N3 --> N0
+    N3 -.-> N2

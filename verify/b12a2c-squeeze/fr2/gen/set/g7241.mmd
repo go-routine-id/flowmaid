@@ -1,0 +1,33 @@
+flowchart RL
+  n1["pack"]
+  n2["auth<br/>notify"]
+  subgraph B0["Data tier"]
+    n3["db"]
+    n4["cache<br/>billing"]
+    n5["split"]
+    n6["notify"]
+    subgraph B0s0["Analytics 0"]
+      n7["pack"]
+      n8["search"]
+    end
+    subgraph B0s1["Data tier 1"]
+      n9["ingest store worker"]
+    end
+  end
+  subgraph B1["Core"]
+    n10["ship"]
+  end
+  n11["api cache auth"]
+  n4 -->|store| n10
+  n1 --> n8
+  n7 -->|report| n5
+  n8 -.-> n3
+  n9 --> n2
+  n7 -->|parse| n2
+  n9 -.-> n6
+  n5 ==> n6
+  n4 -.-> n9
+  n1 --> n3
+  n10 -.-> n1
+  n2 -->|index| n1
+  n2 --> n5

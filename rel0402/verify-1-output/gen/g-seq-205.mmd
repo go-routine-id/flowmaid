@@ -1,0 +1,22 @@
+sequenceDiagram
+participant P0 as x
+participant P1 as <b>bold</b>
+P0->>P0: self Customer Order
+P1-)P0: 日本語
+par x
+Note left of P1: x
+par Customer Order
+P0--xP0: Customer Order
+Note over P0,P1: a&b
+end
+end
+P0-)P0: delta
+P0->>P0: alpha
+P1->P0: x
+P1->>P1: self gamma
+P0->>P0: a&b
+Note over P0,P1: <b>bold</b>
+Note over P0: <b>bold</b>
+activate P0
+P0->>P1: act
+deactivate P0

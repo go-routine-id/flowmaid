@@ -3,8 +3,32 @@
 the tables of SPEC.md section 4.3. Every rule carries the checkpoint its row
 is first due at (spec 4.1): judge --due A1 leaves the later ones out.
 Names are the basenames of the inputs in b12/local/in."""
-import json, os
-HERE = os.path.dirname(os.path.abspath(__file__))
+import json, os, csv, math, sys
+# Since the bends fix of 2026-11-17 (README "Bends fix"): the same rules as before; the constants of 4.3 that were
+# read off a reference table column the corrected straight-run counter changes (bends, bends_max, straight_max,
+# lane_gap_min) are computed here from the reference tables by the formula each rule's `why` states.
+#   mkthresholds.py <out dir> <baseline-038.tsv> <ref-mermaid.tsv> [--check]
+# --check: assert that the formulas give the constants typed in BEFORE the fix; it passes only on the pre-fix tables
+# (metrics-backup-before-bends-fix), which proves the derivation did not change the rules.
+HERE = sys.argv[1]
+def _tab(f):
+    r = list(csv.reader(open(f), delimiter='\t')); h = r[0]; return {x[0]: dict(zip(h, x)) for x in r[1:]}
+_B, _M = _tab(sys.argv[2]), _tab(sys.argv[3])
+_v = lambda t, n, c: float(t[n][c])
+D = {
+    'analog_bends': math.floor(_v(_M, 'infra-overview', 'bends') * 1.2 + 1e-9),          # mermaid's total + 20 %
+    'bends_max': int(_v(_B, 'infra-overview', 'bends_max')),                              # 0.38's own worst edge (the analog's bound)
+    'analog_straight': math.ceil(_v(_M, 'infra-overview', 'straight_max') / 10) * 10,     # mermaid's (1236 -> 1240)
+    'analog_lane': _v(_B, 'infra-overview', 'lane_gap_min'),                              # 0.38's
+    'v2_bends': math.floor(_v(_M, 'infra-overview-v2', 'bends') * 1.2 + 1e-9),            # mermaid's + 20 %
+    'pub_bends': math.floor(_v(_M, 'blocks-overview', 'bends') * 1.2 + 1e-9),             # mermaid's + 20 % (92 -> 110)
+}
+if '--check' in sys.argv:
+    want = {'analog_bends': 120, 'bends_max': 8, 'analog_straight': 1240, 'analog_lane': 9.3, 'v2_bends': 114, 'pub_bends': 110}
+    assert D == want, (D, want)
+    print('formulas reproduce the live constants:', D)
+else:
+    print('derived constants:', D)
 ANALOG = 'infra-overview'
 V2 = 'infra-overview-v2'
 PERMS = ['perm-a-edges-reversed', 'perm-b-subgraphs-reversed', 'perm-c-actors-reversed', 'perm-d-edges-rotated', 'perm-e-one-more-inner-edge']
@@ -38,8 +62,8 @@ rule(ANALOG, 'compact_max', '<=', 5.5, MM(), why="4.3 (a): mermaid's + 20 %")
 rule(ANALOG, 'compact_mean', '<=', 3.9, MM(), why="4.3 (a): mermaid's + 20 %")
 rule(ANALOG, 'span_max', '<=', 0.37, MM(), why="4.3 (a): mermaid's + 20 %")
 rule(ANALOG, 'crossings', '<=', 20, 16, due='A1', why="4.3 (a): mermaid's + 4")
-rule(ANALOG, 'bends', '<=', 120, why="4.3 (a): mermaid's total + 20 %")
-rule(ANALOG, 'bends_max', '<=', 8, why="4.3 (a): 0.38's own worst edge")
+rule(ANALOG, 'bends', '<=', D['analog_bends'], why="4.3 (a): mermaid's total + 20 %")
+rule(ANALOG, 'bends_max', '<=', D['bends_max'], why="4.3 (a): 0.38's own worst edge")
 rule(ANALOG, 'detour_max', '<=', 1.63, why="4.3 (a): mermaid's + 20 %")
 rule(ANALOG, 'lbl_struck', '<=', 0, why='4.3 (a)')
 rule(ANALOG, 'lbl_crowd', '<=', 0, why="4.3 (a): mermaid's count of crowded chips")
@@ -49,8 +73,8 @@ rule(ANALOG, 'lbl_own_gap_max', '<=', 1, why='4.3 (a)')
 rule(ANALOG, 'lbl_off_mean', '<=', 0.20, 0.13, why='4.3 (a)')
 rule(ANALOG, 'lbl_off_max', '<=', 0.35, why='4.3 (a)')
 rule(ANALOG, 'lbl_endpx_mean', '<=', 386, 340, why="4.3 (a): the smaller of mermaid's and 1.25 x 0.38's")
-rule(ANALOG, 'lane_gap_min', '>=', 9.3, 12, why="4.3 (a): 0.38's")
-rule(ANALOG, 'straight_max', '<=', 1240, why="4.3 (a): mermaid's")
+rule(ANALOG, 'lane_gap_min', '>=', D['analog_lane'], 12, why="4.3 (a): 0.38's")
+rule(ANALOG, 'straight_max', '<=', D['analog_straight'], why="4.3 (a): mermaid's")
 rule(ANALOG, 'area', '<=', {'min': [MM(), {'ref': 'baseline', 'factor': 1.25}]}, why="4.3 (a): the smaller of mermaid's and 1.25 x 0.38's")
 rule(ANALOG, 'edge_len', '<=', MM(), why="4.3 (a): mermaid's")
 
@@ -60,8 +84,8 @@ rule(V2, 'compact_max', '<=', 5.5, why="4.3 (b): the analog's bound")
 rule(V2, 'compact_mean', '<=', 3.9, why="4.3 (b): the analog's bound")
 rule(V2, 'span_max', '<=', 0.28, why='4.3 (b)')
 rule(V2, 'crossings', '<=', 17, 13, due='A1', why="4.3 (b): mermaid's + 4")
-rule(V2, 'bends', '<=', 114, why="4.3 (b): mermaid's + 20 %")
-rule(V2, 'bends_max', '<=', 8, why="4.3 (b): the analog's bound")
+rule(V2, 'bends', '<=', D['v2_bends'], why="4.3 (b): mermaid's + 20 %")
+rule(V2, 'bends_max', '<=', D['bends_max'], why="4.3 (b): the analog's bound")
 rule(V2, 'detour_max', '<=', 1.76, why="4.3 (b): mermaid's + 20 %")
 rule(V2, 'lbl_struck', '<=', 0, why='4.3 (b)')
 rule(V2, 'lbl_crowd', '<=', 1, why="4.3 (b): mermaid's count")
@@ -77,7 +101,7 @@ rule(PERMS, 'span_max', '<=', 0.37, why='4.3 (b)')
 rule(PERMS, 'lbl_struck', '<=', 0, why='4.3 (b)')
 rule(PERMS, 'lbl_crowd', '<=', 0, why='4.3 (b)')
 rule(PERMS, 'lbl_in_end', '<=', 0, why='4.3 (b)')
-rule(PERMS, 'bends_max', '<=', 8, why='4.3 (b)')
+rule(PERMS, 'bends_max', '<=', D['bends_max'], why='4.3 (b)')
 rule(PERMS, 'lane_gap_min', '>=', 8, why='4.3 (b): EDGE_SEP_MIN')
 for n, c in zip(PERMS, [20, 23, 20, 20, 22]):
     rule(n, 'crossings', '<=', c, due='A1', why="4.3 (b): the analog's must (a, d), mermaid's + 4 (c, b, e)")
@@ -91,8 +115,8 @@ rule(PUBALL, 'compact_max', '<=', 7.97, why="4.3 (c): mermaid's 6.64 + 20 %")
 rule(PUBALL, 'compact_mean', '<=', 4.63, why="4.3 (c): mermaid's 3.86 + 20 %")
 rule(PUBALL, 'span_max', '<=', 0.22, why="4.3 (c): mermaid's 0.183 + 20 %")
 rule(PUBALL, 'crossings', '<=', 7, 5, due='A1', why="4.3 (c): mermaid's 5 + 2")
-rule(PUBALL, 'bends', '<=', 110, why="4.3 (c): mermaid's + 20 %")
-rule(PUBALL, 'bends_max', '<=', 8, why='4.3 (c)')
+rule(PUBALL, 'bends', '<=', D['pub_bends'], why="4.3 (c): mermaid's + 20 %")
+rule(PUBALL, 'bends_max', '<=', D['bends_max'], why='4.3 (c)')
 rule(PUBALL, 'detour_max', '<=', 1.43, why="4.3 (c): mermaid's + 20 %")
 rule(PUBALL, 'lbl_struck', '<=', 0, why='4.3 (c)')
 rule(PUBALL, 'lbl_crowd', '<=', 0, why='4.3 (c)')
@@ -107,6 +131,10 @@ rule(PUBPERMS, 'breadth', '==', {'within': 0.10, 'of': PUB}, due='A1', why='4.3 
 
 # ---- (d) new measures, static: lateral crossings
 rule(ADIRS + PUBDIRS + ['hub5', 'cycle2'], 'lateral_x', '<=', 0, why='4.3 (d), B12.11')
+# lead note 3 after verify#2 (2026-11-17): the t9 family in its own direction and drawn BT, so the
+# judge sees the BT regression (lateral_x 0 at the package start, 4 at acacab7); mermaid draws 0
+T9 = ['t9-frames-8px', 't9b-frames-8px-lr', 't9c-frames-8px-two-way', 't9-frames-8px-bt', 't9b-frames-8px-lr-bt', 't9c-frames-8px-two-way-bt']
+rule(T9, 'lateral_x', '<=', 0, MM(), why="4.3 (d), B12.11; lead note 3 after verify#2: the t9 copies (mermaid's 0)")
 rule(DENSE, 'lateral_x', '<=', MM(), 0, why="4.3 (d): not above mermaid's count (3 / 0 / 1), target 0")
 
 # ---- (e) rows-equal inputs: not worse than the reference (due at C, with the picture triples)

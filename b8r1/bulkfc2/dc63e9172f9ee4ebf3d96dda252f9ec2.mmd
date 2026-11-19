@@ -1,0 +1,22 @@
+flowchart BT
+    N0[Done]
+    N1(Done store)
+    N2([Load load])
+    N3(Retry)
+    N4{Fetch}
+    N5([Validate])
+    N6(Emit notify)
+    N7(Store)
+    N8(Validate)
+    N9[(Queue)]
+    N0 --> N1
+    N1 --> N2
+    N0 -->|ok| N3
+    N3 --> N4
+    N4 --> N5
+    N5 --> N6
+    N5 -->|fail| N7
+    N5 --> N8
+    N7 --> N9
+    N3 --> N5
+    N9 -.-> N1

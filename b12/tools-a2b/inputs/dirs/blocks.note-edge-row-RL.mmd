@@ -1,0 +1,11 @@
+stateDiagram-v2
+    direction RL
+[*] --> A
+state K {
+  [*] --> S
+  S --> T
+  note right of T : after the last row
+  note left of S : before
+}
+A --> K
+T --> A : back

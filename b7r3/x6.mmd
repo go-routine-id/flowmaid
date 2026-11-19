@@ -1,0 +1,10 @@
+flowchart RL
+  A[Alpha] -->|forward| B[Beta]
+  A -->|parallel| B
+  A --> B
+  B --> C[Gamma]
+  C --> A
+  B --> B
+  C -.->|long back label here| A
+  C --> D[Delta] --> E[Epsilon]
+  E --> C

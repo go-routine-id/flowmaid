@@ -1,0 +1,35 @@
+flowchart TD
+  n1["notify ingest mail"]
+  n2["pack"]
+  subgraph B0["Platform"]
+    n3["auth"]
+    n4["split split audit<br/>queue"]
+    subgraph B0s0["Back office and finance 0"]
+      n5["ship"]
+      n6["merge"]
+      n7["worker"]
+    end
+    subgraph B0s1["Edge services 1"]
+      n8["mail"]
+    end
+  end
+  subgraph B1["Fulfilment desk"]
+    n9["queue ingest audit"]
+    n10["parse<br/>auth"]
+  end
+  n11["split report notify<br/>db"]
+  n12["cache"]
+  n11 --> n6
+  n9 --> n4
+  n4 -->|search| n6
+  n6 ==> n9
+  n10 ==> n9
+  n8 -.-> n3
+  n9 --> n3
+  n11 ==> n2
+  n7 ==>|worker| n8
+  n11 ==> n9
+  n12 --> n2
+  n6 --> n7
+  n2 -.-> n7
+  n5 --> n1

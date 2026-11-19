@@ -1,0 +1,25 @@
+classDiagram
+A --> B
+A <|-- C : has many of
+B <|-- D
+A -- E
+B <|-- F
+F ..> G : owns
+A ..> H
+H *-- I
+I ..|> H
+A <|-- F
+E ..> E : e0
+E *-- E : e1
+E ..> E : e2
+E *-- E
+E "1" --> "*" E : e4
+E ..> E
+E *-- E : e6
+E "1" --> "*" E
+E *-- E : e8
+class I {
+ +int id
+ +run() void
+ +stop()
+}

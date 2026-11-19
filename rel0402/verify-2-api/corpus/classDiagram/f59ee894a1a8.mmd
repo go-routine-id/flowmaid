@@ -1,0 +1,30 @@
+classDiagram
+direction TB
+A ..> B
+A ..> C
+C "1" --> "*" D : uses
+B "1" -- "*" E
+D *-- F : has many of
+D ..|> G
+B "1" --> "*" B : b0
+G --> G
+G *-- G : g1
+G *-- G
+G *-- G : g3
+G *-- G : g4
+F *-- F
+F --> F : f1
+F --> F : f2
+F "1" --> "*" F : f3
+F o-- F : f4
+F "1" --> "*" F : f5
+F *-- F : f6
+F --> F : f7
+F "1" --> "*" F : f8
+A o-- A : a0
+A *-- A : a1
+A --> A
+A "1" --> "*" A : a3
+A o-- A : a4
+A --> A : a5
+A --> A : a6

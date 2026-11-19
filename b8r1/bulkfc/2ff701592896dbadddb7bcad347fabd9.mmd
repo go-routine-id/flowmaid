@@ -1,0 +1,15 @@
+flowchart TD
+  A[Start] --> B{Check}
+  B -->|yes| C[Do it]
+  B -->|no| D[Skip]
+  C --> E[End]
+  D --> E
+  A --> E
+  A -.-> C
+  subgraph S [Group]
+    C
+    D
+  end
+  E e1@--> A
+  e1@{ curve: stepBefore }
+  B ==> E

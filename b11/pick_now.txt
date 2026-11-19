@@ -1,0 +1,6 @@
+bench-75         edges=75  picks=89358 hits=43410 33.79 us/hit_test
+dense-lr         edges=42  picks=163184 hits=94252 13.78 us/hit_test
+dense-td         edges=47  picks=157472 hits=119380 16.44 us/hit_test
+stress           edges=7   picks=2394 hits=503 2.70 us/hit_test
+demo             edges=6   picks=3588 hits=542 1.96 us/hit_test
+fanout           edges=13  picks=8100 hits=1474 5.03 us/hit_test

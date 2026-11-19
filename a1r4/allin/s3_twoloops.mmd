@@ -1,0 +1,8 @@
+classDiagram
+    class Employee {
+      +String name
+      +manage() void
+    }
+    Employee "1" o-- "*" Employee : manages
+    Employee --> Employee : mentors
+    Department "1" *-- "*" Employee : staff

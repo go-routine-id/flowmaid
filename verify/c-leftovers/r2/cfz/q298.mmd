@@ -1,0 +1,31 @@
+classDiagram
+direction TB
+A <|-- B
+A o-- C
+C -- D : uses
+B <|-- A
+C o-- C : c0
+C --> C : c1
+C *-- C : c2
+C *-- C : c3
+C o-- C : c4
+C ..> C : c5
+C o-- C
+C *-- C
+C "1" --> "*" C : c8
+A *-- A
+A --> A : a1
+A o-- A : a2
+A ..> A : a3
+A --> A : a4
+A ..> A
+A o-- A : a6
+A ..> A
+A --> A
+B --> B : b0
+B --> B
+B --> B : b2
+B o-- B
+B ..> B
+B ..> B
+B ..> B : b6

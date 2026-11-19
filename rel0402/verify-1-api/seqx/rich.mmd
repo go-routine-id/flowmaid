@@ -1,0 +1,34 @@
+sequenceDiagram
+  autonumber
+  actor U as User
+  participant W as Web
+  participant A as API
+  participant D as DB
+  U->>W: open page
+  activate W
+  W->>A: GET /items
+  activate A
+  loop every row
+    A->>D: select
+    activate D
+    D-->>A: row
+    deactivate D
+    Note over A,D: cached
+  end
+  alt hit
+    A-->>W: 200
+  else miss
+    A-->>W: 404
+    Note right of W: retry later
+  end
+  par fan out
+    A->>A: self call
+  and
+    A-)D: async
+  end
+  opt debug
+    W--xU: trace
+  end
+  deactivate A
+  W-->>U: done
+  deactivate W

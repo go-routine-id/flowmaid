@@ -1,0 +1,889 @@
+diff --git a/src/edgepass.rs b/src/edgepass.rs
+index ce9d0ad..d8cecd4 100644
+--- a/src/edgepass.rs
++++ b/src/edgepass.rs
+@@ -428,30 +428,61 @@ pub(crate) fn finish_blocks(g: &Graph, sc: &mut Scene, blocks: Option<&[Vec<usiz
+     stages(g, sc, cx, Mode::Static);
+ }
+ 
++fn fmx_dump(sc: &Scene, tag: &str) {
++    if std::env::var("FMXDUMP").is_err() {
++        return;
++    }
++    for (i, e) in sc.edges.iter().enumerate() {
++        let c = crate::router::ortho_corners(e).unwrap_or_else(|| e.waypoints.clone());
++        let s: Vec<String> = c
++            .iter()
++            .map(|p| format!("({:.1},{:.1})", p.0, p.1))
++            .collect();
++        eprintln!("FMX {tag} e{i} {}->{} {}", e.from, e.to, s.join(" "));
++    }
++    if tag == "ports" {
++        for ci in 0..sc.clusters.len() {
++            let r = crate::scene::title_head_measured(&sc.clusters, ci, 1e9, false);
++            let k = crate::scene::title_head_measured(&sc.clusters, ci, 1e9, true);
++            eprintln!(
++                "FMX chip {ci} {} reg {:.1} {:.1} {:.1} {:.1} ink {:.1}",
++                sc.clusters[ci].title, r.0, r.1, r.2, r.3, k.2
++            );
++        }
++    }
++}
++
+ /// The edge stages over `sc` with its context built.
+ fn stages(g: &Graph, sc: &mut Scene, mut cx: Ctx, mode: Mode) {
+     let mut moved = vec![false; sc.edges.len()];
+     crate::ports::assign(g, sc, &cx, mode, &mut moved);
++    fmx_dump(sc, "ports");
+     // Every edge on the axes, its corners rounded (report §2.1): from the
+     // ends the ports stage settled, before the router judges them.
+     crate::ortho::orthogonalize(g, sc, &mut cx, mode);
++    fmx_dump(sc, "ortho");
+     crate::router::repair(g, sc, &cx, mode, &mut moved);
++    fmx_dump(sc, "repair");
+     // A rerouted end may have switched to another side of its node and
+     // landed on a port another edge already holds: space those groups
+     // again. Groups the router left alone are already spaced and stay
+     // byte-identical.
+     crate::ports::respace(g, sc, &cx, mode, &mut moved);
++    fmx_dump(sc, "respace");
+     // After the ports are spaced again, so the channel nudge sees (and
+     // keeps) the final ends; in the static scene it ends by putting each
+     // side's ends in the order their paths now head (G9).
+     crate::router::nudge(g, sc, &cx, mode, &mut moved);
++    fmx_dump(sc, "nudge");
+     // Then two unrelated edges the nudge (or the builder) left side by
+     // side under the spacing get one moved clear, where that costs
+     // nothing else (G4).
+     crate::router::spread_close(g, sc, &cx, mode, &mut moved);
++    fmx_dump(sc, "close");
+     // Then a fan's teeth nest: the ports, the tracks and the turns of
+     // each side's ends in one order (report B4, see [`crate::comb`]).
+     crate::comb::comb(sc, &cx, &mut moved);
++    fmx_dump(sc, "comb");
+     glyph_stubs(sc, &cx, &mut moved);
+     straight_cubics(sc, &cx);
+     square_s_cubics(sc, &cx);
+diff --git a/src/router.rs b/src/router.rs
+index 845afed..f4de421 100644
+--- a/src/router.rs
++++ b/src/router.rs
+@@ -612,6 +612,11 @@ struct World {
+     /// `chip_reach` of it ([`Score::ink`]); a path that ends on the frame
+     /// itself never reaches it (see [`World::ink_of`]). Empty elsewhere.
+     inks: Vec<Option<R>>,
++    /// Whether [`World::inks`] counts ([`World::ink_of`]): always in the
++    /// channel nudge and the close-pair spread; in the repair, only for
++    /// the second search of an edge whose reroute came within reach of
++    /// an ink its original kept off (see [`repair`]).
++    ink_on: std::cell::Cell<bool>,
+     /// (edge, label box) of every labelled edge, as placed so far.
+     labels: Vec<(usize, R)>,
+     /// The drawing's bounds plus [`ROUTE_OUTER`]: the lattice never
+@@ -850,6 +855,7 @@ impl World {
+             frames,
+             chips,
+             inks,
++            ink_on: std::cell::Cell::new(true),
+             labels,
+             outer: grow((minx, miny, maxx, maxy), ROUTE_OUTER),
+             looks: std::cell::Cell::new(0),
+@@ -876,17 +882,30 @@ impl World {
+             && o.3 - o.1 <= ROUTE_MAX_EXTENT
+     }
+ 
+-    /// The solid obstacles for node clearance `clear`: every node, and
+-    /// every title chip at a clearance scaled the same way.
+-    fn solids(&self, clear: f64) -> Vec<(R, f64)> {
++    /// The solid obstacles for node clearance `clear` of an edge with
++    /// `ends`: every node, and every title chip at a clearance scaled the
++    /// same way, with the title's ink past it where the world holds it
++    /// ([`World::inks_for`]).
++    fn solids(&self, clear: f64, ends: (EndRef, EndRef)) -> Vec<(R, f64)> {
+         let chip = CHIP_CLEAR * clear / ROUTE_CLEAR;
+         self.nodes
+             .iter()
+             .map(|&(r, _)| (r, clear))
+             .chain(self.chips.iter().map(|&r| (r, chip)))
++            .chain(self.inks_for(ends).map(|r| (r, chip)))
+             .collect()
+     }
+ 
++    /// The titles' ink past their chips ([`World::inks`]) an edge with
++    /// `ends` keeps off: every frame's but those it ends on
++    /// ([`World::ink_of`]).
++    fn inks_for(&self, ends: (EndRef, EndRef)) -> impl Iterator<Item = R> + '_ {
++        (0..self.inks.len()).filter_map(move |k| {
++            let own = [ends.0, ends.1].contains(&EndRef::Frame(k));
++            self.ink_of(k, own)
++        })
++    }
++
+     /// The ink past frame `k`'s chip ([`World::inks`]) as a path that
+     /// ends on frame `k` itself (`own`) or not sees it: none for the
+     /// frame's own pin. A pin on the frame's title side ends on its
+@@ -898,6 +917,9 @@ impl World {
+     /// QUEUE`'s crossing, was pushed past both, and that entry took a new
+     /// step.)
+     fn ink_of(&self, k: usize, own: bool) -> Option<R> {
++        if !self.ink_on.get() {
++            return None;
++        }
+         self.inks.get(k).copied().flatten().filter(|_| !own)
+     }
+ 
+@@ -912,6 +934,7 @@ impl World {
+             .enumerate()
+             .all(|(v, &(r, _))| own_loop(v) || !inside(r, p))
+             && self.chips.iter().all(|&r| !inside(r, p))
++            && self.inks_for(info.ends).all(|r| !inside(r, p))
+             && info
+                 .blocked_frames
+                 .iter()
+@@ -1521,6 +1544,7 @@ fn detour(
+         .iter()
+         .map(|&(r, _)| grow(r, NODE_SEP))
+         .chain(w.chips.iter().map(|&r| grow(r, CHIP_SEP)))
++        .chain(w.inks_for(info.ends).map(|r| grow(r, CHIP_SEP)))
+         .chain(blocked.iter().map(|&f| grow(w.frames[f], FRAME_SEP)))
+         .map(tr)
+         .collect();
+@@ -1981,12 +2005,13 @@ impl Lattice {
+         o: R,
+         acc: &mut Accepted,
+         me: usize,
++        ends: (EndRef, EndRef),
+         blocked: &[usize],
+         tracks: bool,
+         work: &mut Work,
+     ) -> Option<Lattice> {
+         let solids: Vec<(R, f64)> = w
+-            .solids(clear)
++            .solids(clear, ends)
+             .into_iter()
+             .filter(|&(r, c)| overlaps(grow(r, c), o))
+             .collect();
+@@ -3164,6 +3189,7 @@ fn route_edge(
+                 win,
+                 env.acc,
+                 me,
++                info.ends,
+                 &info.blocked_frames,
+                 env.tracks,
+                 env.work,
+@@ -3905,6 +3931,10 @@ fn place_group(f: &Fences, routes: &mut [Option<Vec<Pt>>], segs: &[Seg], grp: &[
+         BORDER_HUG_GAP + SEP_AIR,
+         NODE_CLEARANCE + SEP_AIR,
+     );
++    if std::env::var("FMXDUMP").is_ok() {
++        let legs: Vec<String> = order.iter().map(|&s| format!("e{}k{}@{:.1}[{:.0},{:.0}]", segs[s].edge, segs[s].k, segs[s].at, segs[s].lo, segs[s].hi)).collect();
++        eprintln!("FMX group ax{axis} {} hard {hard:?} soft {soft:?} stub {stub:?}", legs.join(" "));
++    }
+     if let Some((slab, step)) = tiers.into_iter().find(|t| fits(t.0, t.1)) {
+         plan.push((order.clone(), slab, step));
+     } else if let Some(parts) = split(clear).or_else(|| f.routed.then(|| split(cramped)).flatten())
+@@ -3934,7 +3964,11 @@ fn place_group(f: &Fences, routes: &mut [Option<Vec<Pt>>], segs: &[Seg], grp: &[
+         };
+         for (r, &s) in part.iter().enumerate() {
+             let sg = segs[s];
+-            if let Some(m) = shifted(f, routes, sg, to[r], None) {
++            let got = shifted(f, routes, sg, to[r], None);
++            if std::env::var("FMXDUMP").is_ok() {
++                eprintln!("FMX   place e{}k{} {:.1} -> {:.1} slab ({fl:.1},{fh:.1}) ok {}", sg.edge, sg.k, sg.at, to[r], got.is_some());
++            }
++            if let Some(m) = got {
+                 routes[sg.edge] = Some(m);
+             }
+         }
+@@ -5242,6 +5276,67 @@ fn on_top(a: &[Pt], b: &[Pt]) -> f64 {
+     run
+ }
+ 
++/// Whether a leg of the path through `corners` (edge `me` with `info`)
++/// comes within `chip_reach` of a title's ink past its chip
++/// ([`World::inks_for`], counted only while [`World::ink_on`]) where the
++/// channel nudge after the repair cannot move it off: the line a chip's
++/// clearance past the ink, on the leg's side of it, is taken by an
++/// accepted edge's parallel leg over the same span, or such a leg lies
++/// between the two. The nudge keeps its legs in their order across a
++/// channel and a stroke's spacing apart, so the leg stays on the ink
++/// (the verifier's twin blocks drawn TD: `a1 --> b1` round `Shipping
++/// and returns desk two`'s chip at the regular width, between the chip
++/// and the frame's pin, which the ports stage stood a chip's clearance
++/// past the ink).
++fn ink_stuck(w: &World, info: &Info, me: usize, corners: &[Pt], acc: &mut Accepted) -> bool {
++    let clear = CHIP_SEP + SEP_AIR;
++    let inks: Vec<R> = w.inks_for(info.ends).collect();
++    for ink in inks {
++        let g = grow(ink, w.chip_reach);
++        for leg in corners.windows(2) {
++            let (a, b) = (leg[0], leg[1]);
++            if off_box(a, b, g) || clip(a, b, g).is_none() {
++                continue;
++            }
++            // (axis across, its line, the span along, the ink's ends
++            // across)
++            let (axis, at, lo, hi, i0, i1) = if (a.0 - b.0).abs() < EPS {
++                (0, a.0, a.1.min(b.1), a.1.max(b.1), ink.0, ink.2)
++            } else if (a.1 - b.1).abs() < EPS {
++                (1, a.1, a.0.min(b.0), a.0.max(b.0), ink.1, ink.3)
++            } else {
++                continue;
++            };
++            let to = if at >= (i0 + i1) / 2.0 { i1 + clear } else { i0 - clear };
++            let probe = grow(bounds(&[a, b]), (to - at).abs() + EDGE_SEP);
++            for id in acc.near(probe, me) {
++                let (_, p, q, _) = acc.segs[id as usize];
++                // Nearly parallel (a simplified rounded path is off by a
++                // pixel or so), at its mean cross position.
++                let (dx, dy) = ((q.0 - p.0).abs(), (q.1 - p.1).abs());
++                let l = norm(dx, dy);
++                let (c, l0, l1) = if axis == 0 && dy / l > PARALLEL_COS {
++                    ((p.0 + q.0) / 2.0, p.1.min(q.1), p.1.max(q.1))
++                } else if axis == 1 && dx / l > PARALLEL_COS {
++                    ((p.1 + q.1) / 2.0, p.0.min(q.0), p.0.max(q.0))
++                } else {
++                    continue;
++                };
++                if l1 <= lo + EPS || l0 >= hi - EPS {
++                    continue;
++                }
++                if (c - to).abs() < EDGE_SPACING + SEP_AIR || (c - at) * (c - to) < 0.0 {
++                    if std::env::var("FMXDUMP").is_ok() {
++                        eprintln!("FMX stuck e{me} leg {a:?}-{b:?} to {to:.1} by {p:?}-{q:?} c {c:.1}");
++                    }
++                    return true;
++                }
++            }
++        }
++    }
++    false
++}
++
+ /// Accept edge `i` as `pts` for the edges searched after it: its
+ /// simplified polyline goes into the segment index, which later
+ /// lattices are priced from.
+@@ -5265,10 +5360,11 @@ pub(crate) fn repair(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
+     // TD's `shopper --> cdn` in through its frame's lateral wall, and
+     // drawn BT `cart --> pager` round into pager's side across `ship -->
+     // pager`; quality/dense-td drawn TD gained a side end.
+-    let mut w = World::new(g, sc, false);
++    let mut w = World::new(g, sc, cx.blocks);
+     if !w.sane() {
+         return;
+     }
++    w.ink_on.set(false);
+     if mode == Mode::Routed {
+         w.chip_reach = NODE_CLEARANCE;
+     }
+@@ -5540,202 +5636,189 @@ pub(crate) fn repair(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
+         if work.left == 0 && detour_work.min(DETOUR_EDGE_WORK) < setup {
+             continue;
+         }
+-        let mut base_acc: Option<Score> = None;
+-        let can_trade = base0.node == 0 && (base0.frame > 0 || base0.chip > 0);
+-        // The original's border ride, once a candidate needs it.
+-        let base_border = std::cell::OnceCell::new();
+-        // The narrow channel counts in the static scene only: a drag's
+-        // reroute is searched in a small window and budget, and the
+-        // curve it would keep often crosses the frame (G13 over G4).
+-        let squeeze = |pts: &[Pt]| Squeeze {
+-            narrow: if mode == Mode::Static {
+-                narrow_px(&w, info, pts)
++        // In a block layout's static scene the search goes round the
++        // title chips at the regular width (see [`World::ink_on`]): an
++        // edge only grazing a title's bold ink past its chip is not
++        // rerouted for it. (Rerouted for the ink as well, a graze counted
++        // as a hit, blocks/lr drawn TD's `shopper --> cdn` came in
++        // through its frame's lateral wall, drawn BT `cart --> pager`
++        // went round into pager's side across `ship --> pager`, and
++        // quality/dense-td drawn TD gained a side end; searched with the
++        // ink as a wall from the start, the pins into a nested frame
++        // that already crossed the outer frame's title took new ways
++        // round, through more lines.) But a reroute that comes within
++        // reach of an ink its original kept off is searched again with
++        // every title's ink as a wall ([`World::inks_for`]) and scored
++        // with it, and the second pick is taken when it hits no more and
++        // grazes fewer inks: the channel nudge after the repair keeps the
++        // legs it moves off the ink, but a column with no free slab
++        // beside it stays put (the verifier's twin blocks drawn TD:
++        // `a1 --> b1` round `Shipping and returns desk two`'s chip at the
++        // regular width, 0.6 px into its ink, between the chip and the
++        // frame's pin past the ink).
++        let mut again = false;
++        let mut picked: Option<(Score, Vec<Pt>, Vec<Pt>)> = None;
++        let pick = loop {
++            // (The second search scores its original with the ink too.)
++            let base0 = if again {
++                w.score(info, i, &polys[i], None)
+             } else {
+-                0.0
+-            },
+-            border: border_px(&w.frames, pts),
+-            base_border: *base_border.get_or_init(|| border_px(&w.frames, &polys[i])),
+-        };
+-        let mut best: Option<(Score, Vec<Pt>, Vec<Pt>)> = None;
+-        // A clean, monotone route beats an original that hits a node or
+-        // frame whatever the other edges say (the score is ordered), so
+-        // neither is scored against them.
+-        let mut decided = false;
+-        // The builder's ports are free (every other side costs
+-        // [`SIDE_SWITCH_COST`]), and the path never steps back along the
+-        // flow (G8) unless the edge already does.
+-        // Inside a window round the ends, any side, clear of every band
+-        // and foreign frame.
+-        let first = Try {
+-            lat: 0,
+-            alt: true,
+-            soft: false,
+-            soft_walls: false,
+-            reach: ROUTE_WINDOW,
+-        };
+-        // Its smoothed curve still touches something: a wider clearance.
+-        let wider = Try { lat: 1, ..first };
+-        // In a block layout's static scene ([`Ctx::blocks`]), after the
+-        // priced search below found only a way through a foreign frame:
+-        // still clear of every band and foreign frame, over the whole
+-        // drawing. A run through a block that holds neither end is what
+-        // the block layout exists to avoid (spec 4.3 f), and the way
+-        // round a block lies past the block's far side, beyond the
+-        // window round the ends (bench-75's `gw -> logs`, spilled to the
+-        // bottom sides of both ends: the window found no way into `logs`
+-        // from below but through `metrics`, and the priced search then
+-        // ran it straight through `app` and `data`).
+-        let round = Try {
+-            reach: work.walls_reach,
+-            ..first
+-        };
+-        let round_on = cx.blocks && mode == Mode::Static;
+-        // No such path: over a wider window (the whole drawing when
+-        // static), bands and frames priced.
+-        let walls = Try {
+-            soft_walls: true,
+-            reach: work.walls_reach,
+-            ..first
+-        };
+-        // Last, for an edge that wiggles already: steps back priced too.
+-        let back = Try {
+-            soft: true,
+-            ..walls
+-        };
+-        let mut n_found = 0;
+-        let mut built: Built = Vec::new();
+-        // (Each try with whether it is `round`.)
+-        let mut tries = vec![(first, false), (wider, false), (walls, false)];
+-        if round_on {
+-            tries.push((round, true));
+-        }
+-        tries.push((back, false));
+-        for (t, is_round) in tries {
+-            // (The whole-drawing strict try only where the priced search
+-            // found a way through a foreign frame that would replace the
+-            // original, one through a node: an original that only touches
+-            // a title chip keeps its course, as before, rather than take
+-            // a long way round across a dozen lines.)
+-            if is_round
+-                && !best.as_ref().is_some_and(|b| {
+-                    b.0.frame > 0
+-                        && (b.0.node, b.0.frame, b.0.chip) < (base0.node, base0.frame, base0.chip)
+-                })
+-            {
+-                continue;
+-            }
+-            // (A frame the path still enters is no matter of clearance: in
+-            // `route()` a wider lattice is not tried for it.)
+-            if t.lat == 1
+-                && !best.as_ref().is_some_and(|b| {
+-                    b.0.node + b.0.chip > 0
+-                        || b.0.near > 0
+-                        || mode == Mode::Static
+-                        || b.0.frame > 0 && b.0.frame < base0.frame
+-                })
+-            {
+-                continue; // nothing to widen, or nothing it touches
+-            }
+-            // A clear path exists (in `route()`, any path: a drag cannot
+-            // afford the wide window for a run beside another edge).
+-            let enough = |b: &(Score, Vec<Pt>, Vec<Pt>)| {
+-                b.0.hard() == 0 && (b.0.overlap == 0 || mode == Mode::Routed)
++                base0
+             };
+-            if t.soft_walls
+-                && !t.soft
+-                && (n_found > 0 && mode == Mode::Routed || best.as_ref().is_some_and(enough))
+-            {
+-                continue;
+-            }
+-            // In `route()` an edge that only enters a frame keeps it for
+-            // the channel detour below: when no strict path got by, the
+-            // priced one crosses a frame too, at the cost of a wide
+-            // window a drag cannot spare (G13).
+-            if t.soft_walls && mode == Mode::Routed && base0.node + base0.chip == 0 {
+-                continue;
+-            }
+-            if t.soft && base0.wiggle == 0 {
+-                continue; // a backtrack would add a wiggle (G8)
+-            }
+-            if work.left == 0 {
+-                break; // the detour below still runs
+-            }
+-            let e = &sc.edges[i];
+-            let mut env = Env {
+-                w: &w,
+-                taken: &taken,
+-                tracks: mode == Mode::Static,
+-                acc: &mut accepted,
+-                built: &mut built,
+-                work: &mut work,
+-                sc: &mut scratch,
+-                blocks: cx.blocks,
++            let mut base_acc: Option<Score> = None;
++            let can_trade = base0.node == 0 && (base0.frame > 0 || base0.chip > 0);
++            // The original's border ride, once a candidate needs it.
++            let base_border = std::cell::OnceCell::new();
++            // The narrow channel counts in the static scene only: a drag's
++            // reroute is searched in a small window and budget, and the
++            // curve it would keep often crosses the frame (G13 over G4).
++            let squeeze = |pts: &[Pt]| Squeeze {
++                narrow: if mode == Mode::Static {
++                    narrow_px(&w, info, pts)
++                } else {
++                    0.0
++                },
++                border: border_px(&w.frames, pts),
++                base_border: *base_border.get_or_init(|| border_px(&w.frames, &polys[i])),
+             };
+-            let Some(corners) = route_edge(&mut env, info, i, e, t) else {
+-                continue;
++            let mut best: Option<(Score, Vec<Pt>, Vec<Pt>)> = None;
++            // A clean, monotone route beats an original that hits a node or
++            // frame whatever the other edges say (the score is ordered), so
++            // neither is scored against them.
++            let mut decided = false;
++            // The builder's ports are free (every other side costs
++            // [`SIDE_SWITCH_COST`]), and the path never steps back along the
++            // flow (G8) unless the edge already does.
++            // Inside a window round the ends, any side, clear of every band
++            // and foreign frame.
++            let first = Try {
++                lat: 0,
++                alt: true,
++                soft: false,
++                soft_walls: false,
++                reach: ROUTE_WINDOW,
+             };
+-            n_found += 1;
+-            let pts = drawn_with(e, &smooth(&corners, CORNER_R));
+-            // Charged by what the scoring looked at, even when that
+-            // overdraws: the search is paid for, so the candidate is
+-            // still scored, and the next check stops the repair. One
+-            // candidate's scoring is the most a repair goes over its
+-            // budget.
+-            let s = w.score(info, i, &pts, Some(&mut accepted));
+-            let _ = work.take(w.spent());
+-            let clean = base0.hard() > 0 && s.hard() == 0 && s.wiggle == 0;
+-            // Clean of the scene and on top of no accepted edge (G1): taken
+-            // at once; otherwise it still beats the original below, but a
+-            // later try may find one that is.
+-            let lone = s.overlap == 0;
+-            // A candidate the original keeps its curve over is passed
+-            // by: a later try may find a clear channel.
+-            let traded = clean
+-                && lone
+-                && can_trade
+-                && trades(
+-                    base_acc.get_or_insert_with(|| {
+-                        w.against(info, i, &simplify(&polys[i]), &mut accepted, base0, true)
+-                    }),
+-                    &s,
+-                    squeeze(&pts),
+-                );
+-            if traded {
+-                continue;
+-            }
+-            if clean && lone {
+-                best = Some((s, corners, pts));
+-                decided = true;
+-                break;
+-            }
+-            if best.as_ref().map_or(true, |b| s < b.0) {
+-                best = Some((s, corners, pts));
+-            }
+-            // A soft edge in the static scene (cramped, or riding a
+-            // border, nothing broken) searches on while what it found
+-            // does not beat its original: the wider lattice may
+-            // (bench-75's `svc4 -> logs` rode the app frame's border for
+-            // 99 px because the first candidate crossed one more edge at
+-            // its arrowhead, and the search stopped there).
+-            let beats = class == 0
+-                || mode == Mode::Routed
+-                || &s
+-                    < base_acc.get_or_insert_with(|| {
+-                        w.against(info, i, &simplify(&polys[i]), &mut accepted, base0, true)
+-                    });
+-            if s.hard() == 0 && s.wiggle == 0 && lone && beats {
+-                break;
+-            }
+-        }
+-        // Still through a node or frame: the channel detour, when it
+-        // hits fewer of them (G6) and adds no wiggle.
+-        let fixed = |s: &Score| (s.node, s.frame, s.chip) < (base0.node, base0.frame, base0.chip);
+-        if !decided && base0.hard() > 0 && !best.as_ref().is_some_and(|b| fixed(&b.0)) {
+-            let mut mine = detour_work.min(DETOUR_EDGE_WORK);
+-            let found = detour(&w, info, i, &sc.edges[i], &mut accepted, &mut mine, false);
+-            detour_work -= detour_work.min(DETOUR_EDGE_WORK) - mine;
+-            if let Some((s, corners, pts)) = found {
+-                let trade = can_trade
++            // Its smoothed curve still touches something: a wider clearance.
++            let wider = Try { lat: 1, ..first };
++            // In a block layout's static scene ([`Ctx::blocks`]), after the
++            // priced search below found only a way through a foreign frame:
++            // still clear of every band and foreign frame, over the whole
++            // drawing. A run through a block that holds neither end is what
++            // the block layout exists to avoid (spec 4.3 f), and the way
++            // round a block lies past the block's far side, beyond the
++            // window round the ends (bench-75's `gw -> logs`, spilled to the
++            // bottom sides of both ends: the window found no way into `logs`
++            // from below but through `metrics`, and the priced search then
++            // ran it straight through `app` and `data`).
++            let round = Try {
++                reach: work.walls_reach,
++                ..first
++            };
++            let round_on = cx.blocks && mode == Mode::Static;
++            // No such path: over a wider window (the whole drawing when
++            // static), bands and frames priced.
++            let walls = Try {
++                soft_walls: true,
++                reach: work.walls_reach,
++                ..first
++            };
++            // Last, for an edge that wiggles already: steps back priced too.
++            let back = Try {
++                soft: true,
++                ..walls
++            };
++            let mut n_found = 0;
++            let mut built: Built = Vec::new();
++            // (Each try with whether it is `round`.)
++            let mut tries = vec![(first, false), (wider, false), (walls, false)];
++            if round_on {
++                tries.push((round, true));
++            }
++            tries.push((back, false));
++            for (t, is_round) in tries {
++                // (The whole-drawing strict try only where the priced search
++                // found a way through a foreign frame that would replace the
++                // original, one through a node: an original that only touches
++                // a title chip keeps its course, as before, rather than take
++                // a long way round across a dozen lines.)
++                if is_round
++                    && !best.as_ref().is_some_and(|b| {
++                        b.0.frame > 0
++                            && (b.0.node, b.0.frame, b.0.chip)
++                                < (base0.node, base0.frame, base0.chip)
++                    })
++                {
++                    continue;
++                }
++                // (A frame the path still enters is no matter of clearance: in
++                // `route()` a wider lattice is not tried for it.)
++                if t.lat == 1
++                    && !best.as_ref().is_some_and(|b| {
++                        b.0.node + b.0.chip > 0
++                            || b.0.near > 0
++                            || mode == Mode::Static
++                            || b.0.frame > 0 && b.0.frame < base0.frame
++                    })
++                {
++                    continue; // nothing to widen, or nothing it touches
++                }
++                // A clear path exists (in `route()`, any path: a drag cannot
++                // afford the wide window for a run beside another edge).
++                let enough = |b: &(Score, Vec<Pt>, Vec<Pt>)| {
++                    b.0.hard() == 0 && (b.0.overlap == 0 || mode == Mode::Routed)
++                };
++                if t.soft_walls
++                    && !t.soft
++                    && (n_found > 0 && mode == Mode::Routed || best.as_ref().is_some_and(enough))
++                {
++                    continue;
++                }
++                // In `route()` an edge that only enters a frame keeps it for
++                // the channel detour below: when no strict path got by, the
++                // priced one crosses a frame too, at the cost of a wide
++                // window a drag cannot spare (G13).
++                if t.soft_walls && mode == Mode::Routed && base0.node + base0.chip == 0 {
++                    continue;
++                }
++                if t.soft && base0.wiggle == 0 {
++                    continue; // a backtrack would add a wiggle (G8)
++                }
++                if work.left == 0 {
++                    break; // the detour below still runs
++                }
++                let e = &sc.edges[i];
++                let mut env = Env {
++                    w: &w,
++                    taken: &taken,
++                    tracks: mode == Mode::Static,
++                    acc: &mut accepted,
++                    built: &mut built,
++                    work: &mut work,
++                    sc: &mut scratch,
++                    blocks: cx.blocks,
++                };
++                let Some(corners) = route_edge(&mut env, info, i, e, t) else {
++                    continue;
++                };
++                n_found += 1;
++                let pts = drawn_with(e, &smooth(&corners, CORNER_R));
++                // Charged by what the scoring looked at, even when that
++                // overdraws: the search is paid for, so the candidate is
++                // still scored, and the next check stops the repair. One
++                // candidate's scoring is the most a repair goes over its
++                // budget.
++                let s = w.score(info, i, &pts, Some(&mut accepted));
++                let _ = work.take(w.spent());
++                let clean = base0.hard() > 0 && s.hard() == 0 && s.wiggle == 0;
++                // Clean of the scene and on top of no accepted edge (G1): taken
++                // at once; otherwise it still beats the original below, but a
++                // later try may find one that is.
++                let lone = s.overlap == 0;
++                // A candidate the original keeps its curve over is passed
++                // by: a later try may find a clear channel.
++                let traded = clean
++                    && lone
++                    && can_trade
+                     && trades(
+                         base_acc.get_or_insert_with(|| {
+                             w.against(info, i, &simplify(&polys[i]), &mut accepted, base0, true)
+@@ -5743,76 +5826,159 @@ pub(crate) fn repair(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
+                         &s,
+                         squeeze(&pts),
+                     );
+-                // On top of another edge for over MIN_OVERLAP_RUN (G1):
+-                // not the clear channel G6 asks for. An original that
+-                // only crosses frames keeps its curve; one through a node
+-                // or a title chip still takes it (hiding a node or a
+-                // frame's name is worse). See [`frames_hard`].
+-                let stacked =
+-                    s.overlap > 0 && base0.node + base0.chip == 0 && !frames_hard(&s, &base0);
+-                if fixed(&s) && s.wiggle <= base0.wiggle && !trade && !stacked {
++                if traded {
++                    continue;
++                }
++                if clean && lone {
+                     best = Some((s, corners, pts));
+                     decided = true;
++                    break;
++                }
++                if best.as_ref().map_or(true, |b| s < b.0) {
++                    best = Some((s, corners, pts));
++                }
++                // A soft edge in the static scene (cramped, or riding a
++                // border, nothing broken) searches on while what it found
++                // does not beat its original: the wider lattice may
++                // (bench-75's `svc4 -> logs` rode the app frame's border for
++                // 99 px because the first candidate crossed one more edge at
++                // its arrowhead, and the search stopped there).
++                let beats = class == 0
++                    || mode == Mode::Routed
++                    || &s
++                        < base_acc.get_or_insert_with(|| {
++                            w.against(info, i, &simplify(&polys[i]), &mut accepted, base0, true)
++                        });
++                if s.hard() == 0 && s.wiggle == 0 && lone && beats {
++                    break;
+                 }
+             }
+-        }
+-        if !decided && best.is_none() {
+-            continue; // nothing to compare: the edge keeps its geometry
+-        }
+-        let base = if decided {
+-            base0
+-        } else {
+-            base_acc.unwrap_or_else(|| {
+-                w.against(info, i, &simplify(&polys[i]), &mut accepted, base0, true)
+-            })
+-        };
+-        let _ = work.take(w.spent());
+-        let better = |s: &Score, pts: &[Pt]| {
+-            if decided {
+-                return true;
++            // Still through a node or frame: the channel detour, when it
++            // hits fewer of them (G6) and adds no wiggle.
++            let fixed =
++                |s: &Score| (s.node, s.frame, s.chip) < (base0.node, base0.frame, base0.chip);
++            if !decided && base0.hard() > 0 && !best.as_ref().is_some_and(|b| fixed(&b.0)) {
++                let mut mine = detour_work.min(DETOUR_EDGE_WORK);
++                let found = detour(&w, info, i, &sc.edges[i], &mut accepted, &mut mine, false);
++                detour_work -= detour_work.min(DETOUR_EDGE_WORK) - mine;
++                if let Some((s, corners, pts)) = found {
++                    let trade = can_trade
++                        && trades(
++                            base_acc.get_or_insert_with(|| {
++                                w.against(info, i, &simplify(&polys[i]), &mut accepted, base0, true)
++                            }),
++                            &s,
++                            squeeze(&pts),
++                        );
++                    // On top of another edge for over MIN_OVERLAP_RUN (G1):
++                    // not the clear channel G6 asks for. An original that
++                    // only crosses frames keeps its curve; one through a node
++                    // or a title chip still takes it (hiding a node or a
++                    // frame's name is worse). See [`frames_hard`].
++                    let stacked =
++                        s.overlap > 0 && base0.node + base0.chip == 0 && !frames_hard(&s, &base0);
++                    if fixed(&s) && s.wiggle <= base0.wiggle && !trade && !stacked {
++                        best = Some((s, corners, pts));
++                        decided = true;
++                    }
++                }
+             }
+-            // Never add a wiggle (G8), nor squeeze along a border where
+-            // the original only crossed a frame's empty area.
+-            s.wiggle <= base.wiggle
+-                && !trades(&base, s, squeeze(pts))
+-                // Never trade a frame crossing for a run on top of
+-                // another edge (G1 over G6, see the detour above), but
+-                // in `route()` (see [`frames_hard`]).
+-                && !(s.overlap > base.overlap
+-                    && base.node + base.chip == 0
+-                    && !frames_hard(s, &base))
+-                // A static curve that hides no node or chip is kept over a
+-                // reroute that rides along a node it cramps, or along a
+-                // side while crossing another edge at its arrowhead (G4,
+-                // G11; a shape worse than the curve), unless the reroute
+-                // also takes it off a long run on top of another edge
+-                // (G1).
+-                && !(mode == Mode::Static
+-                    && base.node + base.chip == 0
+-                    && base.overlap <= s.overlap + FRAME_OVERLAP_TRADE
+-                    && (s.near > base.near || s.head > base.head)
+-                    && s.hug as f64 > base.hug as f64 + HUG_TRADE)
+-                && if class == 0 {
+-                    s < &base
+-                } else {
+-                    s.hard() == 0 && s.overlap == 0 && s < &base
++            if !decided && best.is_none() {
++                // Nothing to compare: the edge keeps its geometry, or the
++                // first search's pick.
++                break picked.take();
++            }
++            let base = if decided {
++                base0
++            } else {
++                base_acc.unwrap_or_else(|| {
++                    w.against(info, i, &simplify(&polys[i]), &mut accepted, base0, true)
++                })
++            };
++            let _ = work.take(w.spent());
++            let better = |s: &Score, pts: &[Pt]| {
++                if decided {
++                    return true;
+                 }
+-        };
+-        match best {
+-            Some((s, corners, pts)) if better(&s, &pts) => {
+-                // Its two entries, source first.
+-                let ends = [corners[0], corners[corners.len() - 1]];
+-                for (t, p) in taken.iter_mut().filter(|t| t.2 == i).zip(ends) {
+-                    t.1 = p;
++                // Never add a wiggle (G8), nor squeeze along a border where
++                // the original only crossed a frame's empty area.
++                s.wiggle <= base.wiggle
++                    && !trades(&base, s, squeeze(pts))
++                    // Never trade a frame crossing for a run on top of
++                    // another edge (G1 over G6, see the detour above), but
++                    // in `route()` (see [`frames_hard`]).
++                    && !(s.overlap > base.overlap
++                        && base.node + base.chip == 0
++                        && !frames_hard(s, &base))
++                    // A static curve that hides no node or chip is kept over a
++                    // reroute that rides along a node it cramps, or along a
++                    // side while crossing another edge at its arrowhead (G4,
++                    // G11; a shape worse than the curve), unless the reroute
++                    // also takes it off a long run on top of another edge
++                    // (G1).
++                    && !(mode == Mode::Static
++                        && base.node + base.chip == 0
++                        && base.overlap <= s.overlap + FRAME_OVERLAP_TRADE
++                        && (s.near > base.near || s.head > base.head)
++                        && s.hug as f64 > base.hug as f64 + HUG_TRADE)
++                    && if class == 0 {
++                        s < &base
++                    } else {
++                        s.hard() == 0 && s.overlap == 0 && s < &base
++                    }
++            };
++            let pick = match best {
++                Some((s, corners, pts)) if better(&s, &pts) => Some((s, corners, pts)),
++                _ => None,
++            };
++            if again {
++                // The second pick, against the first, both scored with
++                // the ink and the accepted edges.
++                let p0 = picked.take().expect("the first search's pick");
++                let s0 = w.score(info, i, &p0.2, Some(&mut accepted));
++                let _ = work.take(w.spent());
++                w.ink_on.set(false);
++                if std::env::var("FMXDUMP").is_ok() {
++                    let c: Vec<String> = pick.iter().flat_map(|p| p.1.iter()).map(|q| format!("({:.1},{:.1})", q.0, q.1)).collect();
++                    eprintln!("FMX inkretry e{i} s0 {s0:?} s1 {:?} {}", pick.as_ref().map(|p| p.0), c.join(" "));
+                 }
+-                routes[i] = Some(corners);
+-                accept(&mut accepted, i, info.ends, &pts);
+-                through[i] = s.node;
++                break match pick {
++                    Some(p1) if p1.0.hard() <= s0.hard() && p1.0.ink < s0.ink => Some(p1),
++                    _ => Some(p0),
++                };
++            }
++            if cx.blocks && mode == Mode::Static && w.inks.iter().any(Option::is_some) {
++                if let Some(p) = pick.as_ref() {
++                    w.ink_on.set(true);
++                    let now = w.score(info, i, &p.2, None).ink;
++                    let was = w.score(info, i, &polys[i], None).ink;
++                    let _ = work.take(w.spent());
++                    if std::env::var("FMXDUMP").is_ok() {
++                        let c: Vec<String> = p.1.iter().map(|q| format!("({:.1},{:.1})", q.0, q.1)).collect();
++                        eprintln!("FMX inkcheck e{i} now {now} was {was} {}", c.join(" "));
++                    }
++                    if now > was && ink_stuck(&w, info, i, &p.1, &mut accepted) {
++                        again = true;
++                        picked = pick;
++                        continue;
++                    }
++                    w.ink_on.set(false);
++                }
++            }
++            break pick;
++        };
++        if let Some((s, corners, pts)) = pick {
++            // Its two entries, source first.
++            let ends = [corners[0], corners[corners.len() - 1]];
++            for (t, p) in taken.iter_mut().filter(|t| t.2 == i).zip(ends) {
++                t.1 = p;
+             }
+-            // Otherwise a hard edge keeps its pending original and a soft
+-            // one stays accepted as it was.
+-            _ => {}
++            routes[i] = Some(corners);
++            accept(&mut accepted, i, info.ends, &pts);
++            through[i] = s.node;
+         }
++        // Otherwise a hard edge keeps its pending original and a soft
++        // one stays accepted as it was.
+     }
+     // A second pass over the runs still on top of each other (report P0
+     // #14, static only): of two edges that each scored clean when
+@@ -6641,6 +6807,7 @@ mod tests {
+             frames: frames.to_vec(),
+             chips: Vec::new(),
+             inks: Vec::new(),
++            ink_on: std::cell::Cell::new(true),
+             labels: Vec::new(),
+             outer,
+             looks: std::cell::Cell::new(0),

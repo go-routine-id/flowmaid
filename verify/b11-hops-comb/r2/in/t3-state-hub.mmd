@@ -1,0 +1,27 @@
+stateDiagram-v2
+  [*] --> Idle
+  Idle --> Loading : open
+  Idle --> Editing : new
+  Idle --> Settings : prefs
+  Idle --> Help : f1
+  Loading --> Editing : loaded
+  Loading --> Failed : error
+  Editing --> Saving : save
+  Editing --> Idle : close
+  Editing --> Help : f1
+  Saving --> Editing : ok
+  Saving --> Failed : error
+  Failed --> Idle : dismiss
+  Failed --> Loading : retry
+  Settings --> Idle : back
+  Help --> Idle : back
+  Help --> Editing : resume
+  state Editing {
+    [*] --> Typing
+    Typing --> Selecting : drag
+    Selecting --> Typing : key
+    Typing --> Completing : tab
+    Completing --> Typing : pick
+  }
+  note right of Failed : shows the last error
+  Saving --> [*]

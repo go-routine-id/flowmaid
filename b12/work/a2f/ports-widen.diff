@@ -1,0 +1,63 @@
+diff --git a/src/ports.rs b/src/ports.rs
+index babf59e..cc86bf4 100644
+--- a/src/ports.rs
++++ b/src/ports.rs
+@@ -2104,12 +2104,31 @@ fn unshaded(
+             .collect();
+     }
+     let need = PORT_SPACING * k.saturating_sub(1) as f64;
+-    match free
+-        .into_iter()
+-        .filter(|(p, q)| q - p >= need)
+-        .max_by(|x, y| (x.1 - x.0).total_cmp(&(y.1 - y.0)))
+-    {
+-        Some((p, q)) if shaded => (p, q, true),
++    let longest = free
++        .iter()
++        .copied()
++        .max_by(|x, y| (x.1 - x.0).total_cmp(&(y.1 - y.0)));
++    match longest {
++        Some((p, q)) if shaded && q - p >= need => (p, q, true),
++        // A title-row side of a block layout (`deep`) whose free stretch
++        // is short of its ends takes only the shortfall from the chip's
++        // shade next to it, not the whole side: its ends keep as clear of
++        // the chip as they can at the spacing. Spread over the whole side,
++        // every end jumped under the chip once the stretch was a pixel
++        // short, and the router took such an entry round along the title
++        // strip, across its fan (dense-td's `n42` under `g9`'s chip: four
++        // ends, 32 px free of the 42 they need, once the nested `g10`, grown
++        // to its title, measures it bold and the layout shifts).
++        Some((p, q)) if shaded && deep.iter().any(|&d| d) && hi - lo >= need => {
++            let short = need - (q - p);
++            if p > lo {
++                let a = (p - short).max(lo);
++                (a, (a + need).min(hi), true)
++            } else {
++                let b = (q + short).min(hi);
++                (b - need, b, true)
++            }
++        }
+         _ => (lo, hi, false),
+     }
+ }
+@@ -2880,6 +2899,20 @@ mod tests {
+         // No room past the chip for the ends: the side stays whole.
+         let (lo, hi, _) = unshaded(&heads, &[], Side::Top, 30.0, (58.0, 110.0), 2);
+         assert!(lo == 58.0 && hi == 110.0);
++        // A block layout's title-row side (shaded by breadth, however far
++        // below the chip) a few px short for its three ends: they take the
++        // free stretch and only the shortfall of the chip's shade next to
++        // it, not the whole side.
++        let (lo, hi, shaded) = unshaded(&heads, &[true], Side::Top, 300.0, (58.0, 130.0), 3);
++        let (free, need) = (130.0 - (100.0 + CHIP_SEP), 2.0 * PORT_SPACING);
++        assert!(shaded && hi == 130.0, "{lo} {hi}");
++        assert!(
++            (lo - (100.0 + CHIP_SEP - (need - free))).abs() < 1e-9,
++            "{lo}"
++        );
++        // The same side outside a block layout stays whole.
++        let (lo, hi, _) = unshaded(&heads, &[], Side::Top, 30.0, (58.0, 130.0), 3);
++        assert!(lo == 58.0 && hi == 130.0);
+     }
+ 
+     #[test]

@@ -1,0 +1,18 @@
+flowchart BT
+    subgraph O[Data ingestion workers]
+        subgraph G[Shipping and returns desk]
+            m0[ledger]
+            m1[db]
+            m2[x wide member node]
+        end
+        k[k]
+    end
+    m1 --> k
+    s0[src0] -- "lbl4" --> m1
+    s0 --> G
+    s1[src1] --> O
+    s1 --> G
+    s2[src2] --> m0
+    s2 --> O
+    s3[src3] --> m1
+    G --> z2[after]

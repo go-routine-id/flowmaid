@@ -1,0 +1,9 @@
+architecture-beta
+    group g0(disk)[Edge]
+    group g1(internet)[Data]
+    service s0(database)[Service 0] in g0
+    service s1(internet)[Service 1] in g0
+    service s2(monitoring)[Service 2] in g0
+    s2:B -- T:s0
+    s2:T --> L:s0
+    s0:B --> B:s2

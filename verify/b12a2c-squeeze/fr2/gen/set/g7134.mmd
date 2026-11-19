@@ -1,0 +1,45 @@
+flowchart TD
+  n1["ingest"]
+  subgraph B0["Analytics"]
+    n2["mail"]
+    n3["merge report ship"]
+    n4["ship"]
+    n5["mail"]
+    subgraph B0s0["Data tier 0"]
+      n6["billing<br/>report"]
+    end
+  end
+  subgraph B1["Analytics"]
+    n7["billing"]
+    n8["audit"]
+  end
+  subgraph B2["Fulfilment desk"]
+    n9["ingest"]
+  end
+  subgraph B3["Platform"]
+    n10["search"]
+    n11["ship parse report"]
+    subgraph B3s0["Data tier 0"]
+      n12["index"]
+      n13["index cache auth"]
+    end
+  end
+  n14["pack"]
+  n14 -->|report| n7
+  n2 --> n10
+  n2 -.-> n4
+  n5 --> n11
+  n1 --> n3
+  n7 -.->|split| n14
+  n6 --> n4
+  n7 -.-> n12
+  n4 -->|store| n1
+  n7 -.-> n4
+  n13 --> n12
+  n11 -.-> n1
+  n10 --> n4
+  n2 ==> n9
+  n14 -->|cache| n9
+  n12 --> n11
+  n4 ==>|split| n3
+  n2 -.->|db| n8

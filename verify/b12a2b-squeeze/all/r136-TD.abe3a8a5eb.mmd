@@ -1,0 +1,15 @@
+flowchart TD
+    subgraph O[Data ingestion workers]
+        subgraph G[WWW Mammoth Wombat Overview]
+            m0[w]
+            m1[charge]
+            m2[charge]
+        end
+        k[k]
+    end
+    m2 --> k
+    s0[src0] --> m2
+    s1[src1] --> m2
+    s2[src2] --> G
+    s2 --> G
+    m2 --> z[end]

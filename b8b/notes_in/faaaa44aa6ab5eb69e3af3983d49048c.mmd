@@ -1,0 +1,11 @@
+stateDiagram-v2
+state forked <<fork>>
+state joined <<join>>
+[*] --> Start
+Start --> forked
+forked --> A
+forked --> B
+A --> joined
+B --> joined
+joined --> Done
+note left of forked : before the split

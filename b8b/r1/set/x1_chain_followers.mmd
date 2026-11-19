@@ -1,0 +1,22 @@
+flowchart TB
+  hub[Gateway]
+  subgraph A[Alpha zone]
+    a1[alpha entry]
+    a2[alpha source]
+    a3[alpha idle]
+  end
+  subgraph B[Beta zone]
+    b1[beta in]
+    b2[beta source]
+  end
+  subgraph C[Gamma zone]
+    c1[gamma in]
+    c2[gamma fed]
+    c3[gamma idle]
+  end
+  hub --> a1
+  hub --> c2
+  hub --> leaf1[leaf one]
+  hub --> leaf2[leaf two]
+  a2 --> b1
+  b2 --> c1

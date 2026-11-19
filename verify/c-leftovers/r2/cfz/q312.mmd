@@ -1,0 +1,27 @@
+classDiagram
+A --> B
+B "1" o-- "*" C : x
+A -- D
+C ..|> E
+E ..> F
+C ..|> G
+A "1" *-- "*" H : uses
+F o-- I : has many of
+C *-- E
+F -- H
+A --> C
+E *-- E
+E --> E : e1
+E --> E : e2
+E *-- E : e3
+E o-- E : e4
+E ..> E : e5
+E o-- E : e6
+E *-- E : e7
+E "1" --> "*" E
+I --> I : i0
+class H {
+ +int id
+ +run() void
+ +stop()
+}

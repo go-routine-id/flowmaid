@@ -1,0 +1,14 @@
+classDiagram
+class com.shop.Order {
+ +int id
+ +total() float
+}
+class o.A
+o.A : +x int
+com.shop.Order --> com.shop.Line~T~ : holds
+o.A --> pkg.o
+pkg.o o-- com.shop.Order
+com.shop.Order ..> o.A
+note for com.shop.Order "an order"
+com.shop.Line..>Audit.Log
+`com.shop.Order` *-- "many" Item.v2

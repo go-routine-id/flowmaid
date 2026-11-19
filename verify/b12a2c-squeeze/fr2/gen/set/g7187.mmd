@@ -1,0 +1,33 @@
+flowchart RL
+  n1["mail<br/>auth"]
+  subgraph B0["Storefront"]
+    n2["ingest parse api"]
+    n3["notify"]
+    n4["merge"]
+    n5["parse"]
+    subgraph B0s0["Back office and finance 0"]
+      n6["report<br/>queue"]
+      n7["auth"]
+    end
+  end
+  subgraph B1["Back office and finance"]
+    n8["api"]
+    n9["notify"]
+    n10["report"]
+    n11["report"]
+  end
+  n12["auth"]
+  n13["search"]
+  n5 --> n1
+  n9 ==> n10
+  n6 --> n7
+  n8 -.->|worker| n11
+  n9 -.-> n8
+  n7 -.-> n3
+  n5 -->|merge| n8
+  n4 -.-> n13
+  n3 --> n12
+  n7 --> n8
+  n10 -.->|pack| n3
+  n2 -->|parse| n8
+  n5 -.-> n13

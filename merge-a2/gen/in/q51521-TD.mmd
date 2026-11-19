@@ -1,0 +1,16 @@
+flowchart TD
+    subgraph G0[Edge 0]
+        g0m0[g0m0]
+        g0m1[g0m1]
+    end
+    subgraph G1[Order processing 1]
+        g1m0[g1m0]
+        g1m1[g1m1]
+        g1m2[g1m2]
+        g1m3[g1m3]
+    end
+    o3 -- l9 --> G0
+    o3 -.-> g0m1
+    o0 ==> g1m1
+    o3 --> g0m1
+    g1m1 --> G0

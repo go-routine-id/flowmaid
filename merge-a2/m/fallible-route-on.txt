@@ -1,0 +1,13 @@
+   Compiling flowmaid v0.40.1 (/home/user/flowmaid)
+    Finished `release` profile [optimized] target(s) in 1.67s
+     Running tests/fallible_route.rs (/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/merge-a2/m/scratch/target-tree-6149/release/deps/fallible_route-0bbcb1c9a251a51e)
+
+running 5 tests
+test mindmap_mismatch_differs_from_an_empty_mindmap ... ok
+test non_finite_positions_give_no_scene ... ok
+test sweeps_counts_without_panicking ... ok
+test far_positions_route_within_reach_and_give_no_scene_past_it ... ok
+test equals_route_at_accepted_counts ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.62s
+

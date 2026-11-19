@@ -1,0 +1,8 @@
+dense-lr	off	worst 5.99 ms (node n12)	0 of 624 frames over 6 ms
+dense-td	off	worst 7.93 ms (node n16)	4 of 552 frames over 6 ms
+bench-75	off	worst 7.62 ms (node cache)	6 of 252 frames over 6 ms
+blocks-overview	off	worst 4.46 ms (node QUEUE)	0 of 252 frames over 6 ms
+dense-lr	on	worst 5.97 ms (node n48)	0 of 624 frames over 6 ms
+dense-td	on	worst 8.87 ms (node n14)	35 of 552 frames over 6 ms
+bench-75	on	worst 6.96 ms (node svc3)	3 of 252 frames over 6 ms
+blocks-overview	on	worst 4.84 ms (node SEARCH)	0 of 252 frames over 6 ms

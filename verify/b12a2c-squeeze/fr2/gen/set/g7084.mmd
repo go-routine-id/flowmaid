@@ -1,0 +1,43 @@
+flowchart LR
+  n1["ingest"]
+  n2["cache"]
+  n3["notify"]
+  subgraph B0["Ingest"]
+    n4["split"]
+    n5["db parse split"]
+    n6["billing search cache"]
+  end
+  subgraph B1["Storefront"]
+    n7["index"]
+    n8["parse"]
+    n9["billing index parse"]
+  end
+  subgraph B2["Data tier"]
+    n10["search"]
+  end
+  subgraph B3["Storefront"]
+    n11["worker"]
+    n12["worker"]
+    n13["db"]
+    n14["db"]
+  end
+  n15["split<br/>ship"]
+  n16["ingest"]
+  n8 ==> n6
+  n3 -.-> n12
+  n5 -.-> n13
+  n12 --> n8
+  n9 --> n13
+  n4 -->|report| n8
+  n12 -->|worker| n7
+  n10 ==> n13
+  n11 ==> n12
+  n15 -.-> n10
+  n5 -.-> n1
+  n5 ==>|ingest| n7
+  n12 --> n16
+  n5 -->|pack| n15
+  n9 --> n11
+  n13 -->|store| n9
+  n4 --> n1
+  n15 ==> n12

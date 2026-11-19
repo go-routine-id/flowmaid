@@ -1,0 +1,46 @@
+diff --git a/src/scene.rs b/src/scene.rs
+index d3ee1af..7bcb281 100644
+--- a/src/scene.rs
++++ b/src/scene.rs
+@@ -4192,6 +4192,11 @@ const TITLE_INSET: f64 = 6.0;
+ const TITLE_STRIP: f64 = 21.0;
+ /// Half-width of the strip a channel lane needs inside its cluster box.
+ pub(crate) const LANE_PAD: f64 = 12.0;
++
++/// What a block layout's frame adds to [`LANE_PAD`] round an inner leg
++/// it grows over (`scene_clustered`): the half pixel of air
++/// `ortho::TRACK_PITCH` adds to a stroke's clearance.
++const LEG_AIR: f64 = 0.5;
+ /// A subgraph needs at least this many members fed only by one outside
+ /// node before they are packed into a grid instead of sharing one rank.
+ const GRID_MIN_MEMBERS: usize = 3;
+@@ -4441,6 +4446,18 @@ fn scene_clustered(
+             frame_boxes(g, &sc.nodes, &title_jog, block_paths.is_some());
+         // Member-only boxes: what a widened frame must stay clear of.
+         let raw = boxes.clone();
++        // In a block layout a frame grown over an inner leg keeps it a
++        // stroke's clearance and half a pixel inside its wall (the air
++        // `ortho::TRACK_PITCH` adds to `EDGE_SEP`): at `LANE_PAD` the
++        // router's hug test (`|c - line| < CLEAR_GAP`) read the leg's
++        // simplified middle a hair inside the clearance, scored a chain
++        // column beside the wall as hugging it, and searched the
++        // labelled edge out through the wall.
++        let leg_pad = if block_paths.is_some() {
++            LANE_PAD + LEG_AIR
++        } else {
++            LANE_PAD
++        };
+         for si in 0..g.subgraphs.len() {
+             let Some((x, y, w, h)) = boxes[si] else {
+                 continue;
+@@ -4484,8 +4501,8 @@ fn scene_clustered(
+                         home || path.contains(&si) && !cut.iter().any(|c| path.contains(c));
+                     let (wb, wl) = if horizontal { (wy, wx) } else { (wx, wy) };
+                     if inside && wl >= l0 && wl <= l1 {
+-                        b0 = b0.min(wb - LANE_PAD);
+-                        b1 = b1.max(wb + LANE_PAD);
++                        b0 = b0.min(wb - leg_pad);
++                        b1 = b1.max(wb + leg_pad);
+                     }
+                 }
+             }

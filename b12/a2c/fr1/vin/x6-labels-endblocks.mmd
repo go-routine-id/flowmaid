@@ -1,0 +1,13 @@
+flowchart TD
+  subgraph S1 [Upstream services]
+    u1[Gateway] --> u2[Auth]
+    u2 --> u3[Session store]
+  end
+  subgraph S2 [Downstream workers]
+    w1[Queue] --> w2[Worker pool]
+    w2 --> w3[Result cache]
+  end
+  u1 -->|a fairly long request label| w1
+  u3 -->|session events stream| w2
+  u2 -->|token refresh| w3
+  u1 -->|direct| w3

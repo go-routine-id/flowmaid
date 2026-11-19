@@ -1,0 +1,374 @@
+bench-75	static	user->gw ortho
+bench-75	static	user->lb ortho
+bench-75	static	gw->lb ortho
+bench-75	static	gw->svc1 ortho
+bench-75	static	lb->svc1 ortho
+bench-75	static	gw->svc2 ortho
+bench-75	static	lb->svc2 ortho
+bench-75	static	lb->svc3 ortho
+bench-75	static	gw->svc4 ortho
+bench-75	static	lb->svc4 ortho
+bench-75	static	gw->svc5 ortho
+bench-75	static	lb->svc5 ortho
+bench-75	static	gw->svc6 ortho
+bench-75	static	lb->svc6 ortho
+bench-75	static	svc1->db ortho
+bench-75	static	svc1->cache ortho
+bench-75	static	svc1->queue ortho
+bench-75	static	svc2->db ortho
+bench-75	static	svc2->cache ortho
+bench-75	static	svc2->queue ortho
+bench-75	static	svc3->db ortho
+bench-75	static	svc3->cache ortho
+bench-75	static	svc3->queue ortho
+bench-75	static	svc4->db ortho
+bench-75	static	svc4->cache ortho
+bench-75	static	svc4->queue ortho
+bench-75	static	svc5->db ortho
+bench-75	static	svc5->cache ortho
+bench-75	static	svc5->queue ortho
+bench-75	static	svc6->db ortho
+bench-75	static	svc6->cache ortho
+bench-75	static	svc6->queue ortho
+bench-75	static	svc1->objects ortho
+bench-75	static	svc3->objects ortho
+bench-75	static	svc5->objects ortho
+bench-75	static	svc1->logs ortho
+bench-75	static	svc2->logs ortho
+bench-75	static	svc3->logs ortho
+bench-75	static	svc4->logs ortho
+bench-75	static	svc5->logs ortho
+bench-75	static	svc6->logs ortho
+bench-75	static	svc1->metrics ortho
+bench-75	static	svc2->metrics ortho
+bench-75	static	svc3->metrics ortho
+bench-75	static	svc4->metrics ortho
+bench-75	static	metrics->alerts ortho
+bench-75	static	alerts->dash ortho
+bench-75	static	logs->dash ortho
+bench-75	static	metrics->dash ortho
+bench-75	static	queue->job1 ortho
+bench-75	static	job1->db ortho
+bench-75	static	job1->ext ortho
+bench-75	static	queue->job2 ortho
+bench-75	static	job2->db ortho
+bench-75	static	job2->ext ortho
+bench-75	static	queue->job3 ortho
+bench-75	static	job3->db ortho
+bench-75	static	job3->ext ortho
+bench-75	static	alerts->gw edge_frame app
+bench-75	static	alerts->gw ortho
+bench-75	static	dash->user edge_frame edge
+bench-75	static	dash->user edge_frame app
+bench-75	static	dash->user ortho
+bench-75	static	job1->svc1 ortho
+bench-75	static	db->svc2 ortho
+bench-75	static	svc6->ext ortho
+bench-75	static	svc5->ext ortho
+bench-75	static	cache->svc4 ortho
+bench-75	static	objects->logs ortho
+bench-75	static	db->metrics ortho
+bench-75	static	queue->metrics ortho
+bench-75	static	gw->logs ortho
+bench-75	static	lb->metrics edge_frame app
+bench-75	static	lb->metrics hug svc2 59px
+bench-75	static	lb->metrics ortho
+bench-75	static	user->ext ortho
+bench-75	static	job2->objects ortho
+bench-75	static	job3->logs ortho
+bench-75	static	dash->ext ortho
+bench-75	static	gw->svc2 band svc1->cache 106px
+bench-75	static	gw->svc2 band alerts->gw 726px
+bench-75	static	gw->svc2 band gw->logs 108px
+bench-75	static	lb->svc2 band svc3->objects 320px
+bench-75	static	gw->svc3 band gw->svc5 190px
+bench-75	static	gw->svc3 tight gw->svc5 186px
+bench-75	static	gw->svc4 tight lb->svc4 92px
+bench-75	static	gw->svc4 band gw->svc6 204px
+bench-75	static	lb->svc4 band svc4->db 168px
+bench-75	static	lb->svc4 tight svc4->db 164px
+bench-75	static	lb->svc5 tight lb->svc6 26px
+bench-75	static	svc1->db band svc1->cache 224px
+bench-75	static	svc1->db tight svc1->cache 202px
+bench-75	static	svc1->db band svc1->queue 186px
+bench-75	static	svc1->db band svc3->db 672px
+bench-75	static	svc1->db tight svc3->db 50px
+bench-75	static	svc1->db band svc3->logs 170px
+bench-75	static	svc1->db band svc6->logs 170px
+bench-75	static	svc1->cache band svc1->queue 334px
+bench-75	static	svc1->cache band db->svc2 554px
+bench-75	static	svc1->queue band svc2->queue 620px
+bench-75	static	svc1->queue band svc4->queue 572px
+bench-75	static	svc1->queue band svc1->objects 1200px
+bench-75	static	svc2->queue band svc5->objects 348px
+bench-75	static	svc3->db band svc3->cache 108px
+bench-75	static	svc3->db tight svc5->db 64px
+bench-75	static	svc3->db band svc6->logs 150px
+bench-75	static	svc3->cache band svc5->db 500px
+bench-75	static	svc3->cache band svc5->cache 340px
+bench-75	static	svc3->cache tight svc5->cache 340px
+bench-75	static	svc3->cache band svc6->cache 340px
+bench-75	static	svc3->cache band svc3->metrics 116px
+bench-75	static	svc3->queue band svc5->cache 570px
+bench-75	static	svc3->queue tight svc5->cache 554px
+bench-75	static	svc3->queue band svc5->queue 1488px
+bench-75	static	svc3->queue tight svc5->queue 740px
+bench-75	static	svc3->queue band svc6->cache 502px
+bench-75	static	svc3->queue tight svc6->cache 492px
+bench-75	static	svc5->db band svc5->cache 588px
+bench-75	static	svc5->db band svc6->db 554px
+bench-75	static	svc5->db tight svc6->db 554px
+bench-75	static	svc5->db tight svc5->objects 96px
+bench-75	static	svc5->cache band svc6->db 446px
+bench-75	static	svc5->cache band svc6->cache 888px
+bench-75	static	svc5->cache tight svc6->cache 388px
+bench-75	static	svc5->queue band svc6->cache 510px
+bench-75	static	svc5->queue band job1->svc1 764px
+bench-75	static	svc6->db tight svc6->cache 48px
+bench-75	static	svc6->db tight svc6->ext 88px
+bench-75	static	svc6->cache band job1->svc1 506px
+bench-75	static	svc1->objects band svc1->metrics 832px
+bench-75	static	svc3->objects band svc6->logs 354px
+bench-75	static	svc3->objects band svc5->ext 322px
+bench-75	static	svc3->objects band queue->metrics 384px
+bench-75	static	svc5->objects band svc5->ext 248px
+bench-75	static	svc5->objects tight svc5->ext 248px
+bench-75	static	svc1->logs band svc2->logs 820px
+bench-75	static	svc2->logs band dash->user 884px
+bench-75	static	svc3->logs band svc3->metrics 134px
+bench-75	static	svc4->logs band svc5->logs 588px
+bench-75	static	svc5->logs band job1->svc1 204px
+bench-75	static	svc5->logs tight svc5->ext 34px
+bench-75	static	svc6->logs band svc6->ext 172px
+bench-75	static	svc6->logs tight svc6->ext 172px
+bench-75	static	svc2->metrics band svc4->metrics 406px
+bench-75	static	svc2->metrics tight svc4->metrics 404px
+bench-75	static	svc4->metrics band lb->metrics 378px
+bench-75	static	alerts->dash band objects->logs 378px
+bench-75	static	queue->job1 band queue->job2 172px
+bench-75	static	queue->job1 band queue->job3 240px
+bench-75	static	job1->db band job2->db 406px
+bench-75	static	job1->db band job3->db 492px
+bench-75	static	job1->ext end_cross svc6->ext at (2105,1089)
+bench-75	static	queue->job2 band queue->job3 150px
+bench-75	static	queue->job2 tight queue->metrics 34px
+bench-75	static	job2->ext band job3->ext 752px
+bench-75	static	job3->db band job1->svc1 726px
+bench-75	static	job3->ext band job3->logs 272px
+bench-75	static	svc5->ext band dash->ext 346px
+bench-75	static	objects->logs band job3->logs 868px
+bench-75	static	db->metrics band queue->metrics 742px
+bench-75	static	gw->svc2 lat_wiggle 126.8
+bench-75	static	svc6->queue lat_wiggle 30.8
+bench-75	static	svc3->objects lat_wiggle 11.5
+bench-75	static	svc1->logs lat_wiggle 74.0
+bench-75	static	svc2->logs lat_wiggle 36.0
+bench-75	static	svc4->metrics lat_wiggle 16.0
+bench-75	static	job1->ext lat_wiggle 14.5
+bench-75	static	job2->ext lat_wiggle 216.5
+bench-75	static	db->metrics lat_wiggle 138.2
+bench-75	static	gw->logs lat_wiggle 200.2
+bench-75	static	user->ext lat_wiggle 794.8
+bench-75	routed	user->gw ortho
+bench-75	routed	user->lb ortho
+bench-75	routed	gw->lb ortho
+bench-75	routed	gw->svc1 border edge right 57px
+bench-75	routed	gw->svc1 hug edge 54px
+bench-75	routed	gw->svc1 ortho
+bench-75	routed	lb->svc1 ortho
+bench-75	routed	gw->svc2 border app left 55px
+bench-75	routed	gw->svc2 hug app 39px
+bench-75	routed	gw->svc2 ortho
+bench-75	routed	lb->svc2 ortho
+bench-75	routed	lb->svc3 ortho
+bench-75	routed	gw->svc4 ortho
+bench-75	routed	lb->svc4 ortho
+bench-75	routed	gw->svc5 border app left 63px
+bench-75	routed	gw->svc5 hug app 31px
+bench-75	routed	gw->svc5 ortho
+bench-75	routed	lb->svc5 ortho
+bench-75	routed	gw->svc6 ortho
+bench-75	routed	lb->svc6 ortho
+bench-75	routed	svc1->db hug data 149px
+bench-75	routed	svc1->db ortho
+bench-75	routed	svc1->cache ortho
+bench-75	routed	svc1->queue ortho
+bench-75	routed	svc2->db ortho
+bench-75	routed	svc2->cache ortho
+bench-75	routed	svc2->queue ortho
+bench-75	routed	svc3->db ortho
+bench-75	routed	svc3->cache border data left 240px
+bench-75	routed	svc3->cache hug data 236px
+bench-75	routed	svc3->cache hug db 35px
+bench-75	routed	svc3->cache edge_chip data
+bench-75	routed	svc3->cache ortho
+bench-75	routed	svc3->queue ortho
+bench-75	routed	svc4->db ortho
+bench-75	routed	svc4->cache ortho
+bench-75	routed	svc4->queue ortho
+bench-75	routed	svc5->db ortho
+bench-75	routed	svc5->cache ortho
+bench-75	routed	svc5->queue ortho
+bench-75	routed	svc6->db ortho
+bench-75	routed	svc6->cache ortho
+bench-75	routed	svc6->queue ortho
+bench-75	routed	svc1->objects ortho
+bench-75	routed	svc3->objects ortho
+bench-75	routed	svc5->objects ortho
+bench-75	routed	svc1->logs ortho
+bench-75	routed	svc2->logs ortho
+bench-75	routed	svc3->logs ortho
+bench-75	routed	svc4->logs ortho
+bench-75	routed	svc5->logs ortho
+bench-75	routed	svc6->logs ortho
+bench-75	routed	svc1->metrics ortho
+bench-75	routed	svc2->metrics ortho
+bench-75	routed	svc3->metrics ortho
+bench-75	routed	svc4->metrics ortho
+bench-75	routed	metrics->alerts ortho
+bench-75	routed	alerts->dash ortho
+bench-75	routed	logs->dash ortho
+bench-75	routed	metrics->dash ortho
+bench-75	routed	queue->job1 ortho
+bench-75	routed	job1->db ortho
+bench-75	routed	job1->ext ortho
+bench-75	routed	queue->job2 ortho
+bench-75	routed	job2->db ortho
+bench-75	routed	job2->ext ortho
+bench-75	routed	queue->job3 ortho
+bench-75	routed	job3->db ortho
+bench-75	routed	job3->ext ortho
+bench-75	routed	alerts->gw ortho
+bench-75	routed	dash->user ortho
+bench-75	routed	job1->svc1 ortho
+bench-75	routed	db->svc2 ortho
+bench-75	routed	svc6->ext ortho
+bench-75	routed	svc5->ext ortho
+bench-75	routed	cache->svc4 ortho
+bench-75	routed	objects->logs ortho
+bench-75	routed	db->metrics ortho
+bench-75	routed	queue->metrics ortho
+bench-75	routed	gw->logs ortho
+bench-75	routed	lb->metrics ortho
+bench-75	routed	user->ext ortho
+bench-75	routed	job2->objects ortho
+bench-75	routed	job3->logs ortho
+bench-75	routed	dash->ext ortho
+bench-75	routed	gw->lb band gw->svc5 148px
+bench-75	routed	gw->svc1 band lb->svc1 122px
+bench-75	routed	gw->svc1 band gw->svc2 124px
+bench-75	routed	gw->svc1 band gw->svc3 124px
+bench-75	routed	gw->svc2 band lb->svc2 232px
+bench-75	routed	gw->svc2 band gw->svc3 194px
+bench-75	routed	gw->svc2 band svc3->db 222px
+bench-75	routed	gw->svc2 tight svc3->db 222px
+bench-75	routed	gw->svc2 band svc3->cache 234px
+bench-75	routed	gw->svc2 band svc3->objects 254px
+bench-75	routed	lb->svc2 tight lb->svc3 28px
+bench-75	routed	lb->svc2 tight svc3->db 84px
+bench-75	routed	lb->svc2 band svc5->objects 116px
+bench-75	routed	gw->svc4 band lb->svc4 756px
+bench-75	routed	gw->svc4 tight lb->svc4 756px
+bench-75	routed	gw->svc4 band gw->svc6 192px
+bench-75	routed	gw->svc4 band svc4->db 272px
+bench-75	routed	lb->svc4 band svc4->db 266px
+bench-75	routed	lb->svc4 tight svc4->db 262px
+bench-75	routed	svc1->db band svc1->cache 256px
+bench-75	routed	svc1->db band svc1->queue 220px
+bench-75	routed	svc1->db band svc3->db 590px
+bench-75	routed	svc1->db band svc3->cache 586px
+bench-75	routed	svc1->db band svc5->db 462px
+bench-75	routed	svc1->db band svc3->logs 234px
+bench-75	routed	svc1->cache band svc1->queue 480px
+bench-75	routed	svc1->cache band svc5->cache 572px
+bench-75	routed	svc1->queue band svc3->queue 1016px
+bench-75	routed	svc1->queue tight svc3->queue 98px
+bench-75	routed	svc1->queue band svc1->objects 712px
+bench-75	routed	svc2->db end_cross db->svc2 at (774,1183)
+bench-75	routed	svc2->cache tight svc2->queue 70px
+bench-75	routed	svc2->queue band svc4->queue 560px
+bench-75	routed	svc2->queue tight svc1->objects 64px
+bench-75	routed	svc2->queue band svc2->logs 408px
+bench-75	routed	svc2->queue band svc2->metrics 126px
+bench-75	routed	svc2->queue tight svc2->metrics 126px
+bench-75	routed	svc3->db band svc3->cache 260px
+bench-75	routed	svc3->db band svc5->db 488px
+bench-75	routed	svc3->cache tight svc5->cache 30px
+bench-75	routed	svc3->cache band svc6->cache 248px
+bench-75	routed	svc3->cache band svc3->objects 256px
+bench-75	routed	svc3->cache tight svc3->objects 240px
+bench-75	routed	svc3->queue band svc5->queue 108px
+bench-75	routed	svc3->queue tight svc5->queue 108px
+bench-75	routed	svc3->queue band svc5->logs 526px
+bench-75	routed	svc3->queue band svc3->metrics 688px
+bench-75	routed	svc4->db tight db->metrics 32px
+bench-75	routed	svc4->queue band svc4->metrics 160px
+bench-75	routed	svc5->db band svc5->cache 218px
+bench-75	routed	svc5->db tight svc6->db 36px
+bench-75	routed	svc5->db band svc6->logs 212px
+bench-75	routed	svc5->db tight svc5->ext 190px
+bench-75	routed	svc5->db overlap svc5->ext 218px
+bench-75	routed	svc5->cache tight svc6->cache 48px
+bench-75	routed	svc5->cache band svc5->ext 426px
+bench-75	routed	svc5->queue band svc5->logs 104px
+bench-75	routed	svc6->db band svc6->cache 420px
+bench-75	routed	svc6->cache band svc6->queue 502px
+bench-75	routed	svc1->objects band svc3->objects 148px
+bench-75	routed	svc1->objects band svc1->metrics 830px
+bench-75	routed	svc1->objects band db->metrics 400px
+bench-75	routed	svc1->objects band lb->metrics 218px
+bench-75	routed	svc3->objects band svc5->objects 582px
+bench-75	routed	svc3->objects tight svc5->logs 72px
+bench-75	routed	svc3->objects band svc2->metrics 278px
+bench-75	routed	svc5->objects band svc4->logs 546px
+bench-75	routed	svc5->objects band svc5->logs 142px
+bench-75	routed	svc5->objects tight svc2->metrics 64px
+bench-75	routed	svc1->logs band svc2->logs 200px
+bench-75	routed	svc1->logs band svc3->logs 706px
+bench-75	routed	svc1->logs tight svc3->logs 706px
+bench-75	routed	svc1->logs band svc1->metrics 210px
+bench-75	routed	svc1->logs tight svc1->metrics 210px
+bench-75	routed	svc2->logs band svc3->logs 200px
+bench-75	routed	svc2->logs tight svc3->logs 200px
+bench-75	routed	svc2->logs band svc5->logs 200px
+bench-75	routed	svc2->logs band svc2->metrics 146px
+bench-75	routed	svc2->logs tight svc2->metrics 142px
+bench-75	routed	svc2->logs band metrics->dash 362px
+bench-75	routed	svc3->logs band svc3->metrics 590px
+bench-75	routed	svc4->logs band svc6->logs 530px
+bench-75	routed	svc4->logs band svc4->metrics 202px
+bench-75	routed	svc4->logs band objects->logs 622px
+bench-75	routed	svc4->logs band job3->logs 626px
+bench-75	routed	svc5->logs band alerts->gw 188px
+bench-75	routed	svc6->logs band svc6->ext 1328px
+bench-75	routed	svc6->logs band svc5->ext 1346px
+bench-75	routed	svc6->logs band job3->logs 528px
+bench-75	routed	svc2->metrics band svc3->metrics 256px
+bench-75	routed	svc2->metrics tight svc3->metrics 256px
+bench-75	routed	svc2->metrics tight svc4->metrics 96px
+bench-75	routed	alerts->dash band objects->logs 364px
+bench-75	routed	queue->job1 band queue->job2 204px
+bench-75	routed	queue->job1 tight queue->job2 50px
+bench-75	routed	queue->job1 band queue->job3 274px
+bench-75	routed	queue->job1 tight queue->job3 40px
+bench-75	routed	job1->db band job2->db 446px
+bench-75	routed	job1->db band job3->db 522px
+bench-75	routed	job1->db tight job3->db 38px
+bench-75	routed	job1->ext band job3->ext 586px
+bench-75	routed	queue->job2 band queue->job3 184px
+bench-75	routed	queue->job2 tight queue->metrics 66px
+bench-75	routed	job2->db band job3->db 452px
+bench-75	routed	job2->db tight db->metrics 28px
+bench-75	routed	job2->ext band svc6->ext 186px
+bench-75	routed	job3->db band job1->svc1 664px
+bench-75	routed	job3->ext band job3->logs 268px
+bench-75	routed	alerts->gw band gw->logs 194px
+bench-75	routed	dash->user band gw->logs 440px
+bench-75	routed	svc6->ext band objects->logs 326px
+bench-75	routed	svc5->ext band user->ext 126px
+bench-75	routed	svc5->ext band dash->ext 358px
+bench-75	routed	objects->logs band job3->logs 866px
+bench-75	routed	db->metrics band queue->metrics 512px
+bench-75	routed	svc6->queue lat_wiggle 46.2
+bench-75	routed	gw->logs lat_wiggle 58.0
+bench-75	routed	lb->metrics lat_wiggle 234.5

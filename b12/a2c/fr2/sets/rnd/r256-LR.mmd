@@ -1,0 +1,13 @@
+flowchart LR
+    subgraph O[Core]
+        subgraph G[Shipping and returns desk]
+            m0[x wide member node]
+            m1[x wide member node]
+            m2[db]
+        end
+        k[k]
+    end
+    m1 --> k
+    s0[src0] --> O
+    s1[src1] -- "lbl7" --> G
+    G --> z2[after]

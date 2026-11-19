@@ -1,0 +1,3 @@
+{"lanes":[{"id":"dev","title":"Development"}],
+ "nodes":[{"id":"a","label":"Design","lane":"dev"},{"id":"b","label":"Test","lane":"dev"}],
+ "edges":[{"from":"a","to":"b","label":"hand off"}]}

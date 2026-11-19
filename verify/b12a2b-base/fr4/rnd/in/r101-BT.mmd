@@ -1,0 +1,10 @@
+flowchart BT
+    subgraph G[MMMM WWWW QQQQ]
+        m0[x wide member node]
+        m1[x wide member node]
+        m0 --> m1
+    end
+    s0[src0] --> G
+    s1[src1] -- "lbl9" --> G
+    s2[src2] --> m1
+    s2 -- "lbl1" --> G

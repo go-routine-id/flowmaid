@@ -1,0 +1,19 @@
+classDiagram
+direction TB
+A o-- B : x
+A o-- C : has many of
+B *-- D
+C -- E : uses
+C "1" -- "*" F : uses
+E ..|> G : uses
+E -- H
+E o-- B
+F o-- F
+F o-- F : f1
+F ..> F : f2
+B ..> B : b0
+B o-- B
+B o-- B : b2
+A "1" --> "*" A
+A *-- A : a1
+A --> A : a2

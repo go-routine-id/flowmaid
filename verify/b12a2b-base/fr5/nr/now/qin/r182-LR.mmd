@@ -1,0 +1,16 @@
+flowchart LR
+    subgraph O[Order processing]
+        subgraph G[WWW Mammoth Wombat Overview]
+            m0[y]
+            m1[w]
+            m2[db]
+        end
+        k[k]
+    end
+    m2 --> k
+    s0[src0] --> G
+    s1[src1] --> O
+    s1 -- "lbl7" --> G
+    s2[src2] --> m0
+    s2 --> O
+    m2 --> z[end]

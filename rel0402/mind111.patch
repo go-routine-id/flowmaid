@@ -1,0 +1,27 @@
+diff --git a/src/mindmap.rs b/src/mindmap.rs
+index 94c539a..b6801f9 100644
+--- a/src/mindmap.rs
++++ b/src/mindmap.rs
+@@ -1831,8 +1831,9 @@ pub fn try_route(d: &Mindmap, pos: &[(f64, f64)]) -> Option<MindScene> {
+ /// is. Positions are taken as given, as [`route`] takes them, and the
+ /// canvas is the one [`route`] gives (a mindmap's canvas follows its
+ /// nodes): the result is the drawing [`route`]`(d, pos)` makes (to float
+-/// rounding, where `base_pos` was read back from `base`), without
+-/// measuring a single label.
++/// rounding, where `base_pos` was read back from `base`), without laying
++/// out the map again (each label is still measured, to check that `base`
++/// lines up with `d`).
+ ///
+ /// When `base` / `base_pos` no longer line up with `d` (their counts
+ /// differ from the map's, the map was edited since: a node added,
+@@ -1952,7 +1953,9 @@ fn lines_up(d: &Mindmap, base: &MindScene, base_pos: &[(f64, f64)]) -> bool {
+     for (order, &ch) in d.nodes[0].children.iter().enumerate() {
+         branch_order[ch] = order;
+     }
+-    let near = |a: f64, b: f64| (a - b).abs() <= 1e-6 * a.abs().max(b.abs()).max(1.0);
++    let near = |a: f64, b: f64| {
++        a.is_finite() && b.is_finite() && (a - b).abs() <= 1e-6 * a.abs().max(b.abs()).max(1.0)
++    };
+     let nodes_eq = d
+         .nodes
+         .iter()

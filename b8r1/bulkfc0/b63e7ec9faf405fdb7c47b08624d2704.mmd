@@ -1,0 +1,14 @@
+flowchart LR
+  subgraph Outer [Outer box]
+    subgraph Inner [Inner box]
+      a1[First] --> a2[Second]
+      a2 --> a3[Third]
+      a3 -->|redo| a1
+    end
+    b1[Gate] --> Inner
+    a3 --> b2[Exit]
+    b2 -.->|back| b1
+  end
+  x[Source] --> b1
+  b2 --> y[Sink]
+  y -->|again| x

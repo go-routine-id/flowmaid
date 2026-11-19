@@ -1,0 +1,38 @@
+1. port-ratio alignment (T is 200 tall):
+  top: x=37 y=12 w=100 h=40
+  T: x=432 y=112 w=100 h=200
+  S: x=152 y=272 w=100 h=40
+  K: x=292 y=112 w=100 h=40
+  M: x=12 y=192 w=100 h=40
+  bot: x=152 y=352 w=100 h=40
+2. child elk.direction=RIGHT with INCLUDE_CHILDREN, edges to the block only:
+  x: x=24 y=12 w=100 h=40
+  B: x=12 y=92 w=124 h=184
+  a: x=24 y=104 w=100 h=40
+  b: x=24 y=164 w=100 h=40
+  c: x=24 y=224 w=100 h=40
+  y: x=24 y=316 w=100 h=40
+2. child elk.direction=RIGHT with SEPARATE_CHILDREN, edges to the block only:
+  x: x=144 y=12 w=100 h=40
+  B: x=12 y=92 w=364 h=64
+  a: x=24 y=104 w=100 h=40
+  b: x=144 y=104 w=100 h=40
+  c: x=264 y=104 w=100 h=40
+  y: x=144 y=196 w=100 h=40
+3. block as one layer; long edge s->t:
+  s: x=28 y=12 w=100 h=40
+  B: x=33 y=97 w=124 h=184
+  b1: x=45 y=109 w=100 h=40
+  b2: x=45 y=169 w=100 h=40
+  b3: x=45 y=229 w=100 h=40
+  t: x=28 y=326 w=100 h=40
+  long edge: [[[62,52],[62,72],[12,72],[12,306],[62,306],[62,326]]]
+4. block cycle, ELK alone (no pre-reversal):
+  A: x=12 y=211 w=124 h=124
+  a1: x=24 y=223 w=100 h=40
+  a2: x=24 y=283 w=100 h=40
+  B: x=12 y=37 w=124 h=124
+  b1: x=24 y=49 w=100 h=40
+  b2: x=24 y=109 w=100 h=40
+  fwd: container=root [[[74,323],[74,360],[156,360],[156,12],[74,12],[74,49]]]
+  back: container=root [[[74,149],[74,223]]]

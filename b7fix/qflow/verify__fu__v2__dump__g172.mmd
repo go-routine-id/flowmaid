@@ -1,0 +1,64 @@
+stateDiagram-v2
+direction BT
+[*] --> A
+state K0 {
+  [*] --> K0_0
+  K0_0 --> K0_1
+  K0_0 --> K0_2
+  K0_1 --> K0_3
+  note left of K0_3 : in714
+  note left of K0_3
+    in433 line one
+    second line
+  end note
+  note left of K0_1 : in528
+  K0_3 --> [*]
+}
+state K1 {
+  [*] --> K1_0
+  state K1N {
+    [*] --> K1N_0
+    K1N_0 --> K1N_1
+    K1N_1 --> K1N_2
+    state K1N_f <<fork>>
+    K1N_0 --> K1N_f
+    K1N_f --> K1N_2
+    K1N_f --> K1N_2
+    note right of K1N_0 : in273
+    note right of K1N_2
+      in218 line one
+      second line
+    end note
+  }
+  K1_0 --> K1N
+  K1N --> K1_0 : up
+  state K1_f <<fork>>
+  K1_0 --> K1_f
+  K1_f --> K1N_0
+  K1_f --> K1N_0
+  note left of K1N_2 : in297
+  note left of K1N_1 : in286
+  note right of K1N_2
+    in645 line one
+    second line
+  end note
+}
+state K2 {
+  [*] --> K2_0
+  K2_0 --> K2_1 : t1
+  state K2_c <<choice>>
+  K2_1 --> K2_c
+  K2_c --> K2_0 : a
+  K2_c --> K2_1 : b
+  note right of K2_0 : in880
+  note left of K2_1 : in232
+}
+A --> K0
+K0 --> K1 : g2
+A --> K2 : g3
+K2 --> B0 : g4
+B0 --> B1
+B1 --> B2 : g6
+B2 --> B1 : back
+note right of K2 : on783
+note right of K2 : on783b

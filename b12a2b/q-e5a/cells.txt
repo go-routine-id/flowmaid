@@ -1,0 +1,13 @@
+[local static A2] 444 / 444 cells; must-fail 86 -> 86; worse 1 (new 0, worse inside failing 1, changed 0, missing 0); gone 0, better inside failing 0; info: target new 0 / gone 0 / worse 0, drift inside passing 7
+  WORSE    bench-75 compact_max 71.64 -> 72.16 (must <= 52.03)
+  drift        dense-lr lbl_struck 0 -> 2 (must <= 5)
+  drift        dense-lr lbl_crowd 5 -> 6 (must <= 10)
+  drift        bench-75 crossings 204 -> 209 (must <= 325.4)
+  drift        bench-75 area 3032172 -> 3051516 (must <= 4577611)
+  drift        dense-lr area 10872579 -> 10904909 (must <= 19132164)
+  drift        bench-75 edge_len 68183 -> 68435 (must <= 106034)
+  drift        dense-lr edge_len 49989 -> 50072 (must <= 78383)
+[local routed] 62 / 62 cells; must-fail 37 -> 37; worse 1 (new 0, worse inside failing 1, changed 0, missing 0); gone 0, better inside failing 0; info: target new 0 / gone 0 / worse 0, drift inside passing 1
+  WORSE    bench-75 xframe_runs 1 -> 3 (must <= 0)
+  drift        dense-lr lateral_x 10 -> 11 (must <= 50)
+cells: WORSE

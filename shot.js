@@ -1,7 +1,5 @@
-const { chromium } = require('playwright');
-(async()=>{const b=await chromium.launch();const p=await b.newPage({viewport:{width:1280,height:900}});
-await p.goto('file://'+process.argv[2]);await p.waitForTimeout(800);
-await p.screenshot({path:process.argv[3],fullPage:false});
-await p.evaluate(()=>document.getElementById('d-demo').scrollIntoView());await p.waitForTimeout(400);
-await p.screenshot({path:process.argv[4]});
-const w=await p.evaluate(()=>document.documentElement.scrollWidth);console.log('scrollWidth',w);await b.close();})();
+const { chromium } = require("playwright"); const fs=require("fs");
+(async()=>{const [out,scale,...svgs]=process.argv.slice(2);const b=await chromium.launch();const p=await b.newPage({deviceScaleFactor:+scale});
+const body=svgs.map(s=>`<div style="display:inline-block;margin:6px;border:1px solid #ccc;vertical-align:top"><div style="font:11px sans-serif">${s.split('/').slice(-2).join('/')}</div>${fs.readFileSync(s,"utf8")}</div>`).join("");
+await p.setContent(`<html><body style="margin:0;background:#fff">${body}</body></html>`);
+await p.screenshot({path:out,fullPage:true});await b.close();})();

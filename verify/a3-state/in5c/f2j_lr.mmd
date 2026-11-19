@@ -1,0 +1,13 @@
+stateDiagram-v2
+direction LR
+state f <<fork>>
+state j <<join>>
+[*] --> f
+f --> Alpha
+f --> Beta
+f --> Gamma
+f --> j
+Alpha --> j
+Beta --> j
+Gamma --> j
+j --> [*]

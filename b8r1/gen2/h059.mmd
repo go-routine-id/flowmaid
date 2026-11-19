@@ -1,0 +1,31 @@
+flowchart LR
+  s0["metric"]
+  subgraph g0["cart zone"]
+    m0["api"]
+    m1["auth metric notify"]
+    m2["store index order"]
+    m0 --> m1
+    m0 --> m2
+  end
+  subgraph g1["metric log zone"]
+    m3["pay web"]
+    m4["search web"]
+    m5["db db"]
+    m6["auth order order"]
+    m3 --> m4
+    m3 --> m5
+    m4 --> m6
+  end
+  subgraph g2["search zone"]
+    m7["cart web"]
+    m8["report"]
+    m9["trace"]
+    m7 --> m8
+    m7 --> m9
+  end
+  s0 --> m0
+  s0 --> m3
+  s0 --> g2
+  s0 --> L10["report api"]
+  s0 --> L11["user"]
+  s0 --> L12["trace db log"]

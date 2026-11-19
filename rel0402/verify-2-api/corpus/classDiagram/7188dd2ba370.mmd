@@ -1,0 +1,17 @@
+classDiagram
+    direction TB
+    <<interface>> Shape
+    class Box~T~ {
+      +T value
+      +get() T
+      +map(f) Box~U~
+    }
+    Box : +size() int
+    class Map~K, V~
+    Shape <|.. Box~T~ : implements
+    Shape <|.. Circle
+    Box "1" *-- "0..*" Map : holds many
+    Circle "1" --> "1..n" Box : wraps
+    Circle : +double radius
+    Circle : +area()$ double
+    Circle : +draw()* void

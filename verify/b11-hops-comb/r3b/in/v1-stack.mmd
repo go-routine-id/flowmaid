@@ -1,0 +1,8 @@
+flowchart TD
+  S[Source] --> H[Hub]
+  S --> X[Side]
+  H --> L1[One] & L2[Two] & L3[Three] & L4[Four] & L5[Five] & L6[Six] & L7[Seven] & L8[Eight]
+  X --> L2
+  X --> L6
+  X -.-> L8
+  S ==> L4

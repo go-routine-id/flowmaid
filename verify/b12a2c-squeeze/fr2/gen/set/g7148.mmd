@@ -1,0 +1,41 @@
+flowchart LR
+  n1["report"]
+  n2["parse"]
+  n3["pack"]
+  subgraph B0["Ops"]
+    n4["search"]
+    n5["store"]
+  end
+  subgraph B1["Core"]
+    n6["parse api index"]
+    n7["parse"]
+    n8["report"]
+  end
+  subgraph B2["Edge services"]
+    n9["worker cache index"]
+    n10["parse"]
+    n11["billing"]
+    n12["pack"]
+    subgraph B2s0["Edge services 0"]
+      n13["billing db worker"]
+      n14["report cache mail<br/>audit"]
+    end
+  end
+  n15["report"]
+  n16["ship index cache"]
+  n14 -.-> n13
+  n15 -.-> n8
+  n13 -->|search| n10
+  n1 -.->|worker| n3
+  n8 --> n5
+  n1 -.-> n15
+  n2 --> n13
+  n9 --> n1
+  n6 --> n13
+  n3 -->|worker| n12
+  n11 ==> n9
+  n11 -->|api| n15
+  n7 --> n10
+  n7 --> n12
+  n13 ==> n3
+  n4 -.->|api| n13

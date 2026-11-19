@@ -1,0 +1,15 @@
+sequenceDiagram
+    actor U
+    actor V as Second actor with long name
+    participant S
+    U-->V: headless dashed
+    V--)S: async dashed
+    S-->>U: reply dashed
+    S-xV: cross
+    V--xS: dashed cross
+    U-)S: async
+    S-->U: back headless
+    activate S
+    U->>S: into bar
+    S-->U: headless out of bar
+    deactivate S

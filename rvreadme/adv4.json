@@ -1,0 +1,7 @@
+{
+    "lanes": [{ "id": "dev", "title": "Development" },
+              { "id": "qa",  "title": "QA" }],
+    "nodes": [{ "id": "a", "label": "Design", "lane": "dev" },
+              { "id": "b", "label": "Test", "lane": "qa", "shape": "diamond" }],
+    "edges": [{ "from": "a", "to": "b", "label": "hand off", "from_side": "bottom", "to_side": "left" }]
+}

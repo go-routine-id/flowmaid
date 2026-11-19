@@ -1,0 +1,15 @@
+architecture-beta
+    group g0(monitoring)[Edge]
+    group g1(monitoring)[Backend Services]
+    group g2(server)[Frontend] in g0
+    service s0(disk)[Service 0] in g2
+    service s1(cloud)[Service 1] in g1
+    service s2(monitoring)[Service 2]
+    service s3(cloud)[Service 3] in g2
+    service s4(internet)[Service 4] in g1
+    service s5(cloud)[Service 5] in g0
+    service s6(database)[Service 6] in g2
+    service s7(internet)[Service 7] in g1
+    service s8(monitoring)[Service 8]
+    service s9(internet)[Service 9] in g0
+    s8:L -- B:s0

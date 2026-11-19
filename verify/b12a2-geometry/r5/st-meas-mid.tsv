@@ -1,0 +1,12 @@
+s1-broad-multi-entry-BT	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+s1-broad-multi-entry-LR	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+s1-broad-multi-entry-RL	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+s1-broad-multi-entry-TD	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+s1-broad-multi-entry	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+s2-lr-label-end-block	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+s3-nested-two-way-BT	bm=1	S: lat=1 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+s3-nested-two-way-LR	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+s3-nested-two-way-RL	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0
+s3-nested-two-way-TD	bm=1	S: lat=4 x=1 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=2 x=0 tcut=0 fan=0 def=0
+s3-nested-two-way	bm=1	S: lat=4 x=1 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=2 x=0 tcut=0 fan=0 def=0
+s4-state-composite	bm=1	S: lat=0 x=0 tcut=0 fan=0 lblchip=0 lbledge=0 def=0	R: lat=0 x=0 tcut=0 fan=0 def=0

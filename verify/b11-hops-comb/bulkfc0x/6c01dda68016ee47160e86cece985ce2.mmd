@@ -1,0 +1,10 @@
+flowchart TD
+  A[/Start job/] --> B{{Validate input}}
+  B --> C[\Transform data\]
+  C --> D[/Persist/]
+  D --> E{{Publish}}
+  E -->|retry| B
+  D -.->|again| A
+  E --> F[Done]
+  C -->|fail| A
+  F ==>|loop| C

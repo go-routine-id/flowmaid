@@ -1,0 +1,14 @@
+test(blocks): a choice's spilled and cornered ends keep off each other; the title sides cost no copy outside a block layout (B12.11 2.8 spill, follow-up to the last commit)
+
+- `blockcheck::a_choices_spilled_and_cornered_ends_keep_off_each_other`:
+  notes/nested-composite's choice `K0_c` and notes/fork-twins' note links
+  draw no shared port and no arrow on a start as blocks (the drawn ends,
+  measured on the static scene).
+- `ortho::TitleSides::clear` takes the columns by value: without a title
+  side to clear (every drawing outside a block layout) it hands them
+  back untouched instead of copying them per edge on every drag frame.
+
+No output change, no snapshot or gate change.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

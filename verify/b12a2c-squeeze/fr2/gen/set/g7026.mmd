@@ -1,0 +1,68 @@
+flowchart BT
+  n1["search"]
+  n2["search notify notify"]
+  n3["billing"]
+  subgraph B0["Core"]
+    n4["cache<br/>notify"]
+    subgraph B0s0["Fulfilment desk 0"]
+      n5["store"]
+      n6["ingest parse notify"]
+    end
+    subgraph B0s1["Back office and finance 1"]
+      n7["api"]
+      n8["notify"]
+    end
+  end
+  subgraph B1["Ingest"]
+    n9["notify auth notify"]
+    n10["cache<br/>store"]
+    n11["ship"]
+    subgraph B1s0["Fulfilment desk 0"]
+      n12["parse"]
+    end
+    subgraph B1s1["Edge services 1"]
+      n13["auth"]
+    end
+  end
+  subgraph B2["Platform"]
+    n14["pack"]
+    n15["split"]
+    subgraph B2s0["Back office and finance 0"]
+      n16["report"]
+      n17["db"]
+      n18["pack"]
+    end
+    subgraph B2s1["Storefront 1"]
+      n19["cache audit worker"]
+      n20["billing"]
+    end
+  end
+  n21["merge"]
+  n22["split"]
+  n10 --> n3
+  n14 --> n20
+  n10 --> n1
+  n2 ==>|notify| n16
+  n21 --> n8
+  n3 --> n12
+  n4 --> n12
+  n16 --> n7
+  n13 -->|report| n11
+  n20 -->|store| n2
+  n15 -->|cache| n8
+  n19 -.->|search| n12
+  n14 -->|index| n15
+  n5 --> n22
+  n20 --> n22
+  n10 ==> n13
+  n13 --> n10
+  n21 --> n10
+  n3 -->|merge| n20
+  n14 --> n17
+  n10 -.->|cache| n20
+  n4 --> B2s0
+  n14 --> n22
+  n12 --> n21
+  n11 ==> n8
+  n5 -.-> B1s0
+  n19 --> n21

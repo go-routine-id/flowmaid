@@ -1,0 +1,15 @@
+architecture-beta
+    group g1(cloud)[☁ Cloud ☁ Mixed 🎉 Emoji Title]
+    group g2(server)[WWWWWWWWWWMMMMMMMM]
+    group g3(disk)[iiiiiiilllllll] in g2
+    service a(server)[A] in g1
+    service b(database)[B] in g2
+    service c(disk)[C] in g3
+    service d(internet)[D] in g3
+    service e(user)[E]
+    e:B --> T:a
+    e:R --> T:b
+    b:B --> T:c
+    c:R -- L:d
+    a:R -- L:b
+    e:L -- T:d

@@ -1,0 +1,20 @@
+flowchart LR
+    N0[Retry queue]
+    N1[Retry]
+    N2{Archive}
+    N3([Emit])
+    N4{Notify}
+    N5[Queue]
+    N6[Validate]
+    N0 --> N1
+    N0 -->|no| N2
+    N2 --> N3
+    N3 --> N4
+    N2 --> N5
+    N5 -->|fail| N6
+    N0 --> N5
+    N1 --> N3
+    N0 --> N1
+    N4 -.-> N2
+    N1 --> N0
+    N2 ==> N1

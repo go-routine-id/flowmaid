@@ -1,0 +1,9 @@
+flowchart BT
+    subgraph S[Service]
+        p
+        subgraph N[Inner]
+            q
+        end
+    end
+    S --> S
+

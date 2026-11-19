@@ -1,0 +1,17 @@
+classDiagram
+direction RL
+A -- B
+A ..> C
+A --> C
+C ..> C : c0
+C o-- C : c1
+C ..> C
+C o-- C : c3
+C ..> C
+A o-- A : a0
+B o-- B : b0
+class B {
+ +int id
+ +run() void
+ +stop()
+}

@@ -1,0 +1,16 @@
+classDiagram
+    direction LR
+    <<interface>> Shape
+    Shape : +area() double
+    Shape <|.. Circle
+    Shape <|.. Square
+    class Circle {
+        +double radius
+        +area()$ double
+    }
+    class Square~T~ {
+        +List~T~ sides
+        +area()* double
+    }
+    Square : +corner(int i) Point
+    Circle "1" --> "*" Point : centre

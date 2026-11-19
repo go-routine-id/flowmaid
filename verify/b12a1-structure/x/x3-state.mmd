@@ -1,0 +1,27 @@
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> Running: start
+    state Running {
+        [*] --> Fetch
+        Fetch --> Parse: ok
+        Parse --> Store
+        Store --> Fetch: more
+        Fetch --> Retry: timeout
+        Retry --> Fetch
+    }
+    state Review {
+        [*] --> Queue
+        Queue --> Check
+        Check --> Approve
+        Check --> Reject
+    }
+    Running --> Review: batch done
+    Review --> Running: rejected
+    Review --> Done: approved
+    Running --> Failed: fatal
+    Failed --> Idle: reset
+    Done --> [*]
+    note right of Review
+        manual step
+    end note
+    note left of Running: polls every 5 s

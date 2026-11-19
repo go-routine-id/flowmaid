@@ -1,0 +1,11 @@
+flowchart RL
+    subgraph G[Core]
+        m0[db]
+        m1[db]
+        m0 --> m1
+    end
+    s0[src0] --> m1
+    s1[src1] --> G
+    s1 --> m0
+    m1 --> z[end]
+    G --> z2[after]

@@ -1,0 +1,21 @@
+flowchart RL
+    N0([Done])
+    N1(Load)
+    N2(Check archive)
+    N3(Notify archive)
+    N4{Emit done}
+    N5(Queue validate)
+    N6[Report]
+    N7(Parse)
+    N0 --> N1
+    N1 --> N2
+    N0 --> N3
+    N2 --> N4
+    N3 --> N5
+    N4 -->|ok| N6
+    N6 --> N7
+    N0 --> N7
+    N1 --> N5
+    N3 --> N5
+    N2 ==> N0
+    N7 ==>|again| N3

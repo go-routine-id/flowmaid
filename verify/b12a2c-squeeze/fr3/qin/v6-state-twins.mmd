@@ -1,0 +1,17 @@
+stateDiagram-v2
+    state "Order processing" as A {
+        a1 : a1 wide state
+        a2 : a2
+        [*] --> a1
+    }
+    state "Order processing two" as B {
+        b1 : b1
+        b2 : b2 wide state
+    }
+    a1 --> b1
+    a2 --> b2
+    a1 --> b2
+    P --> A
+    P --> a2
+    Q --> B
+    Q --> b1

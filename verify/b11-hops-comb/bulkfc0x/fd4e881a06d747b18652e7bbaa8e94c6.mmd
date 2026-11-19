@@ -1,0 +1,29 @@
+flowchart RL
+  n0[Node 0]
+  n1[Node 1]
+  n2[Node 2]
+  n3[Node 3]
+  n4[Node 4]
+  n5[Node 5]
+  n6[Node 6]
+  n4 e0@--> n1
+  e0@{ curve: stepAfter }
+  n1 e1@--> n6
+  e1@{ curve: stepBefore }
+  n5 e2@==> n3
+  e2@{ curve: natural }
+  n0 e3@<--> n4
+  e3@{ curve: stepAfter }
+  n3 e4@==> n5
+  e4@{ curve: natural }
+  n1 e5@<--> n6
+  e5@{ curve: linear }
+  n6 e6@--> n5
+  e6@{ curve: stepAfter }
+  n3 e7@--> n5
+  e7@{ curve: natural }
+  n2 e8@==> n0
+  e8@{ curve: natural }
+  n5 e9@--> n6
+  e9@{ curve: linear }
+  linkStyle default stroke-width:6px

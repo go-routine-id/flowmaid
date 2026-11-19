@@ -1,0 +1,26 @@
+== fmt
+== clippy
+FAILED: cargo clippy --all-targets -- -D warnings
+    Checking flowmaid v0.40.0 (/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/rel0401/wt)
+error: very complex type used. Consider factoring parts into `type` definitions
+  --> tests/fallible_route.rs:65:30
+   |
+65 | fn laid_out(d: &Document) -> Option<(Vec<(f64, f64)>, Vec<usize>)> {
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#type_complexity
+   = note: `-D clippy::type-complexity` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::type_complexity)]`
+
+error: could not compile `flowmaid` (test "fallible_route") due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+== test
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+== doctest
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.46s
+== msrv
+    Finished dev [unoptimized + debuginfo] target(s) in 19.49s
+== wasm
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 9.27s
+== rustdoc
+GUARD: FAILURES

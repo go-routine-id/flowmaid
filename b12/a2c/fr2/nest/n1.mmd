@@ -1,0 +1,11 @@
+flowchart TD
+  s[Start] --> a1
+  t[Other start] --> b1
+  subgraph P[Parent block]
+    subgraph A[Short first row]
+      a1[a] --> a2["a tall<br/>last<br/>member<br/>node"]
+    end
+    subgraph B[Tall first row]
+      b1["b tall<br/>first<br/>member<br/>node"] --> b2[b]
+    end
+  end

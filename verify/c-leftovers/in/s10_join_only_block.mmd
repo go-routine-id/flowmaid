@@ -1,0 +1,13 @@
+stateDiagram-v2
+  direction LR
+  A --> P
+  B --> Q
+  state P {
+    direction TB
+    p1 --> p2
+    p2 --> p3
+  }
+  state j <<join>>
+  P --> j : ok
+  Q --> j
+  j --> Z

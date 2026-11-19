@@ -1,0 +1,36 @@
+flowchart TD
+    user([Customer])
+    subgraph edge[Edge]
+        waf[WAF]
+        lb[Load balancer]
+    end
+    subgraph core[Core platform]
+        api[API]
+        subgraph jobs[Job runners]
+            q[[queue]]
+            w1[worker one]
+            w2[worker two]
+        end
+        subgraph store[Storage]
+            db[(database)]
+            blob[(blobs)]
+        end
+    end
+    subgraph ops[Operations]
+        mon[monitor]
+        pager[pager]
+    end
+    user -->|https| waf --> lb
+    lb -->|route| api
+    api --> q
+    q --> w1 & w2
+    w1 -->|write| db
+    w2 -->|upload| blob
+    db -.->|replay| q
+    api -->|read| db
+    mon -.->|scrape| api
+    mon -.->|scrape| jobs
+    w2 -->|failed job| pager
+    pager -->|ack| mon
+    store -->|backup report| ops
+    blob -->|purge| waf

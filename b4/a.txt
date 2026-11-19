@@ -1,0 +1,8 @@
+edge A->B label Some("request with a very long descriptive label") (270.8,53.8) w=268.3
+edge B->C label Some("forwarded after authentication and rate limiting") (702.7,48.9) w=304.3
+edge B->A label Some("cached response served without hitting the backend") (293.3,90.2) w=337.6
+edge C->D label Some("query by primary key") (1606.2,122.0) w=144.5
+edge C->E label Some("publish domain event to the topic") (1032.3,49.4) w=220.2
+edge E->F label Some("consumed asynchronously by the worker pool") (1412.1,38.0) w=299.1
+edge F->D label Some("writes the projection") (1726.4,40.1) w=139.6
+edge A->C label Some("health probe") (488.7,122.0) w=92.3

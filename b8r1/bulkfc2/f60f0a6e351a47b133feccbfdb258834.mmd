@@ -1,0 +1,14 @@
+flowchart RL
+    N0{{Report}}
+    N1[Archive]
+    N2[Validate]
+    N3{Report check}
+    N4{Validate done}
+    N5[Fetch]
+    N0 --> N1
+    N1 --> N2
+    N2 -->|next| N3
+    N3 --> N4
+    N3 --> N5
+    N2 --> N3
+    N2 --> N1

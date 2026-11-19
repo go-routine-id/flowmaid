@@ -1,0 +1,6 @@
+architecture-beta
+  service a(server)[A]
+  junction j
+  service b(server)[B]
+  a:R -- L:j
+  j:R -- L:b

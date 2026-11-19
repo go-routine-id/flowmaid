@@ -1,0 +1,27 @@
+flowchart TD
+    subgraph S1[Ingest services]
+        i1[collector] --> i2[parser]
+        i1 --> i3[validator]
+    end
+    subgraph S2[Storage tier]
+        d1[(orders db)]
+        d2[(events db)]
+        d3[cache]
+    end
+    subgraph S3[Reporting]
+        r1[report builder]
+        r2[exporter]
+    end
+    src[upstream] --> S2
+    src --> i1
+    i2 --> d1
+    i3 --> d2
+    i2 --> d2
+    i3 --> d1
+    mon[monitor] --> S1
+    mon --> r2
+    d1 --> r1
+    d2 --> r1
+    d3 --> r2
+    i1 --> d3
+    r1 -.-> i1

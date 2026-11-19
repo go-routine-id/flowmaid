@@ -1,0 +1,15 @@
+stateDiagram-v2
+direction BT
+state f <<fork>>
+state j <<join>>
+[*] --> f
+f --> X
+f --> Y
+f --> Z
+X --> j
+Y --> j
+Z --> j
+j --> [*]
+note right of f : forking
+note left of j : joining
+note right of Y : y note

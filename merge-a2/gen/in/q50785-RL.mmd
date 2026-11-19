@@ -1,0 +1,23 @@
+flowchart RL
+    subgraph G0[Core 0]
+        g0m0[g0m0]
+        g0m1[g0m1]
+        g0m2[g0m2]
+        g0m3[g0m3]
+    end
+    subgraph G1[Payments 1]
+        g1m0[g1m0]
+        g1m1[g1m1]
+    end
+    subgraph G2[Ops 2]
+        g2m0[g2m0]
+        g2m1[g2m1]
+        g2m2[g2m2]
+        g2m3[g2m3]
+    end
+    o1 --> g2m3
+    g2m3 --> o1
+    o0 -.-> g2m3
+    g2m1 -- l4 --> g2m0
+    o0 -.-> g2m0
+    g1m0 ==> g2m1

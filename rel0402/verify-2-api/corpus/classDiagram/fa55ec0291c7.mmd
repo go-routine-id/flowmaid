@@ -1,0 +1,12 @@
+classDiagram
+direction TB
+A <|-- B
+A *-- C : owns
+B "1" o-- "*" D : has many of
+B --|> E
+A *-- A : a0
+A ..> A
+A --> A
+D *-- D
+D ..> D : d1
+D *-- D : d2

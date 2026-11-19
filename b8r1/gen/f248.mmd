@@ -1,0 +1,59 @@
+flowchart TB
+  n0["labore sit<br/>sed nostrud labore"]
+  subgraph g0["dolor ut ullamco sit sed laboris magna"]
+    direction LR
+    n1(["sed labore nostrud"])
+    n2(["veniam ullamco ullamco<br/>labore adipiscing<br/>nostrud ut ut lorem"])
+    n3["adipiscing ipsum veniam laboris"]
+    n4["laboris veniam<br/>sed tempor dolor"]
+    n5(["consectetur ut lorem consectetur"])
+    n6["ullamco"]
+    n1 --> n2
+  end
+  subgraph g1["amet labore"]
+    n7("sit eiusmod aliqua<br/>nostrud<br/>lorem ut")
+    n8("incididunt elit incididunt sit")
+    n9[("ipsum<br/>tempor veniam elit<br/>do laboris incididunt sit")]
+    n10("sit tempor tempor<br/>consectetur labore elit adipiscing<br/>lorem ipsum sit")
+    n11[("eiusmod labore incididunt<br/>labore")]
+  end
+  subgraph g2["magna lorem labore consectetur sed do"]
+    direction LR
+    n12[("aliqua adipiscing eiusmod consectetur<br/>aliqua")]
+    n13["ipsum nostrud veniam<br/>sit ullamco<br/>laboris"]
+    n14("veniam tempor<br/>nostrud lorem laboris incididunt")
+  end
+  subgraph g3["lorem adipiscing elit lorem eiusmod"]
+    direction LR
+    n15[("magna laboris tempor<br/>ullamco laboris")]
+  end
+  subgraph g4["incididunt do laboris lorem"]
+    direction TB
+    n16[("do<br/>ullamco sed")]
+    n17[("incididunt aliqua<br/>eiusmod do labore")]
+    n18["consectetur<br/>magna sit veniam"]
+    n19[("sed<br/>labore adipiscing<br/>labore sed elit")]
+  end
+  subgraph g5["aliqua magna nostrud magna"]
+    direction LR
+    n20(["sit eiusmod magna eiusmod<br/>tempor nostrud ipsum<br/>lorem"])
+    n21["incididunt"]
+    n22[("sit")]
+    n23["nostrud<br/>laboris elit amet labore<br/>eiusmod sit eiusmod ut"]
+  end
+  subgraph g6["amet do consectetur labore eiusmod nostrud elit labore"]
+    direction TB
+    n24("amet ipsum dolor ipsum")
+    n25["elit<br/>incididunt sed ut dolor<br/>aliqua incididunt amet elit"]
+    n26["labore eiusmod<br/>sed magna<br/>ipsum eiusmod"]
+    n27(["labore ut magna"])
+    n28("do eiusmod incididunt<br/>amet labore")
+  end
+  n0 --> g0
+  n0 --> g1
+  n0 --> g2
+  n0 --> g3
+  n0 ==> g4
+  n0 -.-> g5
+  n0 -.-> g6
+  n24 --> n6

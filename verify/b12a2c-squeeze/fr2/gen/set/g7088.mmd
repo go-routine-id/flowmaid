@@ -1,0 +1,20 @@
+flowchart RL
+  n1["queue ingest cache<br/>ingest"]
+  n2["index<br/>mail"]
+  subgraph B0["Ingest"]
+    n3["billing"]
+    n4["index"]
+    n5["store"]
+  end
+  subgraph B1["Ingest"]
+    n6["api"]
+  end
+  n7["ship report worker"]
+  n8["parse"]
+  n7 -.->|cache| n6
+  n5 --> B0
+  n4 --> n3
+  n2 --> n7
+  n7 --> n3
+  n6 ==> n5
+  n6 --> n3

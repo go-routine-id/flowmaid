@@ -1,0 +1,22 @@
+flowchart BT
+    subgraph G0[Payments 0]
+        subgraph H0[inner 0]
+            g0m0[g0m0]
+            g0m1[g0m1]
+        end
+    end
+    subgraph G1[Data ingestion workers 1]
+        g1m0[g1m0]
+        g1m1[g1m1]
+    end
+    g0m0 ==> o1
+    G0 -- l8 --> o0
+    o3 -.-> G0
+    g0m0 -- l1 --> o0
+    g1m0 -.-> g0m1
+    o0 ==> o3
+    g1m1 --> o3
+    o3 --> g1m1
+    g1m1 --> g1m0
+    g1m0 -- l5 --> o0
+    o2 -- l4 --> G0

@@ -1,0 +1,47 @@
+erDiagram
+E3 ||--o{ E1 : r0
+E2 ||--|| E11 : r1
+E0 ||--o{ E4 : r2
+E5 }|..|{ E4 : has
+E4 }o--o{ E9 : has
+E7 }|..|{ E10 : r5
+E11 ||--o{ E7 : has
+E10 ||--|{ E6 : r7
+E4 }o--o{ E4 : "two words"
+E9 ||--|| E6 : "two words"
+E11 ||--o{ E7 : "two words"
+E8 ||--|| E11 : r11
+E3 }|..|{ E5 : "two words"
+E12 ||--|| E10 : r13
+E2 ||--|| E12 : r14
+E7 |o--|| E9 : has
+E11 }|..|{ E2 : "two words"
+E7 }|..|{ E6 : "two words"
+E12 }|..|{ E1 : "two words"
+E8 ||--|{ E9 : "two words"
+E11 }|..|{ E11 : "two words"
+E5 |o--|| E2 : r21
+E5 ||--o{ E9 : r22
+E1 |o--|| E11 : "two words"
+E8 ||--|| E5 : has
+E8 ||--|| E3 : has
+E2 ||--|{ E6 : r26
+E12 ||--|{ E4 : "two words"
+E0 }o--o{ E7 : has
+E8 }o--o{ E5 : has
+E0 {
+  int id PK
+  string name "comment"
+}
+E2 {
+  int id PK
+  string name "comment"
+}
+E4 {
+  int id PK
+  string name "comment"
+}
+E5 {
+  int id PK
+  string name "comment"
+}

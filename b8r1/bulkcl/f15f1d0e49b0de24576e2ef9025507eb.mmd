@@ -1,0 +1,9 @@
+classDiagram
+    direction TB
+    Hub "1" --> "*" Hub : peers
+    Hub "1" --> "1" Hub : backup
+    Hub "*" --> "1" Hub : uplink
+    SpokeA --> Hub : joins
+    SpokeB --> Hub : joins
+    SpokeC --> Hub : joins
+    Hub <|-- SubHub

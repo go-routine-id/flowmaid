@@ -1,0 +1,220 @@
+routed: n12->n16 band n12->n43 708px
+routed: n12->n16 edge_frame g4
+routed: n12->n16 end_kink end on n16 44.9deg
+routed: n12->n16 idiom scubic
+routed: n12->n16 overlap n12->n43 154px
+routed: n12->n16 tight n12->n43 722px
+routed: n12->n17 band n12->n16 602px
+routed: n12->n17 band n12->n43 390px
+routed: n12->n17 end_cross n12->n43 at (892,1324)
+routed: n12->n17 end_kink end on n17 39.1deg
+routed: n12->n17 idiom scubic
+routed: n12->n22 end_cross n6->n22 at (1102,1830)
+routed: n12->n22 end_kink end on n22 35.3deg
+routed: n12->n22 idiom scubic
+routed: n12->n26 band n12->n36 272px
+routed: n12->n26 end_kink end on n26 52.5deg
+routed: n12->n26 idiom scubic
+routed: n12->n26 overlap n12->n36 84px
+routed: n12->n26 tight n12->n36 120px
+routed: n12->n27 ortho
+routed: n12->n30 band n12->n27 722px
+routed: n12->n30 ortho
+routed: n12->n33 band n12->n26 162px
+routed: n12->n33 band n12->n36 1282px
+routed: n12->n33 band n12->n38 1012px
+routed: n12->n33 border g1 right 59px
+routed: n12->n33 border g2 right 44px
+routed: n12->n33 edge_frame g6
+routed: n12->n33 edge_frame g7
+routed: n12->n33 end_cross n12->n26 at (870,1365)
+routed: n12->n33 end_kink end on n33 63.3deg
+routed: n12->n33 hug g1 103px
+routed: n12->n33 hug g2 40px
+routed: n12->n33 idiom scubic
+routed: n12->n33 overlap n12->n38 328px
+routed: n12->n33 tight n12->n36 974px
+routed: n12->n33 tight n12->n38 1166px
+routed: n12->n36 border g1 right 47px
+routed: n12->n36 edge_frame g6
+routed: n12->n36 edge_frame g7
+routed: n12->n36 end_kink end on n36 63.3deg
+routed: n12->n36 hug g1 48px
+routed: n12->n36 idiom scubic
+routed: n12->n38 band n12->n36 1208px
+routed: n12->n38 border g1 right 68px
+routed: n12->n38 border g2 right 55px
+routed: n12->n38 edge_frame g6
+routed: n12->n38 edge_frame g7
+routed: n12->n38 end_kink end on n38 60.3deg
+routed: n12->n38 hug g1 117px
+routed: n12->n38 hug g2 81px
+routed: n12->n38 idiom scubic
+routed: n12->n43 edge_frame g3
+routed: n12->n43 edge_frame g4
+routed: n12->n43 end_kink end on n43 67.4deg
+routed: n12->n43 idiom spline
+routed: n12->n43 lat_wiggle 4.0
+routed: n12->n44 band n43->n44 218px
+routed: n12->n44 ortho
+routed: n12->n46 hug g11 31px
+routed: n12->n46 idiom spline
+routed: n15->n12 end_kink end on n12 61.1deg
+routed: n15->n12 idiom scubic
+routed: n16->n42 idiom scubic
+routed: n17->n47 idiom spline
+routed: n18->n19 end_kink end on n19 47.2deg
+routed: n18->n19 idiom scubic
+routed: n18->n45 ortho
+routed: n21->n47 band n26->n47 448px
+routed: n21->n47 edge_frame g6
+routed: n21->n47 edge_frame g7
+routed: n21->n47 ortho
+routed: n21->n47 overlap n26->n47 140px
+routed: n21->n47 tight n26->n47 244px
+routed: n22->n44 ortho
+routed: n26->n47 border g5 right 69px
+routed: n26->n47 hug g11 53px
+routed: n26->n47 hug g5 116px
+routed: n26->n47 hug g6 34px
+routed: n26->n47 idiom spline
+routed: n28->n12 ortho
+routed: n36->n45 band n21->n47 566px
+routed: n36->n45 band n26->n47 740px
+routed: n36->n45 border g11 left 76px
+routed: n36->n45 border g5 right 93px
+routed: n36->n45 end_kink end on n45 79.2deg
+routed: n36->n45 hug g11 91px
+routed: n36->n45 hug g5 164px
+routed: n36->n45 idiom spline
+routed: n36->n45 overlap n21->n47 182px
+routed: n36->n45 tight n21->n47 328px
+routed: n42->n44 end_kink end on n44 65.4deg
+routed: n42->n44 idiom scubic
+routed: n42->n49 idiom scubic
+routed: n43->n44 idiom scubic
+routed: n43->n48 band n43->n44 152px
+routed: n43->n48 ortho
+routed: n44->n48 border g10 right 40px
+routed: n44->n48 end_kink end on n48 71.8deg
+routed: n44->n48 hug g10 45px
+routed: n44->n48 idiom scubic
+routed: n45->n46 end_kink end on n46 31.5deg
+routed: n45->n46 idiom scubic
+routed: n46->n49 idiom scubic
+routed: n47->n48 idiom scubic
+routed: n50->n13 end_kink end on n13 49.7deg
+routed: n50->n13 idiom scubic
+routed: n51->g4 end_kink end on g4 63.7deg
+routed: n51->g4 idiom scubic
+routed: n51->n5 band n52->n6 536px
+routed: n51->n5 edge_frame g3
+routed: n51->n5 end_kink end on n5 75.2deg
+routed: n51->n5 idiom scubic
+routed: n51->n5 tight n52->n6 240px
+routed: n52->g10 idiom scubic
+routed: n52->n6 band n51->g4 120px
+routed: n52->n6 edge_frame g3
+routed: n52->n6 end_kink end on n6 62.4deg
+routed: n52->n6 idiom scubic
+routed: n52->n6 overlap n51->g4 36px
+routed: n52->n6 tight n51->g4 52px
+routed: n6->n22 ortho
+routed: n8->n11 end_kink end on n11 65.2deg
+routed: n8->n11 idiom scubic
+routed: n8->n12 ortho
+static: n12->n16 band n6->n22 118px
+static: n12->n16 edge_frame g4
+static: n12->n16 ortho
+static: n12->n17 band n12->n44 232px
+static: n12->n17 ortho
+static: n12->n17 tight n12->n44 230px
+static: n12->n22 end_kink end on n22 15.7deg
+static: n12->n22 idiom scubic
+static: n12->n26 band n12->n36 310px
+static: n12->n26 end_kink end on n26 45.6deg
+static: n12->n26 idiom scubic
+static: n12->n26 overlap n12->n36 92px
+static: n12->n26 tight n12->n36 132px
+static: n12->n27 ortho
+static: n12->n30 band n12->n27 304px
+static: n12->n30 ortho
+static: n12->n33 band n6->n22 432px
+static: n12->n33 edge_frame g6
+static: n12->n33 edge_frame g7
+static: n12->n33 end_cross n12->n26 at (865,1364)
+static: n12->n33 end_cross n12->n38 at (865,1372)
+static: n12->n33 ortho
+static: n12->n36 border g1 right 41px
+static: n12->n36 edge_frame g6
+static: n12->n36 edge_frame g7
+static: n12->n36 end_kink end on n36 60.7deg
+static: n12->n36 hug g1 34px
+static: n12->n36 idiom scubic
+static: n12->n38 band n12->n36 1210px
+static: n12->n38 border g1 right 62px
+static: n12->n38 border g2 right 49px
+static: n12->n38 edge_frame g6
+static: n12->n38 edge_frame g7
+static: n12->n38 end_kink end on n38 57.6deg
+static: n12->n38 hug g1 109px
+static: n12->n38 hug g2 63px
+static: n12->n38 idiom scubic
+static: n12->n38 tight n12->n36 140px
+static: n12->n43 edge_frame g3
+static: n12->n43 edge_frame g4
+static: n12->n43 end_kink end on n43 42.5deg
+static: n12->n43 idiom scubic
+static: n12->n44 ortho
+static: n12->n44 overlap n43->n44 100px
+static: n12->n44 tight n43->n44 82px
+static: n12->n46 end_cross n12->n43 at (892,1298)
+static: n12->n46 idiom spline
+static: n15->n12 end_kink end on n12 70.2deg
+static: n15->n12 idiom scubic
+static: n16->n42 idiom scubic
+static: n17->n47 idiom scubic
+static: n18->n19 end_kink end on n19 41.3deg
+static: n18->n19 idiom scubic
+static: n18->n45 ortho
+static: n21->n47 ortho
+static: n22->n44 band n26->n47 842px
+static: n22->n44 ortho
+static: n26->n47 ortho
+static: n28->n12 end_kink end on n12 83.4deg
+static: n28->n12 ortho
+static: n36->n45 ortho
+static: n42->n44 end_kink end on n44 43.5deg
+static: n42->n44 idiom scubic
+static: n42->n49 idiom spline
+static: n43->n44 idiom spline
+static: n43->n48 ortho
+static: n44->n48 end_kink end on n48 68.5deg
+static: n44->n48 hug g10 41px
+static: n44->n48 idiom scubic
+static: n45->n46 end_kink end on n46 14.7deg
+static: n45->n46 idiom scubic
+static: n46->n49 idiom scubic
+static: n47->n48 idiom spline
+static: n50->n13 end_kink end on n13 43.1deg
+static: n50->n13 idiom scubic
+static: n51->g4 end_kink end on g4 68.2deg
+static: n51->g4 idiom scubic
+static: n51->n5 band n51->g4 232px
+static: n51->n5 band n52->n6 544px
+static: n51->n5 edge_frame g3
+static: n51->n5 end_kink end on n5 72.2deg
+static: n51->n5 idiom scubic
+static: n51->n5 tight n51->g4 48px
+static: n51->n5 tight n52->n6 268px
+static: n52->g10 ortho
+static: n52->n6 band n51->g4 142px
+static: n52->n6 edge_frame g3
+static: n52->n6 end_kink end on n6 71.9deg
+static: n52->n6 idiom scubic
+static: n52->n6 overlap n51->g4 140px
+static: n52->n6 tight n51->g4 194px
+static: n6->n22 ortho
+static: n8->n11 end_kink end on n11 59.7deg
+static: n8->n11 idiom scubic
+static: n8->n12 idiom spline

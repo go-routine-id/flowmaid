@@ -1,0 +1,12 @@
+sequenceDiagram
+participant P0 as alpha
+actor P1 as a&b
+participant P2 as Customer Order
+actor P3 as 日本語
+P1-->>P2: gamma
+activate P1
+P1->>P3: act
+deactivate P1
+P0-->>P0: <b>bold</b>
+P3-)P2: 日本語
+P3->>P3: self x

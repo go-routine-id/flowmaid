@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="355" height="704" viewBox="0 0 355 704" font-family="Helvetica, Arial, sans-serif" font-size="14" role="img" aria-label="State diagram">
+<title>State diagram</title>
+<rect width="355" height="704" fill="#ffffff"/>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 1 L 9 5 L 0 9 z" fill="#44507a"/></marker></defs>
+<rect x="43.3" y="156.0" width="94.3" height="368.0" rx="8" fill="#f7f8fd" stroke="#c9cfe8" stroke-width="1.4"/>
+<path d="M 173.4 42.0 C 173.4 72.0, 173.4 72.0, 173.4 102.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>start → f</title></path>
+<path d="M 181.9 110.0 C 181.9 147.0, 181.9 147.0, 181.9 184.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>f → Audit</title></path>
+<path d="M 90.4 210.0 C 90.4 253.0, 90.4 253.0, 90.4 296.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>start → step1</title></path>
+<path d="M 90.4 334.0 C 90.4 364.0, 90.4 364.0, 90.4 394.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>step1 → step2</title></path>
+<path d="M 90.4 432.0 C 90.4 462.0, 90.4 462.0, 90.4 492.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>step2 → end</title></path>
+<path d="M 181.9 222.0 L 181.9 237.5 C 181.9 253.0, 181.9 284.0, 181.9 315.8 C 181.9 347.7, 181.9 380.3, 181.9 411.3 C 181.9 442.3, 181.9 471.7, 181.9 497.8 C 181.9 524.0, 181.9 547.0, 181.9 558.5 L 181.9 570.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>Audit → j</title></path>
+<path d="M 136.2 578.0 C 136.2 608.0, 160.4 608.0, 160.4 638.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>j → Done</title></path>
+<path d="M 298.7 110.0 C 298.7 147.0, 298.7 147.0, 298.7 184.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>f → Log: side</title></path>
+<path d="M 298.7 222.0 L 298.7 237.5 C 298.7 253.0, 298.7 284.0, 298.7 315.8 C 298.7 347.7, 298.7 380.3, 298.7 411.3 C 298.7 442.3, 298.7 471.7, 298.7 498.5 C 298.7 525.3, 298.7 549.7, 281.3 572.5 C 263.8 595.3, 228.9 616.7, 211.5 627.3 L 194.0 638.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>Log → Done</title></path>
+<path d="M 90.4 110.0 C 90.4 133.0, 91.3 133.0, 91.3 156.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>f → Work</title></path>
+<path d="M 90.4 524.0 C 90.4 547.0, 90.4 547.0, 90.4 570.0" fill="none" stroke="#44507a" stroke-width="1.7" marker-end="url(#arrow)"><title>Work → j</title></path>
+<g><title>f</title>
+<rect x="28.0" y="102.0" width="290.9" height="8.0" rx="3" fill="#44507a" stroke="#44507a" stroke-width="1.6"/>
+<text x="173.4" y="106.0" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<g><title>j</title>
+<rect x="55.4" y="570.0" width="161.4" height="8.0" rx="3" fill="#44507a" stroke="#44507a" stroke-width="1.6"/>
+<text x="136.2" y="574.0" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<g><title>start</title>
+<circle cx="173.4" cy="35.0" r="7.0" fill="#44507a" stroke="#44507a" stroke-width="1.6"/>
+<text x="173.4" y="35.0" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<g><title>Audit</title>
+<rect x="149.6" y="184.0" width="64.6" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="181.9" y="203.0" dy="0.33em" text-anchor="middle" fill="#232840">Audit</text>
+</g>
+<g><title>start</title>
+<circle cx="90.4" cy="203.0" r="7.0" fill="#44507a" stroke="#44507a" stroke-width="1.6"/>
+<text x="90.4" y="203.0" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<g><title>step1</title>
+<rect x="57.3" y="296.0" width="66.3" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="90.4" y="315.0" dy="0.33em" text-anchor="middle" fill="#232840">step1</text>
+</g>
+<g><title>step2</title>
+<rect x="57.3" y="394.0" width="66.3" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="90.4" y="413.0" dy="0.33em" text-anchor="middle" fill="#232840">step2</text>
+</g>
+<g><title>end</title>
+<circle cx="90.4" cy="501.0" r="9.0" fill="#ffffff" stroke="#44507a" stroke-width="1.6"/>
+<circle cx="90.4" cy="501.0" r="5.0" fill="#44507a" stroke="#44507a" stroke-width="1.6"/>
+<text x="90.4" y="501.0" dy="0.33em" text-anchor="middle" fill="#232840"></text>
+</g>
+<g><title>Done</title>
+<rect x="140.9" y="638.0" width="65.1" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="173.4" y="657.0" dy="0.33em" text-anchor="middle" fill="#232840">Done</text>
+</g>
+<g><title>Log</title>
+<rect x="270.1" y="184.0" width="57.3" height="38.0" rx="9.0" fill="#e4f5f4" stroke="#199a8e" stroke-width="1.6"/>
+<text x="298.7" y="203.0" dy="0.33em" text-anchor="middle" fill="#232840">Log</text>
+</g>
+<rect x="278.7" y="137.0" width="40.0" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="298.7" y="147.0" dy="0.33em" text-anchor="middle" fill="#232840">side</text>
+<rect x="49.3" y="161.0" width="36.0" height="16" rx="4" fill="#f7f8fd" fill-opacity="0.9"/>
+<text x="53.3" y="173.0" font-size="12" font-weight="bold" fill="#6a7086">Work</text>
+</svg>

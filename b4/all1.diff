@@ -1,0 +1,757 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 9f2e5a7..fbe6b92 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -110,6 +110,14 @@ Minor, not patch: several class structs gain public fields (see
+   values (`DEFECT_BASELINE`, `INK_MEAN_MIN`), to be lowered as the
+   defects are fixed. No rendering change.
+ 
++- **`classDef default …` styles every flowchart node**, as in mermaid
++  (report Q9). It used to be an ordinary class nobody carried, so the
++  standard way to give a diagram a neutral look did nothing. It is now the
++  bottom layer of every node's style: a node's own classes (`class`,
++  `:::`) and `style` lines still win property by property, as mermaid
++  compiles `default`, then the node's classes. A borderless shape (`text`,
++  braces) takes only its text colour and keeps no box.
++
+ ### Changed
+ 
+ - **Back-edges run in orthogonal lanes, as in mermaid** (report §2.2,
+@@ -467,6 +475,25 @@ Minor, not patch: several class structs gain public fields (see
+ - **Tooltips for choices and bars name the state.** A `<<choice>>` now has
+   a `<title>` (its id, where it had none), and fork/join bars are titled by
+   id (`forked`, `joined`) instead of "fork/join".
++- **Dotted edges read as dotted** (report Q9). `-.->` and `-.-` were drawn
++  with `5 4` dashes, which read as dashed; they are now dots one stroke
++  long a stroke and a half apart — `stroke-dasharray="2 3"` at the 2 px
++  edge (mermaid draws `2 2`). The pattern scales with the stroke, so a
++  `linkStyle … stroke-width:4px` dotted edge keeps the look (`4 6`) instead
++  of turning into stripes; a `linkStyle` / `classDef` `stroke-dasharray`
++  still wins. The advance writer draws the same dots.
++- **Sibling edge labels keep 20 px apart** (report Q14). The labels of
++  edges out of one node (or into one) whose other ends sit side by side —
++  a decision's `valid` / `invalid` — could sit 4 px apart and read as one
++  phrase ("valid invalid"). The label stage now keeps such siblings
++  20 px apart, side by side or stacked, as a `<<choice>>`'s fan already
++  kept them, in
++  `scene()`, `route()` and `route_partial()` alike, sliding a label along
++  its line or stepping it just beside it as for any other obstacle; the
++  layout is unchanged. A `<<choice>>`'s fan keeps its own rows, and in a
++  busy hub this ranks with the other soft obstacles (a label still never
++  covers a node, a head or another label to get it), so a dozen labels
++  out of one node can still sit closer.
+ - **Breaking** (needs a **minor** bump). Nothing public is removed or
+   renamed, and every function keeps its signature. What breaks, and how to
+   migrate:
+@@ -682,6 +709,14 @@ Minor, not patch: several class structs gain public fields (see
+   sizes tags, which are a size smaller. `pie::slice_color` matches
+   `style::accent(i)` for slices 0–7 and again for 16–23, not only for the
+   first eight as its doc (and the 0.33.0 notes) said.
++- **A 2-cycle no longer pulls its node off the middle of its fan** (report
++  Q8). With the return edge written first (`CACHE --> SVC` before
++  `SVC --> CACHE`), the pair was linked twice in Brandes-Köpf's neighbour
++  lists, so the median landed on it and `lr`'s Service Layer sat level with
++  Redis Cache instead of centred on Database / Redis. A 2-cycle now counts
++  once whichever edge comes first, so either order draws the same
++  symmetric fans. Parallel forward edges still count once each: a twin
++  pair runs straight down its own column, as its curves are drawn for.
+ 
+ ## [0.33.0] - 2026-10-31
+ 
+diff --git a/README.md b/README.md
+index 52db79b..2be51c9 100644
+--- a/README.md
++++ b/README.md
+@@ -123,7 +123,7 @@ Accessibility statements follow mermaid: `accTitle: text` replaces the SVG's acc
+ 
+ Node shapes: `A[text]` rectangle, `A(text)` rounded, `A([text])` stadium, `A{text}` diamond, `A((text))` circle, `A(((text)))` double circle, `A[(text)]` cylinder (database), `A[[text]]` subroutine, `A{{text}}` hexagon, `A[/text/]` and `A[\text\]` parallelograms; the trapezoids `A[/text\]` and `A[\text/]` and the asymmetric `A>text]` parse too and draw as the same nearest look-alikes as their `@{ shape: … }` names below. Mermaid v11 node metadata works too: `A@{ shape: cyl, label: "DB" }`, glued after the id (and after any bracket shape or `:::class`, which it overrides), on one line or spread over several (YAML block form, `label: |` / `label: >` block scalars read like js-yaml — a folded line indented past the rest keeps its own line, and a line indented less than the first is an error — a quoted value broken across lines becomes a line break). Every name in mermaid's shape registry is accepted: `rect`, `rounded`, `stadium`, `fr-rect`, `cyl`, `circle`, `dbl-circ`, `diam`, `hex`, `lean-r`, `lean-l`, `sm-circ`, `fr-circ`, `fork`, `f-circ` and their aliases draw their exact flowmaid shape; names flowmaid has no geometry for yet (`doc`, `trap-b`, `cloud`, `delay`, `tri`, …) draw the nearest look-alike, and `text` / braces / `bolt` draw without a box. An unknown name, or one with uppercase or `_`, fails with mermaid's own "No such shape" message. As in mermaid 12, a metadata `label` is markdown — `A@{ label: "**b** _i_" }` is bold and italic and wraps like a ``"`…`"`` label — unless `labelType: string` or `labelType: text` keeps it plain. `icon`, `img`, `form`, `pos`, `w`, `h` and `constraint` are accepted but not drawn (an icon/image node keeps its id as its label). The block ends at its first `}`, as in mermaid's lexer, so a nested `{…}` value is an error — quote it. Labels may be quoted to protect special characters (`A["odd [text]"]`) and use `<br/>` for line breaks. Markdown strings work as in mermaid: a label written as ``"`…`"`` (a quote directly followed by a backtick) takes `**bold**` / `__bold__`, `*italic*` / `_italic_` (CommonMark's flanking rules, so `snake_case` and `2 * 3` stay plain) and backslash escapes, and may span several lines; a newline is a line break (its indentation dropped), blank lines count once, and `<br/>` still breaks. Other markdown (headings, lists, links, code, strikethrough) shows as written, which is what mermaid's default HTML labels do. Node labels wrap at mermaid 11's 200px markdown width (175px at flowmaid's 14px text; an over-long word is not split); edge labels and subgraph titles are styled but stay on one line. A bare ``subgraph "`**Two**`"`` takes the markdown text as its id, like mermaid. A raw backtick or `"` inside the string is a line-numbered error (write `#96;` / `#quot;`), and ``"``"`` is an empty label (mermaid rejects it). Entity codes in the text never act as markdown (`#42;` is a literal `*`). Labels are lowered to flowmaid's `<b>` / `<i>` / newline markup at parse time, so the wrap uses the built-in width estimate even when an embedder supplies real font metrics. Mermaid entity codes are decoded in every label position (`#quot;` → `"`, decimal `#65;` → `A`) — since v0.20.0, matching mermaid.js; control characters are refused.
+ 
+-Edges: `-->` arrow, `---` open line, `-.->` dotted, `-.-` dotted open, `==>` thick, `===` thick open, and `~~~` invisible links that shape the layout without being drawn. Labels come in both mermaid spellings — `-->|text|` and inline `-- text -->` (`-. text .-`, `== text ==>`). Cross and circle ends (`--x`, `-.-x`, `==x`, `--o`, `-.-o`, `==o`, also `-- text --x`) and two-way links (`<-->`, `<-.->`, `<==>`, `x--x`, `o--o`, also `<-- text -->`) draw the matching glyph at each end. As in mermaid, a marker letter glued to the operator is the marker: `A---oB` is a circle edge to `B` — write `A --- oB` to target a node named `oB`. Fan-out lists work on either side: `A --> B & C`, `A & B --> C`. An edge can carry an id written before its operator — `A e1@--> B`, `A e1@-- text --> B`, `A e1@x--x B` — which the SVG writes as `id="flowmaid-<hash>-e1" data-id="e1"` — mermaid's `<diagram-id>-<edge-id>`, with a content-hashed, deterministic diagram id that the root `<svg>` carries (only when the diagram has edge ids or animation), so several SVGs inlined on one page never share an edge id. A later `e1@{ … }` statement sets its metadata, mermaid-style: `animate: true` (or `animation: fast` / `slow`) adds mermaid's `edge-animation-*` class plus its dash-animation CSS, scoped to that SVG (`#flowmaid-<hash> .edge-animation-fast`, keyframes `flowmaid-<hash>-dash`) so it never restyles the host page, and `curve:` picks the path shape (`basis` default, `linear`, `rounded`, `step`, `stepBefore`, `stepAfter`, `bumpX`, `bumpY`, and `natural` / `monotoneX` / `monotoneY` / `cardinal` / `catmullRom`, which flowmaid draws as one Catmull-Rom spline; an unknown name means `basis`). The block may span lines (YAML block form). As in mermaid, with fan-out only the last-source → first-target pair takes the id, a repeated id is silently dropped, and metadata written before its edge exists is a node. Chains like `A --> B & C --> D` are supported, as are cycles (`E --> B` looping back up) and self-loops (`A --> A`).
++Edges: `-->` arrow, `---` open line, `-.->` dotted (drawn as dots, `stroke-dasharray="2 3"` at the default width, scaled with a `linkStyle` width), `-.-` dotted open, `==>` thick, `===` thick open, and `~~~` invisible links that shape the layout without being drawn. Labels come in both mermaid spellings — `-->|text|` and inline `-- text -->` (`-. text .-`, `== text ==>`). Cross and circle ends (`--x`, `-.-x`, `==x`, `--o`, `-.-o`, `==o`, also `-- text --x`) and two-way links (`<-->`, `<-.->`, `<==>`, `x--x`, `o--o`, also `<-- text -->`) draw the matching glyph at each end. As in mermaid, a marker letter glued to the operator is the marker: `A---oB` is a circle edge to `B` — write `A --- oB` to target a node named `oB`. Fan-out lists work on either side: `A --> B & C`, `A & B --> C`. An edge can carry an id written before its operator — `A e1@--> B`, `A e1@-- text --> B`, `A e1@x--x B` — which the SVG writes as `id="flowmaid-<hash>-e1" data-id="e1"` — mermaid's `<diagram-id>-<edge-id>`, with a content-hashed, deterministic diagram id that the root `<svg>` carries (only when the diagram has edge ids or animation), so several SVGs inlined on one page never share an edge id. A later `e1@{ … }` statement sets its metadata, mermaid-style: `animate: true` (or `animation: fast` / `slow`) adds mermaid's `edge-animation-*` class plus its dash-animation CSS, scoped to that SVG (`#flowmaid-<hash> .edge-animation-fast`, keyframes `flowmaid-<hash>-dash`) so it never restyles the host page, and `curve:` picks the path shape (`basis` default, `linear`, `rounded`, `step`, `stepBefore`, `stepAfter`, `bumpX`, `bumpY`, and `natural` / `monotoneX` / `monotoneY` / `cardinal` / `catmullRom`, which flowmaid draws as one Catmull-Rom spline; an unknown name means `basis`). The block may span lines (YAML block form). As in mermaid, with fan-out only the last-source → first-target pair takes the id, a repeated id is silently dropped, and metadata written before its edge exists is a node. Chains like `A --> B & C --> D` are supported, as are cycles (`E --> B` looping back up) and self-loops (`A --> A`).
+ 
+ Subgraphs use mermaid's block syntax — `subgraph id [Title]` … `end` — with arbitrary nesting and an optional `direction LR` line per block (inherited from the parent otherwise). A node mentioned inside a block is claimed by it, mermaid-style, even if it first appeared elsewhere — unless a block that already closed holds it: as in mermaid, the first block to close keeps a node, so mentioning a nested block's node again in the outer block after the nested `end` leaves it where it is. Edges may freely cross cluster borders, and an edge may target a subgraph *itself* (`CF --> VPC`) — it attaches to the cluster box and ranks it after (or before) the other end; forward references (edge before the block) work via a pre-scan. An edge from a member to its own enclosing box (`Dev --> CI` with `Dev` inside `CI`) cannot reach the box from inside it: it is drawn to the box's entry member (the first member nothing inside the box leads to) and ranks the node before it. See `examples/subgraph.mmd`.
+ 
+@@ -131,7 +131,7 @@ Edges are styled with mermaid's `linkStyle`: `linkStyle 3 stroke:#ff3,stroke-wid
+ 
+ Links use mermaid's `click` statement: `click A "https://example.com"`, `click A href "https://example.com" "Tooltip" _blank` (url, then optional tooltip, then optional `_self` / `_blank` / `_parent` / `_top`, in that order), and `click A,B "url"` for several nodes. The SVG wraps the node in `<a href=… xlink:href=…>` (with `rel="noopener noreferrer"` on `_blank`; no `target` means the same tab, as in mermaid), and a tooltip becomes the node's `<title>`. Urls are checked like mermaid's default `strict` security level (a port of `@braintree/sanitize-url`): after decoding percent escapes, HTML and mermaid entities and dropping control and invisible characters, a `javascript:`, `data:` or `vbscript:` url is not linked at all (mermaid would write `about:blank`); relative, scheme-less, `mailto:`, `https:` and other urls stay exactly as written. Callbacks (`click A callback`, `click A call fn(args) "tooltip"`) are accepted for compatibility and ignored, since a static SVG runs no script, but their tooltip still applies. As in mermaid, a link only lands on a node that already exists: an unknown id, a subgraph or edge id, or a node declared further down is ignored without creating a node, while a tooltip reaches a node declared later. Keywords are case-sensitive (`Click A` is a node), and flowmaid is lenient about extra spaces (`click A  href  "u"`), which mermaid rejects. Scene consumers get the link and tooltip on `SceneNode::link`.
+ 
+-Custom colors use mermaid's styling syntax: `style A fill:#f9f,stroke:#333,stroke-width:4px,color:#fff`, reusable classes via `classDef hot fill:#ffe3e3,stroke:#e03131` + `class A,B hot` or the inline shorthand `A:::hot`. Supported properties: `fill`, `stroke`, `stroke-width` (0 to 1000px), `color` (label text); unknown properties are ignored, and so is a bare item after a property (mermaid splits values on every comma, so `stroke-dasharray: 9,5` leaves a stray `5`); a statement starting with a bare item is an error. Unstyled nodes fall back to a semantic theme — shape determines color (stadium green, diamond amber, circle violet, ...; see the `style` module) — and ER entities cycle through a stable accent palette.
++Custom colors use mermaid's styling syntax: `style A fill:#f9f,stroke:#333,stroke-width:4px,color:#fff`, reusable classes via `classDef hot fill:#ffe3e3,stroke:#e03131` + `class A,B hot` or the inline shorthand `A:::hot`, and `classDef default …` styles every node, as in mermaid (a node's own classes and `style` lines win per property; a borderless `text` shape takes only its colour). Supported properties: `fill`, `stroke`, `stroke-width` (0 to 1000px), `color` (label text); unknown properties are ignored, and so is a bare item after a property (mermaid splits values on every comma, so `stroke-dasharray: 9,5` leaves a stray `5`); a statement starting with a bare item is an error. Unstyled nodes fall back to a semantic theme — shape determines color (stadium green, diamond amber, circle violet, ...; see the `style` module) — and ER entities cycle through a stable accent palette.
+ 
+ Complete examples live in `examples/` — `demo.mmd` and `lr.mmd` for the basics, `advanced.mmd` for everything at once (nested subgraphs, all shapes and link types, `<br/>`, custom colors), plus one showcase per diagram type (`er`, `class`, `sequence`, `pie`, `state`).
+ 
+diff --git a/src/advance.rs b/src/advance.rs
+index 14b69d8..99a1496 100644
+--- a/src/advance.rs
++++ b/src/advance.rs
+@@ -5824,18 +5824,18 @@ pub fn to_svg_with(sc: &AdvanceScene, opts: &SvgOptions) -> String {
+             continue;
+         }
+         let color = crate::scene::style_attr(e.style.color.as_deref(), &sc.style.edge_color);
+-        // An explicit style dash wins over the kind-based dashed style;
+-        // otherwise Thick stays solid, Dotted stays dashed.
++        // An explicit style dash wins over the kind-based dotted style
++        // (the flowchart writer's dots, scaled with the stroke);
++        // otherwise Thick stays solid.
++        let sw = advance_edge_width(e);
+         let styled_dash = e.style.dash.as_deref().map(escape);
+-        let dash = styled_dash.as_deref().or(match e.kind {
+-            EdgeKind::Dotted | EdgeKind::DottedOpen => Some("5 4"),
+-            _ => None,
+-        });
++        let dotted = matches!(e.kind, EdgeKind::Dotted | EdgeKind::DottedOpen)
++            .then(|| crate::scene::dotted_dash(sw));
++        let dash = styled_dash.as_deref().or(dotted.as_deref());
+         let dash_attr = match dash {
+             Some(d) => format!(" stroke-dasharray=\"{}\"", d),
+             None => String::new(),
+         };
+-        let sw = advance_edge_width(e);
+         let head_trim = crate::scene::arrow_trim(sw);
+         let marker = if e.kind.has_arrow() {
+             markers
+diff --git a/src/labels.rs b/src/labels.rs
+index 5ce2255..9d7584e 100644
+--- a/src/labels.rs
++++ b/src/labels.rs
+@@ -383,6 +383,61 @@ impl ObstacleGrid {
+     }
+ }
+ 
++/// Per edge: the labelled edges that are its label's siblings (`labelled`
++/// says which edges carry a drawn label): drawn out of the node it
++/// leaves, or into the node it enters, from or to a node side by side
++/// with its own other end across their flow — the axis nearest the way
++/// from the shared node's centre to the middle of the two other ends,
++/// as [`stack_fans`] reads a fan's flow — so both lines cross the same
++/// gap, a fan's row. Siblings keep [`FAN_SIBLING_GAP`] apart (see
++/// [`LabelGrid::keep`]).
++fn label_siblings(
++    nodes: &[SceneNode],
++    edges: &[SceneEdge],
++    labelled: impl Fn(usize) -> bool,
++) -> Vec<Vec<usize>> {
++    let mut sibs = vec![Vec::new(); edges.len()];
++    let with: Vec<usize> = (0..edges.len())
++        .filter(|&i| labelled(i) && edges[i].from != edges[i].to)
++        .collect();
++    if with.len() < 2 {
++        return sibs;
++    }
++    let boxes: HashMap<&str, &SceneNode> = nodes.iter().map(|n| (n.id.as_str(), n)).collect();
++    for (k, &i) in with.iter().enumerate() {
++        for &j in &with[k + 1..] {
++            let (a, b) = (&edges[i], &edges[j]);
++            let (hub, far) = if a.from == b.from {
++                (&a.from, (&a.to, &b.to))
++            } else if a.to == b.to {
++                (&a.to, (&a.from, &b.from))
++            } else {
++                continue;
++            };
++            let at = |id: &String| boxes.get(id.as_str()).copied();
++            let (Some(c), Some(f0), Some(f1)) = (at(hub), at(far.0), at(far.1)) else {
++                continue;
++            };
++            let mid = ((f0.x + f1.x) / 2.0, (f0.y + f1.y) / 2.0);
++            let flow_y = (mid.1 - c.y).abs() >= (mid.0 - c.x).abs();
++            // Both far ends side by side across the flow (their boxes
++            // overlap along it). A longer edge beside a short one
++            // carries its label in another gap, not in the fan's row.
++            let (a0, h0, a1, h1) = if flow_y {
++                (f0.y, f0.h, f1.y, f1.h)
++            } else {
++                (f0.x, f0.w, f1.x, f1.w)
++            };
++            if (a0 - a1).abs() >= (h0 + h1) / 2.0 {
++                continue;
++            }
++            sibs[i].push(j);
++            sibs[j].push(i);
++        }
++    }
++    sibs
++}
++
+ /// The edge labels as currently placed (index-parallel with the
+ /// edges), bucketed on an [`OBSTACLE_CELL`] grid so a spot only checks
+ /// the labels near it, and a label can move.
+@@ -392,6 +447,8 @@ struct LabelGrid {
+     /// Labels looked at by queries so far (the stage's work, see
+     /// [`LABEL_ROUTE_WORK`]).
+     visits: Cell<usize>,
++    /// Per label: its siblings' labels (see [`label_siblings`]).
++    sibs: Vec<Vec<usize>>,
+ }
+ 
+ impl LabelGrid {
+@@ -400,6 +457,7 @@ impl LabelGrid {
+             rects: Vec::new(),
+             cells: HashMap::default(),
+             visits: Cell::new(0),
++            sibs: Vec::new(),
+         };
+         g.rects = vec![None; rects.len()];
+         for (i, r) in rects.into_iter().enumerate() {
+@@ -434,11 +492,42 @@ impl LabelGrid {
+         }
+     }
+ 
+-    /// Calls `f` once on every label other than `own` that may overlap
+-    /// `a` grown by `gap`, without collecting them (see [`first_cell`]).
+-    fn each(&self, own: usize, a: Rect, gap: f64, mut f: impl FnMut(&Rect)) {
+-        let Some((x0, y0, x1, y1)) =
+-            cell_span((a.0 - gap, a.1 - gap, a.2 + gap, a.3 + gap), OBSTACLE_CELL)
++    /// The grid with `sibs` (see [`label_siblings`]) marking which
++    /// labels keep [`FAN_SIBLING_GAP`] apart.
++    fn with_siblings(mut self, sibs: Vec<Vec<usize>>) -> Self {
++        self.sibs = sibs;
++        self
++    }
++
++    /// `a` grown by the keep-out label `own` keeps from label `j`:
++    /// `gap` all round, but at least [`FAN_SIBLING_GAP`] from a sibling
++    /// (see [`label_siblings`]) — two pills of one fan nearer than that
++    /// read as one phrase ("valid invalid", report Q14), side by side
++    /// or stacked as two lines of one label. Only a keep-out query
++    /// (`gap > 0`) widens: an overlap test stays an overlap test.
++    fn keep(&self, own: usize, j: usize, a: Rect, gap: f64) -> Rect {
++        let sib = gap > 0.0 && self.sibs.get(own).is_some_and(|s| s.contains(&j));
++        let g = if sib { gap.max(FAN_SIBLING_GAP) } else { gap };
++        (a.0 - g, a.1 - g, a.2 + g, a.3 + g)
++    }
++
++    /// How far round `own`'s box a keep-out query of `gap` looks: past
++    /// `gap` only for a label with siblings.
++    fn reach(&self, own: usize, gap: f64) -> f64 {
++        if gap > 0.0 && self.sibs.get(own).is_some_and(|s| !s.is_empty()) {
++            gap.max(FAN_SIBLING_GAP)
++        } else {
++            gap
++        }
++    }
++
++    /// Calls `f` once on every label other than `own` that may lie
++    /// within the keep-out `gap` of `a` (see [`LabelGrid::keep`]), with
++    /// `a` grown by that keep-out, without collecting them (see
++    /// [`first_cell`]).
++    fn each(&self, own: usize, a: Rect, gap: f64, mut f: impl FnMut(Rect, &Rect)) {
++        let g = self.reach(own, gap);
++        let Some((x0, y0, x1, y1)) = cell_span((a.0 - g, a.1 - g, a.2 + g, a.3 + g), OBSTACLE_CELL)
+         else {
+             return;
+         };
+@@ -451,7 +540,7 @@ impl LabelGrid {
+                 for &j in v {
+                     if let Some(r) = &self.rects[j] {
+                         if j != own && first_cell(r, (x0, y0), (cx, cy)) {
+-                            f(r);
++                            f(self.keep(own, j, a, gap), r);
+                         }
+                     }
+                 }
+@@ -462,8 +551,8 @@ impl LabelGrid {
+     /// Summed overlap of `a` (grown by `gap`) with the other labels.
+     fn cover(&self, own: usize, a: Rect, gap: f64) -> f64 {
+         let mut sum = 0.0;
+-        self.each(own, a, gap, |r| {
+-            sum += covered(a, gap, std::slice::from_ref(r));
++        self.each(own, a, gap, |k, r| {
++            sum += covered(k, 0.0, std::slice::from_ref(r));
+         });
+         sum
+     }
+@@ -471,8 +560,8 @@ impl LabelGrid {
+     /// How many other labels `a` (grown by `gap`) overlaps.
+     fn hits(&self, own: usize, a: Rect, gap: f64) -> usize {
+         let mut n = 0;
+-        self.each(own, a, gap, |r| {
+-            n += usize::from(covered(a, gap, std::slice::from_ref(r)) > 0.0);
++        self.each(own, a, gap, |k, r| {
++            n += usize::from(covered(k, 0.0, std::slice::from_ref(r)) > 0.0);
+         });
+         n
+     }
+@@ -480,8 +569,8 @@ impl LabelGrid {
+     /// Does no label other than `own` overlap `a` grown by `gap`? Walks
+     /// the cells in place: it is asked for every candidate spot.
+     fn clear(&self, own: usize, a: Rect, gap: f64) -> bool {
+-        let Some((x0, y0, x1, y1)) =
+-            cell_span((a.0 - gap, a.1 - gap, a.2 + gap, a.3 + gap), OBSTACLE_CELL)
++        let g = self.reach(own, gap);
++        let Some((x0, y0, x1, y1)) = cell_span((a.0 - g, a.1 - g, a.2 + g, a.3 + g), OBSTACLE_CELL)
+         else {
+             return true;
+         };
+@@ -490,7 +579,10 @@ impl LabelGrid {
+                 self.cells.get(&(cx, cy)).map_or(true, |v| {
+                     self.visits.set(self.visits.get() + v.len());
+                     v.iter().all(|&j| {
+-                        j == own || self.rects[j].map_or(true, |r| covered(a, gap, &[r]) == 0.0)
++                        j == own
++                            || self.rects[j].map_or(true, |r| {
++                                covered(self.keep(own, j, a, gap), 0.0, &[r]) == 0.0
++                            })
+                     })
+                 })
+             })
+@@ -1367,7 +1459,7 @@ struct Track {
+ }
+ 
+ impl Track {
+-    fn new(pts: &[(f64, f64)], prefer: f64, w: f64, field: &Field) -> Self {
++    fn new(pts: &[(f64, f64)], prefer: f64, w: f64, keep: f64, field: &Field) -> Self {
+         let spots = densify(pts);
+         let mut arc = Vec::with_capacity(spots.len());
+         let mut s = 0.0;
+@@ -1404,10 +1496,11 @@ impl Track {
+         }
+         let (x0, x1, y0, y1) = bb.finish();
+         // Half the box, the farthest step beside the line, and the
+-        // keep-out it is checked with, around the whole curve (a
+-        // self-loop's spots past its apex stay within a box height).
+-        let gx = w / 2.0 + LABEL_SIDE_MAX + LABEL_KEEP + LABEL_BOX_H;
+-        let gy = LABEL_BOX_H / 2.0 + LABEL_SIDE_MAX + LABEL_KEEP + w;
++        // keep-out it is checked with (`keep`: wider from a sibling),
++        // around the whole curve (a self-loop's spots past its apex
++        // stay within a box height).
++        let gx = w / 2.0 + LABEL_SIDE_MAX + keep + LABEL_BOX_H;
++        let gy = LABEL_BOX_H / 2.0 + LABEL_SIDE_MAX + keep + w;
+         let reach = (x0 - gx, y0 - gy, x1 + gx, y1 + gy);
+         let mut t = Track {
+             spots,
+@@ -1627,6 +1720,26 @@ fn place(
+             }
+         })
+         .collect();
++    // Sibling labels (see `label_siblings`), and the keep-out each
++    // label's box is checked with: wider for one with siblings. A
++    // compact branch point's fan keeps its own rows (`stack_fans`).
++    let sibs = label_siblings(nodes, edges, |i| {
++        let e = &edges[i];
++        lines[i].is_some()
++            && e.label.is_some()
++            && !branch.contains(e.from.as_str())
++            && !branch.contains(e.to.as_str())
++    });
++    let keep: Vec<f64> = sibs
++        .iter()
++        .map(|s| {
++            if s.is_empty() {
++                LABEL_KEEP
++            } else {
++                FAN_SIBLING_GAP
++            }
++        })
++        .collect();
+     // (preferred spot, fan-out of a hub end or 0) per edge.
+     let hub: Vec<(f64, usize)> = edges
+         .iter()
+@@ -1656,7 +1769,8 @@ fn place(
+         let (Some(from_point), Some(pts)) = (fan[ei], &lines[ei]) else {
+             return false;
+         };
+-        let track = tracks[ei].get_or_insert_with(|| Track::new(pts, hub[ei].0, w, &field));
++        let track =
++            tracks[ei].get_or_insert_with(|| Track::new(pts, hub[ei].0, w, keep[ei], &field));
+         let f = track.share_at(at);
+         (if from_point { f } else { 1.0 - f }) < FAN_FAR
+     };
+@@ -1698,7 +1812,7 @@ fn place(
+             let up = restack.contains(if from_point { &e.from } else { &e.to });
+             if up {
+                 let w = e.label.as_ref().map_or(0.0, |l| l.2);
+-                tracks[ei].get_or_insert_with(|| Track::new(pts, hub[ei].0, w, &field));
++                tracks[ei].get_or_insert_with(|| Track::new(pts, hub[ei].0, w, keep[ei], &field));
+             }
+             up
+         })
+@@ -1720,7 +1834,8 @@ fn place(
+                 e.label.as_ref().map(|(_, c, w)| label_rect(*c, *w))
+             })
+             .collect(),
+-    );
++    )
++    .with_siblings(sibs);
+ 
+     // Labels already searched, and the boxes labels left or took in the
+     // last round (by mover): a searched label is tried again only when
+@@ -1744,12 +1859,10 @@ fn place(
+             if round > 0 {
+                 let reach = match &tracks[ei] {
+                     Some(t) if tried[ei] => t.reach,
+-                    _ => (
+-                        r.0 - LABEL_KEEP,
+-                        r.1 - LABEL_KEEP,
+-                        r.2 + LABEL_KEEP,
+-                        r.3 + LABEL_KEEP,
+-                    ),
++                    _ => {
++                        let k = placed.reach(ei, LABEL_KEEP);
++                        (r.0 - k, r.1 - k, r.2 + k, r.3 + k)
++                    }
+                 };
+                 if !changes
+                     .iter()
+@@ -1792,7 +1905,7 @@ fn place(
+                 continue;
+             }
+             if tracks[ei].is_none() {
+-                tracks[ei] = Some(Track::new(pts, hub[ei].0, *w, &field));
++                tracks[ei] = Some(Track::new(pts, hub[ei].0, *w, keep[ei], &field));
+             }
+             todo.push((ei, off_line));
+         }
+@@ -2642,6 +2755,58 @@ mod tests {
+         assert_eq!(label_clashes(&sc.nodes, &edges), vec![true, false]);
+     }
+ 
++    #[test]
++    fn sibling_labels_of_a_fan_keep_apart_so_each_reads_on_its_own() {
++        // Report Q14: 'valid' and 'invalid' out of one decision sat 4 px
++        // apart side by side and read as one phrase. Labels of edges
++        // out of one node (or into one) whose other ends sit side by
++        // side now keep FAN_SIBLING_GAP apart, in scene() and route()
++        // alike, in every direction.
++        let gap = |a: Rect, b: Rect| (b.0 - a.2).max(a.0 - b.2).max((b.1 - a.3).max(a.1 - b.3));
++        for src in [
++            "flowchart TD\n  A{Valid?} -->|valid| B[Accept]\n  A -->|invalid| C[Reject]\n",
++            "flowchart BT\n  A{Valid?} -->|valid| B[Accept]\n  A -->|invalid| C[Reject]\n",
++            "flowchart TD\n  A[Start] -->|valid| B[Accept]\n  A -->|invalid| C[Reject]\n",
++            "flowchart TD\n  A --> X{check}\n  X -->|ok| B\n  X -->|not ok| C\n",
++            "flowchart TD\n  B -->|valid| A[Accept]\n  C -->|invalid| A\n",
++            "flowchart TD\n  A[Start] -->|yes| B\n  A -->|no| C\n  A -->|maybe| D\n  A -->|later| E\n",
++            "flowchart LR\n  A{Valid?} -->|valid| B[Accept]\n  A -->|invalid| C[Reject]\n  \
++             A -->|unknown| D[Hold]\n",
++        ] {
++            let g = crate::parser::parse(src).unwrap();
++            let sc = crate::scene::scene(&g);
++            let at: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
++            let routed = crate::scene::route(&g, &at);
++            for (mode, sc) in [("scene", &sc), ("route", &routed)] {
++                let boxes: Vec<(&SceneEdge, Rect)> = sc
++                    .edges
++                    .iter()
++                    .filter_map(|e| e.label.as_ref().map(|(_, c, w)| (e, label_rect(*c, *w))))
++                    .collect();
++                for (i, (a, ra)) in boxes.iter().enumerate() {
++                    for (b, rb) in &boxes[i + 1..] {
++                        if a.from == b.from || a.to == b.to {
++                            let d = gap(*ra, *rb);
++                            assert!(
++                                d >= FAN_SIBLING_GAP - TOUCH_EPS,
++                                "{mode}: {:?} and {:?} {d:.1} px apart\n{src}",
++                                a.label,
++                                b.label
++                            );
++                        }
++                    }
++                }
++            }
++        }
++        // Labels of a longer edge beside a short one are no fan's row:
++        // they keep the ordinary LABEL_KEEP (wide-labels' health probe).
++        let g = crate::parser::parse("flowchart LR\n  A -->|one| B\n  B --> C\n  A -->|two| C\n")
++            .unwrap();
++        let sc = crate::scene::scene(&g);
++        let sibs = label_siblings(&sc.nodes, &sc.edges, |i| sc.edges[i].label.is_some());
++        assert!(sibs.iter().all(Vec::is_empty), "{sibs:?}");
++    }
++
+     #[test]
+     fn arrow_box_sits_behind_the_tip() {
+         let pts = [(0.0, 0.0), (0.0, 50.0), (0.0, 100.0)];
+diff --git a/src/layout.rs b/src/layout.rs
+index 66957db..7979668 100644
+--- a/src/layout.rs
++++ b/src/layout.rs
+@@ -1869,6 +1869,9 @@ fn place(
+     let mut succs: Vec<Vec<usize>> = vec![Vec::new(); n];
+     // Per original edge: dummy chain in the edge's own from→to order.
+     let mut edge_chain: Vec<Vec<usize>> = vec![Vec::new(); g.edges.len()];
++    // Adjacent pairs linked so far only by a 2-cycle's return edge,
++    // which stands in for the first forward edge of the pair.
++    let mut return_only: std::collections::HashSet<(usize, usize)> = Default::default();
+     for (ei, e) in g.edges.iter().enumerate() {
+         if e.from == e.to {
+             continue; // self-loop — no layered path
+@@ -1883,10 +1886,27 @@ fn place(
+         let (llo, lhi) = (alayer[lo], alayer[hi]);
+         if lhi <= llo + 1 {
+             // A 2-cycle's return edge runs beside its twin across the
+-            // gap: one link between the pair, not a second pull.
+-            if llo < lhi && !(back[ei] && succs[lo].contains(&hi)) {
+-                succs[lo].push(hi);
+-                preds[hi].push(lo);
++            // gap: one link between the pair, not a second pull —
++            // whichever of the two is written first. A doubled link
++            // made BK's median land on the pair and pulled the node off
++            // the middle of its fan: lr's Service Layer sat level with
++            // Redis Cache instead of centred on Database / Redis when
++            // `CACHE --> SVC` came first (report Q8). Parallel FORWARD
++            // edges keep one link each: a twin pair then runs straight
++            // down its own column, which the twin curves and their
++            // labels are drawn for (deduplicated, a choice's
++            // `low`/`medium` twins slanted across the fan).
++            if llo < lhi {
++                if back[ei] {
++                    if !succs[lo].contains(&hi) {
++                        succs[lo].push(hi);
++                        preds[hi].push(lo);
++                        return_only.insert((lo, hi));
++                    }
++                } else if !return_only.remove(&(lo, hi)) {
++                    succs[lo].push(hi);
++                    preds[hi].push(lo);
++                }
+             }
+             continue; // same or adjacent layer — no dummies
+         }
+@@ -2593,6 +2613,10 @@ fn place(
+     // the labels then slide along their own (slanted) curves to reach
+     // a row, which never lands them exactly side by side. One row =
+     // nothing overlaps = no requirement, so only colliding gaps grow.
++    // (Siblings that would read as one phrase are kept apart where the
++    // labels are placed, `labels::label_siblings`: the midpoint spans
++    // here are not where a hub's labels end up, and reserving sibling
++    // rows from them only grew a busy hub's gap.)
+     let gap_need: Vec<f64> = short_across
+         .iter_mut()
+         .map(|spans| {
+@@ -3382,7 +3406,9 @@ fn coordinates_bk(
+     }
+ 
+     // Adjacent-layer neighbour sets (back/invisible links that skip a
+-    // layer are excluded — BK only reasons about layer±1 segments).
++    // layer are excluded — BK only reasons about layer±1 segments). A
++    // 2-cycle lists its pair once (see the layering above); parallel
++    // forward edges are listed once per edge on purpose (report Q8).
+     let mut up: Vec<Vec<usize>> = vec![Vec::new(); na];
+     let mut down: Vec<Vec<usize>> = vec![Vec::new(); na];
+     for v in 0..na {
+diff --git a/src/parser.rs b/src/parser.rs
+index b28f6c0..86d2994 100644
+--- a/src/parser.rs
++++ b/src/parser.rs
+@@ -734,6 +734,8 @@ const LINK_STYLE_KW: &str = "linkStyle";
+ const LINK_STYLE_DEFAULT: &str = "default";
+ /// The optional curve clause of a `linkStyle` statement.
+ const LINK_STYLE_INTERPOLATE: &str = "interpolate";
++/// The `classDef` name mermaid layers under every node's own classes.
++const DEFAULT_CLASS: &str = "default";
+ 
+ /// One `linkStyle` statement (`rest` follows the keyword):
+ /// `default` or `N[,N…]` (no spaces), an optional `interpolate
+@@ -1995,6 +1997,22 @@ fn parse_flowchart(source: &str) -> Result<Graph, ParseError> {
+         st.fill = Some(BORDERLESS_PAINT.to_string());
+         st.stroke = Some(BORDERLESS_PAINT.to_string());
+     }
++    // `classDef default …` is the bottom layer for EVERY node, as in
++    // mermaid (its nodes compile `["default", "node", ...classes]`): a
++    // node's own classes and `style` lines still win per property. A
++    // borderless shape is bare text by definition, so it takes only
++    // the default's text colour, never a box.
++    if let Some(def) = class_defs.get(DEFAULT_CLASS) {
++        for (n, node) in g.nodes.iter_mut().enumerate() {
++            if fm.borderless.contains(&n) {
++                if def.color.is_some() {
++                    node.style.color.clone_from(&def.color);
++                }
++            } else {
++                node.style.apply_over(def);
++            }
++        }
++    }
+     for (n, name) in assigns {
+         if let Some(def) = class_defs.get(&name) {
+             g.nodes[n].style.apply_over(def);
+@@ -7094,6 +7112,46 @@ mod tests {
+             .is_some());
+     }
+ 
++    #[test]
++    fn classdef_default_styles_every_node_under_its_own_classes() {
++        // Mermaid's own example: `classDef default` reaches every node,
++        // including ones declared after it.
++        let g = parse(
++            "flowchart LR\n\
++             classDef default fill:#fff,stroke:#333,stroke-width:2px,color:#111\n\
++             classDef hot fill:#ffe3e3\n\
++             A --> B:::hot\n\
++             B --> C\n\
++             style C stroke:#f00\n\
++             T@{ shape: text, label: \"note\" }\n",
++        )
++        .unwrap();
++        let st = |id: &str| g.nodes[g.node_index(id).unwrap()].style.clone();
++        let a = st("A");
++        assert_eq!(a.fill.as_deref(), Some("#fff"));
++        assert_eq!(a.stroke.as_deref(), Some("#333"));
++        assert_eq!(a.stroke_width, Some(2.0));
++        assert_eq!(a.color.as_deref(), Some("#111"));
++        // A node's own class wins where it says something, the default
++        // fills in the rest (mermaid compiles default, then classes).
++        let b = st("B");
++        assert_eq!(b.fill.as_deref(), Some("#ffe3e3"));
++        assert_eq!(b.stroke.as_deref(), Some("#333"));
++        // A `style` line wins over the default.
++        let c = st("C");
++        assert_eq!(c.stroke.as_deref(), Some("#f00"));
++        assert_eq!(c.fill.as_deref(), Some("#fff"));
++        // Bare text keeps no box, only the default's ink.
++        let t = st("T");
++        assert_eq!(t.fill.as_deref(), Some(BORDERLESS_PAINT));
++        assert_eq!(t.stroke.as_deref(), Some(BORDERLESS_PAINT));
++        assert_eq!(t.color.as_deref(), Some("#111"));
++        // Without a default class nothing changes: unstyled nodes keep
++        // the shape theme.
++        let g = parse("flowchart LR\nA --> B\n").unwrap();
++        assert_eq!(g.nodes[0].style, NodeStyle::default());
++    }
++
+     /// (kind, start glyph, resolved end glyph, label) of the one
+     /// edge in `flowchart LR\nA <op> B`.
+     fn one_edge(op: &str) -> (EdgeKind, Option<Marker>, Option<Marker>, Option<String>) {
+diff --git a/src/scene.rs b/src/scene.rs
+index 6417f86..efa424b 100644
+--- a/src/scene.rs
++++ b/src/scene.rs
+@@ -5118,8 +5118,19 @@ pub(crate) const EDGE_WIDTH_THICK: f64 = 3.5;
+ /// Default stroke width of a node's outline — and of the strokes drawn
+ /// with it: a cylinder's lid, a subroutine's bars, a final state's ring.
+ const NODE_STROKE_WIDTH: f64 = 1.8;
+-/// Dash pattern of a dotted (`-.->`) edge.
+-const EDGE_DOTTED_DASH: &str = "5 4";
++/// Dash pattern of a dotted (`-.->`) edge stroked `width` px wide:
++/// square dots one stroke width long, a stroke and a half apart — `2 3`
++/// at [`EDGE_WIDTH`]. Mermaid draws `2 2` at its 2 px edge; the slightly
++/// wider gap keeps the line reading as dots rather than as a fainter
++/// solid line, and long dashes (the old `5 4`) read as dashed, which is
++/// what `linkStyle stroke-dasharray` is for. The pattern scales with the
++/// stroke, so a `linkStyle stroke-width` dotted edge stays dotted (a
++/// fixed `2 3` under a 6 px stroke reads as stripes). Shared with the
++/// advance writer.
++pub(crate) fn dotted_dash(width: f64) -> String {
++    let r = |v: f64| (v * 10.0).round() / 10.0;
++    format!("{} {}", r(width), r(width * 1.5))
++}
+ /// Size of an end glyph in default edge strokes.
+ const ARROW_MARKER_UNITS: f64 = 5.5;
+ /// Length and width (px, user space) of every edge end glyph — the
+@@ -5741,15 +5752,15 @@ pub fn to_svg_a11y_with(sc: &Scene, default_title: &str, a11y: &A11y, opts: &Svg
+         if !edge_drawn(e) {
+             continue; // layout-only link — never drawn
+         }
+-        let dash =
+-            matches!(e.kind, EdgeKind::Dotted | EdgeKind::DottedOpen).then_some(EDGE_DOTTED_DASH);
+         // `linkStyle` paint overrides the kind's look per property.
+         let st = &e.meta.style;
+         let sw = edge_stroke_width(e);
++        let dotted =
++            matches!(e.kind, EdgeKind::Dotted | EdgeKind::DottedOpen).then(|| dotted_dash(sw));
+         let dash = st
+             .stroke_dasharray
+             .as_deref()
+-            .or(dash)
++            .or(dotted.as_deref())
+             .map_or(String::new(), |d| {
+                 format!(" stroke-dasharray=\"{}\"", escape(d))
+             });
+@@ -8822,7 +8833,7 @@ mod tests {
+         assert!(p[0].contains("class=\"edge-animation-fast\""), "{svg}");
+         assert!(p[1].contains("class=\"edge-animation-slow\""));
+         assert!(
+-            p[1].contains("stroke-dasharray=\"5 4\""),
++            p[1].contains("stroke-dasharray=\"2 3\""),
+             "dotted dash stays"
+         );
+         assert!(!p[2].contains("class="));
+@@ -11452,6 +11463,30 @@ mod tests {
+         assert!(svg.contains("fill=\"#16a34a\" stroke=\"#16a34a\" stroke-width=\"1\""));
+     }
+ 
++    #[test]
++    fn dotted_edges_draw_dots_that_scale_with_their_stroke() {
++        // Report Q9: `-.->` reads as dotted — dots one stroke long, a
++        // stroke and a half apart (mermaid: `2 2` at 2 px), not the
++        // long `5 4` dashes that read as dashed.
++        let svg = svg_src(
++            "flowchart LR\nA -.-> B\nC -.- D\nE -.-> F\nG -.-> H\n\
++             linkStyle 2 stroke-width:4px\nlinkStyle 3 stroke-dasharray: 5 5\n",
++        );
++        let p = edge_paths(&svg);
++        assert!(p[0].contains("stroke-dasharray=\"2 3\""), "{svg}");
++        assert!(p[1].contains("stroke-dasharray=\"2 3\""), "{svg}");
++        // A wider stroke keeps the same look, not stripes.
++        assert!(p[2].contains("stroke-dasharray=\"4 6\""), "{svg}");
++        // A user dash still wins.
++        assert!(p[3].contains("stroke-dasharray=\"5 5\""), "{svg}");
++        assert_eq!(dotted_dash(EDGE_WIDTH), "2 3");
++        assert_eq!(dotted_dash(EDGE_WIDTH_THICK), "3.5 5.3");
++        // The advance writer draws the same dots.
++        let adv = crate::advance::render_advance_text_svg("lane l \"L\"\na[A]\nb[B]\na -.-> b\n")
++            .unwrap();
++        assert!(adv.contains("stroke-dasharray=\"2 3\""), "{adv}");
++    }
++
+     #[test]
+     fn link_style_dash_and_width_override_the_kind() {
+         let svg = svg_src(
+@@ -11460,7 +11495,7 @@ mod tests {
+         );
+         let p = edge_paths(&svg);
+         assert!(
+-            p[0].contains("stroke-dasharray=\"0\"") && !p[0].contains("stroke-dasharray=\"5 4\"")
++            p[0].contains("stroke-dasharray=\"0\"") && !p[0].contains("stroke-dasharray=\"2 3\"")
+         );
+         assert!(p[1].contains("stroke-width=\"1\"") && p[1].contains("url(#arrow)"));
+         assert!(p[2].contains("stroke-dasharray=\"5 5\""));
+@@ -13480,6 +13515,39 @@ mod tests {
+         }
+     }
+ 
++    #[test]
++    fn a_two_cycle_pulls_its_pair_once_whichever_edge_comes_first() {
++        // Report Q8: a 2-cycle listed its pair twice in Brandes-Köpf's
++        // neighbours when the return edge was written first, so the
++        // median landed on the pair and Service Layer sat level with
++        // Redis Cache instead of on the middle of its fan. Either order
++        // now gives lr's symmetric fans.
++        let lr = include_str!("../examples/lr.mmd");
++        let swapped = "flowchart LR\n  U[User] --> FE(Frontend) --> API{Auth?}\n  \
++                       API -->|ok| SVC[Service Layer]\n  API -.->|denied| ERR[401 Response]\n  \
++                       CACHE([Redis Cache]) --> SVC\n  SVC ==> DB[Database]\n  SVC --> CACHE\n";
++        for src in [lr, swapped] {
++            let sc = scene(&parse(src).unwrap());
++            let y = |id: &str| sc.nodes.iter().find(|n| n.id == id).unwrap().y;
++            assert!(
++                (y("API") - (y("SVC") + y("ERR")) / 2.0).abs() < 0.5,
++                "Auth? off the middle of its ok/denied fan: {src}"
++            );
++            assert!(
++                (y("SVC") - (y("DB") + y("CACHE")) / 2.0).abs() < 0.5,
++                "Service Layer off the middle of its fan: {src}"
++            );
++            assert!((y("U") - y("API")).abs() < 0.5, "the spine stays straight");
++        }
++        // Parallel forward edges keep their weight: a twin pair runs
++        // straight down its own column (the twin curves are drawn for
++        // that), the third branch beside it.
++        let sc =
++            scene(&parse("flowchart TD\n  A --> B\n  B --> C\n  B --> C\n  B --> D\n").unwrap());
++        let x = |id: &str| sc.nodes.iter().find(|n| n.id == id).unwrap().x;
++        assert!((x("B") - x("C")).abs() < 0.5);
++    }
++
+     #[test]
+     fn a_parallel_label_and_a_loop_keep_off_the_other_lines() {
+         // stress (report P0 #13): the `parallel` label clears the
+@@ -14269,7 +14337,7 @@ mod tests {
+         // a thick edge shares `#arrow`, sized in user space).
+         let svg = svg_src("flowchart LR\nA --> B\nC -.-> D\nE ==> F\nG x--x H\n");
+         assert!(!svg.contains("_"), "{svg}");
+-        assert!(svg.contains("stroke-dasharray=\"5 4\""));
++        assert!(svg.contains("stroke-dasharray=\"2 3\""));
+         assert!(svg.contains("stroke-width=\"3.5\" marker-end=\"url(#arrow)\""));
+         assert!(svg.contains("stroke-width=\"2\" marker-end=\"url(#arrow)\""));
+         assert_eq!(svg.matches("<marker id=\"arrow\"").count(), 1, "{svg}");

@@ -1,0 +1,19 @@
+flowchart TD
+    N0{Report}
+    N1(Fetch)
+    N2(Archive check)
+    N3([Archive archive])
+    N4([Parse parse])
+    N5[Archive]
+    N6([Notify done])
+    N0 --> N1
+    N1 --> N2
+    N2 -->|next| N3
+    N3 --> N4
+    N4 --> N5
+    N4 -->|next| N6
+    N2 --> N5
+    N0 --> N6
+    N1 --> N3
+    N6 --> N0
+    N6 ==>|again| N4

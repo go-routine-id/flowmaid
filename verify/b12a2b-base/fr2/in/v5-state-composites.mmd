@@ -1,0 +1,17 @@
+stateDiagram-v2
+direction TB
+[*] --> Idle
+Idle --> Working : start
+state Working {
+  [*] --> fetch
+  fetch --> parse : bytes
+  parse --> [*]
+}
+state Reporting {
+  [*] --> collect
+  collect --> send
+}
+Working --> Reporting : done
+Reporting --> Working : again
+Reporting --> Idle : reset
+note right of Working : busy

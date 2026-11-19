@@ -1,0 +1,15 @@
+flowchart BT
+    N0([Parse fetch])
+    N1(Fetch)
+    N2{Archive emit}
+    N3{Retry}
+    N4{Done}
+    N0 --> N1
+    N1 -->|ok| N2
+    N1 --> N3
+    N2 --> N4
+    N0 --> N2
+    N1 --> N2
+    N0 --> N3
+    N2 --> N1
+    N4 --> N1

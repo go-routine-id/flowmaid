@@ -1,0 +1,14 @@
+flowchart RL
+    subgraph G[Order processing]
+        m0[auth service]
+        m1[auth service]
+        m0 --> m1
+    end
+    s0[src0] -- "lbl9" --> m1
+    s0 --> G
+    s1[src1] --> G
+    s2[src2] -- "lbl9" --> m0
+    s2 --> G
+    s3[src3] --> m1
+    s4[src4] --> m0
+    m1 --> z[end]

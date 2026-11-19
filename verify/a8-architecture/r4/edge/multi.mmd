@@ -1,0 +1,7 @@
+architecture-beta
+    service a(server)[A]
+    service b(server)[B]
+    a:R -[one]-> L:b
+    a:R -[two]-> L:b
+    a:R -[three]-> L:b
+    b:L -[four back]-> R:a

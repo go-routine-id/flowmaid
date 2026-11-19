@@ -1,0 +1,108 @@
+demo: end_gaps=0 end_gap_max=0.048 frames=34 partial_frame_worst=0.47 corner_bad=0
+demo: edges=6 scene_ms=0.31 route_worst=0.16 partial_worst=0.15 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=1 cyl_end_off=0 roundtrip=true
+demo: B7 lone static 4/1 off max 27.6 | route 4/1 max 27.6 | lbl~head static 0/2 route 0/2 | scene!=route edges 6 max 5 | 1px-drag unrelated moves 0 in 6 frames max 0 | drag lone off 6
+long-labels: end_gaps=0 end_gap_max=0.049 frames=24 partial_frame_worst=0.37 corner_bad=0
+long-labels: edges=4 scene_ms=0.09 route_worst=0.10 partial_worst=0.06 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+long-labels: B7 lone static 4/2 off max 35.0 | route 4/2 max 35.0 | lbl~head static 0/2 route 0/2 | scene!=route edges 4 max 5 | 1px-drag unrelated moves 1 in 5 frames max 3 | drag lone off 10
+fanout: end_gaps=0 end_gap_max=0.042 frames=74 partial_frame_worst=0.69 corner_bad=0
+fanout: edges=13 scene_ms=0.27 route_worst=0.31 partial_worst=0.21 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+fanout: B7 lone static 13/8 off max 32.5 | route 13/8 max 32.5 | lbl~head static 0/2 route 0/2 | scene!=route edges 13 max 22 | 1px-drag unrelated moves 4 in 9 frames max 2 | drag lone off 72
+advanced: end_gaps=0 end_gap_max=0.046 frames=98 partial_frame_worst=2.52 corner_bad=0
+advanced: edges=16 scene_ms=0.63 route_worst=0.53 partial_worst=0.37 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+advanced: B7 lone static 7/4 off max 32.5 | route 7/5 max 38.3 | lbl~head static 0/4 route 0/4 | scene!=route edges 14 max 999 | 1px-drag unrelated moves 1 in 14 frames max 999 | drag lone off 58
+subgraph: end_gaps=0 end_gap_max=0.000 frames=54 partial_frame_worst=0.30 corner_bad=0
+subgraph: edges=8 scene_ms=0.13 route_worst=0.11 partial_worst=0.06 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=30 cyl_end_off=0 roundtrip=true
+subgraph: B7 lone static 12/4 off max 28.0 | route 12/2 max 28.0 | lbl~head static 0/0 route 0/0 | scene!=route edges 8 max 999 | 1px-drag unrelated moves 0 in 8 frames max 0 | drag lone off 28
+lr: end_gaps=0 end_gap_max=0.047 frames=34 partial_frame_worst=0.78 corner_bad=0
+lr: edges=7 scene_ms=0.20 route_worst=0.45 partial_worst=0.44 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+lr: B7 lone static 6/3 off max 7.0 | route 6/3 max 7.0 | lbl~head static 1/2 route 1/2 | scene!=route edges 6 max 4 | 1px-drag unrelated moves 3 in 7 frames max 4 | drag lone off 21
+stress: end_gaps=0 end_gap_max=0.000 frames=30 partial_frame_worst=1.27 corner_bad=0
+stress: edges=7 scene_ms=0.21 route_worst=0.30 partial_worst=0.27 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=2 cyl_end_off=0 roundtrip=true
+stress: B7 lone static 2/0 off max 0.0 | route 3/0 max 0.0 | lbl~head static 1/3 route 0/3 | scene!=route edges 6 max 999 | 1px-drag unrelated moves 6 in 4 frames max 999 | drag lone off 0
+wide-labels: end_gaps=0 end_gap_max=0.045 frames=49 partial_frame_worst=3.12 corner_bad=0
+wide-labels: edges=8 scene_ms=0.57 route_worst=2.38 partial_worst=0.77 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+wide-labels: B7 lone static 5/3 off max 7.0 | route 6/3 max 7.0 | lbl~head static 1/8 route 2/8 | scene!=route edges 8 max 999 | 1px-drag unrelated moves 3 in 6 frames max 4 | drag lone off 18
+back-edge: end_gaps=0 end_gap_max=0.048 frames=34 partial_frame_worst=0.72 corner_bad=0
+back-edge: edges=6 scene_ms=0.16 route_worst=0.19 partial_worst=0.13 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=2 cyl_end_off=0 roundtrip=true
+back-edge: B7 lone static 4/1 off max 24.8 | route 4/1 max 24.8 | lbl~head static 0/2 route 0/2 | scene!=route edges 6 max 5 | 1px-drag unrelated moves 0 in 6 frames max 0 | drag lone off 6
+fanout-frames: end_gaps=0 end_gap_max=0.042 frames=137 partial_frame_worst=2.47 corner_bad=0
+fanout-frames: edges=1 scene_ms=2.47 route_worst=0.88 partial_worst=0.82 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=11 cyl_end_off=0 roundtrip=true
+fanout-frames: B7 lone static 1/0 off max 0.0 | route 1/0 max 0.0 | lbl~head static 0/0 route 0/0 | scene!=route edges 1 max 54 | 1px-drag unrelated moves 0 in 22 frames max 0 | drag lone off 0
+shapes: end_gaps=0 end_gap_max=0.050 frames=42 partial_frame_worst=0.08 corner_bad=0
+shapes: edges=10 scene_ms=0.09 route_worst=0.08 partial_worst=0.05 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+shapes: B7 lone static 7/0 off max 0.0 | route 7/0 max 0.0 | lbl~head static 0/0 route 0/0 | scene!=route edges 10 max 3 | 1px-drag unrelated moves 0 in 11 frames max 0 | drag lone off 0
+dense-td: end_gaps=0 end_gap_max=0.042 frames=475 partial_frame_worst=9.79 corner_bad=0
+dense-td: edges=44 scene_ms=25.31 route_worst=11.41 partial_worst=3.03 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=99 cyl_end_off=0 roundtrip=true
+dense-td: B7 lone static 26/20 off max 107.1 | route 25/19 max 107.1 | lbl~head static 0/21 route 0/21 | scene!=route edges 44 max 999 | 1px-drag unrelated moves 245 in 40 frames max 999 | drag lone off 801
+bench-75: end_gaps=0 end_gap_max=0.047 frames=222 partial_frame_worst=13.38 corner_bad=0
+bench-75: edges=75 scene_ms=28.63 route_worst=13.02 partial_worst=4.51 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=538 cyl_end_off=0 roundtrip=true
+bench-75: B7 lone static 16/8 off max 22.4 | route 17/7 max 44.5 | lbl~head static 0/0 route 0/0 | scene!=route edges 75 max 999 | 1px-drag unrelated moves 362 in 21 frames max 999 | drag lone off 170
+state: end_gaps=0 end_gap_max=0.049 frames=138 partial_frame_worst=1.35 corner_bad=0
+state: edges=14 scene_ms=0.46 route_worst=0.50 partial_worst=0.33 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+state: B7 lone static 13/0 off max 0.0 | route 13/0 max 0.0 | lbl~head static 1/5 route 2/5 | scene!=route edges 14 max 22 | 1px-drag unrelated moves 0 in 15 frames max 0 | drag lone off 0
+fork-twins: end_gaps=11 end_gap_max=22.000 frames=288 partial_frame_worst=3.62 corner_bad=0
+fork-twins: edges=25 scene_ms=3.48 route_worst=1.92 partial_worst=1.25 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=13 cyl_end_off=0 roundtrip=true
+fork-twins: B7 lone static 26/11 off max 34.2 | route 24/12 max 34.2 | lbl~head static 1/8 route 0/8 | scene!=route edges 24 max 999 | 1px-drag unrelated moves 57 in 27 frames max 14 | drag lone off 299
+nested-composite: end_gaps=403 end_gap_max=348.000 frames=251 partial_frame_worst=6.62 corner_bad=0
+nested-composite: edges=29 scene_ms=3.29 route_worst=3.09 partial_worst=2.81 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=24 cyl_end_off=0 roundtrip=true
+nested-composite: B7 lone static 24/12 off max 29.4 | route 26/12 max 29.4 | lbl~head static 0/8 route 0/8 | scene!=route edges 28 max 999 | 1px-drag unrelated moves 672 in 26 frames max 999 | drag lone off 312
+spread-bottom: end_gaps=0 end_gap_max=0.993 frames=284 partial_frame_worst=3.64 corner_bad=0
+spread-bottom: edges=27 scene_ms=1.85 route_worst=1.55 partial_worst=0.84 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+spread-bottom: B7 lone static 23/7 off max 15.5 | route 23/7 max 15.5 | lbl~head static 3/9 route 0/9 | scene!=route edges 24 max 999 | 1px-drag unrelated moves 14 in 30 frames max 14 | drag lone off 224
+spread-face: end_gaps=2 end_gap_max=187.100 frames=378 partial_frame_worst=4.26 corner_bad=0
+spread-face: edges=35 scene_ms=2.48 route_worst=2.36 partial_worst=0.96 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=69 cyl_end_off=0 roundtrip=true
+spread-face: B7 lone static 26/6 off max 50.3 | route 29/10 max 50.3 | lbl~head static 1/11 route 1/11 | scene!=route edges 34 max 999 | 1px-drag unrelated moves 49 in 36 frames max 8 | drag lone off 254
+straight-link: end_gaps=0 end_gap_max=0.047 frames=65 partial_frame_worst=1.53 corner_bad=0
+straight-link: edges=6 scene_ms=1.08 route_worst=0.64 partial_worst=0.42 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+straight-link: B7 lone static 8/0 off max 0.0 | route 8/0 max 0.0 | lbl~head static 2/5 route 1/5 | scene!=route edges 6 max 310 | 1px-drag unrelated moves 5 in 9 frames max 311 | drag lone off 0
+wide-frames: end_gaps=21 end_gap_max=268.200 frames=186 partial_frame_worst=3.32 corner_bad=0
+wide-frames: edges=15 scene_ms=3.55 route_worst=2.33 partial_worst=1.75 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=86 cyl_end_off=0 roundtrip=true
+wide-frames: B7 lone static 13/10 off max 30.2 | route 14/9 max 50.3 | lbl~head static 2/6 route 2/6 | scene!=route edges 15 max 999 | 1px-drag unrelated moves 255 in 19 frames max 999 | drag lone off 171
+u1-lr-markers: end_gaps=0 end_gap_max=0.000 frames=45 partial_frame_worst=0.87 corner_bad=0
+u1-lr-markers: edges=7 scene_ms=0.44 route_worst=0.39 partial_worst=0.09 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+u1-lr-markers: B7 lone static 14/0 off max 0.0 | route 14/0 max 0.0 | lbl~head static 7/7 route 7/7 | scene!=route edges 7 max 12 | 1px-drag unrelated moves 0 in 8 frames max 0 | drag lone off 0
+u2-rl-labels: end_gaps=0 end_gap_max=0.000 frames=32 partial_frame_worst=0.89 corner_bad=0
+u2-rl-labels: edges=5 scene_ms=0.18 route_worst=0.28 partial_worst=0.18 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+u2-rl-labels: B7 lone static 5/2 off max 7.0 | route 5/2 max 7.0 | lbl~head static 3/5 route 4/5 | scene!=route edges 5 max 999 | 1px-drag unrelated moves 3 in 5 frames max 5 | drag lone off 10
+u3-state-twins: end_gaps=0 end_gap_max=0.049 frames=140 partial_frame_worst=1.53 corner_bad=0
+u3-state-twins: edges=13 scene_ms=1.07 route_worst=0.40 partial_worst=0.22 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+u3-state-twins: B7 lone static 8/1 off max 23.0 | route 8/1 max 23.0 | lbl~head static 0/6 route 0/6 | scene!=route edges 13 max 22 | 1px-drag unrelated moves 0 in 13 frames max 0 | drag lone off 13
+u4-lr-clusters: end_gaps=0 end_gap_max=0.000 frames=39 partial_frame_worst=0.74 corner_bad=0
+u4-lr-clusters: edges=6 scene_ms=0.24 route_worst=0.57 partial_worst=0.59 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+u4-lr-clusters: B7 lone static 9/2 off max 7.0 | route 9/2 max 7.0 | lbl~head static 3/6 route 3/6 | scene!=route edges 6 max 999 | 1px-drag unrelated moves 0 in 7 frames max 0 | drag lone off 14
+u5-td-fan-labels: end_gaps=0 end_gap_max=0.042 frames=73 partial_frame_worst=1.37 corner_bad=0
+u5-td-fan-labels: edges=10 scene_ms=0.42 route_worst=0.51 partial_worst=0.34 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+u5-td-fan-labels: B7 lone static 11/8 off max 20.1 | route 12/9 max 20.1 | lbl~head static 1/5 route 0/5 | scene!=route edges 10 max 999 | 1px-drag unrelated moves 15 in 8 frames max 12 | drag lone off 66
+u6-td-straight: end_gaps=0 end_gap_max=0.000 frames=63 partial_frame_worst=0.49 corner_bad=0
+u6-td-straight: edges=8 scene_ms=0.16 route_worst=0.21 partial_worst=0.10 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=2 cyl_end_off=0 roundtrip=true
+u6-td-straight: B7 lone static 9/5 off max 32.5 | route 9/3 max 32.5 | lbl~head static 0/1 route 0/1 | scene!=route edges 8 max 999 | 1px-drag unrelated moves 1 in 7 frames max 7 | drag lone off 31
+t1-hub-labels: end_gaps=0 end_gap_max=0.000 frames=64 partial_frame_worst=1.94 corner_bad=0
+t1-hub-labels: edges=9 scene_ms=0.38 route_worst=0.84 partial_worst=1.20 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+t1-hub-labels: B7 lone static 9/9 off max 47.0 | route 9/9 max 47.0 | lbl~head static 1/5 route 0/5 | scene!=route edges 9 max 6 | 1px-drag unrelated moves 3 in 8 frames max 3 | drag lone off 71
+t2-clusters-bt: end_gaps=0 end_gap_max=0.000 frames=55 partial_frame_worst=0.99 corner_bad=0
+t2-clusters-bt: edges=6 scene_ms=0.41 route_worst=0.53 partial_worst=0.36 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=3 cyl_end_off=0 roundtrip=true
+t2-clusters-bt: B7 lone static 10/1 off max 21.0 | route 10/1 max 21.0 | lbl~head static 0/3 route 1/3 | scene!=route edges 6 max 999 | 1px-drag unrelated moves 0 in 7 frames max 0 | drag lone off 8
+t3-lr-straight: end_gaps=0 end_gap_max=0.000 frames=56 partial_frame_worst=0.93 corner_bad=0
+t3-lr-straight: edges=8 scene_ms=0.16 route_worst=0.16 partial_worst=0.10 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+t3-lr-straight: B7 lone static 9/4 off max 7.0 | route 9/5 max 7.0 | lbl~head static 1/3 route 1/3 | scene!=route edges 8 max 999 | 1px-drag unrelated moves 0 in 7 frames max 0 | drag lone off 30
+t4-comb: end_gaps=0 end_gap_max=0.049 frames=81 partial_frame_worst=2.34 corner_bad=0
+t4-comb: edges=15 scene_ms=0.62 route_worst=0.53 partial_worst=0.29 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+t4-comb: B7 lone static 19/12 off max 24.0 | route 18/12 max 24.0 | lbl~head static 0/1 route 0/1 | scene!=route edges 15 max 999 | 1px-drag unrelated moves 26 in 10 frames max 22 | drag lone off 120
+t5-state-notes: end_gaps=0 end_gap_max=0.049 frames=82 partial_frame_worst=0.97 corner_bad=0
+t5-state-notes: edges=7 scene_ms=0.31 route_worst=0.99 partial_worst=0.19 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+t5-state-notes: B7 lone static 8/2 off max 23.3 | route 8/2 max 23.3 | lbl~head static 0/4 route 0/4 | scene!=route edges 7 max 4 | 1px-drag unrelated moves 0 in 10 frames max 0 | drag lone off 20
+t6-rl-labels: end_gaps=0 end_gap_max=0.013 frames=25 partial_frame_worst=1.12 corner_bad=0
+t6-rl-labels: edges=5 scene_ms=0.25 route_worst=0.41 partial_worst=0.35 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+t6-rl-labels: B7 lone static 2/0 off max 0.0 | route 2/0 max 0.0 | lbl~head static 0/4 route 1/4 | scene!=route edges 5 max 999 | 1px-drag unrelated moves 5 in 4 frames max 7 | drag lone off 0
+t7-curve-style: end_gaps=0 end_gap_max=0.000 frames=40 partial_frame_worst=0.22 corner_bad=0
+t7-curve-style: edges=4 scene_ms=0.12 route_worst=0.11 partial_worst=0.07 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+t7-curve-style: B7 lone static 5/2 off max 18.3 | route 5/2 max 18.3 | lbl~head static 0/2 route 0/2 | scene!=route edges 4 max 3 | 1px-drag unrelated moves 0 in 5 frames max 0 | drag lone off 10
+t8-lr-straight-labels: end_gaps=0 end_gap_max=0.000 frames=30 partial_frame_worst=0.66 corner_bad=0
+t8-lr-straight-labels: edges=4 scene_ms=0.19 route_worst=0.16 partial_worst=0.11 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+t8-lr-straight-labels: B7 lone static 8/0 off max 0.0 | route 8/0 max 0.0 | lbl~head static 4/4 route 4/4 | scene!=route edges 4 max 9 | 1px-drag unrelated moves 0 in 5 frames max 0 | drag lone off 0
+t9-td-straight-labels: end_gaps=0 end_gap_max=0.000 frames=36 partial_frame_worst=1.13 corner_bad=0
+t9-td-straight-labels: edges=4 scene_ms=0.09 route_worst=0.10 partial_worst=0.04 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=0 cyl_end_off=0 roundtrip=true
+t9-td-straight-labels: B7 lone static 8/0 off max 0.0 | route 8/0 max 0.0 | lbl~head static 0/4 route 0/4 | scene!=route edges 4 max 3 | 1px-drag unrelated moves 0 in 5 frames max 0 | drag lone off 0
+g26: end_gaps=403 end_gap_max=348.000 frames=251 partial_frame_worst=7.54 corner_bad=0
+g26: edges=29 scene_ms=3.37 route_worst=2.14 partial_worst=2.17 pick_fail(static)=0 pick_fail(drag)=0 nonparallel=0 sparse_corners=24 cyl_end_off=0 roundtrip=true
+g26: B7 lone static 24/12 off max 29.4 | route 26/12 max 29.4 | lbl~head static 0/8 route 0/8 | scene!=route edges 28 max 999 | 1px-drag unrelated moves 672 in 26 frames max 999 | drag lone off 312

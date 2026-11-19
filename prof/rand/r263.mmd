@@ -1,0 +1,20 @@
+flowchart TD
+  H0 --- N0
+  H0 --> N4
+  H0 -.-> N16
+  H0 -->|retry| N15
+  H0 -.->|retry| N0
+  H0 --- N0
+  H0 --- N17
+  H0 ==> N14
+  H0 -.->|no| N3
+  H1 ==>|retry| N5
+  H1 ==> N18
+  H1 ---|ok| N12
+  H1 ---|a much longer label here| N12
+  H1 -.-> N1
+  H1 ---|yes| N3
+  H2 ==> N18
+  H2 ---|ok| N19
+  H2 ==>|a much longer label here| N6
+  N3 -->|a much longer label here| N17

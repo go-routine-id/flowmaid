@@ -1,0 +1,9 @@
+stateDiagram-v2
+    direction LR
+    state c <<choice>>
+    [*] --> Check
+    Check --> c
+    c --> Ok : yes
+    c --> Fail : no
+    Fail --> Check : retry
+    Ok --> [*]

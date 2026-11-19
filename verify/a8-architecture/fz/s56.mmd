@@ -1,0 +1,13 @@
+architecture-beta
+    group g0(internet)[Backend Services]
+    service s0(database)[Service 0] in g0
+    service s1(disk)[Service 1] in g0
+    service s2(cloud)[Service 2] in g0
+    service s3(monitoring)[Service 3] in g0
+    service s4(disk)[Service 4] in g0
+    service s5(cloud)[Service 5] in g0
+    service s6(internet)[Service 6]
+    service s7(internet)[Service 7] in g0
+    service s8(monitoring)[Service 8] in g0
+    service s9(cloud)[Service 9] in g0
+    s5:T --> B:s4

@@ -1,0 +1,16 @@
+flowchart TD
+  H0 -->|yes| N3
+  H0 -->|ok| N13
+  H0 -.-> N10
+  H0 ==>|retry| N8
+  H0 -.->|ok| N6
+  H0 ---|gift wrap| N4
+  H0 ---|ok| N8
+  H0 ---|yes| N9
+  H0 ---|yes| N14
+  N15 -->|no| N0
+  N1 --> N3
+  N14 --> N9
+  N6 --> N10
+  N2 --> N8
+  N10 -->|express| N12

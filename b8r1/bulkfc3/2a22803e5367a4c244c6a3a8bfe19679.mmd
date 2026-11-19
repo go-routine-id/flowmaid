@@ -1,0 +1,15 @@
+flowchart RL
+    N0([Validate validate])
+    N1([Parse])
+    N2(Retry)
+    N3(Parse validate)
+    N4{Fetch fetch}
+    N5(Queue)
+    N6[/Parse done/]
+    N0 -->|yes| N1
+    N1 -->|ok| N2
+    N1 -->|next| N3
+    N3 -->|next| N4
+    N4 --> N5
+    N3 -->|no| N6
+    N5 -->|again| N3

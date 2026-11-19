@@ -1,0 +1,146 @@
+flowchart TD
+  subgraph A[Block A title]
+    an0[A 0]
+    an1[A 1]
+    subgraph Ax[Block Ax title]
+      axn0[Ax 0]
+      axn1[Ax 1]
+      axn2[Ax 2]
+      subgraph Axx[Block Axx title]
+        axxn0[Axx 0]
+        axxn1[Axx 1]
+      end
+    end
+  end
+  subgraph B[Block B title]
+    bn0[B 0]
+    bn1[B 1]
+    bn2[B 2]
+    bn3[B 3]
+    subgraph Bx[Block Bx title]
+      bxn0[Bx 0]
+      bxn1[Bx 1]
+      bxn2[Bx 2]
+      bxn3[Bx 3]
+      bxn4[Bx 4]
+      subgraph Bxx[Block Bxx title]
+        bxxn0[Bxx 0]
+        bxxn1[Bxx 1]
+        bxxn2[Bxx 2]
+        bxxn3[Bxx 3]
+      end
+    end
+  end
+  subgraph C[Block C title]
+    cn0[C 0]
+    cn1[C 1]
+    cn2[C 2]
+    cn3[C 3]
+    subgraph Cx[Block Cx title]
+      cxn0[Cx 0]
+      cxn1[Cx 1]
+      cxn2[Cx 2]
+      cxn3[Cx 3]
+      cxn4[Cx 4]
+    end
+  end
+  subgraph D[Block D title]
+    dn0[D 0]
+    dn1[D 1]
+    dn2[D 2]
+    dn3[D 3]
+    dn4[D 4]
+    subgraph Dx[Block Dx title]
+      dxn0[Dx 0]
+      dxn1[Dx 1]
+    end
+  end
+  subgraph E[Block E title]
+    en0[E 0]
+    en1[E 1]
+    en2[E 2]
+    en3[E 3]
+    en4[E 4]
+    subgraph Ex[Block Ex title]
+      exn0[Ex 0]
+      exn1[Ex 1]
+      exn2[Ex 2]
+      subgraph Exx[Block Exx title]
+        exxn0[Exx 0]
+        exxn1[Exx 1]
+        exxn2[Exx 2]
+      end
+    end
+  end
+  f0([free f0])
+  an0 --> an1
+  axn0 --> axn1
+  axn1 --> axn2
+  axn0 --> axn2
+  bn0 --> bn1
+  bn2 --> bn3
+  bxn0 --> bxn1
+  bxn3 --> bxn4
+  bxxn0 --> bxxn1
+  bxxn2 --> bxxn3
+  bxxn0 --> bxxn3
+  cn0 --> cn1
+  cn1 --> cn2
+  cn2 --> cn3
+  cn0 --> cn3
+  cxn2 --> cxn3
+  cxn3 --> cxn4
+  dn0 --> dn1
+  dn1 --> dn2
+  dn2 --> dn3
+  dn0 --> dn4
+  dxn0 --> dxn1
+  en0 --> en1
+  en1 --> en2
+  en2 --> en3
+  en3 --> en4
+  exn0 --> exn1
+  exn1 --> exn2
+  exn0 --> exn2
+  exxn0 --> exxn1
+  exxn1 --> exxn2
+  D ==> axxn1
+  bxn4 --> Ex
+  axn0 ==> cxn4
+  dn2 ==> bxxn2
+  axn1 -.-> bxn0
+  en4 -->|yes| bn3
+  bn3 --> Ax
+  an0 ==> bxn0
+  Cx --> bxn4
+  dn1 --> axn1
+  cxn1 -.-> axn2
+  cxn3 -->|retry| exxn0
+  en0 -.-> dn0
+  bxn4 ==> dn1
+  bn1 --> an1
+  bxn2 --> cxn4
+  exxn2 ==> dn4
+  cn1 ==> bxn1
+  bxn1 ==> f0
+  en3 --> exxn1
+  cn2 -.-> axn1
+  Bx --> dxn1
+  bxn2 --> bxxn3
+  cxn2 ==>|sync| cxn3
+  exn1 --> axn0
+  Bxx --> Axx
+  dn2 ==> exxn0
+  exxn0 --> axn0
+  A -.-> bxn4
+  f0 --> exxn2
+  cxn3 --> dn2
+  axn1 --> exxn1
+  C -.-> E
+  en3 -.-> en0
+  Exx -.-> cxn0
+  en3 --> exxn0
+  dn3 --> exn2
+  Bxx ==> cxn0
+  f0 ==> dxn1
+  exxn0 --> an0

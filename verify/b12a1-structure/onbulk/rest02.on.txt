@@ -1,0 +1,188 @@
+5aff7155722c6c3861c493ac6656232a.mmd	block_mode=0	same_as_off=1	violations=24
+    scene: edge 1 (n0>n2) has a long diagonal waypoint step 104x158
+    scene: edge 4 (n0>n2) has a long diagonal waypoint step 33x79
+    scene: edge 5 (n1>n2) has a long diagonal waypoint step 50x79
+    scene: edge 10 (n1>n4) leaves the canvas at 367,143 (canvas 357x388)
+    route: edge 1 (n0>n2) not picked on 1 of 1 waypoint steps
+    route: edge 7 (n2>n4) not picked on 1 of 1 waypoint steps
+5b0bc8b1f53bb612c86e12e9c79de6c4.mmd	block_mode=0	same_as_off=1	violations=0
+5b7352e662c7295d1ed0e0fcea8844e7.mmd	block_mode=0	same_as_off=1	violations=0
+5baefdbc76c0239096175875d2c953a6.mmd	block_mode=0	same_as_off=1	violations=0
+5bdf45e4062a2f8c101f3e4889e734d5.mmd	block_mode=0	same_as_off=1	violations=0
+5becb1615edda4ea26a81e1a04ff79f9.mmd	block_mode=0	same_as_off=1	violations=0
+5bffdaa974408844d1216d7dc71584e9.mmd	block_mode=0	same_as_off=1	violations=27
+    scene: edge 1 (n3>n5) has a long diagonal waypoint step 41x79
+    scene: edge 1 (n3>n5) not picked on 1 of 2 waypoint steps
+    scene: edge 3 (n0>n4) not picked on 1 of 1 waypoint steps
+    scene: edge 7 (n0>n3) not picked on 1 of 1 waypoint steps
+    scene: edge 8 (n1>n5) not picked on 1 of 1 waypoint steps
+    route: edge 1 (n3>n5) not picked on 1 of 1 waypoint steps
+5c0da177f6137016c9fec7a00de5a6c3.mmd	block_mode=0	same_as_off=1	violations=0
+5c2aa807d32fec01971dfea1af0b3c13.mmd	block_mode=0	same_as_off=1	violations=3
+    drag node 2 by -120,60: partial: edge 6 (n3>n2) not picked on 1 of 1 waypoint steps
+    drag node 3 by -120,60: partial: edge 6 (n3>n2) not picked on 1 of 1 waypoint steps
+    drag node 4 by -120,60: partial: edge 0 (n2>n4) not picked on 1 of 1 waypoint steps
+5c5df62872d7f6932067f6a11ba5a7ae.mmd	block_mode=1	same_as_off=0	violations=0
+5c8819c550a416dff174aeae53a054da.mmd	block_mode=0	same_as_off=1	violations=25
+    scene: edge 1 (n5>n3) not picked on 1 of 1 waypoint steps
+    route: edge 1 (n5>n3) not picked on 1 of 1 waypoint steps
+    drag node 0 by 7,5: partial: edge 1 (n5>n3) not picked on 1 of 1 waypoint steps
+    drag node 0 by -120,60: partial: edge 1 (n5>n3) not picked on 1 of 1 waypoint steps
+    drag node 0 by 1,0: partial: edge 1 (n5>n3) not picked on 1 of 1 waypoint steps
+    drag node 1 by 7,5: partial: edge 1 (n5>n3) not picked on 1 of 1 waypoint steps
+5c9a084118e59372a45a2954801d0f10.mmd	block_mode=0	same_as_off=1	violations=0
+5cceb755f82c953427fef9ef3c39389d.mmd	block_mode=0	same_as_off=1	violations=0
+5d0abacdfcd4cd73c786f9a7deab5726.mmd	block_mode=0	same_as_off=1	violations=0
+5d3ac5587d8c4ad34b5d0336416cf70b.mmd	block_mode=0	same_as_off=1	violations=0
+5d4749bdbbdfa0a0c38a34131013c521.mmd	block_mode=0	same_as_off=1	violations=0
+5db4177404122d8543971528d09ba698.mmd	block_mode=0	same_as_off=1	violations=0
+5e2e7239d6df77fb51c9507300fc0b57.mmd	block_mode=0	same_as_off=1	violations=23
+    scene: edge 1 (n0>n2) has a long diagonal waypoint step 104x158
+    scene: edge 4 (n0>n2) has a long diagonal waypoint step 33x79
+    scene: edge 5 (n1>n2) has a long diagonal waypoint step 50x79
+    scene: edge 10 (n1>n4) leaves the canvas at 367,143 (canvas 363x388)
+    route: edge 1 (n0>n2) not picked on 1 of 1 waypoint steps
+    route: edge 7 (n2>n4) not picked on 1 of 1 waypoint steps
+5e4d33287cabbda706f767e1b07de0c7.mmd	block_mode=1	same_as_off=1	violations=0
+5e95763289ef039af076c69c5b1f7ddb.mmd	block_mode=0	same_as_off=1	violations=0
+5ec4afb87828a70dc683cb4156e88cd7.mmd	block_mode=0	same_as_off=1	violations=0
+5ee7516d83b4c64d39ec8a01eb450fb9.mmd	block_mode=0	same_as_off=1	violations=0
+5f21c5abf79db01d57015c99e60a754f.mmd	block_mode=1	same_as_off=0	violations=22
+    scene: edge 8 (n4>n4) leaves the canvas at 374,543 (canvas 368x576)
+    scene: edge 8 (n4>n4) not picked on 1 of 1 waypoint steps
+    route: edge 8 (n4>n4) leaves the canvas at 374,543 (canvas 368x576)
+    route: edge 8 (n4>n4) not picked on 1 of 1 waypoint steps
+    drag node 0 by 7,5: partial: edge 8 (n4>n4) not picked on 1 of 1 waypoint steps
+    drag node 0 by -120,60: partial: edge 8 (n4>n4) not picked on 1 of 1 waypoint steps
+5f43a229d6a6905fa774c09c86d9e960.mmd	block_mode=0	same_as_off=1	violations=0
+5f75891bff8df89ff60bf6cef91ea431.mmd	block_mode=0	same_as_off=1	violations=0
+5fbbbe1c91474da8133d002973dcfad0.mmd	block_mode=0	same_as_off=1	violations=0
+5fdcda40be11217ec2e309b5c584eb61.mmd	block_mode=1	same_as_off=0	violations=0
+6092950365330b57178f29131ccfce4e.mmd	block_mode=1	same_as_off=0	violations=26
+    scene: edge 11 (n6>n6) not picked on 1 of 1 waypoint steps
+    route: edge 11 (n6>n6) not picked on 1 of 1 waypoint steps
+    drag node 0 by 7,5: partial: edge 11 (n6>n6) not picked on 1 of 1 waypoint steps
+    drag node 0 by -120,60: partial: edge 11 (n6>n6) not picked on 1 of 1 waypoint steps
+    drag node 0 by 1,0: partial: edge 11 (n6>n6) not picked on 1 of 1 waypoint steps
+    drag node 1 by 7,5: partial: edge 11 (n6>n6) not picked on 1 of 1 waypoint steps
+60d1b3611f9d76ab3b8258e4bb7a1b14.mmd	block_mode=1	same_as_off=0	violations=0
+60d6b6d8b80134e8083eddfca22f1a61.mmd	block_mode=0	same_as_off=1	violations=0
+60e9ba5c12c51a74efbc808c4cb38263.mmd	block_mode=0	same_as_off=1	violations=0
+61b90148cba94799b500f1e880fef2d7.mmd	block_mode=0	same_as_off=1	violations=0
+61be23708bcb3ad29591f644b71b2612.mmd	block_mode=0	same_as_off=1	violations=0
+61e45821927c860404fca2be338be6b7.mmd	block_mode=0	same_as_off=1	violations=0
+6201660faecec43bda86ac3d2f1d7240.mmd	block_mode=1	same_as_off=0	violations=0
+62420c6727bfc05af765ddcae9132183.mmd	block_mode=0	same_as_off=1	violations=0
+624b281a3f5b6008ad1c6e5e6d4326e1.mmd	block_mode=0	same_as_off=1	violations=5
+    drag node 0 by -120,60: partial: edge 2 (n0>n1) not picked on 1 of 1 waypoint steps
+    drag node 1 by -120,60: partial: edge 2 (n0>n1) not picked on 1 of 1 waypoint steps
+    drag node 2 by 7,5: partial: edge 2 (n0>n1) has a long diagonal waypoint step 98x30
+    drag node 2 by -120,60: partial: edge 2 (n0>n1) has a long diagonal waypoint step 98x30
+    drag node 2 by 1,0: partial: edge 2 (n0>n1) has a long diagonal waypoint step 98x30
+6250f58120e53f72c3fe9d9caf67bf2f.mmd	block_mode=0	same_as_off=1	violations=0
+626506aa35d6531176a33af8bccf629c.mmd	block_mode=0	same_as_off=1	violations=0
+6298c13b01867256403aab5fe3fb0255.mmd	block_mode=1	same_as_off=0	violations=0
+632daa23a92325ab94a1daf3b4fc7d84.mmd	block_mode=0	same_as_off=1	violations=8
+    scene: edge 2 (n0>n1) not picked on 2 of 2 waypoint steps
+    drag node 0 by -120,60: partial: edge 2 (n0>n1) not picked on 1 of 1 waypoint steps
+    drag node 1 by -120,60: partial: edge 2 (n0>n1) not picked on 1 of 1 waypoint steps
+    drag node 2 by 7,5: partial: edge 2 (n0>n1) has a long diagonal waypoint step 98x30
+    drag node 2 by -120,60: partial: edge 2 (n0>n1) has a long diagonal waypoint step 98x30
+    drag node 2 by 1,0: partial: edge 2 (n0>n1) has a long diagonal waypoint step 98x30
+633d1eddedcaed6fdbe1b7e9f1b62cdc.mmd	block_mode=0	same_as_off=1	violations=0
+6370a1ab97944b5b14225004bf6cfc3f.mmd	block_mode=0	same_as_off=1	violations=0
+63b71aaf939def653b04d70d88a6103e.mmd	block_mode=1	same_as_off=1	violations=0
+63f9d2f1d5a88560d6ee70707a18a3d7.mmd	block_mode=1	same_as_off=0	violations=24
+    scene: edge 4 (n4>n7) not picked on 1 of 1 waypoint steps
+    drag node 0 by -120,60: partial: edge 4 (n4>n7) has a long diagonal waypoint step 242x82
+    drag node 1 by 7,5: partial: edge 4 (n4>n7) not picked on 1 of 1 waypoint steps
+    drag node 1 by -120,60: partial: edge 4 (n4>n7) not picked on 1 of 1 waypoint steps
+    drag node 1 by 1,0: partial: edge 4 (n4>n7) not picked on 1 of 1 waypoint steps
+    drag node 2 by 7,5: partial: edge 4 (n4>n7) not picked on 1 of 1 waypoint steps
+64023d5a1aab6cc3f5f540723bb6b684.mmd	block_mode=0	same_as_off=1	violations=0
+6429fe3737e120ba4711c9670ebe7269.mmd	block_mode=1	same_as_off=1	violations=0
+6443708da1914b1a3930a16fa2a2c9fc.mmd	block_mode=0	same_as_off=1	violations=0
+6443cb7e30eb9ee14e8c17b520d5a7d1.mmd	block_mode=0	same_as_off=1	violations=0
+644a56075554ba5766e37be9d92bd7da.mmd	block_mode=0	same_as_off=1	violations=13
+    scene: edge 2 (n4>n1) has a long diagonal waypoint step 98x73
+    drag node 0 by 7,5: partial: edge 2 (n4>n1) has a long diagonal waypoint step 98x73
+    drag node 0 by -120,60: partial: edge 1 (n1>n0) not picked on 1 of 1 waypoint steps
+    drag node 0 by 1,0: partial: edge 2 (n4>n1) has a long diagonal waypoint step 98x73
+    drag node 2 by 7,5: partial: edge 2 (n4>n1) has a long diagonal waypoint step 98x73
+    drag node 2 by -120,60: partial: edge 2 (n4>n1) has a long diagonal waypoint step 98x73
+6465246de4c3fd6f6fe1f7c68130cee0.mmd	block_mode=0	same_as_off=1	violations=0
+6488feb9a7e50e3bec863714dd87994b.mmd	block_mode=0	same_as_off=1	violations=15
+    scene: edge 5 (n1>n1) not picked on 1 of 1 waypoint steps
+    route: edge 5 (n1>n1) not picked on 1 of 1 waypoint steps
+    drag node 0 by 7,5: partial: edge 5 (n1>n1) not picked on 1 of 1 waypoint steps
+    drag node 0 by 1,0: partial: edge 5 (n1>n1) not picked on 1 of 1 waypoint steps
+    drag node 1 by 7,5: partial: edge 5 (n1>n1) not picked on 1 of 1 waypoint steps
+    drag node 1 by -120,60: partial: edge 5 (n1>n1) not picked on 1 of 1 waypoint steps
+64a1a44f704571730bf68b0c7b664927.mmd	block_mode=0	same_as_off=1	violations=0
+64aef80c46793c7ea708b91301462532.mmd	block_mode=0	same_as_off=1	violations=23
+    scene: edge 1 (n0>n2) has a long diagonal waypoint step 104x158
+    scene: edge 4 (n0>n2) has a long diagonal waypoint step 33x79
+    scene: edge 5 (n1>n2) has a long diagonal waypoint step 50x79
+    scene: edge 10 (n1>n4) leaves the canvas at 367,143 (canvas 364x388)
+    route: edge 1 (n0>n2) not picked on 1 of 1 waypoint steps
+    route: edge 7 (n2>n4) not picked on 1 of 1 waypoint steps
+656b3c1e50190baf496d8acc10345169.mmd	block_mode=0	same_as_off=1	violations=0
+657cafa7f6c60b239c3498e9995e5678.mmd	block_mode=0	same_as_off=1	violations=8
+    scene: edge 8 (n0>n3) has a long diagonal waypoint step 98x68
+    drag node 1 by -120,60: partial: edge 2 (n1>n4) not picked on 1 of 1 waypoint steps
+    drag node 2 by 7,5: partial: edge 8 (n0>n3) has a long diagonal waypoint step 98x68
+    drag node 2 by -120,60: partial: edge 8 (n0>n3) has a long diagonal waypoint step 98x68
+    drag node 2 by 1,0: partial: edge 8 (n0>n3) has a long diagonal waypoint step 98x68
+    drag node 4 by 7,5: partial: edge 8 (n0>n3) has a long diagonal waypoint step 98x68
+65959aef3e51aa791187a1f392a70adc.mmd	block_mode=0	same_as_off=1	violations=0
+65bbd2a9ddd42512b2d003babe19c299.mmd	block_mode=0	same_as_off=1	violations=0
+65ec4351179085aa04e889a212058912.mmd	block_mode=0	same_as_off=1	violations=0
+6604e032b1c3f7fbd3617a03d70532d5.mmd	block_mode=0	same_as_off=1	violations=8
+    scene: edge 2 (n0>n1) not picked on 2 of 2 waypoint steps
+    drag node 0 by -120,60: partial: edge 2 (n0>n1) not picked on 1 of 1 waypoint steps
+    drag node 1 by -120,60: partial: edge 2 (n0>n1) not picked on 1 of 1 waypoint steps
+    drag node 2 by 7,5: partial: edge 2 (n0>n1) has a long diagonal waypoint step 98x30
+    drag node 2 by -120,60: partial: edge 2 (n0>n1) has a long diagonal waypoint step 98x30
+    drag node 2 by 1,0: partial: edge 2 (n0>n1) has a long diagonal waypoint step 98x30
+66204cc16af3607d9ca71aff40aa17a3.mmd	block_mode=1	same_as_off=0	violations=0
+663e8899bf90d70ca14592d27bde5370.mmd	block_mode=0	same_as_off=1	violations=0
+66497f86dadf3e169aa3ddca2d298a8a.mmd	block_mode=0	same_as_off=1	violations=0
+666a165ae52003fa28f0bacb3c50e761.mmd	block_mode=0	same_as_off=1	violations=0
+668b13b131ad6a8c56b0f0783fd0e6a3.mmd	block_mode=0	same_as_off=1	violations=14
+    scene: edge 2 (n4>n1) has a long diagonal waypoint step 98x73
+    drag node 0 by 7,5: partial: edge 2 (n4>n1) has a long diagonal waypoint step 98x73
+    drag node 0 by -120,60: partial: edge 1 (n1>n0) not picked on 1 of 1 waypoint steps
+    drag node 0 by 1,0: partial: edge 2 (n4>n1) has a long diagonal waypoint step 98x73
+    drag node 1 by -120,60: partial: edge 1 (n1>n0) not picked on 1 of 1 waypoint steps
+    drag node 2 by 7,5: partial: edge 2 (n4>n1) has a long diagonal waypoint step 98x73
+66e51e2b3d68c274ae9b9b729d0d02ba.mmd	block_mode=0	same_as_off=1	violations=0
+66f9f8fa4449523b62cccc8d8fa45bbf.mmd	block_mode=0	same_as_off=1	violations=0
+67918737ee68698b16c1c1ba8e817649.mmd	block_mode=1	same_as_off=1	violations=0
+67e4198c6bfd0fb3304f6402291aebe2.mmd	block_mode=1	same_as_off=1	violations=0
+67e5bcd2e924d531c6fa618f97c8fc5f.mmd	block_mode=1	same_as_off=0	violations=0
+680b4760956f80f952b9ab3ec03c2110.mmd	block_mode=0	same_as_off=1	violations=0
+68e191f047d4f93e0d3f1a81b58ce1e5.mmd	block_mode=0	same_as_off=1	violations=0
+69106f4dee17a976961dd7bd79987cfb.mmd	block_mode=1	same_as_off=0	violations=0
+692ac7aaf7358339604a50c3d2e67f67.mmd	block_mode=1	same_as_off=0	violations=11
+    scene: edge 4 (n0>n2) not picked on 1 of 1 waypoint steps
+    drag node 0 by 7,5: partial: edge 4 (n0>n2) not picked on 1 of 1 waypoint steps
+    drag node 0 by -120,60: partial: edge 4 (n0>n2) not picked on 1 of 1 waypoint steps
+    drag node 0 by 1,0: partial: edge 4 (n0>n2) not picked on 1 of 1 waypoint steps
+    drag node 1 by -120,60: partial: edge 4 (n0>n2) not picked on 1 of 1 waypoint steps
+    drag node 2 by 7,5: partial: edge 4 (n0>n2) not picked on 1 of 1 waypoint steps
+69310679a6ccc13e0aaf13e06681fd5b.mmd	block_mode=0	same_as_off=1	violations=0
+6941f2b40fe355eba7d8714cc992d702.mmd	block_mode=0	same_as_off=1	violations=0
+6961d1859e6d7c8b445165960f9cffa4.mmd	block_mode=1	same_as_off=0	violations=0
+698b75b107c9e51b9a4f16474688b53c.mmd	block_mode=0	same_as_off=1	violations=0
+6a2000cacd44d525f816475c6407bc05.mmd	block_mode=0	same_as_off=1	violations=3
+    drag node 1 by -120,60: partial: edge 0 (n4>n1) not picked on 1 of 1 waypoint steps
+    drag node 2 by -120,60: partial: edge 4 (n1>n2) not picked on 1 of 1 waypoint steps
+    drag node 4 by -120,60: partial: edge 0 (n4>n1) not picked on 1 of 1 waypoint steps
+6b90d6a9c5f331f4d9984d1f9b01c7cc.mmd	block_mode=0	same_as_off=1	violations=0
+6c01dda68016ee47160e86cece985ce2.mmd	block_mode=0	same_as_off=1	violations=0
+6c0fb48ddfebfc7a9ecb18bf4198c1b9.mmd	block_mode=0	same_as_off=1	violations=0
+6c1549f685fc795b686e40e46dc7e8ce.mmd	block_mode=0	same_as_off=1	violations=0
+6c5cc353a5bb21458b840f981e389ab5.mmd	block_mode=0	same_as_off=1	violations=0
+6c9f7dbf745595ffccdb07a6600c453a.mmd	block_mode=0	same_as_off=1	violations=0
+6cb95881e9461333f046499eceb4ce62.mmd	block_mode=0	same_as_off=1	violations=0
+TOTAL files=86 block_mode=18 with_violations=18 differs_outside_block_mode=0

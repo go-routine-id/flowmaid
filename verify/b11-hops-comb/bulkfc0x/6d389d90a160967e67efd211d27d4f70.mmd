@@ -1,0 +1,15 @@
+flowchart TD
+    N0([Store notify])
+    N1(Check)
+    N2(Archive)
+    N3(Load)
+    N4[/Done notify/]
+    N5(Store load)
+    N0 -->|ok| N1
+    N1 --> N2
+    N2 -->|next| N3
+    N1 -->|yes| N4
+    N4 --> N5
+    N0 --> N2
+    N3 -->|rollback| N2
+    N3 --> N0

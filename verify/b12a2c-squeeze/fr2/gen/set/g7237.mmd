@@ -1,0 +1,56 @@
+flowchart BT
+  n1["notify"]
+  subgraph B0["Fulfilment desk"]
+    n2["api"]
+    n3["db<br/>queue"]
+  end
+  subgraph B1["Core"]
+    n4["pack"]
+    n5["merge<br/>db"]
+    n6["queue"]
+    subgraph B1s0["Data tier 0"]
+      n7["billing<br/>auth"]
+      n8["index"]
+      n9["pack"]
+    end
+  end
+  subgraph B2["Storefront"]
+    n10["parse"]
+    n11["auth ingest worker"]
+    n12["db billing cache<br/>cache"]
+    n13["split"]
+    subgraph B2s0["Data tier 0"]
+      n14["notify"]
+    end
+  end
+  subgraph B3["Data tier"]
+    n15["search"]
+    n16["audit"]
+    n17["cache<br/>auth"]
+    subgraph B3s0["Ops 0"]
+      n18["index parse report"]
+    end
+  end
+  n19["merge split report<br/>report"]
+  n20["api"]
+  n13 --> n16
+  n14 ==> n16
+  n12 -.-> n19
+  n11 --> n1
+  n11 -->|store| n7
+  n9 ==>|merge| n20
+  n19 -->|pack| n12
+  n18 -->|split| n7
+  n12 --> n17
+  n5 --> n13
+  n7 ==>|db| n16
+  n14 --> n11
+  n7 ==> n13
+  n11 -.-> n2
+  n11 ==>|parse| n6
+  n17 ==> n19
+  n4 ==> n1
+  n18 ==> n14
+  n4 -->|db| n5
+  n18 -->|ingest| n5
+  n16 -.->|db| n4

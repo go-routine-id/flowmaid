@@ -1,0 +1,24 @@
+flowchart LR
+  n1["auth"]
+  subgraph B0["Analytics"]
+    n2["queue"]
+    n3["auth"]
+    n4["api queue cache"]
+  end
+  subgraph B1["Data tier"]
+    n5["pack<br/>merge"]
+    n6["store"]
+    n7["ingest cache notify"]
+    n8["audit"]
+  end
+  n9["pack"]
+  n9 --> n7
+  n6 --> n5
+  n2 --> n7
+  n5 -->|cache| n9
+  n5 --> n7
+  n9 ==>|notify| n3
+  n3 ==>|worker| n1
+  n6 ==> n7
+  n2 -.->|db| n1
+  n8 --> n2

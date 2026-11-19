@@ -1,0 +1,33 @@
+flowchart TD
+  s0["log store search"]
+  subgraph g0["billing notify zone"]
+    direction TB
+    m0["log order notify"]
+    m1["notify"]
+    m2["metric"]
+    m3["trace search"]
+    m1 --> m2
+    m1 --> m3
+  end
+  subgraph g1["api zone"]
+    m4["index auth cache"]
+  end
+  subgraph g2["web zone"]
+    direction LR
+    m5["report"]
+    m6["auth"]
+    m5 --> m6
+  end
+  subgraph g3["api api notify zone"]
+    m7["user cart"]
+    m8["ship web user"]
+    m9["user"]
+    m7 --> m8
+    m8 --> m9
+  end
+  s0 --> m0
+  s0 --> g1
+  s0 --> g2
+  s0 --> m7
+  m6 --> m8
+  m4 --> m8

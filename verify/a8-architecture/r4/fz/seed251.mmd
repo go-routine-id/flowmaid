@@ -1,0 +1,19 @@
+architecture-beta
+    service s0(disk)[Q 0]
+    service s1(cloud)[Q 1]
+    service s2(internet)[PostgreSQL Primary 2]
+    service s3(monitoring)[Q 3]
+    service s4(disk)[Web App 4]
+    service s5(internet)[Svc 5]
+    service s6(disk)[Authentication and Authorization Service 6]
+    service s7(nonsense)[Authentication and Authorization Service 7]
+    service s8(internet)[Web App 8]
+    s2:T <-[publishes order events]-> L:s6
+    s2:T -[calls]- B:s3
+    s7:L -[sync]-> R:s0
+    s4:R <--> L:s5
+    s3:B --> R:s5
+    s5:L -- R:s0
+    s0:L -- B:s8
+    s7:R --> R:s0
+    s0:B --> T:s4

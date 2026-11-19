@@ -1,0 +1,11 @@
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> Busy : start
+    Busy --> Idle : done
+    Busy --> Check
+    state Check <<choice>>
+    Check --> Ok : yes
+    Check --> Fail : no
+    Fail --> Idle : retry
+    Ok --> [*]
+    note right of Busy : working hard

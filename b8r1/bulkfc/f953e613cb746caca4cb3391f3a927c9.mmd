@@ -1,0 +1,17 @@
+flowchart TD
+  subgraph S1[First stage]
+    a1[Collect] --> a2[Clean]
+    subgraph S1b[Inner]
+      a3[Deep]
+    end
+    a2 --> a3
+  end
+  subgraph S2[Second stage]
+    b1[Train] --> b2[Score]
+  end
+  subgraph S3[Third]
+    c1[Ship]
+  end
+  S1 -->|handoff data| S2
+  S2 -->|deploy| S3
+  S3 -.->|feedback| S1

@@ -1,0 +1,59 @@
+diff --git a/src/edgepass.rs b/src/edgepass.rs
+index 343d2d2..1778f02 100644
+--- a/src/edgepass.rs
++++ b/src/edgepass.rs
+@@ -439,33 +439,54 @@ pub(crate) fn finish_blocks(g: &Graph, sc: &mut Scene, blocks: Option<&[Vec<usiz
+ }
+ 
+ /// The edge stages over `sc` with its context built.
++fn dbg_dump(sc: &Scene, stage: &str) {
++    if let Ok(w) = std::env::var("FMDBG_EDGE") {
++        for e in &sc.edges {
++            let k = format!("{}->{}", e.from, e.to);
++            if w.split(',').any(|x| x == k) {
++                let p: Vec<String> = e.waypoints.iter().map(|p| format!("({:.1},{:.1})", p.0, p.1)).collect();
++                eprintln!("[{stage}] {k}: {}", p.join(" "));
++            }
++        }
++    }
++}
++
+ fn stages(g: &Graph, sc: &mut Scene, mut cx: Ctx, mode: Mode) {
+     let mut moved = vec![false; sc.edges.len()];
++    dbg_dump(sc, "in");
+     crate::ports::assign(g, sc, &cx, mode, &mut moved);
++    dbg_dump(sc, "ports");
+     // Every edge on the axes, its corners rounded (report §2.1): from the
+     // ends the ports stage settled, before the router judges them.
+     crate::ortho::orthogonalize(g, sc, &mut cx, mode);
++    dbg_dump(sc, "ortho");
+     crate::router::repair(g, sc, &cx, mode, &mut moved);
++    dbg_dump(sc, "repair");
+     // A rerouted end may have switched to another side of its node and
+     // landed on a port another edge already holds: space those groups
+     // again. Groups the router left alone are already spaced and stay
+     // byte-identical.
+     crate::ports::respace(g, sc, &cx, mode, &mut moved);
++    dbg_dump(sc, "respace");
+     // After the ports are spaced again, so the channel nudge sees (and
+     // keeps) the final ends; in the static scene it ends by putting each
+     // side's ends in the order their paths now head (G9).
+     crate::router::nudge(g, sc, &cx, mode, &mut moved);
++    dbg_dump(sc, "nudge");
+     // Then two unrelated edges the nudge (or the builder) left side by
+     // side under the spacing get one moved clear, where that costs
+     // nothing else (G4).
+     crate::router::spread_close(g, sc, &cx, mode, &mut moved);
++    dbg_dump(sc, "spread");
+     // Then a fan's teeth nest: the ports, the tracks and the turns of
+     // each side's ends in one order (report B4, see [`crate::comb`]).
+     crate::comb::comb(sc, &cx, &mut moved);
++    dbg_dump(sc, "comb");
+     glyph_stubs(sc, &cx, &mut moved);
+     straight_cubics(sc, &cx);
+     square_s_cubics(sc, &cx);
+     snap_ends(sc, &cx);
++    dbg_dump(sc, "snap");
+     // A corner a moved end left far from its rounding point turns as a
+     // rounded corner again (see `ports::reround`). An edge a drag keeps
+     // ([`Ctx::fixed`]) keeps its geometry, whoever drew it (a fold's

@@ -1,0 +1,17 @@
+flowchart RL
+    N0{Check notify}
+    N1(Report)
+    N2([Queue notify])
+    N3{Done}
+    N4(Store)
+    N5(Done)
+    N6([Done])
+    N0 --> N1
+    N0 --> N2
+    N1 --> N3
+    N1 --> N4
+    N2 -->|fail| N5
+    N5 --> N6
+    N1 --> N6
+    N6 ==> N4
+    N6 -.-> N4

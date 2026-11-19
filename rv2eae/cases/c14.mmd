@@ -1,0 +1,11 @@
+stateDiagram-v2
+state P {
+  state Q {
+    q1 --> q2
+  }
+  Q --> q1
+  P --> Q
+}
+P --> q2
+Q --> P
+[*] --> P

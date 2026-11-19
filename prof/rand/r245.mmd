@@ -1,0 +1,16 @@
+flowchart TD
+  H0 ==> N4
+  H0 -.-> N3
+  H0 ==>|no| N0
+  H0 ==>|express| N5
+  H0 --> N1
+  H0 ==>|gift wrap| N1
+  H1 -.->|express| N0
+  H1 --- N4
+  H1 -.-> N2
+  H1 -.->|a much longer label here| N1
+  H1 ==> N3
+  N1 --> N4
+  N0 --> N2
+  N4 --> N4
+  N1 --> N2

@@ -1,0 +1,9 @@
+[package]
+name = "stp"
+version = "0.1.0"
+edition = "2021"
+[dependencies]
+flowmaid = { path = "../fmprof" }
+[workspace]
+[profile.release]
+debug = true

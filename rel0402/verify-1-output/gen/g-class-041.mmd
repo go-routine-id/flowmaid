@@ -1,0 +1,50 @@
+classDiagram
+C1 ..> C3
+C1 <|-- C3
+C1 <|-- C5 : Customer Order
+C2 ..|> C4 : beta
+C0 -- C5 : delta
+C1 "1" ..> "*" C4
+C4 "1" --> "*" C1 : gamma
+C1 "1" ..> "*" C4 : alpha
+C3 "1" -- "*" C0
+C1 o-- C0 : alpha
+C5 "1" ..> "*" C4
+C2 "1" *-- "*" C4 : Customer Order
+C0 --> C2
+C5 "1" ..> "*" C0
+C4 -- C3
+C5 "1" -- "*" C3
+C1 -- C4
+C5 <--> C2 : delta
+C3 "1" --> "*" C5 : Customer Order
+C4 --> C0 : alpha
+C2 "1" <--> "*" C0 : 日本語
+C0 <--> C4
+C1 o-- C2
+C3 "1" <--> "*" C3
+C3 "1" ..> "*" C0 : x
+C5 *-- C1
+C1 --> C1 : 日本語
+C2 ..> C1
+C3 ..|> C0 : x
+C0 o-- C2
+C5 "1" o-- "*" C2
+C2 "1" ..> "*" C2 : alpha
+C1 ..> C4 : beta
+C3 ..|> C3 : x
+C0 -- C4 : Customer Order
+C3 o-- C0
+C2 ..|> C0
+C0 "1" <|-- "*" C0
+C2 --> C3
+C4 *-- C3 : delta
+C3 ..|> C4
+C2 <--> C1
+note for C5 "日本語"
+note "<b>bold</b>"
+note "日本語"
+class C0 {
+  +int id
+  +name() String
+}

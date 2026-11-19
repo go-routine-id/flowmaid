@@ -1,0 +1,17 @@
+flowchart LR
+    N0[/Parse/]
+    N1{Validate}
+    N2[Fetch archive]
+    N3(Queue)
+    N4(Check check)
+    N5[Parse archive]
+    N6(Store load)
+    N7((Emit report))
+    N0 -->|fail| N1
+    N0 --> N2
+    N0 --> N3
+    N3 --> N4
+    N3 -->|yes| N5
+    N3 --> N6
+    N6 -->|no| N7
+    N5 --> N3

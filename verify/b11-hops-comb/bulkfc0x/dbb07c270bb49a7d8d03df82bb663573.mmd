@@ -1,0 +1,12 @@
+flowchart TD
+  subgraph Svc [Service]
+    direction TB
+    R[Receive] --> P[Process]
+    P -->|retry| P
+    P -->|requeue| P
+    P --> W[Write]
+    W -->|conflict| R
+  end
+  In[Client] --> R
+  W --> Out[Ack]
+  Out -.->|next request| In

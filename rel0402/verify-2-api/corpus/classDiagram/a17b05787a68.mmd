@@ -1,0 +1,37 @@
+classDiagram
+direction LR
+A ..> B
+A -- C
+C --|> D : x
+C ..|> E
+A --|> F : x
+B "1" -- "*" G
+C ..> H
+G --|> I
+D *-- G
+I ..|> G
+E *-- F
+F *-- F : f0
+F "1" --> "*" F : f1
+F ..> F : f2
+F --> F : f3
+F o-- F : f4
+F o-- F
+F --> F : f6
+F ..> F : f7
+F o-- F
+E --> E
+E *-- E
+E *-- E
+E *-- E : e3
+E ..> E : e4
+E "1" --> "*" E
+C "1" --> "*" C : c0
+H --> H
+H *-- H : h1
+H ..> H
+class D {
+ +int id
+ +run() void
+ +stop()
+}

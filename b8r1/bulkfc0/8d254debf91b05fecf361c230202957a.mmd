@@ -1,0 +1,13 @@
+flowchart TD
+  subgraph F0 [Frame 0]
+    n2[(Node 2)]
+    n0[/Node 0/]
+  end
+  n1 --x n1
+  n1 <-.-> n0
+  n0 -.->|x| n0
+  n1 ~~~ n1
+  n0 -.-> n2
+  linkStyle 1 stroke-width:1px,stroke:#36c,stroke-dasharray:6 3
+  linkStyle 2 interpolate step stroke-width:15px
+  linkStyle 3 stroke-width:55px

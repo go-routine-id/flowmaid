@@ -1,0 +1,14 @@
+%%{init: {'theme':'dark'}}%%
+classDiagram
+  class Animal {
+    <<abstract>>
+    +String name
+    +speak()* void
+  }
+  Animal <|-- Dog
+  Animal <|-- Cat
+  Dog *-- Tail
+  Dog o-- Owner : owned by
+  Cat ..> Food
+  note for Dog "good boy"
+  class Owner

@@ -1,0 +1,15 @@
+flowchart BT
+    N0[Fetch retry]
+    N1(Check)
+    N2(Parse load)
+    N3(Notify)
+    N4(Check)
+    N5[/Done/]
+    N0 -->|ok| N1
+    N0 --> N2
+    N0 -->|fail| N3
+    N3 --> N4
+    N2 --> N5
+    N2 -.->|again| N0
+    N2 ==> N0
+    N4 ==>|rollback| N1

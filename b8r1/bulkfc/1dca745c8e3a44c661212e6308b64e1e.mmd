@@ -1,0 +1,16 @@
+flowchart RL
+    N0{Emit load}
+    N1{Done}
+    N2([Archive parse])
+    N3{{Archive}}
+    N4[Emit]
+    N5(Parse)
+    N0 --> N1
+    N0 --> N2
+    N2 -->|yes| N3
+    N3 -->|fail| N4
+    N3 --> N5
+    N1 --> N3
+    N1 --> N5
+    N0 --> N5
+    N5 --> N4

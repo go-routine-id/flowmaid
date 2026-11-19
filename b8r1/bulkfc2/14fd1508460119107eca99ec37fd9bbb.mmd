@@ -1,0 +1,20 @@
+flowchart TD
+    N0{Fetch}
+    N1[Emit]
+    N2{Queue}
+    N3[Done]
+    N4{Report}
+    N5{Notify}
+    N6[Validate queue]
+    N7[/Archive/]
+    N8([Retry done])
+    N0 -->|yes| N1
+    N0 -->|yes| N2
+    N2 --> N3
+    N1 --> N4
+    N2 -->|yes| N5
+    N4 --> N6
+    N5 -->|next| N7
+    N7 --> N8
+    N2 -->|retry| N1
+    N4 -->|again| N0

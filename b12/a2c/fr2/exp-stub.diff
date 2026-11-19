@@ -1,0 +1,26 @@
+diff --git a/src/router.rs b/src/router.rs
+index d952ca3..4401ad7 100644
+--- a/src/router.rs
++++ b/src/router.rs
+@@ -3051,10 +3051,10 @@ fn terms(
+ /// 28 px head on a 14 px stub sat over the corner, and the painter's
+ /// head, turning with the curve's last stretch, hooked past the side
+ /// and doubled back into it (q72 `n1 ==> n7` in `route()`).
+-fn stub_len(e: &crate::scene::SceneEdge, glyph: bool, clear: f64) -> f64 {
++fn stub_len(e: &crate::scene::SceneEdge, glyph: bool, clear: f64, blocks: bool) -> f64 {
+     let plain = clear + STUB_EXTRA;
+     let head = crate::scene::edge_head_len(e);
+-    if glyph && head > ARROW_MARKER_PX {
++    if glyph && (head > ARROW_MARKER_PX || blocks) {
+         plain.max(head + CORNER_R)
+     } else {
+         plain
+@@ -3124,7 +3124,7 @@ fn route_edge(
+     // way round (G13).
+     let forward = !info.back && env.tracks && w.flow;
+     let end_terms = |end: EndRef, port: Pt, glyph: bool| {
+-        let (plain, len) = (clear + STUB_EXTRA, stub_len(e, glyph, clear));
++        let (plain, len) = (clear + STUB_EXTRA, stub_len(e, glyph, clear, env.blocks));
+         let mut found: Vec<Term> = terms(w, end, port, t.alt, len, env.taken, me, forward)
+             .into_iter()
+             .filter(usable)

@@ -1,0 +1,41 @@
+VDBG place_ports node=s1 side=Bottom k=1 clear=6.5 lo=36.0 hi=74.0 shaded=false deep=[false] heads=[291.5] inked=[299.1] wants=[(0, 70.0)]
+VDBG place_ports node=x side=Bottom k=1 clear=6.5 lo=159.0 hi=367.0 shaded=false deep=[false] heads=[291.5] inked=[299.1] wants=[(4, 263.0)]
+VDBG place_ports node=s2 side=Bottom k=1 clear=6.5 lo=140.0 hi=178.0 shaded=false deep=[false] heads=[291.5] inked=[299.1] wants=[(1, 174.0)]
+VDBG place_ports node=s3 side=Bottom k=1 clear=6.5 lo=244.0 hi=282.0 shaded=false deep=[false] heads=[291.5] inked=[299.1] wants=[(2, 263.0)]
+VDBG place_ports node=s4 side=Bottom k=1 clear=6.5 lo=348.0 hi=386.0 shaded=false deep=[false] heads=[291.5] inked=[299.1] wants=[(3, 352.0)]
+VDBG place_ports node=s5 side=Bottom k=1 clear=6.5 lo=452.0 hi=490.0 shaded=false deep=[false] heads=[291.5] inked=[299.1] wants=[(6, 456.0)]
+VDBG place_ports node=y side=Top k=1 clear=6.5 lo=244.0 hi=282.0 shaded=false deep=[false] heads=[291.5] inked=[299.1] wants=[(4, 263.0)]
+VDBG place_ports node=y side=Bottom k=1 clear=6.5 lo=244.0 hi=282.0 shaded=false deep=[false] heads=[291.5] inked=[299.1] wants=[(5, 263.0)]
+VDBG place_ports node=z side=Top k=1 clear=6.5 lo=243.3 hi=282.7 shaded=false deep=[false] heads=[291.5] inked=[299.1] wants=[(5, 263.0)]
+VDBG place_ports node=x side=Top k=4 clear=6.5 lo=305.6 hi=367.0 shaded=true deep=[true] heads=[291.5] inked=[299.1] wants=[(0, 190.2), (1, 226.6), (2, 263.0), (3, 299.4)]
+VDBG after place_ports: s1>x 55.0,66.0 -> 305.6,181.0 | s2>x 159.0,66.0 -> 322.6,181.0 | s3>x 263.0,66.0 -> 339.6,181.0 | s4>x 367.0,66.0 -> 356.6,181.0 | x>y 263.0,219.0 -> 263.0,279.0 | y>z 263.0,317.0 -> 263.0,377.0 | s5>G 471.0,66.0 -> 297.5,141.0
+VDBG after free_pins: s1>x 55.0,66.0 -> 305.6,181.0 | s2>x 159.0,66.0 -> 322.6,181.0 | s3>x 263.0,66.0 -> 339.6,181.0 | s4>x 367.0,66.0 -> 356.6,181.0 | x>y 263.0,219.0 -> 263.0,279.0 | y>z 263.0,317.0 -> 263.0,377.0 | s5>G 471.0,66.0 -> 297.5,141.0
+VDBG after title_side_columns: s1>x 55.0,66.0 -> 305.6,181.0 | s2>x 159.0,66.0 -> 322.6,181.0 | s3>x 263.0,66.0 -> 339.6,181.0 | s4>x 367.0,66.0 -> 356.6,181.0 | x>y 263.0,219.0 -> 263.0,279.0 | y>z 263.0,317.0 -> 263.0,377.0 | s5>G 471.0,66.0 -> 297.5,141.0
+VSTAGE assign: s1>x 305.6,181.0 | s2>x 322.6,181.0 | s3>x 339.6,181.0 | s4>x 356.6,181.0 | x>y 263.0,279.0 | y>z 263.0,377.0 | s5>G 297.5,141.0
+VSTAGE orthogonalize: s1>x 305.6,181.0 | s2>x 322.6,181.0 | s3>x 339.6,181.0 | s4>x 356.6,181.0 | x>y 263.0,279.0 | y>z 263.0,377.0 | s5>G 297.5,141.0
+VSTAGE repair: s1>x 305.6,181.0 | s2>x 322.6,181.0 | s3>x 339.6,181.0 | s4>x 356.6,181.0 | x>y 263.0,279.0 | y>z 263.0,377.0 | s5>G 297.5,141.0
+VDBG place_ports node=s1 side=Bottom k=1 clear=6.5 lo=36.0 hi=74.0 shaded=false deep=[false] heads=[291.5] inked=[299.1] wants=[(0, 55.0)]
+VDBG place_ports node=x side=Top k=4 clear=6.5 lo=305.6 hi=367.0 shaded=true deep=[true] heads=[291.5] inked=[299.1] wants=[(0, 305.6), (1, 322.6), (2, 339.6), (3, 356.6)]
+VDBG place_ports node=x side=Bottom k=1 clear=6.5 lo=159.0 hi=367.0 shaded=false deep=[false] heads=[291.5] inked=[299.1] wants=[(4, 263.0)]
+VDBG place_ports node=s2 side=Bottom k=1 clear=6.5 lo=140.0 hi=178.0 shaded=false deep=[false] heads=[291.5] inked=[299.1] wants=[(1, 159.0)]
+VDBG place_ports node=s3 side=Right k=1 clear=6.5 lo=36.0 hi=58.0 shaded=false deep=[false] heads=[291.5] inked=[299.1] wants=[(2, 47.0)]
+VDBG place_ports node=s4 side=Bottom k=1 clear=6.5 lo=348.0 hi=386.0 shaded=false deep=[false] heads=[291.5] inked=[299.1] wants=[(3, 367.0)]
+VDBG place_ports node=s5 side=Bottom k=1 clear=6.5 lo=452.0 hi=490.0 shaded=false deep=[false] heads=[291.5] inked=[299.1] wants=[(6, 471.0)]
+VDBG place_ports node=y side=Top k=1 clear=6.5 lo=244.0 hi=282.0 shaded=false deep=[false] heads=[291.5] inked=[299.1] wants=[(4, 263.0)]
+VDBG place_ports node=y side=Bottom k=1 clear=6.5 lo=244.0 hi=282.0 shaded=false deep=[false] heads=[291.5] inked=[299.1] wants=[(5, 263.0)]
+VDBG place_ports node=z side=Top k=1 clear=6.5 lo=243.3 hi=282.7 shaded=false deep=[false] heads=[291.5] inked=[299.1] wants=[(5, 263.0)]
+VSTAGE respace: s1>x 305.6,181.0 | s2>x 322.6,181.0 | s3>x 339.6,181.0 | s4>x 356.6,181.0 | x>y 263.0,279.0 | y>z 263.0,377.0 | s5>G 297.5,141.0
+VDBG place_ports node=s1 side=Bottom k=1 clear=6.5 lo=36.0 hi=74.0 shaded=false deep=[false] heads=[291.5] inked=[299.1] wants=[(0, 55.0)]
+VDBG place_ports node=x side=Top k=4 clear=6.5 lo=305.6 hi=367.0 shaded=true deep=[true] heads=[291.5] inked=[299.1] wants=[(0, 298.0), (1, 313.2), (2, 339.6), (3, 356.6)]
+VDBG place_ports node=x side=Bottom k=1 clear=6.5 lo=159.0 hi=367.0 shaded=false deep=[false] heads=[291.5] inked=[299.1] wants=[(4, 263.0)]
+VDBG place_ports node=s2 side=Bottom k=1 clear=6.5 lo=140.0 hi=178.0 shaded=false deep=[false] heads=[291.5] inked=[299.1] wants=[(1, 159.0)]
+VDBG place_ports node=s3 side=Right k=1 clear=6.5 lo=36.0 hi=58.0 shaded=false deep=[false] heads=[291.5] inked=[299.1] wants=[(2, 47.0)]
+VDBG place_ports node=s4 side=Bottom k=1 clear=6.5 lo=348.0 hi=386.0 shaded=false deep=[false] heads=[291.5] inked=[299.1] wants=[(3, 356.6)]
+VDBG place_ports node=s5 side=Bottom k=1 clear=6.5 lo=452.0 hi=490.0 shaded=false deep=[false] heads=[291.5] inked=[299.1] wants=[(6, 471.0)]
+VDBG place_ports node=y side=Top k=1 clear=6.5 lo=244.0 hi=282.0 shaded=false deep=[false] heads=[291.5] inked=[299.1] wants=[(4, 263.0)]
+VDBG place_ports node=y side=Bottom k=1 clear=6.5 lo=244.0 hi=282.0 shaded=false deep=[false] heads=[291.5] inked=[299.1] wants=[(5, 263.0)]
+VDBG place_ports node=z side=Top k=1 clear=6.5 lo=243.3 hi=282.7 shaded=false deep=[false] heads=[291.5] inked=[299.1] wants=[(5, 263.0)]
+VSTAGE nudge: s1>x 298.0,181.0 | s2>x 313.2,181.0 | s3>x 339.6,181.0 | s4>x 356.6,181.0 | x>y 263.0,279.0 | y>z 263.0,377.0 | s5>G 327.5,141.0
+VSTAGE spread_close: s1>x 298.0,181.0 | s2>x 313.2,181.0 | s3>x 339.6,181.0 | s4>x 356.6,181.0 | x>y 263.0,279.0 | y>z 263.0,377.0 | s5>G 327.5,141.0
+VSTAGE comb: s1>x 298.0,181.0 | s2>x 313.2,181.0 | s3>x 339.6,181.0 | s4>x 356.6,181.0 | x>y 263.0,279.0 | y>z 263.0,377.0 | s5>G 327.5,141.0
+saved: dbg/a9.svg

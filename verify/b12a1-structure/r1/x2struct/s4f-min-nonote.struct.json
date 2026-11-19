@@ -1,0 +1,40 @@
+{"tool":"structdump","flowmaid":"0.38.0","kind":"state","direction":"TD",
+"nodes":[
+ {"id":"__start_root","label":"","shape":"StateStart","sub":null},
+ {"id":"Idle","label":"Idle","shape":"Rounded","sub":null},
+ {"id":"__start_0","label":"","shape":"StateStart","sub":0},
+ {"id":"Queue","label":"Queue","shape":"Rounded","sub":0},
+ {"id":"Check","label":"Check","shape":"Rounded","sub":0},
+ {"id":"__start_1","label":"","shape":"StateStart","sub":1},
+ {"id":"Boot","label":"Boot","shape":"Rounded","sub":1}],
+"subgraphs":[
+ {"id":"Review","title":"Review","parent":null,"direction":null,"nodes":[2,3,4]},
+ {"id":"Running","title":"Running","parent":null,"direction":null,"nodes":[5,6]}],
+"edges":[
+ {"from":{"n":0},"to":{"n":1},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":2},"to":{"n":3},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":3},"to":{"n":4},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":5},"to":{"n":6},"label":null,"kind":"Arrow","drawn":true},
+ {"from":{"n":1},"to":{"s":0},"label":"submit","kind":"Arrow","drawn":true},
+ {"from":{"s":0},"to":{"s":1},"label":"approved","kind":"Arrow","drawn":true},
+ {"from":{"s":1},"to":{"n":1},"label":"done","kind":"Arrow","drawn":true}],
+"scene":{"width":213.401,"height":742.000,
+ "nodes":[
+  {"id":"__start_root","x":108.520,"y":28.000,"w":14.000,"h":14.000},
+  {"id":"Idle","x":88.070,"y":102.000,"w":54.900,"h":38.000},
+  {"id":"__start_0","x":108.520,"y":252.000,"w":14.000,"h":14.000},
+  {"id":"Queue","x":79.070,"y":326.000,"w":72.900,"h":38.000},
+  {"id":"Check","x":79.870,"y":424.000,"w":71.300,"h":38.000},
+  {"id":"__start_1","x":108.520,"y":588.000,"w":14.000,"h":14.000},
+  {"id":"Boot","x":84.920,"y":662.000,"w":61.200,"h":38.000}],
+ "clusters":[
+  {"id":"Review","x":65.070,"y":212.000,"w":100.900,"h":264.000,"depth":0},
+  {"id":"Running","x":70.920,"y":548.000,"w":89.200,"h":166.000,"depth":0}],
+ "edges":[
+  {"from":"__start_root","to":"Idle","routed":false,"label":null,"points":[[115.520,42.000],[115.520,72.000],[115.520,72.000],[115.520,102.000]]},
+  {"from":"__start_0","to":"Queue","routed":false,"label":null,"points":[[115.520,266.000],[115.520,296.000],[115.520,296.000],[115.520,326.000]]},
+  {"from":"Queue","to":"Check","routed":false,"label":null,"points":[[115.520,364.000],[115.520,394.000],[115.520,394.000],[115.520,424.000]]},
+  {"from":"__start_1","to":"Boot","routed":false,"label":null,"points":[[115.520,602.000],[115.520,632.000],[115.520,632.000],[115.520,662.000]]},
+  {"from":"Idle","to":"Review","routed":false,"label":{"text":"submit","cx":124.327,"cy":176.000,"w":55.600},"points":[[124.827,140.000],[124.827,164.000],[124.827,188.000],[124.827,212.000]]},
+  {"from":"Review","to":"Running","routed":true,"label":{"text":"approved","cx":149.151,"cy":497.865,"w":72.500},"points":[[115.520,476.000],[115.520,483.375],[115.520,490.750],[122.895,490.750],[135.577,490.750],[149.577,490.750],[149.577,504.750],[149.577,548.000]]},
+  {"from":"Running","to":"Idle","routed":true,"label":{"text":"done","cx":50.600,"cy":493.849,"w":45.200},"points":[[135.577,548.000],[135.577,540.750],[135.577,533.500],[128.327,533.500],[64.570,533.500],[50.570,533.500],[50.570,519.500],[50.570,168.500],[50.570,154.500],[64.570,154.500],[97.070,154.500],[104.320,154.500],[104.320,147.250],[104.320,140.000]]}]}}

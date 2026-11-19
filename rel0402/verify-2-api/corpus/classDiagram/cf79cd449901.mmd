@@ -1,0 +1,14 @@
+classDiagram
+direction LR
+class List~T~ {
+<<interface>>
++add(T item) void
++get(int i) T
+}
+class Map~K,V~
+class VeryVeryVeryVeryLongClassNameThatKeepsGoingAndGoingForeverAndEver
+List~T~ <|.. ArrayList~T~
+Map~K,V~ <|.. HashMap~K,V~
+VeryVeryVeryVeryLongClassNameThatKeepsGoingAndGoingForeverAndEver --> List~T~ : a very very long relation label that goes on and on
+HashMap~K,V~ --> HashMap~K,V~ : rehash
+note for Map~K,V~ "generic"

@@ -1,0 +1,24 @@
+flowchart LR
+  subgraph F0 [Frame 0]
+    n4((Node 4 with a long label))
+    n8[[Node 8]]
+    n1{{Node 1}}
+  end
+  subgraph F1 [Frame 1]
+    n2{{Node 2}}
+    n5[/Node 5/]
+    n6[[Node 6]]
+  end
+  n8 <==>|no| n8
+  n4 ---> n3
+  n3 x--x n0
+  n0 ==>|no| F0
+  n4 x--x|no| n8
+  n7 --- F0
+  n4 e6@~~~ n7
+  e6@{ curve: natural }
+  n0 <-.-> n7
+  linkStyle 3 stroke-width:8px,stroke:#3a3
+  linkStyle 5 stroke-width:55px,stroke:#c33
+  linkStyle 6 interpolate linear stroke-width:12px
+  linkStyle 7 interpolate basis stroke-width:5px

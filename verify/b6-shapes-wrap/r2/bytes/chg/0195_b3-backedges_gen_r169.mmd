@@ -1,0 +1,17 @@
+flowchart TD
+    N0([Retry])
+    N1(Fetch emit)
+    N2[Fetch]
+    N3[Load done]
+    N4((Archive notify))
+    N5{Queue parse}
+    N0 --> N1
+    N1 --> N2
+    N0 --> N3
+    N3 --> N4
+    N3 --> N5
+    N0 --> N4
+    N1 --> N3
+    N0 --> N3
+    N5 -->|again| N0
+    N2 -->|again| N1

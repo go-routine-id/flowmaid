@@ -1,0 +1,13 @@
+flowchart TD
+  n1["report"]
+  subgraph B0["Core"]
+    n2["db"]
+    n3["ship"]
+  end
+  subgraph B1["Fulfilment desk"]
+    n4["ingest"]
+  end
+  n5["search"]
+  n5 -.-> n2
+  n5 -.->|store| n4
+  n5 ==> n3

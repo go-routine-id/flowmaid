@@ -1,0 +1,17 @@
+sequenceDiagram
+  actor U as User
+  participant A as App
+  participant D as DB
+  U->>A: open
+  activate A
+  loop every row
+    A->>D: query
+    D-->>A: rows
+  end
+  alt ok
+    A->>U: show
+  else failed
+    A-xU: error
+  end
+  Note right of D: indexed
+  deactivate A

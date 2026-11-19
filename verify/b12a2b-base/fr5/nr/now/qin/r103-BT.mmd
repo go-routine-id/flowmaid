@@ -1,0 +1,15 @@
+flowchart BT
+    subgraph G[Data ingestion workers]
+        m0[w]
+        m1[ledger]
+        m2[auth service]
+        m0 --> m1
+    end
+    s0[src0] --> m1
+    s0 --> G
+    s1[src1] --> G
+    s1 --> m0
+    s2[src2] --> G
+    s3[src3] --> m2
+    s3 --> m1
+    m2 --> z[end]

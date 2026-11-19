@@ -1,0 +1,13 @@
+flowchart TD
+  A[hub]
+  subgraph K1[Left block]
+    direction RL
+    k1[left one] --> k3[left two]
+  end
+  A -->|g2| K1
+  A -->|g4| B0[beside]
+  K1 -->|back| A
+  A --> K2
+  subgraph K2[Right block]
+    k2[right one]
+  end

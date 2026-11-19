@@ -1,0 +1,48 @@
+flowchart TD
+  n1["ingest"]
+  n2["audit"]
+  subgraph B0["Platform"]
+    n3["api"]
+    subgraph B0s0["Data tier 0"]
+      n4["billing"]
+      n5["billing search parse"]
+      n6["mail"]
+    end
+    subgraph B0s1["Back office and finance 1"]
+      n7["auth ship search"]
+      n8["auth"]
+      n9["report"]
+    end
+  end
+  subgraph B1["Platform"]
+    n10["notify"]
+    n11["report store mail"]
+  end
+  subgraph B2["Data tier"]
+    n12["api"]
+  end
+  subgraph B3["Ops"]
+    n13["db"]
+    n14["db"]
+    n15["store store audit"]
+  end
+  n16["store audit audit"]
+  n17["auth"]
+  n17 --> n5
+  n11 --> n6
+  n10 --> n6
+  n5 -.-> n1
+  n6 -->|merge| n16
+  n8 -->|api| n11
+  n11 --> n7
+  n15 --> n12
+  n6 -.-> n13
+  n12 --> n10
+  n3 ==>|store| n9
+  n16 --> n17
+  n6 ==> n14
+  n1 --> n12
+  n7 --> n13
+  n4 -.-> n15
+  n7 --> n14
+  n11 ==> n15

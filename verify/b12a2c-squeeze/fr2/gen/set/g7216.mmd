@@ -1,0 +1,51 @@
+flowchart BT
+  n1["worker queue index"]
+  n2["cache ingest report"]
+  subgraph B0["Analytics"]
+    n3["ship store split"]
+  end
+  subgraph B1["Ops"]
+    n4["audit<br/>api"]
+    subgraph B1s0["Ingest 0"]
+      n5["notify<br/>worker"]
+      n6["split"]
+    end
+    subgraph B1s1["Ingest 1"]
+      n7["audit db notify<br/>auth"]
+      n8["ingest<br/>notify"]
+    end
+  end
+  subgraph B2["Edge services"]
+    n9["db search notify"]
+    subgraph B2s0["Fulfilment desk 0"]
+      n10["mail"]
+    end
+    subgraph B2s1["Ingest 1"]
+      n11["index"]
+      n12["index store report"]
+      n13["pack"]
+    end
+  end
+  subgraph B3["Core"]
+    n14["api"]
+  end
+  n15["db"]
+  n16["search auth audit"]
+  n6 ==> n2
+  n8 --> n3
+  n6 --> n3
+  n5 -->|parse| n8
+  n4 -.-> n14
+  n6 -.-> B1s1
+  n14 ==> n6
+  n12 --> n9
+  n10 --> B2s0
+  n14 ==>|search| n8
+  n2 --> n9
+  n12 ==> n11
+  n7 -->|audit| n2
+  n2 --> n12
+  n3 --> n4
+  n10 -.-> n7
+  n3 ==> n9
+  n12 -->|ship| n5

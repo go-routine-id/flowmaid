@@ -1,0 +1,78 @@
+nr-r070-BT.svg	Édition générale des données	1000000000.00 	1000000000.00 	1000000000.00 	1000000000.00 
+nr-r087-TD.svg	Shipping and returns desk	6.52 s3 → m0	6.72 s3 → m0	6.52 s3 → m0	6.52 s3 → m0
+nr-r119-BT.svg	Édition générale des données	1000000000.00 	1000000000.00 	1000000000.00 	1000000000.00 
+nr-r167-TD.svg	Data ingestion workers	7.43 s0 → m0	7.43 s0 → m0	7.43 s0 → m0	7.43 s0 → m0
+nr-r183-TD.svg	Édition générale des données	7.28 s3 → m0	7.34 s3 → m0	6.50 s3 → m0	7.28 s3 → m0
+nr-r220-BT.svg	Édition générale des données	1000000000.00 	1000000000.00 	1000000000.00 	1000000000.00 
+nr-r220-BT.svg	WWW Mammoth Wombat Overview	10.00 m0 → k	2.41 m1 → z	10.00 m0 → k	10.00 m0 → k
+nt-n005-TD.svg	Inventory management	10.00 p → a1	10.00 p → a1	10.00 p → a1	10.00 p → a1
+nt-n005-TD.svg	Inventory management backend	9.98 a1 → b0: x	7.38 a1 → b0: x	9.98 a1 → b0: x	9.98 a1 → b0: x
+nt-n012-TD.svg	Customer data platform	33.00 p → b0	33.00 p → b0	33.00 p → B	33.00 p → b0
+nt-n012-TD.svg	Customer data platform two	7.48 p → b0	7.38 p → b0	6.89 p → b0	7.48 p → b0
+nt-n024-TD.svg	Édition générale	30.00 q → B	30.00 q → B	30.00 q → B	30.00 q → B
+nt-n024-TD.svg	Édition générale two	10.00 a0 → b0	9.99 a0 → b0	10.00 a0 → b0	10.00 a0 → b0
+nt-n040-TD.svg	WWW Mammoth Wombat	7.50 q → a0	7.50 q → a0	7.50 q → a0	7.50 q → a0
+nt-n040-TD.svg	WWW Mammoth Wombat east	7.44 p → b0	7.44 p → b0	7.44 p → b0	7.44 p → b0
+nt-n046-TD.svg	Order processing	1000000000.00 	1000000000.00 	1000000000.00 	1000000000.00 
+nt-n046-TD.svg	Order processing backend	7.47 r → b0	7.36 r → b0	6.77 r → b0	7.47 r → b0
+nt-n050-TD.svg	Identity provider	7.50 q → a0	7.49 q → a0	7.49 q → a0	7.50 q → a0
+nt-n050-TD.svg	Identity provider east	7.45 p → b0	7.45 p → b0	7.45 p → b0	7.45 p → b0
+nt-n064-TD.svg	Shipping and returns desk	54.00 p → B	54.00 p → B	54.00 p → B	54.00 p → B
+nt-n064-TD.svg	Shipping and returns desk east	9.99 p → b1	9.99 p → b1	9.99 p → b1	9.99 p → b1
+nt-n070-TD.svg	Shipping and returns desk	1000000000.00 	1000000000.00 	1000000000.00 	1000000000.00 
+nt-n070-TD.svg	Shipping and returns desk two	7.74 a0 → b0: x	0.03 q → b0	7.74 a0 → b0: x	7.74 a0 → b0: x
+nt-n081-TD.svg	Identity provider	1000000000.00 	1000000000.00 	1000000000.00 	1000000000.00 
+nt-n081-TD.svg	Identity provider backend	5.95 a2 → b1	7.45 a2 → b1	5.95 a2 → b1	5.95 a2 → b1
+nt-n085-TD.svg	Identity provider	33.00 p → b0	33.00 p → b0	33.00 p → B	33.00 p → b0
+nt-n085-TD.svg	Identity provider two	7.45 p → b0	7.45 p → b0	7.45 p → b0	7.45 p → b0
+nt-n091-TD.svg	Inventory management	11.50 p → A	11.50 p → A	11.50 p → A	11.50 p → A
+nt-n091-TD.svg	Inventory management east	7.41 a1 → b0: x	7.41 a1 → b0: x	7.41 a1 → b0: x	7.41 a1 → b0: x
+nt-n108-TD.svg	Édition générale	7.50 r → a0	7.50 r → a0	7.50 r → a0	7.50 r → a0
+nt-n108-TD.svg	Édition générale two	14.28 q → B	14.28 q → B	14.28 q → B	14.28 q → B
+nt-n109-BT.svg	Order processing	10.00 a1 → b0	10.00 a1 → b0	10.00 a1 → b0	10.00 a1 → b0
+nt-n109-BT.svg	Order processing two	1000000000.00 	1000000000.00 	1000000000.00 	1000000000.00 
+nt-n116-TD.svg	Édition générale	7.50 p → a0	7.50 p → a0	7.50 p → a0	7.50 p → a0
+nt-n116-TD.svg	Édition générale east	11.88 q → B	11.88 q → B	11.88 q → B	11.88 q → B
+nt-n127-TD.svg	Identity provider	73.10 p → b0	73.10 p → b0	73.10 p → b0	73.10 p → b0
+nt-n127-TD.svg	Identity provider x	7.50 p → b0	7.48 p → b0	7.48 p → b0	7.50 p → b0
+nt-n132-TD.svg	WWW Mammoth Wombat	1000000000.00 	1000000000.00 	1000000000.00 	1000000000.00 
+nt-n132-TD.svg	WWW Mammoth Wombat backend	10.00 a1 → b0	1.65 a1 → b1	3.65 a1 → b1	10.00 a1 → b0
+nt-n139-TD.svg	Inventory management	7.47 q → a0	7.47 q → a0	7.47 q → a0	7.47 q → a0
+nt-n139-TD.svg	Inventory management two	7.45 p → b0	7.45 p → b0	7.45 p → b0	7.45 p → b0
+rnd-r015-TD.svg	Payments	8.78 s3 → m0	8.48 s3 → m0	8.78 s3 → m0	8.78 s3 → m0
+rnd-r022-TD.svg	Data ingestion workers	10.00 s2 → m0	10.00 s2 → m0	10.00 s2 → m0	10.00 s2 → m0
+rnd-r042-TD.svg	Shipping and returns desk	13.32 s0 → m2: lbl2	13.32 s0 → m2: lbl2	13.32 s0 → m2: lbl2	13.32 s0 → m2: lbl2
+rnd-r042-TD.svg	WWW Mammoth Wombat Overview	7.36 s0 → m2: lbl2	7.36 s0 → m2: lbl2	7.36 s0 → m2: lbl2	7.36 s0 → m2: lbl2
+rnd-r124-TD.svg	MMMM WWWW QQQQ	12.99 s1 → O	13.53 s1 → O	13.53 s1 → O	12.99 s1 → O
+rnd-r124-TD.svg	Édition générale des données	6.83 s0 → m1	1.13 s0 → m1	6.83 s0 → m1	6.83 s0 → m1
+rnd-r150-TD.svg	Édition générale des données	7.15 s0 → m0	7.15 s0 → m0	7.15 s0 → m0	7.15 s0 → m0
+rnd-r164-TD.svg	WWW Mammoth Wombat Overview	7.01 s2 → G	6.68 s2 → G	10.63 s2 → G	7.01 s2 → G
+rnd-r164-TD.svg	MMMM WWWW QQQQ	10.00 s0 → m0	10.00 s0 → m0	10.00 s0 → m0	10.00 s0 → m0
+rnd-r182-TD.svg	Édition générale des données	10.00 s0 → m2	10.00 s0 → m2	10.00 s0 → m2	10.00 s0 → m2
+rnd-r246-TD.svg	WWW Mammoth Wombat Overview	0.00 s0 → G	0.00 s0 → G	0.00 s0 → G	0.00 s0 → G
+rnd-r246-TD.svg	Data ingestion workers	10.00 s2 → m0	10.00 s2 → m0	10.00 s2 → m0	10.00 s2 → m0
+rnd-r250-TD.svg	WWW Mammoth Wombat Overview	7.38 s0 → m0	7.38 s0 → m0	7.38 s0 → m0	7.38 s0 → m0
+rnd-r261-TD.svg	Shipping and returns desk	9.52 s2 → m0	3.42 s0 → G	2.82 s2 → m0	9.52 s2 → m0
+rnd-r261-TD.svg	Data ingestion workers	9.97 s2 → m0	10.00 s1 → m0	7.94 s2 → m0	9.97 s2 → m0
+rnd-r278-TD.svg	Édition générale des données	7.43 s4 → m0	7.33 s4 → m0	6.44 s4 → m0	7.43 s4 → m0
+sw-twin-s-TD.svg	Shipping and returns desk	21.75 p → a2	21.75 p → a2	21.75 p → a2	21.75 p → a2
+sw-twin-s-TD.svg	Shipping and returns desk two	9.98 a1 → b1	10.00 a1 → b1	0.04 a1 → b1	9.98 a1 → b1
+sw72-b9-TD.svg	Shipping and returns desk	7.38 s1 → q1	6.85 s4 → q1	7.38 s1 → q1	7.38 s1 → q1
+tw-t00-TD.svg	Shipping and returns desk	21.75 p → a2	21.75 p → a2	21.75 p → a2	21.75 p → a2
+tw-t00-TD.svg	Shipping and returns desk two	9.98 a1 → b1	10.00 a1 → b1	0.04 a1 → b1	9.98 a1 → b1
+tw-t01-TD.svg	Order processing	37.50 q → b1	37.50 q → b1	37.50 q → B	37.50 q → b1
+tw-t01-TD.svg	Order processing two	7.43 q → b1	7.43 q → b1	7.43 q → b1	7.43 q → b1
+tw-t02-TD.svg	Payments and billing	37.60 q → B	37.60 q → B	37.60 q → B	37.60 q → B
+tw-t02-TD.svg	Payments and billing two	12.48 a1 → b1	11.99 q → B	12.49 a1 → b1	12.48 a1 → b1
+tw-t03-TD.svg	Customer accounts	37.50 q → B	37.50 q → B	37.50 q → B	37.50 q → B
+tw-t03-TD.svg	Customer accounts two	6.71 q → b1	7.41 q → b1	6.71 q → b1	6.71 q → b1
+tw-t06-TD.svg	Analytics warehouse	37.60 q → B	37.60 q → B	37.60 q → B	37.60 q → B
+tw-t06-TD.svg	Analytics warehouse two	12.48 a1 → b1	11.77 q → B	12.49 a1 → b1	12.48 a1 → b1
+tw-t07-TD.svg	Notification center	37.50 q → B	37.50 q → b1	37.50 q → B	37.50 q → B
+tw-t07-TD.svg	Notification center two	6.67 q → b1	7.42 q → b1	6.67 q → b1	6.67 q → b1
+tw-t08-TD.svg	Identity provider	37.50 q → b1	37.50 q → b1	37.50 q → B	37.50 q → b1
+tw-t08-TD.svg	Identity provider two	7.45 q → b1	7.45 q → b1	7.45 q → b1	7.45 q → b1
+tw-t11-TD.svg	Fulfilment and logistics	37.50 q → B	37.50 q → B	37.50 q → B	37.50 q → B
+tw-t11-TD.svg	Fulfilment and logistics two	9.99 a1 → b1	9.87 a1 → b1	9.83 a1 → b1	9.99 a1 → b1
+tw-t12-TD.svg	Monitoring stack	37.50 q → b1	37.50 q → b1	37.50 q → B	37.50 q → b1
+tw-t12-TD.svg	Monitoring stack two	7.44 q → b1	7.44 q → b1	7.45 q → b1	7.44 q → b1

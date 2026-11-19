@@ -1,0 +1,10 @@
+%%{init: {"flowchart": {"wrappingWidth": 120}}}%%
+flowchart TD
+  A[A plain label that is long enough to wrap at one hundred twenty] --> B["`**Markdown** label that is _long_ enough to wrap at the width`"]
+  B --> C[<b>Bold start</b> then a plain tail that keeps on going]
+  C --> D[日本語のラベルはとても長いのでここで折り返されるべきでしょう]
+  D --> E[Pneumonoultramicroscopicsilicovolcanoconiosis then words]
+  E --> F[Explicit<br/>break kept as written by the author here]
+  F --> G{Should we really wrap a decision this long?}
+  G -->|a long edge label stays on a single line| H[(Store with a long cylinder label here)]
+  G --> I{{Hexagon with a fairly long label inside it}}

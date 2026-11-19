@@ -1,0 +1,230 @@
+diff --git a/src/layout.rs b/src/layout.rs
+index 88dc0f6..2cc054e 100644
+--- a/src/layout.rs
++++ b/src/layout.rs
+@@ -4473,9 +4473,29 @@ fn place(
+                     rspan[r] = (rspan[r].0.min(alayer[d]), rspan[r].1.max(alayer[d]));
+                 }
+             }
++            // The title rows, and each title chip's reach along its
++            // side (top-down and bottom-up: left to right the strip lies
++            // on a side no channel crosses).
++            let mut chip = vec![0.0f64; ns];
++            let mut titled: Vec<Vec<usize>> = vec![Vec::new(); nlayers];
++            if !horizontal {
++                for (li, (path, lo, hi)) in levels.iter().enumerate() {
++                    let Some(&c) = path.last() else { continue };
++                    let reach = g.subgraphs.get(c).map_or(0.0, |s| title_reach(&s.title));
++                    if reach > 0.0 {
++                        chip[c] = reach;
++                        let row = if g.direction == Direction::BT { *hi } else { *lo };
++                        titled[row].push(li);
++                    }
++                }
++            }
+             Some(BlockOrder {
+                 bspan,
+                 rspan,
++                size: &absize,
++                real: n,
++                chip,
++                titled,
+                 apath: &apath,
+                 border: &border_side,
+                 preds: &preds,
+@@ -5889,6 +5909,31 @@ fn drawn_crossings(
+     total
+ }
+ 
++/// The least room (px) a frame keeps between its edge and a channel
++/// inside it (the scene's lane pad): what [`BlockOrder::clear_titles`]
++/// counts from the frame's edge to a title row's first channel.
++const TITLE_RUN_PAD: f64 = 12.0;
++
++/// How far (px) from the title-end edge of its frame a channel must
++/// cross a block's title side to pass clear of the title chip: the
++/// chip's own reach along the side (its inset, the title at the title
++/// font, its padding — as [`crate::scene::title_head`] draws it), the
++/// room an edge keeps off a chip ([`crate::clearance::CHIP_SEP`]) and a
++/// corner's rounding ([`crate::router::CORNER_R`]: a channel that steps
++/// just before the frame turns into its column on an arc that cuts the
++/// corner, towards the chip). 0 for an empty title.
++fn title_reach(title: &str) -> f64 {
++    use crate::clearance::{CHIP_INSET_X, CHIP_PAD_W, CHIP_SEP};
++    if title.trim().is_empty() {
++        return 0.0;
++    }
++    CHIP_INSET_X
++        + text_width(title) * TITLE_SCALE
++        + CHIP_PAD_W
++        + CHIP_SEP
++        + crate::router::CORNER_R
++}
++
+ /// The constants the generated sweep pins: the largest component
+ /// ordered exactly, the lane rule's share, the most starts.
+ #[cfg(test)]
+@@ -5971,6 +6016,18 @@ struct BlockOrder<'a> {
+     bspan: Vec<(usize, usize)>,
+     /// Per run: the layers its dummies stand on.
+     rspan: Vec<(usize, usize)>,
++    /// Per augmented node: its breadth (a wall's is 0).
++    size: &'a [f64],
++    /// How many of the augmented nodes are real ones (they come first).
++    real: usize,
++    /// Per subgraph: how far from its frame's title-end edge a channel
++    /// must cross its title side to pass clear of its title chip
++    /// ([`title_reach`]); 0 without a title, or where the title lies on
++    /// a side no channel crosses (left to right, right to left).
++    chip: Vec<f64>,
++    /// Per layer: the levels (indices into `levels`) whose title row it
++    /// is — a block's first layer top-down, its last one bottom-up.
++    titled: Vec<Vec<usize>>,
+ }
+ 
+ impl BlockOrder<'_> {
+@@ -6058,12 +6115,117 @@ impl BlockOrder<'_> {
+         if layer.len() > 1 {
+             let arranged = self.arrange(layer, 0, &|v| pos[v]);
+             *layer = arranged;
++            self.clear_titles(layer);
+         }
+         for (i, &v) in layer.iter().enumerate() {
+             pos[v] = i as f64;
+         }
+     }
+ 
++    /// Title-clear channels, by their place in the title row. A channel
++    /// that enters (or leaves) a block through its title side runs down
++    /// the block's title row as a unit of the block; standing before the
++    /// members the title chip reaches over, it would cross the frame
++    /// under the chip — the title struck — and the router takes it
++    /// round, out through a side wall of the block (the nested-chain
++    /// fixture: `a -> c2` left `Inner source` and came back in through
++    /// the side of `Inner target`, outside the frame that holds both).
++    /// So such a channel point stands past the members the chip reaches
++    /// over: it moves along its row, away from the title's end, until
++    /// its place lies beyond the chip ([`BlockOrder::chip`]) by the
++    /// least room the row's members and gaps take up to it — passing
++    /// plain nodes only, never a child block (it keeps one side of that
++    /// on every layer) nor another channel (two channels with one clear
++    /// place between them would pass each other for ever), and only
++    /// when that clears it. The last in the row first, so those moved
++    /// keep their order. The coordinates then place it at least that
++    /// far from the frame's edge: every separation they keep is at
++    /// least the one counted here.
++    fn clear_titles(&self, layer: &mut Vec<usize>) {
++        let Some(&first) = layer.first() else {
++            return;
++        };
++        let Some(levels) = self.titled.get(self.alayer[first]) else {
++            return;
++        };
++        // Least distance between two neighbours' centres ([`pair_sep`]
++        // without the room of a box border between them).
++        let apart = |u: usize, v: usize| {
++            let half = |x: usize| {
++                if x < self.real {
++                    GAP_B / 2.0
++                } else {
++                    EDGE_GAP / 2.0
++                }
++            };
++            let base = if self.border[u] != 0 || self.border[v] != 0 {
++                BORDER_GAP
++            } else {
++                half(u) + half(v)
++            };
++            self.size[u] / 2.0 + base + self.size[v] / 2.0
++        };
++        for &li in levels {
++            let (path, _, _) = &self.levels[li];
++            let Some(&c) = path.last() else {
++                continue;
++            };
++            let need = self.chip[c];
++            if need <= 0.0 {
++                continue;
++            }
++            // Each pass moves one channel point further on, past nodes
++            // alone, and puts none that stood clear back under the
++            // chip: it ends.
++            loop {
++                let units = self.units(layer, path);
++                let Some(&(_, start, _)) = units.first() else {
++                    break;
++                };
++                // The least place of the item at `at`, from the frame's
++                // edge, with the item `skip` taken out of the row.
++                let place = |at: usize, skip: Option<usize>| -> f64 {
++                    let mut prev: Option<usize> = None;
++                    let mut x = 0.0;
++                    for (i, &v) in layer.iter().enumerate().take(at + 1).skip(start) {
++                        if Some(i) == skip {
++                            continue;
++                        }
++                        x = match prev {
++                            // (A frame keeps its pad off a member, a
++                            // lane's off a channel inside it.)
++                            None => FRAME_PAD.min(TITLE_RUN_PAD) + self.size[v] / 2.0,
++                            Some(u) => x + apart(u, v),
++                        };
++                        prev = Some(v);
++                    }
++                    x
++                };
++                let mut moved = false;
++                for (i, &(u, at, _)) in units.iter().enumerate().rev() {
++                    if !matches!(u, OrderUnit::Run(_)) || place(at, None) >= need {
++                        continue;
++                    }
++                    // The first unit past which it stands clear.
++                    let d = layer[at];
++                    let to = units[i + 1..]
++                        .iter()
++                        .take_while(|w| matches!(w.0, OrderUnit::Node(_)))
++                        .map(|w| w.1 + w.2 - 1)
++                        .find(|&last| place(last, Some(at)) + apart(layer[last], d) >= need);
++                    if let Some(last) = to {
++                        layer[at..=last].rotate_left(1);
++                        moved = true;
++                        break;
++                    }
++                }
++                if !moved {
++                    break;
++                }
++            }
++        }
++    }
++
+     /// The units of the level `path` on `layer`, in its order, with
+     /// where each starts in the layer and how many members it has. They
+     /// are contiguous: the level's own walls stand at their two ends.
+@@ -6994,6 +7156,7 @@ impl BlockOrder<'_> {
+                 self.settle(layers, pos);
+             }
+             self.tidy(layers, pos);
++            self.clear_all_titles(layers, pos);
+             return;
+         }
+         self.canonical(layers, pos);
+@@ -7030,6 +7193,18 @@ impl BlockOrder<'_> {
+         self.tidy(layers, pos);
+         // (Once a layout call: a later placement starts from this order.)
+         self.flip_chains(layers, pos);
++        self.clear_all_titles(layers, pos);
++    }
++
++    /// [`BlockOrder::clear_titles`] on every layer, after the last
++    /// exchanges (which place units by crossings alone).
++    fn clear_all_titles(&self, layers: &mut [Vec<usize>], pos: &mut [f64]) {
++        for lv in layers.iter_mut() {
++            self.clear_titles(lv);
++            for (i, &v) in lv.iter().enumerate() {
++                pos[v] = i as f64;
++            }
++        }
+     }
+ }
+ 

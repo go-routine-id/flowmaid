@@ -1,0 +1,18 @@
+flowchart LR
+    subgraph O[Édition générale des données]
+        subgraph G[Core]
+            m0[charge]
+            m1[auth service]
+        end
+        k[k]
+    end
+    m0 --> k
+    m1 --> k
+    s0[src0] --> G
+    s1[src1] --> O
+    s1 --> m0
+    s2[src2] --> G
+    s2 --> m0
+    s3[src3] --> G
+    s4[src4] -- "lbl5" --> m1
+    s4 --> O

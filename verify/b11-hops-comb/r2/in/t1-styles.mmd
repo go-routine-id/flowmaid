@@ -1,0 +1,23 @@
+flowchart TD
+  A[Alpha] --> B[Beta]
+  A --> C[Gamma]
+  A --> D[Delta]
+  B --> E[Echo]
+  C --> F[Fox]
+  D --> G[Golf]
+  B ==> G
+  D -.-> E
+  C --> E
+  C --> G
+  B -.-> F
+  D ==> F
+  E --> H[Hotel]
+  F --> H
+  G --> H
+  A -- far --> H
+  B --o H
+  D --x E
+  linkStyle 6 stroke:#c0392b,stroke-width:4px
+  linkStyle 7 stroke:#2980b9,stroke-dasharray:6 3
+  linkStyle 11 stroke:#27ae60,stroke-width:7px
+  linkStyle 15 stroke:#8e44ad

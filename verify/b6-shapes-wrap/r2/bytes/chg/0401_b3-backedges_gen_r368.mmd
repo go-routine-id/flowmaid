@@ -1,0 +1,14 @@
+flowchart LR
+    N0{Validate validate}
+    N1[Load]
+    N2{Store}
+    N3[Fetch]
+    N4(Parse)
+    N0 --> N1
+    N1 --> N2
+    N1 -->|next| N3
+    N2 --> N4
+    N3 --> N4
+    N4 --> N1
+    N2 -->|back| N0
+    N4 -->|rollback| N3

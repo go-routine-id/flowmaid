@@ -1,0 +1,23 @@
+flowchart TD
+    subgraph G0[Payments 0]
+        subgraph H0[inner 0]
+            g0m0[g0m0]
+            g0m1[g0m1]
+        end
+    end
+    subgraph G1[Edge 1]
+        g1m0[g1m0]
+        g1m1[g1m1]
+        g1m2[g1m2]
+    end
+    o0 -- l4 --> g1m2
+    g1m0 --> o0
+    o1 ==> o0
+    g0m0 -- l1 --> g1m0
+    o1 -.-> o2
+    g1m1 ==> o2
+    g1m2 --> o2
+    o0 --> G1
+    G0 --> o0
+    o2 --> G0
+    g1m0 --> G0

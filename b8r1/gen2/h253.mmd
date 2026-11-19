@@ -1,0 +1,35 @@
+flowchart LR
+  s0["auth"]
+  s1["ship user queue"]
+  subgraph g0["api auth cart zone"]
+    m0["report api"]
+    m1["billing"]
+    m2["store trace"]
+    m3["cache ship"]
+    m4["ship log"]
+    m0 --> m1
+    m0 --> m2
+    m1 --> m3
+  end
+  subgraph g1["index trace zone"]
+    direction LR
+    m5["api"]
+  end
+  subgraph g2["api zone"]
+    m6["log api auth"]
+  end
+  subgraph g3["log queue billing zone"]
+    m7["trace"]
+    m8["user"]
+    m9["web"]
+    m7 --> m8
+    m8 --> m9
+  end
+  s1 --> g0
+  s0 --> g1
+  s1 --> g2
+  s0 --> g3
+  m6 --> m5
+  m6 --> m8
+  s1 --> L10["log order auth"]
+  s1 --> L11["log store pay"]

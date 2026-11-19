@@ -1,0 +1,45 @@
+flowchart LR
+  s0["search api"]
+  s1["ship web"]
+  subgraph g0["report index zone"]
+    direction LR
+    m0["cache"]
+    m1["search pay"]
+    m2["billing"]
+    m0 --> m1
+  end
+  subgraph g1["index zone"]
+    direction LR
+    m3["search order"]
+    m4["metric"]
+    m5["metric"]
+    m3 --> m4
+    m3 --> m5
+  end
+  subgraph g2["index zone"]
+    direction TB
+    m6["report notify"]
+    m7["index cache cart"]
+    m8["billing cache"]
+    m9["user"]
+    m6 --> m7
+    m6 --> m8
+    m7 --> m9
+  end
+  subgraph g3["queue zone"]
+    m10["cart api"]
+    m11["api notify search"]
+    m12["cart user index"]
+    m13["queue"]
+    m14["metric"]
+    m10 --> m11
+    m10 --> m12
+    m10 --> m13
+    m10 --> m14
+  end
+  s1 --> m0
+  s0 --> m3
+  s0 --> g2
+  s0 --> g3
+  s1 --> L15["pay"]
+  s0 --> L16["queue"]

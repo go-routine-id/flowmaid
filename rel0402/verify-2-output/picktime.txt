@@ -1,0 +1,8 @@
+seq       mean    4.989 us  worst point     9.803 us  head/examples/sequence.mmd
+pie       mean    0.535 us  worst point     1.167 us  head/examples/pie.mmd
+journey   mean    0.509 us  worst point     1.011 us  head/examples/journey.mmd
+timeline  mean    0.962 us  worst point     1.689 us  head/examples/timeline.mmd
+sankey    mean    2.966 us  worst point     5.614 us  head/examples/sankey.mmd
+mindmap   mean    2.954 us  worst point    37.490 us  head/examples/mindmap.mmd
+sankey    mean  258.986 us  worst point   701.624 us  a7-sankey-mindmap/gen/sk_1000.mmd
+mindmap   mean  214.439 us  worst point   373.228 us  r3/in/mm_12k.mmd

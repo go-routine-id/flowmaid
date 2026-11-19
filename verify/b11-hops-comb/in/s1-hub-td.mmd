@@ -1,0 +1,20 @@
+flowchart TD
+  hub[Hub service]
+  a1[Alpha] --> hub
+  a2[Beta] --> hub
+  hub --> c1[One]
+  hub -.-> c2[Two]
+  hub ==> c3[Three]
+  hub -->|yes| c4[Four]
+  hub --> c5[Five]
+  hub -->|no| c6[Six]
+  hub --> c7[Seven]
+  c1 --> d1[Deep one]
+  c2 --> d1
+  c7 --> d2[Deep two]
+  hub --> d2
+  hub --> d1
+  hub -.-> d3[Deep three]
+  c4 --> d3
+  c3 --> d4[Deep four]
+  hub ==> d4

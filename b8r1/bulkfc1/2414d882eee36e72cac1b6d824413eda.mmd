@@ -1,0 +1,20 @@
+flowchart LR
+    N0{Store}
+    N1([Fetch])
+    N2([Fetch fetch])
+    N3[Load notify]
+    N4([Load])
+    N5([Report retry])
+    N6([Done])
+    N7{Retry check}
+    N0 --> N1
+    N1 --> N2
+    N0 --> N3
+    N2 --> N4
+    N2 -->|no| N5
+    N4 -->|next| N6
+    N5 -->|yes| N7
+    N1 --> N6
+    N1 --> N6
+    N4 -->|again| N0
+    N7 --> N0

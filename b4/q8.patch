@@ -1,0 +1,120 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 232a0c6..fbe6b92 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -697,6 +709,14 @@ Minor, not patch: several class structs gain public fields (see
+   sizes tags, which are a size smaller. `pie::slice_color` matches
+   `style::accent(i)` for slices 0–7 and again for 16–23, not only for the
+   first eight as its doc (and the 0.33.0 notes) said.
++- **A 2-cycle no longer pulls its node off the middle of its fan** (report
++  Q8). With the return edge written first (`CACHE --> SVC` before
++  `SVC --> CACHE`), the pair was linked twice in Brandes-Köpf's neighbour
++  lists, so the median landed on it and `lr`'s Service Layer sat level with
++  Redis Cache instead of centred on Database / Redis. A 2-cycle now counts
++  once whichever edge comes first, so either order draws the same
++  symmetric fans. Parallel forward edges still count once each: a twin
++  pair runs straight down its own column, as its curves are drawn for.
+ 
+ ## [0.33.0] - 2026-10-31
+ 
+diff --git a/src/layout.rs b/src/layout.rs
+index 66957db..7979668 100644
+--- a/src/layout.rs
++++ b/src/layout.rs
+@@ -1869,6 +1869,9 @@ fn place(
+     let mut succs: Vec<Vec<usize>> = vec![Vec::new(); n];
+     // Per original edge: dummy chain in the edge's own from→to order.
+     let mut edge_chain: Vec<Vec<usize>> = vec![Vec::new(); g.edges.len()];
++    // Adjacent pairs linked so far only by a 2-cycle's return edge,
++    // which stands in for the first forward edge of the pair.
++    let mut return_only: std::collections::HashSet<(usize, usize)> = Default::default();
+     for (ei, e) in g.edges.iter().enumerate() {
+         if e.from == e.to {
+             continue; // self-loop — no layered path
+@@ -1883,10 +1886,27 @@ fn place(
+         let (llo, lhi) = (alayer[lo], alayer[hi]);
+         if lhi <= llo + 1 {
+             // A 2-cycle's return edge runs beside its twin across the
+-            // gap: one link between the pair, not a second pull.
+-            if llo < lhi && !(back[ei] && succs[lo].contains(&hi)) {
+-                succs[lo].push(hi);
+-                preds[hi].push(lo);
++            // gap: one link between the pair, not a second pull —
++            // whichever of the two is written first. A doubled link
++            // made BK's median land on the pair and pulled the node off
++            // the middle of its fan: lr's Service Layer sat level with
++            // Redis Cache instead of centred on Database / Redis when
++            // `CACHE --> SVC` came first (report Q8). Parallel FORWARD
++            // edges keep one link each: a twin pair then runs straight
++            // down its own column, which the twin curves and their
++            // labels are drawn for (deduplicated, a choice's
++            // `low`/`medium` twins slanted across the fan).
++            if llo < lhi {
++                if back[ei] {
++                    if !succs[lo].contains(&hi) {
++                        succs[lo].push(hi);
++                        preds[hi].push(lo);
++                        return_only.insert((lo, hi));
++                    }
++                } else if !return_only.remove(&(lo, hi)) {
++                    succs[lo].push(hi);
++                    preds[hi].push(lo);
++                }
+             }
+             continue; // same or adjacent layer — no dummies
+         }
+@@ -3382,7 +3406,9 @@ fn coordinates_bk(
+     }
+ 
+     // Adjacent-layer neighbour sets (back/invisible links that skip a
+-    // layer are excluded — BK only reasons about layer±1 segments).
++    // layer are excluded — BK only reasons about layer±1 segments). A
++    // 2-cycle lists its pair once (see the layering above); parallel
++    // forward edges are listed once per edge on purpose (report Q8).
+     let mut up: Vec<Vec<usize>> = vec![Vec::new(); na];
+     let mut down: Vec<Vec<usize>> = vec![Vec::new(); na];
+     for v in 0..na {
+diff --git a/src/scene.rs b/src/scene.rs
+index b972473..efa424b 100644
+--- a/src/scene.rs
++++ b/src/scene.rs
+@@ -13515,6 +13515,39 @@ mod tests {
+         }
+     }
+ 
++    #[test]
++    fn a_two_cycle_pulls_its_pair_once_whichever_edge_comes_first() {
++        // Report Q8: a 2-cycle listed its pair twice in Brandes-Köpf's
++        // neighbours when the return edge was written first, so the
++        // median landed on the pair and Service Layer sat level with
++        // Redis Cache instead of on the middle of its fan. Either order
++        // now gives lr's symmetric fans.
++        let lr = include_str!("../examples/lr.mmd");
++        let swapped = "flowchart LR\n  U[User] --> FE(Frontend) --> API{Auth?}\n  \
++                       API -->|ok| SVC[Service Layer]\n  API -.->|denied| ERR[401 Response]\n  \
++                       CACHE([Redis Cache]) --> SVC\n  SVC ==> DB[Database]\n  SVC --> CACHE\n";
++        for src in [lr, swapped] {
++            let sc = scene(&parse(src).unwrap());
++            let y = |id: &str| sc.nodes.iter().find(|n| n.id == id).unwrap().y;
++            assert!(
++                (y("API") - (y("SVC") + y("ERR")) / 2.0).abs() < 0.5,
++                "Auth? off the middle of its ok/denied fan: {src}"
++            );
++            assert!(
++                (y("SVC") - (y("DB") + y("CACHE")) / 2.0).abs() < 0.5,
++                "Service Layer off the middle of its fan: {src}"
++            );
++            assert!((y("U") - y("API")).abs() < 0.5, "the spine stays straight");
++        }
++        // Parallel forward edges keep their weight: a twin pair runs
++        // straight down its own column (the twin curves are drawn for
++        // that), the third branch beside it.
++        let sc =
++            scene(&parse("flowchart TD\n  A --> B\n  B --> C\n  B --> C\n  B --> D\n").unwrap());
++        let x = |id: &str| sc.nodes.iter().find(|n| n.id == id).unwrap().x;
++        assert!((x("B") - x("C")).abs() < 0.5);
++    }
++
+     #[test]
+     fn a_parallel_label_and_a_loop_keep_off_the_other_lines() {
+         // stress (report P0 #13): the `parallel` label clears the

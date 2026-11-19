@@ -1,0 +1,67 @@
+flowchart LR
+  s0["pay cart"]
+  s1["web db"]
+  subgraph g0["api zone"]
+    direction LR
+    m0["cart"]
+    m1["store"]
+    m2["report order"]
+    m3["log order"]
+    m0 --> m2
+    m0 --> m3
+  end
+  subgraph g1["ship notify trace zone"]
+    m4["web cart metric"]
+    m5["store"]
+    m6["trace pay"]
+    m7["store cart"]
+    m8["cart cart"]
+    m4 --> m5
+    m4 --> m6
+    m4 --> m7
+    m6 --> m8
+  end
+  subgraph g2["cart order zone"]
+    direction TB
+    m9["log db"]
+    m10["metric notify"]
+    m11["pay cache"]
+    m9 --> m11
+  end
+  subgraph g3["billing zone"]
+    m12["api billing notify"]
+    m13["ship web"]
+    m14["auth"]
+    m12 --> m13
+    m13 --> m14
+  end
+  subgraph g4["api zone"]
+    direction TB
+    m15["auth user"]
+    m16["report"]
+    m17["report store cart"]
+    m18["web index"]
+    m19["pay trace"]
+    m15 --> m16
+    m16 --> m17
+    m17 --> m18
+  end
+  subgraph g5["metric zone"]
+    direction LR
+    m20["db"]
+    m21["log"]
+    m22["log api"]
+    m23["pay"]
+    m24["db log api"]
+    m20 --> m21
+    m21 --> m23
+    m23 --> m24
+  end
+  s0 --> g0
+  s1 --> m4
+  s1 --> g2
+  s1 --> g3
+  s0 --> g4
+  s0 --> m20
+  s1 --> L25["search ship db"]
+  s0 --> L26["order cache pay"]

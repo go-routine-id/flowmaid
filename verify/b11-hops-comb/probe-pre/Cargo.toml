@@ -1,0 +1,26 @@
+[package]
+name = "probe"
+version = "0.1.0"
+edition = "2021"
+[dependencies]
+flowmaid = { path = "/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/verify/b11-hops-comb/pre" }
+[profile.release]
+debug = false
+[[bin]]
+name = "rp"
+path = "../probe-src/bin/rp.rs"
+[[bin]]
+name = "contract"
+path = "../probe-src/bin/contract.rs"
+[[bin]]
+name = "dbg"
+path = "../probe-src/bin/dbg.rs"
+[[bin]]
+name = "grid"
+path = "../probe-src/bin/grid.rs"
+[[bin]]
+name = "part"
+path = "../probe-src/bin/part.rs"
+[[bin]]
+name = "ends"
+path = "../probe-src/bin/ends.rs"

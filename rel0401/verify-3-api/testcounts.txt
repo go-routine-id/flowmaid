@@ -1,0 +1,26 @@
+     Running unittests src/lib.rs (target/debug/deps/flowmaid-d5c58b5334524e7b)
+test result: ok. 1181 passed; 0 failed; 5 ignored; 0 measured; 0 filtered out; finished in 317.47s
+     Running unittests src/main.rs (target/debug/deps/flowmaid-f5c668f78879181d)
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/cli.rs (target/debug/deps/cli-3bb72b93fe357f43)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+     Running tests/fallible_route.rs (target/debug/deps/fallible_route-c95f5e04675b0e42)
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.28s
+     Running tests/model_build.rs (target/debug/deps/model_build-3b6844a9cb7be80f)
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.42s
+     Running tests/quality.rs (target/debug/deps/quality-569ac9da4aa40814)
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 27.76s
+     Running tests/theme.rs (target/debug/deps/theme-c58c702a9eaa1dfe)
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.77s
+     Running unittests examples/advance_text.rs (target/debug/examples/advance_text-670d74dca5fd6670)
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running unittests examples/bench.rs (target/debug/examples/bench-9e5103c41f011a65)
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running unittests examples/drag_sim.rs (target/debug/examples/drag_sim-24bab6c5e31fc174)
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running unittests examples/fixture_gen.rs (target/debug/examples/fixture_gen-662d950bb737d614)
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running unittests examples/quality.rs (target/debug/examples/quality-4527794ab0156a02)
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running unittests examples/svg.rs (target/debug/examples/svg-413ad305244993cd)
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

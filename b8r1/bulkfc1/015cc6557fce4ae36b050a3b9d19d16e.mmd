@@ -1,0 +1,18 @@
+flowchart TD
+    N0[Archive]
+    N1[Queue]
+    N2([Store])
+    N3([Queue report])
+    N4{Notify}
+    N5{Load fetch}
+    N6(Done notify)
+    N0 --> N1
+    N0 -->|yes| N2
+    N2 --> N3
+    N3 --> N4
+    N2 --> N5
+    N4 --> N6
+    N0 --> N3
+    N0 --> N3
+    N1 --> N6
+    N5 -.-> N0

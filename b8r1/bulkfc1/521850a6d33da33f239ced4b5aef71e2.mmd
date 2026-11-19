@@ -1,0 +1,6 @@
+flowchart TD
+    A[Start] --> B{Emit}
+    B -->|no| C{Parse emit}
+    C --> B
+    B --> D[Store]
+    C --> E[Load]

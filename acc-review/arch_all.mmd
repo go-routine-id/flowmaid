@@ -1,0 +1,9 @@
+architecture-beta
+group g(cloud)[G]
+group h(cloud)[H] in g
+service a(server)[A] in h
+service b(database)[B]
+junction j
+a:R --> L:b
+b:R <--> L:j
+a{group}:B -[lbl]- T:b

@@ -1,0 +1,16 @@
+classDiagram
+direction LR
+A ..|> B : uses
+A -- C : has many of
+B ..> A
+A *-- B
+A ..> A : a0
+A --> A : a1
+A *-- A : a2
+A --> A : a3
+A --> A : a4
+class B {
+ +int id
+ +run() void
+ +stop()
+}

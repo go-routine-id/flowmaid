@@ -1,0 +1,43 @@
+flowchart TD
+  n1["store"]
+  n2["cache"]
+  n3["auth"]
+  subgraph B0["Data tier"]
+    n4["api parse report"]
+    n5["parse parse auth"]
+    n6["audit"]
+  end
+  subgraph B1["Platform"]
+    n7["ship"]
+    n8["parse"]
+    n9["search"]
+  end
+  subgraph B2["Core"]
+    n10["cache"]
+    n11["parse parse mail"]
+    n12["merge"]
+  end
+  subgraph B3["Platform"]
+    n13["store ship notify"]
+    subgraph B3s0["Platform 0"]
+      n14["ingest"]
+    end
+  end
+  n15["store"]
+  n16["auth"]
+  n13 ==>|report| n5
+  n14 --> n15
+  n13 ==> n16
+  n12 -.->|ship| n6
+  n15 ==> n2
+  n12 -.-> n4
+  n6 --> n1
+  n14 ==>|auth| n11
+  n7 -.->|cache| B3
+  n7 ==>|ship| n4
+  n3 ==> n2
+  n6 --> n15
+  n13 -->|billing| n4
+  n5 --> n2
+  n7 --> n1
+  n7 --> n6

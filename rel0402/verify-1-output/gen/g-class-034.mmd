@@ -1,0 +1,20 @@
+classDiagram
+C5 <|-- C6 : beta
+C0 o-- C10
+C9 <--> C0 : alpha
+C11 <|-- C1 : Customer Order
+C12 "1" ..> "*" C2
+C8 "1" -- "*" C7 : delta
+C8 <|-- C6
+C10 "1" -- "*" C10
+C3 "1" o-- "*" C0
+C2 <--> C7
+note for C3 "a&b"
+class C2 {
+  +int id
+  +name() String
+}
+class C4 {
+  +int id
+  +name() String
+}

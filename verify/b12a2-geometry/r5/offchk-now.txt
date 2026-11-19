@@ -1,0 +1,119 @@
+advanced.mmd	block_mode=1	same_as_off=1	violations=43
+    scene: edge 15 (Users>Mon) not picked on 1 of 1 waypoint steps
+    route: edge 15 (Users>Mon) not picked on 3 of 3 waypoint steps
+    drag node 0 by 7,5: partial: edge 15 (Users>Mon) not picked on 1 of 1 waypoint steps
+    drag node 0 by -120,60: partial: edge 15 (Users>Mon) not picked on 1 of 1 waypoint steps
+    drag node 0 by 1,0: partial: edge 15 (Users>Mon) not picked on 1 of 1 waypoint steps
+    drag node 1 by 7,5: partial: edge 15 (Users>Mon) not picked on 1 of 1 waypoint steps
+back-edge.mmd	block_mode=0	same_as_off=1	violations=0
+bench-75.mmd	block_mode=1	same_as_off=1	violations=0
+demo.mmd	block_mode=0	same_as_off=1	violations=0
+dense-lr.mmd	block_mode=1	same_as_off=1	violations=0
+dense-td.mmd	block_mode=1	same_as_off=1	violations=0
+fanout-frames.mmd	block_mode=1	same_as_off=1	violations=0
+fanout.mmd	block_mode=0	same_as_off=1	violations=0
+long-labels.mmd	block_mode=0	same_as_off=1	violations=0
+lr.mmd	block_mode=0	same_as_off=1	violations=0
+shapes.mmd	block_mode=0	same_as_off=1	violations=0
+state.mmd	block_mode=0	same_as_off=1	violations=0
+stress.mmd	block_mode=0	same_as_off=1	violations=0
+subgraph.mmd	block_mode=1	same_as_off=1	violations=0
+wide-labels.mmd	block_mode=0	same_as_off=1	violations=0
+state.mmd	block_mode=0	same_as_off=1	violations=0
+b9-inside.mmd	block_mode=1	same_as_off=1	violations=0
+b9-inside2.mmd	block_mode=1	same_as_off=1	violations=0
+blocks-overview-actors-reversed.mmd	block_mode=1	same_as_off=1	violations=0
+blocks-overview-bt.mmd	block_mode=1	same_as_off=1	violations=0
+blocks-overview-edges-reversed.mmd	block_mode=1	same_as_off=1	violations=0
+blocks-overview-edges-rotated.mmd	block_mode=1	same_as_off=1	violations=0
+blocks-overview-lr.mmd	block_mode=1	same_as_off=1	violations=0
+blocks-overview-rl.mmd	block_mode=1	same_as_off=1	violations=0
+blocks-overview-subgraphs-reversed.mmd	block_mode=1	same_as_off=1	violations=0
+blocks-overview.mmd	block_mode=1	same_as_off=1	violations=0
+cycle2-tie-swapped.mmd	block_mode=1	same_as_off=1	violations=0
+cycle2-tie.mmd	block_mode=1	same_as_off=1	violations=0
+cycle2.mmd	block_mode=1	same_as_off=1	violations=0
+empty-target.mmd	block_mode=0	same_as_off=1	violations=0
+hub5.mmd	block_mode=1	same_as_off=1	violations=0
+interleave.mmd	block_mode=1	same_as_off=1	violations=0
+iso-lane-lr.mmd	block_mode=0	same_as_off=1	violations=0
+iso-lane.mmd	block_mode=0	same_as_off=1	violations=0
+iso-nest.mmd	block_mode=0	same_as_off=1	violations=0
+iso-state.mmd	block_mode=0	same_as_off=1	violations=0
+l5loop.mmd	block_mode=1	same_as_off=1	violations=0
+lane-beside.mmd	block_mode=1	same_as_off=1	violations=0
+lr.mmd	block_mode=1	same_as_off=1	violations=0
+nested-cases.mmd	block_mode=1	same_as_off=1	violations=30
+    scene: edge 7 (o1>x1) not picked on 1 of 1 waypoint steps
+    route: edge 7 (o1>x1) not picked on 1 of 1 waypoint steps
+    drag node 0 by 7,5: partial: edge 7 (o1>x1) not picked on 1 of 1 waypoint steps
+    drag node 0 by -120,60: partial: edge 7 (o1>x1) not picked on 1 of 1 waypoint steps
+    drag node 0 by 1,0: partial: edge 7 (o1>x1) not picked on 1 of 1 waypoint steps
+    drag node 1 by 7,5: partial: edge 7 (o1>x1) not picked on 1 of 1 waypoint steps
+nested-chain.mmd	block_mode=1	same_as_off=1	violations=0
+nested-self-only.mmd	block_mode=0	same_as_off=1	violations=0
+nested-wide-title.mmd	block_mode=1	same_as_off=1	violations=0
+nested.mmd	block_mode=1	same_as_off=1	violations=0
+note-edge-row.mmd	block_mode=1	same_as_off=1	violations=0
+own-centre.mmd	block_mode=0	same_as_off=1	violations=0
+p01-iso.mmd	block_mode=0	same_as_off=1	violations=0
+p02-iso-dir.mmd	block_mode=0	same_as_off=1	violations=0
+p03-ext-dir.mmd	block_mode=1	same_as_off=1	violations=0
+p04-to-cluster.mmd	block_mode=1	same_as_off=1	violations=0
+p05-siblings.mmd	block_mode=1	same_as_off=1	violations=0
+p06-block-cycle.mmd	block_mode=1	same_as_off=1	violations=0
+p07-nested.mmd	block_mode=1	same_as_off=1	violations=0
+p08-chain3.mmd	block_mode=1	same_as_off=1	violations=0
+p09-disconnected.mmd	block_mode=0	same_as_off=1	violations=0
+p10-mixed-rank.mmd	block_mode=1	same_as_off=1	violations=0
+p11-lr.mmd	block_mode=1	same_as_off=1	violations=0
+p12-state.mmd	block_mode=1	same_as_off=1	violations=0
+p13-inner-dir-ext.mmd	block_mode=0	same_as_off=1	violations=0
+p14-empty-and-self.mmd	block_mode=1	same_as_off=1	violations=0
+ratio2.mmd	block_mode=1	same_as_off=1	violations=0
+ratio2x4.mmd	block_mode=1	same_as_off=1	violations=0
+ratio3.mmd	block_mode=1	same_as_off=1	violations=0
+ratio4.mmd	block_mode=1	same_as_off=1	violations=0
+ratio4mask.mmd	block_mode=1	same_as_off=1	violations=0
+reqresp.mmd	block_mode=1	same_as_off=1	violations=0
+reqresp22.mmd	block_mode=1	same_as_off=1	violations=0
+self-member.mmd	block_mode=1	same_as_off=1	violations=0
+selfsub-nested.mmd	block_mode=0	same_as_off=1	violations=0
+state-note.mmd	block_mode=1	same_as_off=1	violations=0
+sub-nested-self.mmd	block_mode=1	same_as_off=1	violations=0
+swim-cycle.mmd	block_mode=1	same_as_off=1	violations=0
+swim-nested.mmd	block_mode=1	same_as_off=1	violations=0
+swimlane-nested.mmd	block_mode=1	same_as_off=1	violations=0
+swimlane.mmd	block_mode=1	same_as_off=1	violations=0
+t1-nest-own.mmd	block_mode=0	same_as_off=1	violations=0
+t2-self-nested.mmd	block_mode=0	same_as_off=1	violations=0
+t2b-self-nested-order.mmd	block_mode=0	same_as_off=1	violations=0
+t9-frames-8px.mmd	block_mode=1	same_as_off=1	violations=0
+t9b-frames-8px-lr.mmd	block_mode=1	same_as_off=1	violations=0
+t9c-frames-8px-two-way.mmd	block_mode=1	same_as_off=1	violations=0
+title-entry.mmd	block_mode=1	same_as_off=1	violations=0
+title-hidden.mmd	block_mode=1	same_as_off=1	violations=0
+turned-blocks.mmd	block_mode=1	same_as_off=1	violations=0
+wide-stroke.mmd	block_mode=1	same_as_off=1	violations=0
+v1-nonascii-titles-BT.mmd	block_mode=1	same_as_off=1	violations=0
+v1-nonascii-titles-LR.mmd	block_mode=1	same_as_off=1	violations=0
+v1-nonascii-titles-RL.mmd	block_mode=1	same_as_off=1	violations=0
+v1-nonascii-titles-TD.mmd	block_mode=1	same_as_off=1	violations=0
+v1-nonascii-titles.mmd	block_mode=1	same_as_off=1	violations=0
+v2-short-labels-lr-BT.mmd	block_mode=1	same_as_off=1	violations=0
+v2-short-labels-lr-LR.mmd	block_mode=1	same_as_off=1	violations=0
+v2-short-labels-lr-RL.mmd	block_mode=1	same_as_off=1	violations=0
+v2-short-labels-lr-TD.mmd	block_mode=1	same_as_off=1	violations=0
+v2-short-labels-lr.mmd	block_mode=1	same_as_off=1	violations=0
+v3-nested-entries-BT.mmd	block_mode=1	same_as_off=1	violations=0
+v3-nested-entries-LR.mmd	block_mode=1	same_as_off=1	violations=0
+v3-nested-entries-RL.mmd	block_mode=1	same_as_off=1	violations=0
+v3-nested-entries-TD.mmd	block_mode=1	same_as_off=1	violations=0
+v3-nested-entries.mmd	block_mode=1	same_as_off=1	violations=0
+v4-state-composite.mmd	block_mode=1	same_as_off=1	violations=0
+v5-title-entry-bt-BT.mmd	block_mode=1	same_as_off=1	violations=0
+v5-title-entry-bt-LR.mmd	block_mode=1	same_as_off=1	violations=0
+v5-title-entry-bt-RL.mmd	block_mode=1	same_as_off=1	violations=0
+v5-title-entry-bt-TD.mmd	block_mode=1	same_as_off=1	violations=0
+v5-title-entry-bt.mmd	block_mode=1	same_as_off=1	violations=0
+TOTAL files=106 block_mode=81 with_violations=2 differs_outside_block_mode=0

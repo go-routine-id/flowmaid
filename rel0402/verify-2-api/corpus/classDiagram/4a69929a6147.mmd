@@ -1,0 +1,11 @@
+classDiagram
+direction RL
+A "1" -- "*" B : owns
+B ..|> C
+A ..> D
+B ..|> A
+D --> D : d0
+D --> D : d1
+C ..> C : c0
+C --> C : c1
+C --> C

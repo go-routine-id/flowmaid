@@ -1,0 +1,25 @@
+flowchart LR
+    N0(Archive load)
+    N1[Report]
+    N2[Queue]
+    N3{Notify}
+    N4{Check}
+    N5([Emit store])
+    N6([Archive retry])
+    N7[/Check retry/]
+    N8(Parse)
+    N9([Emit check])
+    N0 -->|ok| N1
+    N0 --> N2
+    N2 --> N3
+    N3 --> N4
+    N4 --> N5
+    N3 --> N6
+    N6 --> N7
+    N7 -->|ok| N8
+    N6 --> N9
+    N4 --> N7
+    N0 --> N2
+    N3 --> N1
+    N6 --> N4
+    N6 ==>|rollback| N5

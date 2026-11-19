@@ -1,0 +1,16 @@
+stateDiagram-v2
+  [*] --> Idle
+  Idle --> Busy : start
+  Error --> Busy : retry
+  Paused --> Busy : resume
+  state Busy {
+    [*] --> Load
+    Load --> Run
+    Run --> Save
+    Save --> [*]
+  }
+  Busy --> Done : finish
+  Busy --> Error : fail
+  Busy --> Paused : pause
+  note right of Busy : long running work
+  Done --> [*]

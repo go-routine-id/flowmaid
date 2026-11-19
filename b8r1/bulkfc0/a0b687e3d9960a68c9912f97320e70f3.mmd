@@ -1,0 +1,23 @@
+flowchart BT
+    N0([Emit])
+    N1{Emit emit}
+    N2(Retry)
+    N3(Validate)
+    N4([Validate])
+    N5{Emit}
+    N6[Done archive]
+    N7[Emit]
+    N8[Archive load]
+    N9([Report])
+    N0 --> N1
+    N0 -->|next| N2
+    N1 --> N3
+    N3 -->|ok| N4
+    N2 --> N5
+    N3 --> N6
+    N6 -->|no| N7
+    N6 --> N8
+    N8 --> N9
+    N5 --> N6
+    N1 --> N6
+    N7 -.->|again| N0

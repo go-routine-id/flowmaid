@@ -1,0 +1,29 @@
+architecture-beta
+    group g0(cloud)[Edge]
+    service s0(nonsense)[Web App 0]
+    service s1(disk)[Svc 1]
+    service s2(server)[Authentication and Authorization Service 2]
+    service s3(database)[Authentication and Authorization Service 3] in g0
+    service s4(database)[Q 4] in g0
+    service s5(cloud)[PostgreSQL Primary 5]
+    service s6(internet)[PostgreSQL Primary 6] in g0
+    service s7(disk)[PostgreSQL Primary 7] in g0
+    service s8(server)[PostgreSQL Primary 8] in g0
+    service s9(internet)[Q 9] in g0
+    service s10(cloud)[Web App 10] in g0
+    service s11(nonsense)[Q 11] in g0
+    s3:L -- T:s4
+    s5:T -[replicates to standby]- B:s2
+    s5:B -[reads config]-> T:s3
+    s4:R --> R:s1
+    s11:T -[x]-> B:s10
+    s11:R -[REST over https]-> R:s7
+    s0:R -[sync]-> T:s11
+    s7:T <-[calls]-> B:s9
+    s6:T -[grpc stream]- B:s9
+    s4{group}:B -- B:s5
+    s5:B <--> R:s2
+    s5:B <-[REST over https]-> L:s6
+    s4:B <-[grpc stream]-> T:s9
+    s4:B <--> T:s6
+    s9:T -[sync]-> B:s11

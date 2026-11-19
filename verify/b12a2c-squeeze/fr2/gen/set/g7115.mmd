@@ -1,0 +1,25 @@
+flowchart TD
+  n1["auth"]
+  subgraph B0["Analytics"]
+    n2["queue"]
+    n3["index"]
+    n4["notify"]
+    subgraph B0s0["Analytics 0"]
+      n5["search"]
+      n6["search"]
+    end
+  end
+  subgraph B1["Storefront"]
+    n7["queue<br/>merge"]
+  end
+  n8["split"]
+  n4 -.-> n1
+  n8 -.-> n1
+  n6 ==> n7
+  n7 ==> n4
+  n6 --> n3
+  n7 --> n5
+  n4 --> n2
+  n2 --> B0
+  n1 -.-> n8
+  n6 -->|index| n2

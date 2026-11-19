@@ -1,0 +1,17 @@
+flowchart RL
+  n2 ---> n0
+  n1 e1@<-.->|x| n4
+  e1@{ curve: cardinal }
+  n1 <--> n1
+  n1 -.-> n1
+  n3 o--o|no| n1
+  n1 ~~~ n1
+  n4 <-.-> n2
+  n3 ==>|a longer label| n3
+  n4 ---|a longer label| n2
+  n0 -.->|no| n3
+  linkStyle 1 stroke-width:40px,stroke:#36c,stroke-dasharray:6 3
+  linkStyle 4 stroke-width:2px,stroke:#36c,stroke-dasharray:6 3
+  linkStyle 6 stroke-width:55px,stroke:#c33
+  linkStyle 7 stroke-width:2px,stroke:#c33
+  linkStyle 9 stroke-width:8px,stroke:#3a3

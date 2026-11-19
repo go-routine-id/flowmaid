@@ -1,0 +1,20 @@
+flowchart TD
+  src[Source] --> p1
+  src --> q1
+  src --> r1
+  subgraph P [Plain]
+    p1[p one] --> p2[p two]
+  end
+  subgraph Q [Outer with nested]
+    subgraph Q1 [Inner title]
+      q1[q one] --> q2[q two]
+    end
+    q2 --> q3[q three]
+  end
+  subgraph R [Third]
+    r1["r<br/>one<br/>tall<br/>node"] --> r2[r two]
+  end
+  p2 -->|from plain to third| r2
+  q3 -->|to the end| endn[End]
+  r2 --> endn
+  p2 --> endn

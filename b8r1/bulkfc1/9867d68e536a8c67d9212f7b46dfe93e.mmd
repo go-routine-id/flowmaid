@@ -1,0 +1,10 @@
+flowchart TD
+  a[Retry] --> a
+  a --> b[Done]
+  b e1@--> b
+  b e2@<--> c[Next]
+  e1@{ curve: step }
+  e2@{ curve: stepAfter }
+  linkStyle 0 interpolate step,stroke-width:20px
+  linkStyle 2 stroke-width:28px
+  linkStyle 3 stroke-width:17px

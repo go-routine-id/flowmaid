@@ -1,0 +1,29 @@
+---
+title: Styled under dark
+config:
+  theme: dark
+  themeVariables:
+    lineColor: "#f8b229"
+---
+flowchart LR
+  classDef default fill:#fef3c7,stroke:#b45309
+  classDef hot fill:#7f1d1d,stroke:#fecaca,color:#fee2e2
+  subgraph L1[Level one]
+    subgraph L2[Level two]
+      subgraph L3[Level three]
+        subgraph L4[Level four]
+          subgraph L5[Level five]
+            A[Alpha] -->|go| B{Choice?}
+          end
+        end
+      end
+    end
+  end
+  B -- yes --> C([Stadium]):::hot
+  B -. no .-> D[(Store)]
+  D ==> E((Circle))
+  E --x F>Flag]
+  F <--> A
+  style F fill:#ffffff
+  linkStyle 1 stroke:#16a34a,stroke-width:3px,color:#2563eb
+  linkStyle 3 interpolate linear

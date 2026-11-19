@@ -1,0 +1,14 @@
+blocks-overview.mmd	edges=30/24	parallel_bad=0	nonfinite=0	corners=734	sharp=659	pick=16353/16923	none=570	det=111	mmd_rt=1
+blocks-overview-lr.mmd	edges=30/24	parallel_bad=0	nonfinite=0	corners=857	sharp=713	pick=22850/23509	none=659	det=111	mmd_rt=1
+dense-td.mmd	edges=47/44	parallel_bad=0	nonfinite=0	corners=2319	sharp=2141	pick=102976/105073	none=2097	det=111	mmd_rt=1
+bench-75.mmd	edges=75/75	parallel_bad=0	nonfinite=0	corners=3055	sharp=2581	pick=85283/87857	none=2574	det=111	mmd_rt=1
+nested-chain.mmd	edges=5/5	parallel_bad=0	nonfinite=0	corners=98	sharp=62	pick=583/637	none=54	det=111	mmd_rt=1
+title-entry.mmd	edges=5/5	parallel_bad=0	nonfinite=0	corners=141	sharp=127	pick=639/764	none=125	det=111	mmd_rt=1
+nested-composite.mmd	edges=35/29	parallel_bad=0	nonfinite=0	corners=600	sharp=509	pick=13765/14262	none=497	det=111	mmd_rt=1
+wide-frames.mmd	edges=25/15	parallel_bad=0	nonfinite=0	corners=534	sharp=422	pick=5743/6120	none=377	det=111	mmd_rt=1
+state.mmd	edges=16/14	parallel_bad=0	nonfinite=0	corners=106	sharp=72	pick=923/993	none=70	det=111	mmd_rt=1
+advanced.mmd	edges=20/16	parallel_bad=0	nonfinite=0	corners=323	sharp=258	pick=2702/2964	none=262	det=111	mmd_rt=1
+x1-title-row.mmd	edges=11/11	parallel_bad=0	nonfinite=0	corners=249	sharp=220	pick=1803/2018	none=215	det=111	mmd_rt=1
+x3-stacked-spill.mmd	edges=14/14	parallel_bad=0	nonfinite=0	corners=561	sharp=530	pick=4831/5350	none=519	det=111	mmd_rt=1
+x4-fan-levels.mmd	edges=12/12	parallel_bad=0	nonfinite=0	corners=427	sharp=315	pick=5645/5961	none=316	det=111	mmd_rt=1
+x5-state-choice.mmd	edges=13/11	parallel_bad=0	nonfinite=0	corners=217	sharp=198	pick=2311/2504	none=193	det=111	mmd_rt=1

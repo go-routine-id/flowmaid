@@ -1,0 +1,24 @@
+flowchart TD
+    H{{Router}}
+    subgraph A[Alpha zone]
+        a1[Ingest] --> a2[Parse]
+        a2 --> a3[(Store A)]
+    end
+    subgraph B[Beta zone with a long title]
+        b1[Check] --> b2[Score]
+        subgraph BB[Inner]
+            b3[Deep one] --> b4[Deep two]
+        end
+        b2 --> b3
+    end
+    subgraph C[Gamma]
+        c1[Alert] --> c2[Page]
+    end
+    H -->|route a| a1
+    H -->|route b| b1
+    H -.->|fallback| c1
+    a3 --> b4
+    b4 ==> c2
+    c2 --> H
+    a2 --> C
+    B --> c1

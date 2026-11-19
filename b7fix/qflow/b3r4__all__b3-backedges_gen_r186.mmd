@@ -1,0 +1,19 @@
+flowchart LR
+    N0[Fetch validate]
+    N1[Store]
+    N2{{Report}}
+    N3{Store}
+    N4[Store]
+    N5[/Emit/]
+    N6{{Fetch load}}
+    N7[Check]
+    N0 -->|no| N1
+    N0 --> N2
+    N0 --> N3
+    N2 --> N4
+    N2 --> N5
+    N4 --> N6
+    N6 -->|ok| N7
+    N2 --> N3
+    N6 ==>|retry| N3
+    N6 -.-> N1

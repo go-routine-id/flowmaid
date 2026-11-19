@@ -1,0 +1,54 @@
+flowchart LR
+  n1["merge"]
+  n2["split"]
+  n3["report<br/>audit"]
+  subgraph B0["Storefront"]
+    n4["audit store mail"]
+  end
+  subgraph B1["Analytics"]
+    n5["audit<br/>api"]
+    n6["auth<br/>ingest"]
+    subgraph B1s0["Storefront 0"]
+      n7["index merge ship"]
+      n8["queue"]
+    end
+    subgraph B1s1["Back office and finance 1"]
+      n9["ingest index index"]
+      n10["store db auth"]
+    end
+  end
+  subgraph B2["Storefront"]
+    n11["auth<br/>report"]
+  end
+  subgraph B3["Fulfilment desk"]
+    n12["index mail merge"]
+    n13["store merge queue"]
+    subgraph B3s0["Data tier 0"]
+      n14["split"]
+    end
+  end
+  n15["split"]
+  n16["split"]
+  n13 ==> n16
+  n2 -->|ship| n7
+  n11 -.-> n2
+  n8 ==> n5
+  n6 --> n15
+  n10 -.-> n15
+  n9 --> n3
+  n2 -.-> n1
+  n15 --> n1
+  n4 --> B0
+  n2 -.-> n16
+  n13 -.-> n3
+  n5 --> n13
+  n3 ==>|audit| n11
+  n2 --> n5
+  n1 --> n4
+  n16 --> n7
+  n8 -->|cache| n14
+  n1 --> n11
+  n7 ==> n5
+  n3 --> n1
+  n9 -->|index| n14
+  n5 ==> n2

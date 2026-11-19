@@ -1,0 +1,13 @@
+gitGraph
+    commit id: "c1"
+    branch develop
+    checkout develop
+    commit id: "d1"
+    checkout main
+    commit id: "c2"
+    checkout develop
+    commit id: "d2"
+    merge main id: "sync"
+    commit id: "d3"
+    checkout main
+    merge develop id: "rel" tag: "v1.0"

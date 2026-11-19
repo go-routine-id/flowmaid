@@ -1,0 +1,15 @@
+flowchart TD
+    N0{Report}
+    N1{Retry}
+    N2([Emit fetch])
+    N3{Report}
+    N4([Store])
+    N0 --> N1
+    N0 --> N2
+    N1 -->|ok| N3
+    N3 -->|yes| N4
+    N1 --> N4
+    N0 --> N1
+    N0 --> N2
+    N2 -->|retry| N1
+    N3 ==> N2

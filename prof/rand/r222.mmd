@@ -1,0 +1,15 @@
+flowchart RL
+  H0 -.->|gift wrap| N2
+  H0 --> N0
+  H0 --- N1
+  H0 -->|x| N0
+  H0 -.->|express| N4
+  H0 ---|gift wrap| N3
+  H0 -.-> N1
+  H0 -.->|yes| N4
+  H0 --> N1
+  H0 ==>|x| N4
+  H0 ==>|no| N5
+  H0 ==> N2
+  N1 -->|gift wrap| N0
+  N5 --> N3

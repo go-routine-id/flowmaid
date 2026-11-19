@@ -1,0 +1,9 @@
+block_fixtures_are_not_drawn_worse
+casing::tests::a_block_layouts_under_line_keeps_no_fragment_between_two_gaps
+channels_keep_edges_apart_and_off_chips
+defect_baseline_gate
+ports::tests::a_nearly_straight_pair_is_drawn_straight
+render::tests::advanced_showcase_parses_and_renders
+scene::tests::a_composite_edge_to_its_own_state_drops_straight_from_the_border
+scene::tests::far_apart_back_edges_and_frame_legs_square_up_alike_in_route
+scene::tests::note_links_hold_their_ends_and_corners_in_scene_route_and_drag

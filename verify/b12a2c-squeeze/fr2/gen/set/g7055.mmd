@@ -1,0 +1,41 @@
+flowchart RL
+  n1["search"]
+  n2["api report billing"]
+  subgraph B0["Back office and finance"]
+    n3["split<br/>pack"]
+  end
+  subgraph B1["Ingest"]
+    n4["billing auth search"]
+    n5["ingest"]
+    n6["notify<br/>queue"]
+    n7["cache merge index"]
+    subgraph B1s0["Data tier 0"]
+      n8["store"]
+      n9["auth"]
+      n10["ingest<br/>queue"]
+    end
+    subgraph B1s1["Ops 1"]
+      n11["billing<br/>mail"]
+      n12["split ingest merge"]
+      n13["worker<br/>ship"]
+    end
+  end
+  n14["pack ship cache"]
+  n15["pack"]
+  n13 -.-> n4
+  n15 --> n1
+  n12 -.-> n5
+  n4 --> n2
+  n4 --> n15
+  n10 --> n15
+  n10 -.-> n1
+  n7 -->|billing| n9
+  n2 ==> n11
+  n12 -->|notify| n15
+  n3 ==> n12
+  n9 --> n15
+  n3 --> n15
+  n7 ==> n11
+  n15 ==> n6
+  n13 --> n1
+  n5 --> n15

@@ -1,0 +1,39 @@
+classDiagram
+direction BT
+A -- B
+B *-- C
+A --|> D : has many of
+B --> E
+E ..|> F
+A "1" o-- "*" G
+D ..|> G
+F *-- F : f0
+F o-- F : f1
+F --> F
+F --> F
+F *-- F : f4
+A ..> A : a0
+A ..> A
+A ..> A : a2
+A --> A : a3
+A *-- A : a4
+A ..> A : a5
+A "1" --> "*" A : a6
+A *-- A : a7
+E *-- E : e0
+E o-- E
+E "1" --> "*" E : e2
+E *-- E
+E o-- E : e4
+E --> E : e5
+E ..> E
+E ..> E : e7
+E --> E : e8
+B ..> B : b0
+B *-- B : b1
+B "1" --> "*" B : b2
+class A {
+ +int id
+ +run() void
+ +stop()
+}

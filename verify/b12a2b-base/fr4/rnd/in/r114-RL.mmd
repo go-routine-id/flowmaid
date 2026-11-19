@@ -1,0 +1,18 @@
+flowchart RL
+    subgraph O[Payments]
+        subgraph G[MMMM WWWW QQQQ]
+            m0[queue]
+            m1[y]
+            m2[auth service]
+        end
+        k[k]
+    end
+    m1 --> k
+    s0[src0] --> G
+    s0 --> m2
+    s1[src1] --> G
+    s1 --> m2
+    s2[src2] --> O
+    s3[src3] --> G
+    s4[src4] --> G
+    m2 --> z[end]

@@ -1,0 +1,13 @@
+flowchart RL
+    subgraph G[Édition générale des données]
+        m0[x wide member node]
+        m1[ledger]
+        m0 --> m1
+    end
+    s0[src0] --> G
+    s0 --> G
+    s1[src1] --> G
+    s1 --> G
+    s2[src2] --> m1
+    s3[src3] --> G
+    m1 --> z[end]

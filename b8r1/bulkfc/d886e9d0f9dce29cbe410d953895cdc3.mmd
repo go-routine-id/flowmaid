@@ -1,0 +1,14 @@
+flowchart LR
+    N0[Notify]
+    N1([Archive])
+    N2{Store}
+    N3[Load]
+    N4(Store fetch)
+    N5(Done retry)
+    N0 --> N1
+    N1 --> N2
+    N1 --> N3
+    N1 -->|fail| N4
+    N2 --> N5
+    N1 --> N5
+    N4 ==> N0

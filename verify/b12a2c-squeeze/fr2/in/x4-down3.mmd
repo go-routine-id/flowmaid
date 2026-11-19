@@ -1,0 +1,17 @@
+flowchart TD
+  s[Start] --> a1
+  t[Second start] --> m[Prep] --> b2
+  w[Third start] --> n1[Load] --> n2[Clean] --> c3
+  subgraph A[Pipeline A]
+    a1[a one] --> a2[a two] --> a3[a three]
+  end
+  subgraph B[Pipeline B]
+    b2[b two] --> b3["b tall<br/>last<br/>member"]
+  end
+  subgraph C[Pipeline C]
+    c3[c three]
+  end
+  a2 -->|peek| x[Monitor]
+  a3 --> z[Sink]
+  b3 --> z
+  c3 --> z

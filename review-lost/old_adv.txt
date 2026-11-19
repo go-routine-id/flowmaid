@@ -1,0 +1,90 @@
+## Advance swimlane diagrams (JSON and text input)
+
+Beyond mermaid-syntax text there is an engine-native swimlane renderer in the `advance` module — vertical lane columns, top-down nodes, orthogonal edge routing, all sharing the flowchart shapes and edge kinds. Because this diagram kind has no mermaid header, it is outside the parity roadmap — the diagram counts elsewhere in this document refer to mermaid-syntax types only.
+
+### JSON input
+
+The input is plain JSON (no mermaid header):
+
+```json
+{
+    "lanes": [{ "id": "dev", "title": "Development" },
+              { "id": "qa",  "title": "QA" }],
+    "nodes": [{ "id": "a", "label": "Design", "lane": "dev" },
+              { "id": "b", "label": "Test", "lane": "qa", "shape": "diamond" }],
+    "edges": [{ "from": "a", "to": "b", "label": "hand off" }]
+}
+```
+
+- **Rendering.** `advance::render_advance_svg(&str)` goes straight from JSON to SVG (CLI: `--advance`), and `advance::layout_advance` returns the positioned geometry (`AdvanceScene`) for GUI painters.
+- **Dragging.** Drag-mode re-renders come from `advance::render_advance_routed` (node centre positions) and `advance::render_advance_routed_with_lanes` (plus caller-controlled lane widths, margin, and inter-lane gap). Content dragged outside the canvas is translated back into view, and the canvas grows to hold any route that leaves the lanes.
+- **Same features as the text form**, additively: nodes carry `style` (`fill`/`stroke`/`stroke-width`/`color`, the label text colour) and edges carry `style` (`color`, the line colour, plus `stroke-width`/`dash`/`label-fill`), edges accept `from_side`/`to_side` (`"left"|"right"|"top"|"bottom"|"auto"`), nodes take `anchors` (`{id, side, offset}`), `elements` (nested, each with its own `anchors`/`elements`/`layout`) and `layout`, and `from`/`to` accept the full reference grammar (`"cpu.core1@irq"`).
+- **Scene.** The scene exposes each node's placed `elements` and resolved `anchors`, each edge's `from_point`/`to_point`, and `crossings` — how many pairs of edges cross in the drawing, which the router minimises and a host can display.
+- **Picking.** `AdvanceScene` offers drag-and-drop picking: `hit_test`, `anchor_at`, `element_at`, `node_at`, `edge_at`, `lane_at`, and `nearest_node`.
+
+### Text DSL
+
+The same swimlane engine also takes a concise text notation (`advance::render_advance_text_svg`, CLI: `--advance-text`), with nested lanes, per-node/per-edge styling, ported edges, and `<br/>` line breaks:
+
+```mmd
+classDef primary fill:#e8f0fe,stroke:#4285f4,stroke-width:3
+config margin 24
+
+lane backend "Backend" {
+  a[Auth]::primary
+  b[API Gateway]
+  a --> b
+}
+lane web "Web" {
+  c{Check}
+  # ported edge: enter b through its top
+  c --> b:top
+}
+style a-->b color:#188038,dash:4 2
+style c fill:#fff8e1
+```
+
+- **Nested lanes** — a `lane id "Title" { ... }` block opens a child scope; a standalone `}` closes it. Nodes attach to the innermost open lane. A lane may be written on one line too (`lane l "L" { a[A]; b[B] }`).
+- **`config`** — `config margin 24`, `config lane_gap 36`, `config node_gap_y`, `config lane_pad_x/y`, `config lane_title_h`, `config order declaration|topology`. Unknown keys are ignored.
+- **Styling** — Mermaid-style directives, resolved after the whole file parses:
+  - `classDef <name> k:v,k:v` defines a reusable class; `class a,b <name>` (or the `a::name` shorthand) applies it.
+  - `style <id> k:v,k:v` styles a node by id, or an edge by literal `from-->to` (ports allowed: `style a:right-->b:top ...`).
+  - Node keys: `fill`, `stroke`, `stroke-width`, `color` (label text). Edge keys: `color`, `stroke-width`, `dash` (space-separated values, e.g. `dash:4 2`), `label-fill`.
+- **Ports** — an endpoint can pin its anchor side: `a:right --> b:top` (`left`/`right`/`top`/`bottom`; leave the side off for automatic routing — `auto` is a JSON `from_side`/`to_side` value only). A ported edge's first/last segments leave the sides perpendicularly.
+- **`<br/>`** — a line break in node labels. In edge labels (`-->|a<br/>b|`) and lane titles it is kept as a `\n` in the parsed diagram and in `AdvanceScene`, so a GUI painter can break the line, but the SVG still draws those labels on one line.
+- **Comments** — a line starting with `#` (whole lines only).
+
+### Sub-elements and named anchors
+
+A node can open a block holding *sub-elements* (compartments) and *anchors* (named points on a boundary); an edge end then references any of them by id:
+
+```mmd
+lane hw "Hardware" {
+  cpu[CPU] {
+    anchor out bottom 0.5
+    core0[Core 0]
+    core1[Core 1] { anchor irq right }
+    layout column
+  }
+  mem[Memory] {
+    bank0[Bank 0]
+    bank1[Bank 1]
+    layout row
+  }
+}
+lane sw "Software" {
+  bus[Bus]
+}
+cpu.core1@irq --> mem.bank0
+cpu@out       --> bus:top
+cpu.core0     --> mem.bank1
+```
+
+- **Declarations.** `anchor <id> <side> [offset 0..=1]` declares a point (offset `0.5` when omitted); `layout column` is the default, `row` lays sub-elements side by side. A block may also be written on one line (`core1[Core 1] { anchor irq right }`), and blocks nest.
+- **References.** `.` descends into sub-elements, `@` names an anchor, `:` picks a side — composably, to any depth. Ids may therefore not contain `.` or `@`. The three edges above read: anchor on a sub-element → sub-element; named anchor on the node → a side; sub-element → sub-element with the sides chosen for you.
+- **Sides.** Sub-elements are laid out without coordinates (stacked, or `layout row`) and the node grows to fit. A sub-element side can be used only if it reaches the node boundary — in a column `left`/`right` always and `bottom` for the last child, in a row `bottom` always and `left`/`right` for the first/last; `top` never, because the node's label band sits there. An interior side is a parse error.
+- **Shapes.** Sub-elements need a `rect` or `rounded` node — compartments are rectangles and would poke through any other outline.
+- **Edges inside one node.** An edge between two sub-elements of one node leaves through an exposed side and comes back in through another, so it always travels outside the node.
+
+See `examples/advance_swimlane.mmd`, `examples/advance_terminals.mmd` and `examples/advance_text.rs`.
+

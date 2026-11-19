@@ -1,0 +1,31 @@
+stateDiagram-v2
+    [*] --> Off
+    Off --> On : power
+    state On {
+        direction LR
+        [*] --> Idle
+        Idle --> Busy : job
+        Busy --> Idle : done
+        state Busy {
+            [*] --> Fetch
+            Fetch --> Exec
+            Exec --> Write
+            Write --> [*]
+        }
+        Busy --> Fault : error
+        Fault --> Idle : clear
+    }
+    state fork_state <<fork>>
+    On --> fork_state
+    fork_state --> LogA
+    fork_state --> LogB
+    state join_state <<join>>
+    LogA --> join_state
+    LogB --> join_state
+    join_state --> Off
+    On --> Off : shutdown
+    note right of Off : cold start
+    state decide <<choice>>
+    Off --> decide
+    decide --> On : warm
+    decide --> [*] : cold

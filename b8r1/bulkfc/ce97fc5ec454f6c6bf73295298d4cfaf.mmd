@@ -1,0 +1,12 @@
+flowchart LR
+    N0([Archive retry])
+    N1(Queue load)
+    N2([Notify])
+    N3{Emit report}
+    N4((Parse archive))
+    N0 -->|no| N1
+    N0 -->|no| N2
+    N0 -->|no| N3
+    N3 --> N4
+    N4 --> N3
+    N2 -.-> N0

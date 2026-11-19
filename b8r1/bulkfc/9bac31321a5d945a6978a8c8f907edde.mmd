@@ -1,0 +1,9 @@
+flowchart TD
+  A[Receive] --> B{Valid?}
+  B -->|yes| C[Process]
+  B -->|no| D[Reject]
+  C --> C
+  C --> E[Store]
+  E --> F[Notify]
+  F -->|retry| C
+  D --> F

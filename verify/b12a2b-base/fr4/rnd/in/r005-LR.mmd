@@ -1,0 +1,16 @@
+flowchart LR
+    subgraph G[MMMM WWWW QQQQ]
+        m0[ledger]
+        m1[w]
+        m2[x wide member node]
+        m0 --> m1
+    end
+    s0[src0] --> m2
+    s0 --> m0
+    s1[src1] --> m2
+    s2[src2] -- "lbl4" --> G
+    s2 --> m0
+    s3[src3] --> G
+    s4[src4] --> m2
+    s4 -- "lbl5" --> G
+    G --> z2[after]

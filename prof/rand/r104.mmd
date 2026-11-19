@@ -1,0 +1,25 @@
+flowchart BT
+  H0 -.-> N1
+  H0 --> N1
+  H0 -.-> N2
+  H0 -.-> N1
+  H0 -.->|yes| N3
+  H1 -.->|gift wrap| N3
+  H1 ==>|gift wrap| N1
+  H1 ==>|yes| N3
+  H1 -.->|no| N1
+  H1 --- N1
+  H1 ==> N1
+  H1 -.-> N1
+  H1 ==> N0
+  H1 ==> N3
+  H1 ==> N0
+  H1 -->|yes| N2
+  H1 -.-> N3
+  H2 -.-> N2
+  H2 -->|no| N0
+  H2 ==>|gift wrap| N4
+  H2 --> N1
+  H2 -.->|gift wrap| N1
+  H2 ==>|gift wrap| N4
+  N3 -->|x| N4

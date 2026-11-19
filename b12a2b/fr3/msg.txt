@@ -1,0 +1,100 @@
+fix(blocks): the stages after the ports keep their lines off a title's bold ink too, and a pin under the ink is dealt with the entries past it (b12a2b-base fix round 3 #1, #2, #3, #5, #6)
+
+6e1bf72 cut a block layout's title-row member's side, the frame's free
+pins and the columns it deals at the title's bold ink, but the stages
+after it still measured the chip at the regular width (`scene::title_head`),
+and the bold text outruns that chip by up to a tenth of its width. A later
+stage then moved a line the ports stage had set clear of the ink back
+under it:
+
+- `router::nudge` (#1): its channel spread fences the chips at
+  `CHIP_SEP + SEP_AIR`, so it slid a fan's first entry from the ports
+  stage's cut past `Shipping and returns desk`'s ink (305.6) back to 298.0,
+  onto the title's `k` (0.00 px centreline to text, Chromium).
+- the router's way round the chip (#2): on a fan of four into a member
+  whose top reaches just past `Mammoth Wombat Pipeline Overview`'s chip, the
+  ports stage has no room past the ink and spreads the ends across the side;
+  the repair reroutes `s4 --> x` round the chip at the regular width, to a
+  column 0.4 px from `Overview`'s `w`, and the nudge left it there. (Traced
+  with stage dumps: `ortho`'s title sides do not displace that end, its side
+  reaches past the chip; the column is the repair's.)
+
+One measure (`scene::title_head_measured`, `inked` = `Ctx::blocks`) now
+runs through the static scene's stages:
+
+- router: `World::new` takes `inked`; in a block layout the world holds
+  each title's ink past its chip (`World::inks`). The channel nudge and the
+  close-pair spread fence every leg off it as off the chip, except a group
+  that is wholly the frame's own pins (a pin ends on the border, above the
+  text: `World::ink_of`), and the scoring counts a graze of it as
+  `Score::ink`, below a chip hit and outside `Score::hard`: with the graze
+  counted as a hit, the nudge took a displaced entry's step away and ran it
+  straight through the title (equal hit counts, fewer bends). The repair
+  keeps searching round the chip at the regular width (documented at
+  `router::repair`): rerouting for the ink took blocks/lr drawn TD's
+  `shopper --> cdn` in through its frame's lateral wall, drawn BT
+  `cart --> pager` round into pager's side across `ship --> pager`, and gave
+  quality/dense-td drawn TD a side end.
+- ortho: the jog walls measure to the ink; a title side's displaced
+  columns start at least `CHIP_CLEAR` past the ink as well as a corner's
+  rounding past the chip's clearance. Which ends are displaced stays judged
+  at the chip: judged at the ink, quality/dense-td drawn TD took a crossing
+  and a line through a node (x_drawn 42 -> 43, defects 0 -> 1). (Started at
+  the ink's clearance alone, without the corner's rounding past the chip,
+  blocks/nested-chain drawn BT took a side end.)
+- comb: its chips reach the ink.
+- ports (#5): where the stretch past the ink and `ortho::CHIP_CLEAR` cannot
+  hold a side's ends, and on an over-full title side, the cut moves to
+  `CHIP_SEP` past the ink before it falls back to `CHIP_SEP` past the chip
+  alone (`Mammoth Wombat Pipeline Overview` overhangs its chip by 8.9 px,
+  so the old fallback lay under the ink).
+- ports, `title_side_columns`: a frame's pins that stand past the chip as
+  drawn are dealt with its title-row entries, also those under the ink past
+  it. Left out, the fan's pin kept its place under `Shipping and returns
+  desk` while the entries were dealt past the ink, and the nudge pushed it
+  in among them, 5 px from one (min_edge_gap 14.3 -> 4.9, a defect). Dealt
+  with them it comes in last, past the entries: no crossing (x_drawn 2 -> 0).
+
+Title gaps (Chromium getBBox of the bold title to the nearest edge
+centreline; 7122a53 / 6e1bf72 / this commit): the verifier's fan
+`Shipping and returns desk` TD 11.86 / 0.00 / 6.92; `Mammoth Wombat
+Pipeline Overview` TD 5.95 / 0.36 / 6.18; `Data ingestion workers` BT
+(second fan shape) 2.98 / 2.98 / 6.71; the public fixture drawn BT and its
+7 sibling copies `Edge and shared services` (`CDN --> GATE`) 1.45 / 1.45 /
+6.54; blocks/lr drawn BT (`cart --> pager`, a strike since before this
+package) 0.00 / 0.00 / 3.11. In the verifier's 72-input sweep of fan
+diagrams the nearest line to any title drawn TD stands 6.18 px off it
+(5.95 at 7122a53, 0.00 at 6e1bf72); drawn BT one graze remains, unchanged
+since 7122a53 (`Data ingestion workers`, 1.34 px, see Tests).
+
+Checks against 7122a53 (b12/tools-a2b, tree build): cells no worse
+(must-fail 89 -> 86, A1 0, routed 37 -> 37, identical to 6e1bf72); gate
+messages no worse (14 failing tests, same names); direction copies: the
+one copy marked worse is still blocks/swimlane-nested TD min_edge_gap
+40 -> 25 (item 3, awaiting the lead's ruling); against 6e1bf72 no
+verdict column moves (informational: blocks/lr BT gains a tight pair,
+`cart --> pager` beside `ship --> pager` over 182 px, where the strike
+was; the public fixture's BT copies band_len 488 -> 592 with
+`CDN --> GATE` moved off the ink). Default build byte-identical
+(off-identity test green; render.sh 25 / 25 corpus SVGs equal to the
+pre-package render).
+
+Tests: router::tests::a_titles_ink_past_its_chip_scores_a_graze_below_a_chip_hit
+(new). blockcheck::a_title_rows_ports_clear_the_titles_ink (extended, #3):
+the long-titled hub input now checks `ORD`'s title too (`hub --> q1`
+passed 3.4 px from it), and a fan of four into a title-row member with a
+pin beside it under four titles, drawn TD and BT (not `Data ingestion
+workers` BT, whose exit up through the title side stands under the ink's
+clearance as before these rules: its side reaches past the chip but holds
+no end past the ink, and only a side wholly under the chip is displaced);
+fails at 6e1bf72 on the hub (3.4 px), the `Shipping and returns desk` fan
+(0.0 px) and the `Mammoth Wombat Pipeline Overview` fan (0.1 px).
+blockcheck::a_frames_pins_and_its_title_rows_entries_take_columns_apart
+(extended, #6): also on blocks/nested-cases as it is, where e2 deals
+`hub --> i1`'s entry from 1 px inside the ink's clearance to it, a track
+past `o1 --> I`'s pin. No snapshot or gate changes. The harness's edge_chip
+still measures the regular chip (quality.rs): not changed (it is the
+judge's input), a point for the lead.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

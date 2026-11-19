@@ -1,0 +1,16 @@
+architecture-beta
+    service a(server)[A]
+    service x(server)[X]
+    service y(server)[Y]
+    service z(server)[Z]
+    service b(server)[B]
+    service p(server)[P]
+    service c(server)[C]
+    a:B -- T:x
+    x:R -- L:y
+    y:R -- L:z
+    z:T -- B:b
+    a:T -- B:p
+    p:R -- L:c
+    a:R -- L:b
+    c:B -- T:y

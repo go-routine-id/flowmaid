@@ -1,0 +1,5 @@
+architecture-beta
+  group api(cloud)[API]
+  service db(database)[DB] in api
+  service srv(server)[Srv] in api
+  db:L -- R:srv

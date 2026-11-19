@@ -1,0 +1,21 @@
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> Active : start
+    state Active {
+        [*] --> Fetch
+        Fetch --> Parse : ok
+        Parse --> Fetch : retry
+        Parse --> [*]
+        note right of Parse : slow step
+    }
+    state Review {
+        [*] --> Check
+        Check --> Fix
+        Fix --> Check
+    }
+    Active --> Review : done
+    Review --> Active : reject
+    Fix --> Idle : abandon
+    Active --> Active : tick
+    note left of Review : humans here
+    Review --> [*]

@@ -1,0 +1,31 @@
+classDiagram
+A --> B : has many of
+B <|-- C
+A *-- D
+C --|> E : x
+E ..|> F : owns
+D ..> G : has many of
+C -- H
+E <|-- I
+B --|> A
+H --> H : h0
+B *-- B : b0
+B o-- B
+B --> B : b2
+B ..> B
+B ..> B : b4
+B *-- B
+B *-- B : b6
+G *-- G : g0
+G *-- G
+G ..> G : g2
+G o-- G
+G ..> G : g4
+D "1" --> "*" D : d0
+D o-- D
+D *-- D : d2
+D o-- D : d3
+D ..> D
+D *-- D : d5
+D o-- D
+D ..> D : d7

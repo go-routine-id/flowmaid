@@ -1,0 +1,12 @@
+architecture-beta
+    group g0(cloud)[Ops]
+    service s0(monitoring)[Web App 0]
+    service s1(nonsense)[Web App 1] in g0
+    service s2(disk)[Web App 2] in g0
+    junction s3
+    s0:L --> R:s1
+    s0:R <-[calls]-> L:s1
+    s1:L -- R:s2
+    s2:T <--> L:s0
+    s3:B <-[calls]-> T:s1
+    s0:L -[publishes order events]-> T:s1

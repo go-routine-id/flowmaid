@@ -1,0 +1,51 @@
+flowchart RL
+  n1["api parse worker"]
+  subgraph B0["Edge services"]
+    n2["ingest worker index"]
+    n3["audit"]
+    n4["search"]
+    n5["auth"]
+    subgraph B0s0["Ops 0"]
+      n6["ingest audit cache"]
+    end
+    subgraph B0s1["Storefront 1"]
+      n7["audit"]
+    end
+  end
+  subgraph B1["Core"]
+    n8["db mail billing"]
+  end
+  subgraph B2["Core"]
+    n9["worker"]
+    subgraph B2s0["Edge services 0"]
+      n10["billing audit api"]
+    end
+  end
+  subgraph B3["Ingest"]
+    n11["ship report mail"]
+    n12["worker<br/>report"]
+    n13["api"]
+    subgraph B3s0["Edge services 0"]
+      n14["ship"]
+      n15["search"]
+      n16["store"]
+    end
+  end
+  n17["merge parse report"]
+  n18["audit"]
+  n8 --> n15
+  n16 --> n15
+  n8 --> n10
+  n15 --> n8
+  n15 --> n17
+  n12 --> n6
+  n17 --> n15
+  n2 --> n7
+  n12 -.-> n18
+  n3 -.-> n17
+  n12 --> n2
+  n7 -.->|auth| n15
+  n15 -->|billing| n18
+  n14 -->|queue| n10
+  n3 --> n1
+  n18 ==> n17

@@ -1,0 +1,15 @@
+classDiagram
+direction LR
+A ..> B : owns
+B ..|> C
+B <|-- D : owns
+D --> E
+D "1" -- "*" F
+C --> G : has many of
+C o-- D
+D ..> A
+B *-- B
+B ..> B
+B --> B : b2
+A "1" --> "*" A
+A "1" --> "*" A : a1

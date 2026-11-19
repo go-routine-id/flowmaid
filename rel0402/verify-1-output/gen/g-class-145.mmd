@@ -1,0 +1,20 @@
+classDiagram
+C8 o-- C1 : beta
+C9 --> C9
+C2 "1" *-- "*" C1
+C4 "1" ..> "*" C5 : a&b
+C2 o-- C9
+C1 *-- C6
+C2 ..> C3 : x
+class C2 {
+  +int id
+  +name() String
+}
+class C3 {
+  +int id
+  +name() String
+}
+class C4 {
+  +int id
+  +name() String
+}

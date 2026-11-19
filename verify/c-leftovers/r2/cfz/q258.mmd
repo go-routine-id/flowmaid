@@ -1,0 +1,35 @@
+classDiagram
+A ..> B
+B --> C : x
+B --|> D
+B <|-- E
+D <|-- F
+B ..> B
+B o-- B : b1
+B ..> B : b2
+B "1" --> "*" B : b3
+B --> B : b4
+B o-- B : b5
+B o-- B : b6
+E *-- E : e0
+E *-- E : e1
+E o-- E
+E ..> E
+E o-- E : e4
+E ..> E : e5
+E ..> E : e6
+C o-- C : c0
+C o-- C : c1
+D *-- D : d0
+D ..> D : d1
+D o-- D
+D ..> D
+D *-- D
+D ..> D
+D *-- D
+D *-- D : d7
+class C {
+ +int id
+ +run() void
+ +stop()
+}

@@ -1,0 +1,12 @@
+flowchart BT
+    subgraph A[Order processing]
+        a0[a0]
+        a1[a1]
+    end
+    subgraph B[Order processing x]
+        b0[b0 wide node]
+        b1[b1 wide node]
+    end
+    a0 --> b1
+    a1 --> b1
+    p[p] --> B

@@ -1,0 +1,13 @@
+flowchart TD
+  subgraph CI[Pipeline]
+    Dev[/push/] --> Build[[build]]
+    Build --> Scan{{scan}}
+    Scan -. fail .-> Dev
+    Scan -->|pass| Reg[(registry)]
+  end
+  subgraph P[Platform]
+    Gate([gateway]) --> Svc[service]
+  end
+  P --> Check{{healthy?}}
+  Check -->|no| Roll[/rollback/]
+  Roll --> P

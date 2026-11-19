@@ -1,0 +1,82 @@
+flowchart TD
+  n1["audit index queue"]
+  n2["queue"]
+  subgraph B0["Core"]
+    n3["split parse store"]
+    n4["auth cache store"]
+  end
+  subgraph B1["Storefront"]
+    n5["cache"]
+    n6["auth"]
+    n7["split"]
+    n8["parse"]
+    subgraph B1s0["Ops 0"]
+      n9["pack"]
+    end
+    subgraph B1s1["Fulfilment desk 1"]
+      n10["notify"]
+    end
+  end
+  subgraph B2["Ingest"]
+    n11["ingest db ship"]
+    n12["ship"]
+    n13["split<br/>store"]
+    subgraph B2s0["Data tier 0"]
+      n14["mail<br/>mail"]
+      n15["auth ingest api<br/>ship"]
+      n16["mail"]
+    end
+    subgraph B2s1["Ingest 1"]
+      n17["notify<br/>notify"]
+      n18["ship ingest billing"]
+      n19["worker"]
+    end
+  end
+  subgraph B3["Platform"]
+    n20["queue"]
+    n21["pack"]
+    subgraph B3s0["Ingest 0"]
+      n22["parse"]
+      n23["search"]
+      n24["search"]
+    end
+  end
+  n25["pack split report"]
+  n23 --> n5
+  n21 -.->|ship| n23
+  n18 --> n8
+  n25 ==> n17
+  n15 --> n8
+  n21 -.-> n14
+  n24 --> n16
+  n6 --> n14
+  n7 --> n3
+  n5 --> n21
+  n10 --> n8
+  n17 -->|ship| n15
+  n10 -.-> n20
+  n24 ==> n2
+  n17 --> n8
+  n16 --> n7
+  n16 -->|split| n15
+  n20 --> B3s0
+  n15 -->|report| n1
+  n18 --> n3
+  n8 ==>|report| n21
+  n17 -->|parse| n20
+  n19 --> n2
+  n8 --> n13
+  n22 -->|report| n3
+  n17 -->|audit| n12
+  n10 --> n23
+  n21 --> n13
+  n4 --> n16
+  n14 -.-> n8
+  n22 -.-> n18
+  n2 -.-> n3
+  n24 ==>|mail| B2s1
+  n7 -->|ingest| n18
+  n4 --> n18
+  n20 --> B1
+  n21 -.-> n22
+  n13 --> n16

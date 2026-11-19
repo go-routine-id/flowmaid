@@ -1,0 +1,9 @@
+flowchart LR
+  A[Alpha] e1@-->|styled red| B[Beta]
+  B -->|stepped| C[Gamma]
+  C -.->|dotted wide| D[Delta]
+  D ==>|thick| E[Epsilon]
+  e1@{ curve: linear }
+  linkStyle 0 stroke:#d33,stroke-width:4px
+  linkStyle 1 interpolate step
+  linkStyle 2 stroke:#3a3,stroke-width:3px

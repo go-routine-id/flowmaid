@@ -1,0 +1,22 @@
+flowchart LR
+    N0((Parse done))
+    N1(Validate)
+    N2[Report]
+    N3[Done report]
+    N4[Retry]
+    N5[Store]
+    N6(Load notify)
+    N7(Notify)
+    N8([Validate])
+    N9[Notify load]
+    N0 --> N1
+    N0 --> N2
+    N1 --> N3
+    N1 --> N4
+    N3 --> N5
+    N4 --> N6
+    N6 --> N7
+    N6 --> N8
+    N6 --> N9
+    N6 -.->|rollback| N2
+    N9 -.->|retry| N5

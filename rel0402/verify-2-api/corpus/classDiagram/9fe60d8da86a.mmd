@@ -1,0 +1,22 @@
+classDiagram
+A <|-- B : has many of
+B --|> C
+C o-- D
+D *-- E
+E --|> F
+C o-- G
+F --> H
+D *-- F
+C o-- C : c0
+C *-- C : c1
+C ..> C
+C ..> C : c3
+F *-- F : f0
+F --> F : f1
+F *-- F : f2
+F ..> F : f3
+class G {
+ +int id
+ +run() void
+ +stop()
+}

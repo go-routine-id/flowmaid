@@ -1,0 +1,24 @@
+flowchart TB
+  H0 -->|express| N2
+  H0 ---|gift wrap| N14
+  H0 ==>|express| N13
+  H0 -.-> N5
+  H0 -.->|gift wrap| N20
+  H0 --> N21
+  H0 --- N19
+  H0 ==>|ok| N21
+  N10 --> N21
+  N30 --> N20
+  N14 -->|retry| N30
+  N13 --> N2
+  N6 --> N17
+  N30 --> N4
+  N7 --> N11
+  N11 --> N12
+  N24 -->|retry| N11
+  N20 --> N6
+  N3 --> N1
+  N28 --> N12
+  N20 --> N2
+  N14 -->|gift wrap| N30
+  N11 --> N22

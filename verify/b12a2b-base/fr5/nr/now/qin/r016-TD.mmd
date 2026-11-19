@@ -1,0 +1,13 @@
+flowchart TD
+    subgraph O[Payments]
+        subgraph G[Order processing]
+            m0[charge]
+            m1[ledger]
+            m2[queue]
+        end
+        k[k]
+    end
+    m0 --> k
+    m1 --> k
+    s0[src0] --> m1
+    s1[src1] --> G

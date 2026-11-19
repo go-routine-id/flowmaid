@@ -1,0 +1,43 @@
+flowchart TD
+  n1["search db db"]
+  subgraph B0["Data tier"]
+    n2["ship cache mail"]
+  end
+  subgraph B1["Fulfilment desk"]
+    n3["search api search"]
+    n4["mail"]
+    n5["api<br/>billing"]
+    n6["parse"]
+    subgraph B1s0["Fulfilment desk 0"]
+      n7["report"]
+      n8["ingest"]
+      n9["mail audit parse"]
+    end
+    subgraph B1s1["Ops 1"]
+      n10["cache<br/>report"]
+      n11["auth<br/>billing"]
+    end
+  end
+  subgraph B2["Storefront"]
+    n12["ingest"]
+    n13["report store parse<br/>search"]
+    n14["pack"]
+  end
+  n15["search"]
+  n13 -.-> n9
+  n12 -->|api| n9
+  n5 -->|cache| n11
+  n13 -->|queue| n7
+  n9 ==> n13
+  n8 --> n7
+  n5 --> n4
+  n6 ==>|billing| n8
+  n8 --> n4
+  n2 --> n13
+  n11 ==> n2
+  n10 --> n13
+  n9 ==>|merge| n1
+  n14 ==> n12
+  n15 -.-> n11
+  n11 --> n5
+  n12 -.->|pack| n7

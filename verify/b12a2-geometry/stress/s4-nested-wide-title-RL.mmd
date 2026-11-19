@@ -1,0 +1,11 @@
+flowchart RL
+    x[entry] --> p1
+    subgraph P[P]
+        subgraph Q["A nested block whose title is far wider than its single member"]
+            p1[n]
+        end
+        p2[m]
+    end
+    p1 --> y[exit]
+    p2 --> y
+    x --> p2

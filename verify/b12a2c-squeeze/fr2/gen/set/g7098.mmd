@@ -1,0 +1,28 @@
+flowchart TD
+  n1["worker report ingest<br/>worker"]
+  subgraph B0["Data tier"]
+    n2["parse merge queue"]
+    n3["billing"]
+    subgraph B0s0["Data tier 0"]
+      n4["report"]
+      n5["billing ingest cache"]
+      n6["api report queue"]
+    end
+    subgraph B0s1["Core 1"]
+      n7["parse ingest report"]
+    end
+  end
+  subgraph B1["Fulfilment desk"]
+    n8["auth parse auth"]
+  end
+  n9["queue<br/>store"]
+  n5 ==> n8
+  n5 --> n7
+  n3 --> n9
+  n3 -.-> n6
+  n8 -.-> n2
+  n1 --> n2
+  n5 --> n6
+  n4 --> n9
+  n7 --> n2
+  n6 -->|ingest| n7

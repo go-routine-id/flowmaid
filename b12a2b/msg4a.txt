@@ -1,0 +1,38 @@
+fix(blocks): in a TD/BT block layout a leg a clearance inside a frame's wall no longer reads as riding it (b12a2b-base item 4a, lateral X2)
+
+`router::side_run` counts a run within `CLEAR_GAP` of a frame border or
+node side as riding it (the repair's `hug`). In a block layout a frame
+grown over an inner leg (B12 2.7 F3) stands exactly `LANE_PAD` (=
+`CLEAR_GAP`) off the leg's column, and the simplified path's rounded
+corner puts the leg's middle a fraction of a pixel nearer: a long chain
+column beside a block's wall scored as riding it beyond `HUG_TRADE`, the
+labelled edge was searched for room and left the block through that
+wall. In a TD or BT block layout a run beside a frame's border now
+counts only within
+`CLEAR_GAP - HUG_AIR` (half a pixel, the air `ortho::TRACK_PITCH` adds to
+a stroke's clearance); a node's side keeps `CLEAR_GAP`, and outside a
+block layout nothing changes (`World::hug_gap`, set in `repair`).
+
+The lateral study's form of the fix (F3 grows a frame over an inner leg
+by `LANE_PAD + 0.5`) was measured first and not taken: it moves frames
+by half a pixel, which makes 13 already-failing `compact_max` cells of
+the local judge worse by 0.01 (local acceptance inputs, the public fixture
+family, bench-75, dense-lr) that nothing in this package pays back, and with it
+(as with this rule in all four directions) dense-td drawn RL gains a
+crossing (29 -> 30) and a 290 px run along a frame. Applied to frame
+borders in TD and BT only, neither happens.
+
+Measured against 7122a53 (three checks) and against item 3: local judge
+A2 88 -> 87 must-fail lines (one `lateral_x` line gone), A1 0,
+no cell worse; routed cells unchanged; suite-on failing tests 14 -> 14,
+no gate message new or worse; the 332 + 32 direction copies unchanged
+against item 3 static and routed (one informational drift:
+notes/fork-twins TD lbl_end_mean 183.1 -> 192.4).
+
+Block mode only (behind the switch); default build byte-identical. New
+unit test router::tests::a_leg_a_clearance_inside_a_frame_wall_rides_it_only_outside_a_block_layout.
+No snapshot or gate changes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5
+

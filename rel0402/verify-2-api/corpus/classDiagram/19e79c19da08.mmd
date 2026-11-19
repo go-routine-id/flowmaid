@@ -1,0 +1,14 @@
+classDiagram
+    direction LR
+    class Logger {
+      +log(msg) void
+      +warn(msg) void
+      +error(msg) void
+    }
+    ServiceA "a1" --> "A2" Logger
+    ServiceB "b1" --> "B2" Logger
+    ServiceC "c1" ..> "C2" Logger
+    ServiceD "d1" o-- "D2" Logger
+    ServiceE "e1" *-- "E2" Logger
+    Logger <|-- FileLogger
+    Logger "L1" --> "S2" Sink

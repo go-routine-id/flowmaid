@@ -1,0 +1,24 @@
+classDiagram
+C2 ..> C1
+C2 "1" -- "*" C4
+C1 <--> C1 : delta
+C1 o-- C2
+C0 --> C0
+C1 "1" ..|> "*" C1
+C4 <|-- C1
+C3 "1" o-- "*" C1 : Long label here
+C1 "1" <--> "*" C2
+C1 o-- C3
+C4 o-- C1
+C1 "1" *-- "*" C2 : Customer Order
+C0 -- C4 : <b>bold</b>
+C0 ..> C2 : a&b
+note for C3 "a&b"
+class C1 {
+  +int id
+  +name() String
+}
+class C4 {
+  +int id
+  +name() String
+}

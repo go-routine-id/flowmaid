@@ -1,0 +1,17 @@
+classDiagram
+C9 *-- C11
+C9 "1" <--> "*" C8
+C0 "1" <|-- "*" C9
+C10 "1" <--> "*" C8 : delta
+C5 -- C11 : gamma
+C6 "1" <|-- "*" C4 : 日本語
+C3 *-- C11
+C11 "1" -- "*" C4
+C3 <|-- C3
+C6 *-- C9
+C5 <--> C2 : gamma
+C5 "1" ..> "*" C4
+class C9 {
+  +int id
+  +name() String
+}

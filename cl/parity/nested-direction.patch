@@ -1,0 +1,157 @@
+--- a/src/compound.rs	2026-11-11 03:25:20.329616277 +0000
++++ b/src/compound.rs	2026-11-11 03:25:20.262872078 +0000
+@@ -13,6 +13,18 @@
+ //! among them already lie in one row across the flow — the row a
+ //! direction across the flow asks for — as they always have.
+ //!
++//! A subgraph that sets no `direction` asks for the one round it in a
++//! flowchart. In a state diagram it asks for top-down
++//! ([`Graph::nested_direction`]), as mermaid's composite states do: a
++//! composite of a `direction LR` diagram is a column unless it says
++//! `direction LR` itself, or one of its states links out of it — or,
++//! in mermaid, it or a state inside it carries a note: mermaid hangs a
++//! note's card outside the composite, a link out of it like any other.
++//! flowmaid keeps the card inside, beside its state, so it reads a note
++//! as mermaid's layout does only for this default: a composite with a
++//! note and no `direction` keeps the direction round it, as mermaid
++//! draws it, while a `direction` it sets itself holds, note or not.
++//!
+ //! A [`Split`] cuts the graph into parts. Each outermost block is one
+ //! part: its members, the edges among them, the block's subgraph as the
+ //! part's one top-level frame with every subgraph nested in it, flowing
+@@ -128,11 +140,20 @@
+     }
+ }
+ 
++/// Whether a subgraph of `g` may ask for a direction other than the one
++/// round it: one sets a `direction`, or the graph gives those without
++/// one a direction that is not its own. `false` = no blocks, whatever
++/// the edges ([`blocks`]).
++pub(crate) fn directed(g: &Graph) -> bool {
++    g.subgraphs.iter().any(|s| s.direction.is_some())
++        || (!g.subgraphs.is_empty() && g.nested_direction.is_some_and(|d| d != g.direction))
++}
++
+ /// Per subgraph: whether it is laid out as a block of its own — it
+-/// sets a direction other than the one round it, two of its members
++/// asks for a direction other than the one round it, two of its members
+ /// link to each other, and none links out of it (module docs).
+ pub(crate) fn blocks(g: &Graph) -> Vec<bool> {
+-    if !g.subgraphs.iter().any(|s| s.direction.is_some()) {
++    if !directed(g) {
+         return vec![false; g.subgraphs.len()];
+     }
+     let (chains, owner) = nesting(g);
+@@ -167,6 +188,32 @@
+             link(e.from, e.to);
+         }
+     }
++    // Per subgraph, where one without a `direction` asks for the
++    // graph's (a state diagram's composite): a note hangs on it or on a
++    // state inside it, which keeps it from asking (module docs).
++    let mut noted = vec![false; ns];
++    if g.nested_direction.is_some() {
++        let card = |v: usize| {
++            g.nodes
++                .get(v)
++                .is_some_and(|n| crate::style::is_note_card(&n.id, n.shape, &n.style))
++        };
++        for e in g.edges.iter().filter(|e| card(e.from) != card(e.to)) {
++            let state = if card(e.from) { e.to } else { e.from };
++            for &c in inside(chains, owner, End::Node(state)) {
++                noted[c] = true;
++            }
++        }
++        for e in &g.sub_edges {
++            if let (End::Sub(c), End::Node(v)) | (End::Node(v), End::Sub(c)) = (e.from, e.to) {
++                if card(v) {
++                    for &c in chains.get(c).map_or(&[][..], |c| c) {
++                        noted[c] = true;
++                    }
++                }
++            }
++        }
++    }
+     // Outermost first: a subgraph's direction is judged against the one
+     // its parent ends up with.
+     let mut order: Vec<usize> = (0..ns).collect();
+@@ -178,7 +225,10 @@
+             Some(p) if p < ns && chains[p].len() < chains[s].len() => flow[p],
+             _ => g.direction,
+         };
+-        let own = g.subgraphs[s].direction.filter(|&d| d != round);
++        let asked = g.subgraphs[s]
++            .direction
++            .or(g.nested_direction.filter(|_| !noted[s]));
++        let own = asked.filter(|&d| d != round);
+         out[s] = own.is_some() && internal[s] && !external[s];
+         flow[s] = match own {
+             Some(d) if out[s] => d,
+@@ -246,6 +296,8 @@
+     }
+     let ns = g.subgraphs.len();
+     let (chains, owner) = nesting(g);
++    // The direction each block flows in: the one it asks for.
++    let flow = judge(g, &chains, &owner).1;
+     // The outermost blocks, in subgraph order, and the one round each
+     // subgraph (itself included) and node.
+     let tops: Vec<usize> = (0..ns)
+@@ -287,7 +339,7 @@
+             .filter(|&v| node_block[v] == Some(b))
+             .collect();
+         let slots: Vec<PartNode> = members.iter().map(|&v| PartNode::Of(v)).collect();
+-        let dir = g.subgraphs[top].direction.unwrap_or(g.direction);
++        let dir = flow[top];
+         let mut pg = g.part(dir, &slots);
+         let mut at = vec![None; g.nodes.len()];
+         for (k, &v) in members.iter().enumerate() {
+--- a/src/model.rs	2026-11-11 03:25:20.301735300 +0000
++++ b/src/model.rs	2026-11-11 03:25:20.262917445 +0000
+@@ -428,6 +428,12 @@
+     /// dagre ranks it just ahead of X; longest-path layering would park
+     /// it at the top however deep X sits).
+     pub(crate) lead_nodes: Vec<usize>,
++    /// The direction a subgraph that sets none asks for
++    /// (`crate::compound`): `None` = the direction round it, as a
++    /// flowchart's subgraph takes; a state diagram sets top-down — mermaid
++    /// lays a composite state out top-down unless it says otherwise,
++    /// whatever the diagram's direction.
++    pub(crate) nested_direction: Option<Direction>,
+     /// The stroke width a synthetic graph's own painter strokes every
+     /// edge with (class and ER diagrams), carried onto each scene edge
+     /// from the start ([`crate::scene::SceneEdge`]'s `paint_width`) so
+@@ -824,6 +830,7 @@
+             rank_gap: self.rank_gap,
+             flat_leaves: self.flat_leaves,
+             tight_sources: self.tight_sources,
++            nested_direction: self.nested_direction,
+             edge_paint_width: self.edge_paint_width,
+             wrap_width: self.wrap_width,
+             no_wrap: self.no_wrap,
+--- a/src/parser.rs	2026-11-11 03:25:20.303207534 +0000
++++ b/src/parser.rs	2026-11-11 03:25:20.262957917 +0000
+@@ -5656,6 +5656,9 @@
+ /// whole flowchart layout/SVG/drag pipeline is reused unchanged.
+ fn parse_state(source: &str, header_line: usize) -> Result<Graph, ParseError> {
+     let mut g = Graph::default();
++    // A composite without a `direction` of its own is top-down in
++    // mermaid, whichever way the diagram runs.
++    g.nested_direction = Some(Direction::TD);
+     let (source, acc) = extract_acc(source, header_line, false, AccFlavor::Jison)?;
+     let source: &str = &source;
+     g.acc_title = acc.title;
+--- a/src/scene.rs	2026-11-11 03:25:20.314398819 +0000
++++ b/src/scene.rs	2026-11-11 03:25:20.263093186 +0000
+@@ -7890,11 +7890,7 @@
+     }
+     // Whether the flow round node `v` runs along x: the diagram's, or
+     // its block's own.
+-    let flows = g
+-        .subgraphs
+-        .iter()
+-        .any(|s| s.direction.is_some())
+-        .then(|| crate::compound::Flows::new(g));
++    let flows = crate::compound::directed(g).then(|| crate::compound::Flows::new(g));
+     let across = |v: usize| {
+         let d = flows
+             .as_ref()

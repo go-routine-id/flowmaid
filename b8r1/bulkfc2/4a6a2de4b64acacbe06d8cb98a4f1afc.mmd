@@ -1,0 +1,22 @@
+flowchart TD
+    N0{Load validate}
+    N1([Store])
+    N2[Retry emit]
+    N3[Report]
+    N4[Report notify]
+    N5{Done fetch}
+    N6(Fetch)
+    N7{{Queue archive}}
+    N8{Check}
+    N0 --> N1
+    N0 --> N2
+    N0 --> N3
+    N3 --> N4
+    N4 -->|ok| N5
+    N4 -->|fail| N6
+    N6 --> N7
+    N7 -->|yes| N8
+    N2 --> N3
+    N6 ==>|again| N2
+    N3 ==> N2
+    N5 ==>|again| N2

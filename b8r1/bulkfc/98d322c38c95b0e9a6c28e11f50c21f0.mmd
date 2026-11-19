@@ -1,0 +1,23 @@
+flowchart RL
+    N0[Store]
+    N1[Load fetch]
+    N2([Load emit])
+    N3(Report)
+    N4([Archive])
+    N5{Store emit}
+    N6(Validate check)
+    N7[Validate]
+    N8[Check]
+    N9{Notify validate}
+    N0 --> N1
+    N1 --> N2
+    N2 -->|no| N3
+    N2 --> N4
+    N3 -->|no| N5
+    N3 --> N6
+    N6 -->|next| N7
+    N7 --> N8
+    N7 --> N9
+    N6 --> N9
+    N2 --> N3
+    N9 -.->|again| N4

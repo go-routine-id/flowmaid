@@ -1,0 +1,113 @@
+%% Route-time benchmark: 75 edges over five frames, two hubs, cross-frame fan-in and loops (G13).
+flowchart LR
+    user([user])
+    ext[external api]
+    subgraph edge[edge zone]
+        direction TB
+        gw[gw]
+        lb[lb]
+    end
+    subgraph app[app zone]
+        direction TB
+        svc1[svc1]
+        svc2[svc2]
+        svc3[svc3]
+        svc4[svc4]
+        svc5[svc5]
+        svc6[svc6]
+    end
+    subgraph data[data zone]
+        direction TB
+        db[db]
+        cache[cache]
+        queue[queue]
+        objects[objects]
+    end
+    subgraph ops[ops zone]
+        direction TB
+        logs[logs]
+        metrics[metrics]
+        alerts[alerts]
+        dash[dash]
+    end
+    subgraph jobs[jobs zone]
+        direction TB
+        job1[job1]
+        job2[job2]
+        job3[job3]
+    end
+    dash --> ext
+    svc4 --> metrics
+    svc2 --> cache
+    svc4 --> db
+    job2 --> objects
+    lb --> svc6
+    svc6 --> logs
+    gw --> svc1
+    job3 --> ext
+    lb --> svc3
+    svc1 --> queue
+    user --> lb
+    gw --> svc4
+    cache --> svc4
+    lb --> metrics
+    gw --> svc6
+    gw --> svc3
+    svc4 --> cache
+    gw --> logs
+    svc3 --> cache
+    logs --> dash
+    svc6 --> db
+    svc2 --> logs
+    svc5 --> queue
+    svc1 --> db
+    gw --> svc5
+    svc2 --> queue
+    svc3 --> logs
+    svc6 --> queue
+    job1 --> svc1
+    user --> ext
+    svc5 --> ext
+    queue --> job1
+    queue --> metrics
+    job1 --> ext
+    queue --> job2
+    svc5 --> cache
+    objects --> logs
+    job3 --> db
+    svc3 --> queue
+    metrics --> dash
+    svc3 --> db
+    svc5 --> db
+    gw --> svc2
+    job2 --> db
+    svc4 --> logs
+    svc1 --> metrics
+    svc1 --> cache
+    alerts --> gw
+    svc3 --> metrics
+    svc5 --> objects
+    svc1 --> logs
+    db --> metrics
+    lb --> svc2
+    svc2 --> metrics
+    queue --> job3
+    svc6 --> ext
+    svc4 --> queue
+    job2 --> ext
+    metrics --> alerts
+    lb --> svc5
+    job1 --> db
+    svc6 --> cache
+    svc3 --> objects
+    gw --> lb
+    svc5 --> logs
+    alerts --> dash
+    dash --> user
+    svc2 --> db
+    user --> gw
+    lb --> svc1
+    svc1 --> objects
+    db --> svc2
+    lb --> svc4
+    job3 --> logs

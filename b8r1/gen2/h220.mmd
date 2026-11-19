@@ -1,0 +1,36 @@
+flowchart TD
+  s0["index search"]
+  subgraph g0["user db zone"]
+    m0["cart trace search"]
+    m1["metric"]
+    m2["user report"]
+    m3["ship metric index"]
+    m0 --> m1
+    m1 --> m2
+    m0 --> m3
+  end
+  subgraph g1["ship zone"]
+    m4["cart"]
+  end
+  subgraph g2["auth zone"]
+    direction LR
+    m5["index"]
+  end
+  subgraph g3["index zone"]
+    m6["store metric"]
+    m7["report auth"]
+    m6 --> m7
+  end
+  subgraph g4["api billing report zone"]
+    direction LR
+    m8["billing user store"]
+    m9["queue cart api"]
+    m8 --> m9
+  end
+  s0 --> g0
+  s0 --> g1
+  s0 --> m5
+  s0 --> m6
+  s0 --> g4
+  m9 --> m1
+  m2 --> m5

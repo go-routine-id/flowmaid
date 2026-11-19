@@ -1,0 +1,14 @@
+flowchart TD
+  subgraph Outer[Outer system]
+    subgraph Inner[Inner loop]
+      I1[Fetch] --> I2[Decode]
+      I2 --> I3{More?}
+      I3 -->|more data please| I1
+    end
+    O1[Collect] --> Inner
+    I3 -->|done| O2[Report]
+    O2 -.->|again| O1
+  end
+  X[External] --> O1
+  O2 --> Y[(Archive)]
+  Y -->|replay| X

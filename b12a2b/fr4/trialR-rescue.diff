@@ -1,0 +1,335 @@
+diff --git a/src/edgepass.rs b/src/edgepass.rs
+index ce9d0ad..cda3ef0 100644
+--- a/src/edgepass.rs
++++ b/src/edgepass.rs
+@@ -428,30 +428,77 @@ pub(crate) fn finish_blocks(g: &Graph, sc: &mut Scene, blocks: Option<&[Vec<usiz
+     stages(g, sc, cx, Mode::Static);
+ }
+ 
++fn fmx_dump(sc: &Scene, tag: &str) {
++    if std::env::var("FMXDUMP").is_err() {
++        return;
++    }
++    for (i, e) in sc.edges.iter().enumerate() {
++        let c = crate::router::ortho_corners(e).unwrap_or_else(|| e.waypoints.clone());
++        let s: Vec<String> = c
++            .iter()
++            .map(|p| format!("({:.1},{:.1})", p.0, p.1))
++            .collect();
++        eprintln!("FMX {tag} e{i} {}->{} {}", e.from, e.to, s.join(" "));
++    }
++    if tag == "ports" {
++        for ci in 0..sc.clusters.len() {
++            let r = crate::scene::title_head_measured(&sc.clusters, ci, 1e9, false);
++            let k = crate::scene::title_head_measured(&sc.clusters, ci, 1e9, true);
++            eprintln!(
++                "FMX chip {ci} {} reg {:.1} {:.1} {:.1} {:.1} ink {:.1}",
++                sc.clusters[ci].title, r.0, r.1, r.2, r.3, k.2
++            );
++        }
++    }
++}
++
+ /// The edge stages over `sc` with its context built.
+ fn stages(g: &Graph, sc: &mut Scene, mut cx: Ctx, mode: Mode) {
+     let mut moved = vec![false; sc.edges.len()];
+     crate::ports::assign(g, sc, &cx, mode, &mut moved);
++    fmx_dump(sc, "ports");
+     // Every edge on the axes, its corners rounded (report §2.1): from the
+     // ends the ports stage settled, before the router judges them.
+     crate::ortho::orthogonalize(g, sc, &mut cx, mode);
++    fmx_dump(sc, "ortho");
++    // In a block layout's static scene, every edge as the router finds
++    // it, for the ink rescue below.
++    let before: Vec<Vec<(f64, f64)>> = if cx.blocks && mode == Mode::Static {
++        sc.edges.iter().map(crate::scene::edge_polyline).collect()
++    } else {
++        Vec::new()
++    };
+     crate::router::repair(g, sc, &cx, mode, &mut moved);
++    fmx_dump(sc, "repair");
+     // A rerouted end may have switched to another side of its node and
+     // landed on a port another edge already holds: space those groups
+     // again. Groups the router left alone are already spaced and stay
+     // byte-identical.
+     crate::ports::respace(g, sc, &cx, mode, &mut moved);
++    fmx_dump(sc, "respace");
+     // After the ports are spaced again, so the channel nudge sees (and
+     // keeps) the final ends; in the static scene it ends by putting each
+     // side's ends in the order their paths now head (G9).
+     crate::router::nudge(g, sc, &cx, mode, &mut moved);
++    fmx_dump(sc, "nudge");
+     // Then two unrelated edges the nudge (or the builder) left side by
+     // side under the spacing get one moved clear, where that costs
+     // nothing else (G4).
+     crate::router::spread_close(g, sc, &cx, mode, &mut moved);
++    fmx_dump(sc, "close");
++    // An edge the stages brought onto a title's bold ink, where the nudge
++    // could not move it off, is searched again round the ink; then the
++    // ends and channels are spaced again (see `router::rescue_inks`).
++    if !before.is_empty() && crate::router::rescue_inks(g, sc, &cx, &mut moved, &before) {
++        crate::ports::respace(g, sc, &cx, mode, &mut moved);
++        crate::router::nudge(g, sc, &cx, mode, &mut moved);
++        crate::router::spread_close(g, sc, &cx, mode, &mut moved);
++        fmx_dump(sc, "rescue");
++    }
+     // Then a fan's teeth nest: the ports, the tracks and the turns of
+     // each side's ends in one order (report B4, see [`crate::comb`]).
+     crate::comb::comb(sc, &cx, &mut moved);
++    fmx_dump(sc, "comb");
+     glyph_stubs(sc, &cx, &mut moved);
+     straight_cubics(sc, &cx);
+     square_s_cubics(sc, &cx);
+diff --git a/src/router.rs b/src/router.rs
+index 845afed..594b4e1 100644
+--- a/src/router.rs
++++ b/src/router.rs
+@@ -876,17 +876,31 @@ impl World {
+             && o.3 - o.1 <= ROUTE_MAX_EXTENT
+     }
+ 
+-    /// The solid obstacles for node clearance `clear`: every node, and
+-    /// every title chip at a clearance scaled the same way.
+-    fn solids(&self, clear: f64) -> Vec<(R, f64)> {
++    /// The solid obstacles for node clearance `clear` of an edge with
++    /// `ends`: every node, and every title chip at a clearance scaled the
++    /// same way, with the title's ink past it where the world holds it
++    /// ([`World::inks_for`]).
++    fn solids(&self, clear: f64, ends: (EndRef, EndRef)) -> Vec<(R, f64)> {
+         let chip = CHIP_CLEAR * clear / ROUTE_CLEAR;
+         self.nodes
+             .iter()
+             .map(|&(r, _)| (r, clear))
+             .chain(self.chips.iter().map(|&r| (r, chip)))
++            .chain(self.inks_for(ends).map(|r| (r, chip)))
+             .collect()
+     }
+ 
++    /// The titles' ink past their chips ([`World::inks`]) an edge with
++    /// `ends` keeps off as off the chips: every frame's but those it ends
++    /// on ([`World::ink_of`]). Only the ink rescue's world holds any of
++    /// the search's ([`rescue_inks`]).
++    fn inks_for(&self, ends: (EndRef, EndRef)) -> impl Iterator<Item = R> + '_ {
++        (0..self.inks.len()).filter_map(move |k| {
++            let own = [ends.0, ends.1].contains(&EndRef::Frame(k));
++            self.ink_of(k, own)
++        })
++    }
++
+     /// The ink past frame `k`'s chip ([`World::inks`]) as a path that
+     /// ends on frame `k` itself (`own`) or not sees it: none for the
+     /// frame's own pin. A pin on the frame's title side ends on its
+@@ -912,6 +926,7 @@ impl World {
+             .enumerate()
+             .all(|(v, &(r, _))| own_loop(v) || !inside(r, p))
+             && self.chips.iter().all(|&r| !inside(r, p))
++            && self.inks_for(info.ends).all(|r| !inside(r, p))
+             && info
+                 .blocked_frames
+                 .iter()
+@@ -1521,6 +1536,7 @@ fn detour(
+         .iter()
+         .map(|&(r, _)| grow(r, NODE_SEP))
+         .chain(w.chips.iter().map(|&r| grow(r, CHIP_SEP)))
++        .chain(w.inks_for(info.ends).map(|r| grow(r, CHIP_SEP)))
+         .chain(blocked.iter().map(|&f| grow(w.frames[f], FRAME_SEP)))
+         .map(tr)
+         .collect();
+@@ -1969,8 +1985,8 @@ impl Lattice {
+ 
+     /// The lattice of the drawing `w` inside the window `o` for
+     /// clearance `clear`, with a vertex on every stub in `stubs`, priced
+-    /// with the accepted segments of edges other than `me`, the frames
+-    /// in `blocked` (ascending) ringed by a band. `None` when it would
++    /// with the accepted segments of edges other than `me` (whose ends
++    /// are `ends`), the frames in `blocked` (ascending) ringed by a band. `None` when it would
+     /// exceed the per-lattice cap or the work left; the work it does is
+     /// charged to `work`.
+     #[allow(clippy::too_many_arguments)]
+@@ -1981,12 +1997,13 @@ impl Lattice {
+         o: R,
+         acc: &mut Accepted,
+         me: usize,
++        ends: (EndRef, EndRef),
+         blocked: &[usize],
+         tracks: bool,
+         work: &mut Work,
+     ) -> Option<Lattice> {
+         let solids: Vec<(R, f64)> = w
+-            .solids(clear)
++            .solids(clear, ends)
+             .into_iter()
+             .filter(|&(r, c)| overlaps(grow(r, c), o))
+             .collect();
+@@ -3164,6 +3181,7 @@ fn route_edge(
+                 win,
+                 env.acc,
+                 me,
++                info.ends,
+                 &info.blocked_frames,
+                 env.tracks,
+                 env.work,
+@@ -5252,9 +5270,79 @@ fn accept(acc: &mut Accepted, i: usize, ends: (EndRef, EndRef), pts: &[Pt]) {
+ /// Reroute the edges that violate clearance; sets `moved[i]` for each
+ /// replaced edge.
+ pub(crate) fn repair(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mut [bool]) {
++    repair_with(g, sc, cx, mode, moved, None);
++}
++
++/// After the channel nudge of a block layout's static scene: every edge
++/// that now comes within reach of a title's bold ink past its chip
++/// ([`World::inks`]) where its path before the repair (`before`,
++/// index-parallel with `sc.edges`) did not, is searched again, round
++/// every title's ink as round its chip ([`World::inks_for`]), and the
++/// new path is taken when it scores better against the scene and the
++/// other edges as drawn, the ink counted ([`Score::ink`]). Returns
++/// whether it redrew an edge (then the ends and channels are spaced
++/// again, see [`crate::edgepass`]).
++///
++/// The repair searches round the chips at the regular width, and the
++/// nudge after it keeps the legs it moves off the ink; but a leg with
++/// no free slab beside it stays where the repair put it (the
++/// verifier's twin blocks drawn TD: `a1 --> b1` round `Shipping and
++/// returns desk two`'s chip, 0.6 px into its ink, between the chip and
++/// the frame's pin, which the ports stage stood a chip's clearance past
++/// the ink; the nudge's spread put the pin past it and its scoring took
++/// both moves back, the pin's for a crossing). Searched round the ink
++/// from the start, the repair drew other edges worse (see [`repair`]),
++/// so only an edge whose graze is the stages' own and still there after
++/// the nudge is searched again.
++pub(crate) fn rescue_inks(
++    g: &Graph,
++    sc: &mut Scene,
++    cx: &Ctx,
++    moved: &mut [bool],
++    before: &[Vec<Pt>],
++) -> bool {
++    let ne = sc.edges.len();
++    if !cx.blocks || ne == 0 || ne > ROUTE_MAX_EDGES || before.len() != ne {
++        return false;
++    }
++    let w = World::new(g, sc, true);
++    if !w.sane() || w.inks.iter().all(Option::is_none) {
++        return false;
++    }
++    let grazed: Vec<bool> = (0..ne)
++        .map(|i| {
++            if cx.fixed.get(i).copied().unwrap_or(false) || before[i].len() < 2 {
++                return false;
++            }
++            let Some(info) = info_of(g, &w, cx, i) else {
++                return false;
++            };
++            let now = w.score(&info, i, &edge_polyline(&sc.edges[i]), None).ink;
++            if std::env::var("FMXDUMP").is_ok() {
++                eprintln!("FMX grazed e{i} now {now} was {}", w.score(&info, i, &before[i], None).ink);
++            }
++            now > w.score(&info, i, &before[i], None).ink
++        })
++        .collect();
++    if !grazed.contains(&true) {
++        return false;
++    }
++    repair_with(g, sc, cx, Mode::Static, moved, Some(&grazed))
++}
++
++/// [`repair`], or with `only` [`rescue_inks`]'s search of the edges it
++/// flags; whether it redrew an edge.
++fn repair_with(
++    g: &Graph,
++    sc: &mut Scene,
++    cx: &Ctx,
++    mode: Mode,
++    moved: &mut [bool],
++    only: Option<&[bool]>,
++) -> bool {
+     let ne = sc.edges.len();
+     if ne == 0 || ne > ROUTE_MAX_EDGES {
+-        return;
++        return false;
+     }
+     // The search goes round the title chips at the regular width, even
+     // in a block layout: the channel nudge after it keeps the legs it
+@@ -5265,9 +5353,10 @@ pub(crate) fn repair(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
+     // TD's `shopper --> cdn` in through its frame's lateral wall, and
+     // drawn BT `cart --> pager` round into pager's side across `ship -->
+     // pager`; quality/dense-td drawn TD gained a side end.
+-    let mut w = World::new(g, sc, false);
++    // (With `only`, round the ink as well: [`rescue_inks`].)
++    let mut w = World::new(g, sc, only.is_some());
+     if !w.sane() {
+-        return;
++        return false;
+     }
+     if mode == Mode::Routed {
+         w.chip_reach = NODE_CLEARANCE;
+@@ -5464,9 +5553,6 @@ pub(crate) fn repair(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
+             }
+         }
+     }
+-    if bad.is_empty() {
+-        return;
+-    }
+     // A broken edge stays where it is until its turn comes (and for good
+     // when no reroute beats it), so the edges searched before it are
+     // priced against it too.
+@@ -5476,6 +5562,22 @@ pub(crate) fn repair(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
+             accept(&mut accepted, i, info.ends, &polys[i]);
+         }
+     }
++    // The ink rescue searches the edges it flags, each taken only when it
++    // scores better (a class 0 edge's rule below), and no other.
++    if let Some(only) = only {
++        bad = order
++            .iter()
++            .filter(|&&i| only.get(i).copied().unwrap_or(false) && !fixed(i))
++            .map(|&i| (0, i))
++            .collect();
++        for &(_, i) in &bad {
++            let info = infos[i].as_ref().expect("filtered");
++            accept(&mut accepted, i, info.ends, &polys[i]);
++        }
++    }
++    if bad.is_empty() {
++        return false;
++    }
+     // Hard before soft, and edges through a node or frame before those
+     // that only overlap another (so a spent budget leaves the lesser
+     // defects); forward before back; short before long.
+@@ -5798,6 +5900,9 @@ pub(crate) fn repair(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
+                     s.hard() == 0 && s.overlap == 0 && s < &base
+                 }
+         };
++        if std::env::var("FMXDUMP").is_ok() && only.is_some() {
++            eprintln!("FMX rescue e{i} base {base:?} best {:?} better {:?}", best.as_ref().map(|b| (b.0, b.1.clone())), best.as_ref().map(|b| better(&b.0, &b.2)));
++        }
+         match best {
+             Some((s, corners, pts)) if better(&s, &pts) => {
+                 // Its two entries, source first.
+@@ -5825,7 +5930,7 @@ pub(crate) fn repair(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
+     // everything as drawn by now, and taken only when
+     // the pair's runs on top of each other shrink and nothing else gets
+     // worse for it.
+-    if mode == Mode::Static && w.flow && work.left > 0 {
++    if mode == Mode::Static && w.flow && work.left > 0 && only.is_none() {
+         let drawn_now = |routes: &[Option<Vec<Pt>>], k: usize| -> Vec<Pt> {
+             match routes[k].as_ref() {
+                 Some(c) => drawn_with(&sc.edges[k], &smooth(c, CORNER_R)),
+@@ -5955,6 +6060,7 @@ pub(crate) fn repair(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
+             }
+         }
+     }
++    let mut redrawn = false;
+     for i in 0..ne {
+         let Some(corners) = routes[i].as_ref() else {
+             continue;
+@@ -5965,7 +6071,9 @@ pub(crate) fn repair(g: &Graph, sc: &mut Scene, cx: &Ctx, mode: Mode, moved: &mu
+         e.waypoints = wps;
+         e.bezier = [p0, p0, p3, p3];
+         moved[i] = true;
++        redrawn = true;
+     }
++    redrawn
+ }
+ 
+ #[cfg(test)]

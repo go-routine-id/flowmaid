@@ -1,0 +1,543 @@
+bench-75	static	user->gw border edge left 51px
+bench-75	static	user->gw hug edge 60px
+bench-75	static	user->gw idiom scubic
+bench-75	static	user->lb idiom spline
+bench-75	static	gw->lb idiom scubic
+bench-75	static	gw->svc1 idiom spline
+bench-75	static	lb->svc1 border edge right 46px
+bench-75	static	lb->svc1 hug edge 57px
+bench-75	static	lb->svc1 idiom scubic
+bench-75	static	gw->svc2 idiom spline
+bench-75	static	lb->svc2 ortho
+bench-75	static	gw->svc3 idiom spline
+bench-75	static	lb->svc3 idiom scubic
+bench-75	static	gw->svc4 ortho
+bench-75	static	lb->svc4 ortho
+bench-75	static	gw->svc5 idiom spline
+bench-75	static	lb->svc5 idiom scubic
+bench-75	static	gw->svc6 idiom spline
+bench-75	static	lb->svc6 idiom scubic
+bench-75	static	svc1->db ortho
+bench-75	static	svc1->cache ortho
+bench-75	static	svc1->queue ortho
+bench-75	static	svc2->db idiom bow
+bench-75	static	svc2->cache idiom scubic
+bench-75	static	svc2->queue ortho
+bench-75	static	svc3->db border data left 120px
+bench-75	static	svc3->db hug data 141px
+bench-75	static	svc3->db idiom scubic
+bench-75	static	svc3->cache ortho
+bench-75	static	svc3->queue ortho
+bench-75	static	svc4->db ortho
+bench-75	static	svc4->cache idiom bow
+bench-75	static	svc4->queue ortho
+bench-75	static	svc5->db ortho
+bench-75	static	svc5->cache ortho
+bench-75	static	svc5->queue ortho
+bench-75	static	svc6->db ortho
+bench-75	static	svc6->cache ortho
+bench-75	static	svc6->queue ortho
+bench-75	static	svc1->objects hug data 38px
+bench-75	static	svc1->objects ortho
+bench-75	static	svc3->objects ortho
+bench-75	static	svc5->objects ortho
+bench-75	static	svc1->logs ortho
+bench-75	static	svc2->logs idiom spline
+bench-75	static	svc3->logs idiom spline
+bench-75	static	svc4->logs ortho
+bench-75	static	svc5->logs idiom spline
+bench-75	static	svc6->logs ortho
+bench-75	static	svc1->metrics ortho
+bench-75	static	svc2->metrics ortho
+bench-75	static	svc3->metrics ortho
+bench-75	static	svc4->metrics ortho
+bench-75	static	metrics->alerts idiom scubic
+bench-75	static	alerts->dash idiom spline
+bench-75	static	logs->dash idiom scubic
+bench-75	static	metrics->dash ortho
+bench-75	static	queue->job1 ortho
+bench-75	static	job1->db idiom bow
+bench-75	static	job1->ext ortho
+bench-75	static	queue->job2 ortho
+bench-75	static	job2->db ortho
+bench-75	static	job2->ext idiom spline
+bench-75	static	queue->job3 ortho
+bench-75	static	job3->db idiom bow
+bench-75	static	job3->ext ortho
+bench-75	static	alerts->gw edge_frame app
+bench-75	static	alerts->gw ortho
+bench-75	static	dash->user ortho
+bench-75	static	job1->svc1 ortho
+bench-75	static	db->svc2 idiom scubic
+bench-75	static	svc6->ext ortho
+bench-75	static	svc5->ext ortho
+bench-75	static	cache->svc4 idiom scubic
+bench-75	static	objects->logs ortho
+bench-75	static	db->metrics ortho
+bench-75	static	queue->metrics idiom scubic
+bench-75	static	gw->logs ortho
+bench-75	static	lb->metrics edge_frame app
+bench-75	static	lb->metrics hug svc2 59px
+bench-75	static	lb->metrics hug svc5 59px
+bench-75	static	lb->metrics ortho
+bench-75	static	user->ext idiom spline
+bench-75	static	job2->objects ortho
+bench-75	static	job3->logs ortho
+bench-75	static	dash->ext ortho
+bench-75	static	gw->lb band gw->svc6 106px
+bench-75	static	lb->svc1 overlap alerts->gw 28px
+bench-75	static	gw->svc3 band alerts->gw 144px
+bench-75	static	gw->svc3 tight alerts->gw 144px
+bench-75	static	gw->svc4 band lb->svc4 144px
+bench-75	static	gw->svc4 band gw->svc6 202px
+bench-75	static	lb->svc4 tight svc4->db 26px
+bench-75	static	svc1->db band svc3->db 332px
+bench-75	static	svc1->db tight svc3->db 104px
+bench-75	static	svc1->db band svc5->db 338px
+bench-75	static	svc1->db tight svc5->db 312px
+bench-75	static	svc1->db band svc1->objects 224px
+bench-75	static	svc1->db tight svc1->objects 106px
+bench-75	static	svc1->db overlap svc1->objects 70px
+bench-75	static	svc1->db tight svc5->logs 38px
+bench-75	static	svc1->db overlap svc5->logs 34px
+bench-75	static	svc1->db tight svc1->metrics 26px
+bench-75	static	svc1->db band job1->svc1 634px
+bench-75	static	svc1->cache band svc3->cache 696px
+bench-75	static	svc1->cache band svc3->queue 772px
+bench-75	static	svc1->cache end_cross svc1->objects at (451,491)
+bench-75	static	svc1->cache band alerts->gw 354px
+bench-75	static	svc1->queue band svc4->queue 578px
+bench-75	static	svc2->db tight job1->db 32px
+bench-75	static	svc2->db band db->svc2 454px
+bench-75	static	svc2->cache band svc5->queue 164px
+bench-75	static	svc2->queue band svc3->queue 202px
+bench-75	static	svc2->queue band svc5->objects 224px
+bench-75	static	svc2->queue band svc4->metrics 150px
+bench-75	static	svc3->db band svc5->db 262px
+bench-75	static	svc3->db tight svc5->db 324px
+bench-75	static	svc3->db overlap svc5->db 188px
+bench-75	static	svc3->db band svc1->objects 194px
+bench-75	static	svc3->db tight svc5->logs 48px
+bench-75	static	svc3->db overlap svc5->logs 42px
+bench-75	static	svc3->db band job1->svc1 424px
+bench-75	static	svc3->db tight job1->svc1 340px
+bench-75	static	svc3->db overlap job1->svc1 198px
+bench-75	static	svc3->cache band svc3->objects 270px
+bench-75	static	svc3->cache tight svc3->objects 270px
+bench-75	static	svc3->cache band svc3->metrics 314px
+bench-75	static	svc3->queue band alerts->gw 392px
+bench-75	static	svc3->queue tight alerts->gw 392px
+bench-75	static	svc3->queue edge_gap alerts->gw 7.0px
+bench-75	static	svc4->db band cache->svc4 230px
+bench-75	static	svc4->db tight cache->svc4 46px
+bench-75	static	svc4->db tight db->metrics 44px
+bench-75	static	svc4->cache band cache->svc4 376px
+bench-75	static	svc5->db band job1->svc1 474px
+bench-75	static	svc5->db tight job1->svc1 474px
+bench-75	static	svc5->cache band svc5->queue 164px
+bench-75	static	svc5->cache tight svc5->queue 42px
+bench-75	static	svc5->cache band svc5->objects 184px
+bench-75	static	svc5->cache tight svc5->objects 184px
+bench-75	static	svc5->cache band svc5->ext 182px
+bench-75	static	svc5->queue band svc6->queue 294px
+bench-75	static	svc6->db band svc6->cache 420px
+bench-75	static	svc6->cache band svc6->queue 494px
+bench-75	static	svc1->objects tight svc5->logs 38px
+bench-75	static	svc1->objects overlap svc5->logs 36px
+bench-75	static	svc1->objects band job1->svc1 220px
+bench-75	static	svc1->objects tight job1->svc1 126px
+bench-75	static	svc1->objects overlap job1->svc1 78px
+bench-75	static	svc3->objects band svc3->metrics 280px
+bench-75	static	svc3->objects tight svc3->metrics 276px
+bench-75	static	svc5->objects band svc4->logs 336px
+bench-75	static	svc5->objects band svc5->ext 432px
+bench-75	static	svc5->objects tight svc5->ext 396px
+bench-75	static	svc1->logs band svc2->logs 306px
+bench-75	static	svc1->logs band gw->logs 358px
+bench-75	static	svc3->logs band svc5->logs 200px
+bench-75	static	svc4->logs band metrics->dash 404px
+bench-75	static	svc5->logs band svc6->logs 132px
+bench-75	static	svc5->logs band job1->svc1 160px
+bench-75	static	svc5->logs tight job1->svc1 88px
+bench-75	static	svc5->logs overlap job1->svc1 60px
+bench-75	static	svc6->logs band svc1->metrics 348px
+bench-75	static	svc1->metrics band svc5->ext 202px
+bench-75	static	svc1->metrics band lb->metrics 208px
+bench-75	static	svc2->metrics band alerts->gw 206px
+bench-75	static	svc4->metrics tight svc5->ext 42px
+bench-75	static	svc4->metrics overlap svc5->ext 16px
+bench-75	static	alerts->dash overlap job3->logs 20px
+bench-75	static	job1->db band job3->db 348px
+bench-75	static	job1->db tight job3->db 160px
+bench-75	static	job1->ext band svc6->ext 130px
+bench-75	static	job2->ext band job3->logs 106px
+bench-75	static	svc5->ext band lb->metrics 650px
+bench-75	static	svc5->ext tight lb->metrics 190px
+bench-75	static	svc5->ext edge_gap lb->metrics 7.2px
+bench-75	static	svc5->ext band dash->ext 368px
+bench-75	static	objects->logs band job3->logs 868px
+bench-75	static	user->gw end_kink end on gw 73.6deg
+bench-75	static	user->lb end_tilt end on lb 48.4deg
+bench-75	static	user->lb end_kink end on lb 48.4deg
+bench-75	static	gw->lb end_kink end on lb 59.1deg
+bench-75	static	lb->svc1 end_kink end on svc1 63.4deg
+bench-75	static	lb->svc3 end_kink end on svc3 65.6deg
+bench-75	static	gw->svc4 end_tilt end on svc4 11.3deg
+bench-75	static	gw->svc4 end_kink end on svc4 11.3deg
+bench-75	static	gw->svc5 end_tilt end on svc5 47.2deg
+bench-75	static	gw->svc5 end_kink end on svc5 47.2deg
+bench-75	static	lb->svc5 end_kink end on svc5 14.9deg
+bench-75	static	lb->svc6 end_kink end on svc6 69.6deg
+bench-75	static	svc2->db end_tilt end on db 74.1deg
+bench-75	static	svc2->db end_kink end on db 74.2deg
+bench-75	static	svc2->cache end_tilt end on cache 75.1deg
+bench-75	static	svc3->db end_kink end on db 84.4deg
+bench-75	static	svc4->cache end_tilt end on cache 70.9deg
+bench-75	static	svc4->cache end_kink end on cache 70.9deg
+bench-75	static	svc1->objects end_tilt end on objects 20.5deg
+bench-75	static	svc1->objects end_kink end on objects 20.5deg
+bench-75	static	alerts->dash end_tilt end on dash 76.3deg
+bench-75	static	alerts->dash end_kink end on dash 76.3deg
+bench-75	static	logs->dash end_kink end on dash 40.0deg
+bench-75	static	job1->db end_tilt end on db 86.2deg
+bench-75	static	job1->db end_kink end on db 84.6deg
+bench-75	static	db->svc2 end_kink end on svc2 83.8deg
+bench-75	static	svc6->ext end_kink end on ext 50.5deg
+bench-75	static	cache->svc4 end_kink end on svc4 81.4deg
+bench-75	static	queue->metrics end_tilt end on metrics 75.1deg
+bench-75	static	gw->svc2 lat_wiggle 129.5
+bench-75	static	svc1->queue lat_wiggle 93.5
+bench-75	static	svc3->queue lat_wiggle 16.0
+bench-75	static	svc1->logs lat_wiggle 97.5
+bench-75	static	svc2->logs lat_wiggle 71.5
+bench-75	static	svc3->logs lat_wiggle 42.5
+bench-75	static	job2->ext lat_wiggle 125.0
+bench-75	static	svc5->ext lat_wiggle 4.2
+bench-75	static	db->metrics lat_wiggle 155.5
+bench-75	static	gw->logs lat_wiggle 142.0
+bench-75	static	user->ext lat_wiggle 805.6
+bench-75	routed	user->gw idiom spline
+bench-75	routed	user->lb ortho
+bench-75	routed	gw->lb idiom scubic
+bench-75	routed	gw->svc1 ortho
+bench-75	routed	lb->svc1 hug edge 25px
+bench-75	routed	lb->svc1 hug app 25px
+bench-75	routed	lb->svc1 ortho
+bench-75	routed	gw->svc2 ortho
+bench-75	routed	lb->svc2 ortho
+bench-75	routed	gw->svc3 idiom spline
+bench-75	routed	lb->svc3 ortho
+bench-75	routed	gw->svc4 ortho
+bench-75	routed	lb->svc4 ortho
+bench-75	routed	gw->svc5 ortho
+bench-75	routed	lb->svc5 ortho
+bench-75	routed	gw->svc6 hug edge 43px
+bench-75	routed	gw->svc6 hug app 30px
+bench-75	routed	gw->svc6 ortho
+bench-75	routed	lb->svc6 ortho
+bench-75	routed	svc1->db border data left 87px
+bench-75	routed	svc1->db hug data 78px
+bench-75	routed	svc1->db ortho
+bench-75	routed	svc1->cache idiom scubic
+bench-75	routed	svc1->queue idiom scubic
+bench-75	routed	svc2->db edge_chip data
+bench-75	routed	svc2->db ortho
+bench-75	routed	svc2->cache ortho
+bench-75	routed	svc2->queue idiom scubic
+bench-75	routed	svc3->db ortho
+bench-75	routed	svc3->cache idiom scubic
+bench-75	routed	svc3->queue ortho
+bench-75	routed	svc4->db idiom bow
+bench-75	routed	svc4->cache idiom bow
+bench-75	routed	svc4->queue idiom scubic
+bench-75	routed	svc5->db edge_chip data
+bench-75	routed	svc5->db ortho
+bench-75	routed	svc5->cache idiom scubic
+bench-75	routed	svc5->queue ortho
+bench-75	routed	svc6->db border data left 85px
+bench-75	routed	svc6->db hug data 99px
+bench-75	routed	svc6->db idiom scubic
+bench-75	routed	svc6->cache idiom scubic
+bench-75	routed	svc6->queue ortho
+bench-75	routed	svc1->objects ortho
+bench-75	routed	svc3->objects ortho
+bench-75	routed	svc5->objects idiom scubic
+bench-75	routed	svc1->logs idiom spline
+bench-75	routed	svc2->logs idiom spline
+bench-75	routed	svc3->logs idiom spline
+bench-75	routed	svc4->logs ortho
+bench-75	routed	svc5->logs idiom spline
+bench-75	routed	svc6->logs idiom spline
+bench-75	routed	svc1->metrics ortho
+bench-75	routed	svc2->metrics idiom spline
+bench-75	routed	svc3->metrics idiom spline
+bench-75	routed	svc4->metrics idiom spline
+bench-75	routed	metrics->alerts idiom scubic
+bench-75	routed	alerts->dash idiom scubic
+bench-75	routed	logs->dash idiom scubic
+bench-75	routed	metrics->dash ortho
+bench-75	routed	queue->job1 border jobs left 43px
+bench-75	routed	queue->job1 hug jobs 43px
+bench-75	routed	queue->job1 idiom scubic
+bench-75	routed	job1->db idiom bow
+bench-75	routed	job1->ext idiom spline
+bench-75	routed	queue->job2 idiom scubic
+bench-75	routed	job2->db idiom bow
+bench-75	routed	job2->ext ortho
+bench-75	routed	queue->job3 ortho
+bench-75	routed	job3->db idiom bow
+bench-75	routed	job3->ext idiom spline
+bench-75	routed	alerts->gw ortho
+bench-75	routed	dash->user ortho
+bench-75	routed	job1->svc1 hug data 478px
+bench-75	routed	job1->svc1 ortho
+bench-75	routed	db->svc2 ortho
+bench-75	routed	svc6->ext idiom spline
+bench-75	routed	svc5->ext idiom spline
+bench-75	routed	cache->svc4 idiom scubic
+bench-75	routed	objects->logs hug data 25px
+bench-75	routed	objects->logs idiom scubic
+bench-75	routed	db->metrics ortho
+bench-75	routed	queue->metrics idiom scubic
+bench-75	routed	gw->logs ortho
+bench-75	routed	lb->metrics ortho
+bench-75	routed	user->ext ortho
+bench-75	routed	job2->objects hug jobs 26px
+bench-75	routed	job2->objects idiom scubic
+bench-75	routed	job3->logs ortho
+bench-75	routed	dash->ext border ops right 60px
+bench-75	routed	dash->ext hug ops 101px
+bench-75	routed	dash->ext idiom spline
+bench-75	routed	user->lb band user->ext 146px
+bench-75	routed	gw->svc1 tight lb->svc1 66px
+bench-75	routed	gw->svc1 band gw->svc3 108px
+bench-75	routed	gw->svc1 tight gw->svc3 34px
+bench-75	routed	gw->svc1 end_cross gw->svc4 at (224,529)
+bench-75	routed	gw->svc1 end_cross gw->logs at (228,529)
+bench-75	routed	lb->svc1 end_cross lb->svc2 at (330,640)
+bench-75	routed	lb->svc1 end_cross lb->svc2 at (339,640)
+bench-75	routed	lb->svc1 touch lb->svc2 0.0px
+bench-75	routed	gw->svc2 end_cross gw->svc6 at (227,562)
+bench-75	routed	gw->svc3 tight lb->svc3 44px
+bench-75	routed	gw->svc3 tight gw->svc6 48px
+bench-75	routed	gw->svc3 tight alerts->gw 34px
+bench-75	routed	gw->svc3 overlap alerts->gw 34px
+bench-75	routed	gw->svc4 band svc1->logs 356px
+bench-75	routed	gw->svc4 tight svc3->logs 28px
+bench-75	routed	gw->svc4 band svc1->metrics 134px
+bench-75	routed	gw->svc4 touch gw->logs 1.9px
+bench-75	routed	lb->svc4 band lb->svc6 210px
+bench-75	routed	lb->svc4 band svc4->db 112px
+bench-75	routed	lb->svc4 end_cross svc4->cache at (858,848)
+bench-75	routed	lb->svc4 end_cross svc4->cache at (863,854)
+bench-75	routed	lb->svc4 touch svc4->cache 0.0px
+bench-75	routed	lb->svc5 end_cross lb->metrics at (342,669)
+bench-75	routed	gw->svc6 band lb->metrics 106px
+bench-75	routed	svc1->db tight svc5->db 300px
+bench-75	routed	svc1->db overlap svc5->db 332px
+bench-75	routed	svc1->db band svc6->db 252px
+bench-75	routed	svc1->db tight svc6->db 48px
+bench-75	routed	svc1->db end_cross svc1->metrics at (426,491)
+bench-75	routed	svc1->db band job1->svc1 608px
+bench-75	routed	svc1->db tight job1->svc1 608px
+bench-75	routed	svc1->cache band svc2->db 180px
+bench-75	routed	svc1->cache tight svc2->db 80px
+bench-75	routed	svc1->cache overlap svc2->db 56px
+bench-75	routed	svc1->cache band svc3->cache 702px
+bench-75	routed	svc1->cache tight svc3->cache 462px
+bench-75	routed	svc1->cache band svc5->cache 306px
+bench-75	routed	svc1->cache band svc5->queue 186px
+bench-75	routed	svc1->cache tight svc5->queue 82px
+bench-75	routed	svc1->cache overlap svc5->queue 58px
+bench-75	routed	svc1->cache band svc6->cache 104px
+bench-75	routed	svc1->queue band svc2->cache 136px
+bench-75	routed	svc1->queue tight svc2->cache 48px
+bench-75	routed	svc1->queue overlap svc2->cache 42px
+bench-75	routed	svc1->queue band svc3->queue 152px
+bench-75	routed	svc1->queue tight svc3->queue 26px
+bench-75	routed	svc1->queue tight db->svc2 34px
+bench-75	routed	svc1->queue overlap db->svc2 36px
+bench-75	routed	svc2->db band svc3->cache 164px
+bench-75	routed	svc2->db tight svc3->cache 68px
+bench-75	routed	svc2->db overlap svc3->cache 50px
+bench-75	routed	svc2->db tight svc3->queue 46px
+bench-75	routed	svc2->db band svc5->db 116px
+bench-75	routed	svc2->db band svc5->cache 136px
+bench-75	routed	svc2->db tight svc5->cache 50px
+bench-75	routed	svc2->db overlap svc5->cache 42px
+bench-75	routed	svc2->db tight svc6->cache 44px
+bench-75	routed	svc2->db overlap svc6->cache 38px
+bench-75	routed	svc2->db band db->svc2 120px
+bench-75	routed	svc2->db touch db->svc2 1.1px
+bench-75	routed	svc2->queue band svc4->cache 140px
+bench-75	routed	svc2->queue tight svc4->cache 54px
+bench-75	routed	svc2->queue overlap svc4->cache 44px
+bench-75	routed	svc2->queue band cache->svc4 130px
+bench-75	routed	svc2->queue tight cache->svc4 46px
+bench-75	routed	svc2->queue overlap cache->svc4 40px
+bench-75	routed	svc2->queue band db->metrics 116px
+bench-75	routed	svc2->queue tight db->metrics 76px
+bench-75	routed	svc2->queue overlap db->metrics 58px
+bench-75	routed	svc3->db band svc6->db 234px
+bench-75	routed	svc3->db tight svc6->db 156px
+bench-75	routed	svc3->db overlap svc6->db 98px
+bench-75	routed	svc3->db band job1->svc1 296px
+bench-75	routed	svc3->cache band svc5->cache 474px
+bench-75	routed	svc3->cache tight svc5->cache 154px
+bench-75	routed	svc3->cache band svc5->queue 172px
+bench-75	routed	svc3->cache tight svc5->queue 70px
+bench-75	routed	svc3->cache overlap svc5->queue 50px
+bench-75	routed	svc3->cache band svc6->cache 318px
+bench-75	routed	svc3->queue overlap svc4->db 18px
+bench-75	routed	svc3->queue tight svc3->objects 36px
+bench-75	routed	svc3->queue overlap db->svc2 16px
+bench-75	routed	svc4->db tight db->svc2 38px
+bench-75	routed	svc4->cache band cache->svc4 294px
+bench-75	routed	svc5->db touch svc5->cache 2.6px
+bench-75	routed	svc5->db band svc6->db 134px
+bench-75	routed	svc5->db band job1->svc1 322px
+bench-75	routed	svc5->db tight job1->svc1 322px
+bench-75	routed	svc5->cache band svc5->queue 156px
+bench-75	routed	svc5->cache tight svc5->queue 64px
+bench-75	routed	svc5->cache overlap svc5->queue 42px
+bench-75	routed	svc5->cache band svc6->cache 544px
+bench-75	routed	svc5->cache tight svc6->cache 414px
+bench-75	routed	svc5->queue band svc6->cache 130px
+bench-75	routed	svc5->queue tight svc6->cache 48px
+bench-75	routed	svc5->queue overlap svc6->cache 40px
+bench-75	routed	svc5->queue band svc6->queue 114px
+bench-75	routed	svc5->queue band svc6->logs 106px
+bench-75	routed	svc6->db band job1->svc1 252px
+bench-75	routed	svc6->db tight job1->svc1 162px
+bench-75	routed	svc6->db overlap job1->svc1 102px
+bench-75	routed	svc6->cache touch db->metrics 2.2px
+bench-75	routed	svc6->cache edge_gap db->metrics 2.2px
+bench-75	routed	svc1->objects band svc3->objects 128px
+bench-75	routed	svc1->objects end_cross svc5->objects at (1247,1090)
+bench-75	routed	svc1->objects band svc1->logs 274px
+bench-75	routed	svc1->objects tight svc3->logs 26px
+bench-75	routed	svc1->objects overlap svc3->logs 28px
+bench-75	routed	svc1->objects band svc3->metrics 148px
+bench-75	routed	svc1->objects tight svc3->metrics 32px
+bench-75	routed	svc1->objects overlap job1->svc1 16px
+bench-75	routed	svc3->objects band svc3->logs 152px
+bench-75	routed	svc3->objects band svc3->metrics 152px
+bench-75	routed	svc3->objects tight svc3->metrics 152px
+bench-75	routed	svc5->objects band svc5->ext 110px
+bench-75	routed	svc5->objects tight svc5->ext 28px
+bench-75	routed	svc1->logs band svc2->logs 198px
+bench-75	routed	svc1->logs band svc3->logs 406px
+bench-75	routed	svc1->logs tight svc3->logs 164px
+bench-75	routed	svc1->logs band svc5->logs 218px
+bench-75	routed	svc1->logs band svc6->logs 172px
+bench-75	routed	svc1->logs band gw->logs 124px
+bench-75	routed	svc2->logs band svc3->logs 406px
+bench-75	routed	svc2->logs tight svc3->logs 162px
+bench-75	routed	svc2->logs band svc5->logs 352px
+bench-75	routed	svc2->logs tight svc5->logs 580px
+bench-75	routed	svc2->logs overlap svc5->logs 378px
+bench-75	routed	svc2->logs band svc6->logs 240px
+bench-75	routed	svc2->logs tight svc6->logs 202px
+bench-75	routed	svc2->logs overlap svc6->logs 216px
+bench-75	routed	svc2->logs band svc2->metrics 152px
+bench-75	routed	svc2->logs tight svc2->metrics 82px
+bench-75	routed	svc3->logs band svc5->logs 372px
+bench-75	routed	svc3->logs tight svc5->logs 206px
+bench-75	routed	svc3->logs band svc6->logs 262px
+bench-75	routed	svc3->logs tight svc6->logs 148px
+bench-75	routed	svc3->logs band svc3->metrics 282px
+bench-75	routed	svc3->logs tight svc3->metrics 160px
+bench-75	routed	svc4->logs overlap svc6->ext 20px
+bench-75	routed	svc4->logs band objects->logs 114px
+bench-75	routed	svc5->logs band svc6->logs 358px
+bench-75	routed	svc5->logs tight svc6->logs 268px
+bench-75	routed	svc5->logs overlap svc6->logs 182px
+bench-75	routed	svc5->logs band svc5->ext 236px
+bench-75	routed	svc5->logs tight svc5->ext 136px
+bench-75	routed	svc6->logs band svc6->ext 214px
+bench-75	routed	alerts->dash band objects->logs 190px
+bench-75	routed	alerts->dash tight objects->logs 98px
+bench-75	routed	alerts->dash overlap objects->logs 68px
+bench-75	routed	alerts->dash band job3->logs 112px
+bench-75	routed	alerts->dash tight job3->logs 54px
+bench-75	routed	alerts->dash overlap job3->logs 44px
+bench-75	routed	queue->job1 band queue->job2 132px
+bench-75	routed	queue->job1 tight queue->job2 82px
+bench-75	routed	queue->job1 end_cross job1->svc1 at (1121,1724)
+bench-75	routed	job1->db band job2->db 174px
+bench-75	routed	job1->db tight job2->db 162px
+bench-75	routed	job1->db overlap job2->db 98px
+bench-75	routed	job1->db band job3->db 204px
+bench-75	routed	job1->db tight job3->db 208px
+bench-75	routed	job1->db overlap job3->db 130px
+bench-75	routed	job1->ext end_cross job3->ext at (1643,1139)
+bench-75	routed	job1->ext band job3->ext 400px
+bench-75	routed	job1->ext tight job3->ext 146px
+bench-75	routed	job2->db band job3->db 138px
+bench-75	routed	job2->db tight job3->db 106px
+bench-75	routed	job2->db overlap job3->db 50px
+bench-75	routed	dash->user edge_gap gw->logs 6.8px
+bench-75	routed	svc6->ext band svc5->ext 176px
+bench-75	routed	cache->svc4 band db->metrics 146px
+bench-75	routed	objects->logs band job3->logs 178px
+bench-75	routed	objects->logs tight job3->logs 100px
+bench-75	routed	objects->logs overlap job3->logs 84px
+bench-75	routed	user->gw end_kink end on gw 20.8deg
+bench-75	routed	gw->lb end_kink end on lb 57.4deg
+bench-75	routed	lb->svc1 end_kink end on svc1 23.4deg
+bench-75	routed	gw->svc6 end_kink end on svc6 20.6deg
+bench-75	routed	svc1->cache end_kink end on cache 35.0deg
+bench-75	routed	svc2->queue end_tilt end on queue 86.7deg
+bench-75	routed	svc2->queue end_kink end on queue 54.0deg
+bench-75	routed	svc3->cache end_kink end on cache 32.0deg
+bench-75	routed	svc4->db end_tilt end on db 83.9deg
+bench-75	routed	svc4->db end_kink end on db 83.9deg
+bench-75	routed	svc4->cache end_tilt end on cache 86.3deg
+bench-75	routed	svc4->cache end_kink end on cache 86.3deg
+bench-75	routed	svc4->queue end_tilt end on queue 73.5deg
+bench-75	routed	svc5->cache end_kink end on cache 14.0deg
+bench-75	routed	svc6->db end_kink end on db 82.1deg
+bench-75	routed	svc5->logs end_tilt end on logs 93.5deg
+bench-75	routed	svc5->logs end_kink end on logs 93.5deg
+bench-75	routed	svc6->logs end_tilt end on logs 93.4deg
+bench-75	routed	svc6->logs end_kink end on logs 93.4deg
+bench-75	routed	svc4->metrics end_tilt end on metrics 116.6deg
+bench-75	routed	svc4->metrics end_kink end on metrics 116.6deg
+bench-75	routed	metrics->alerts end_kink end on alerts 13.3deg
+bench-75	routed	alerts->dash end_kink end on dash 40.6deg
+bench-75	routed	logs->dash end_kink end on dash 44.9deg
+bench-75	routed	queue->job1 end_kink end on job1 70.6deg
+bench-75	routed	job1->db end_tilt end on db 85.9deg
+bench-75	routed	job1->db end_kink end on db 85.9deg
+bench-75	routed	job1->ext end_tilt end on ext 128.4deg
+bench-75	routed	job1->ext end_kink end on ext 63.2deg
+bench-75	routed	queue->job2 end_kink end on job2 59.2deg
+bench-75	routed	job2->db end_tilt end on db 85.2deg
+bench-75	routed	job2->db end_kink end on db 85.2deg
+bench-75	routed	job3->db end_tilt end on db 86.1deg
+bench-75	routed	job3->db end_kink end on db 84.5deg
+bench-75	routed	job3->ext end_tilt end on ext 116.6deg
+bench-75	routed	job3->ext end_kink end on ext 116.6deg
+bench-75	routed	cache->svc4 end_tilt end on svc4 73.5deg
+bench-75	routed	objects->logs end_tilt end on logs 73.5deg
+bench-75	routed	queue->metrics end_tilt end on metrics 73.5deg
+bench-75	routed	job2->objects end_kink end on objects 82.2deg
+bench-75	routed	dash->ext end_tilt end on ext 128.4deg
+bench-75	routed	dash->ext end_kink end on ext 48.4deg
+bench-75	routed	gw->svc1 lat_wiggle 7.5
+bench-75	routed	lb->svc1 lat_wiggle 6.0
+bench-75	routed	gw->svc4 lat_wiggle 104.5
+bench-75	routed	gw->svc5 lat_wiggle 14.5
+bench-75	routed	gw->svc6 lat_wiggle 5.8
+bench-75	routed	svc1->logs lat_wiggle 5.5
+bench-75	routed	svc4->logs lat_wiggle 11.0
+bench-75	routed	svc5->logs lat_wiggle 4.6
+bench-75	routed	svc6->logs lat_wiggle 4.6
+bench-75	routed	svc1->metrics lat_wiggle 12.5
+bench-75	routed	svc4->metrics lat_wiggle 6.3
+bench-75	routed	job1->ext lat_wiggle 5.5
+bench-75	routed	job3->ext lat_wiggle 5.3
+bench-75	routed	db->metrics lat_wiggle 115.0
+bench-75	routed	gw->logs lat_wiggle 16.5
+bench-75	routed	lb->metrics lat_wiggle 256.5
+bench-75	routed	dash->ext lat_wiggle 4.3

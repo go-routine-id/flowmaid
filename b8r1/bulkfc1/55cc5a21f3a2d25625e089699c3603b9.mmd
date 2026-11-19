@@ -1,0 +1,19 @@
+flowchart LR
+    N0(Load notify)
+    N1[Store]
+    N2{Store}
+    N3([Fetch validate])
+    N4([Queue])
+    N5([Validate])
+    N6{Fetch}
+    N7([Report archive])
+    N0 --> N1
+    N1 --> N2
+    N0 -->|yes| N3
+    N2 --> N4
+    N4 --> N5
+    N5 --> N6
+    N4 --> N7
+    N1 --> N5
+    N5 --> N4
+    N6 -->|rollback| N5

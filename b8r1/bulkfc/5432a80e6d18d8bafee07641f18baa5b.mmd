@@ -1,0 +1,19 @@
+flowchart RL
+    N0(Store)
+    N1[Retry]
+    N2{Done report}
+    N3[Queue done]
+    N4([Retry])
+    N5[Archive fetch]
+    N6{Parse}
+    N7([Validate])
+    N8((Retry retry))
+    N0 --> N1
+    N1 --> N2
+    N0 --> N3
+    N3 -->|yes| N4
+    N4 --> N5
+    N4 -->|no| N6
+    N6 --> N7
+    N5 --> N8
+    N5 -.->|back| N3

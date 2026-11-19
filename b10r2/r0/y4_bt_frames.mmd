@@ -1,0 +1,21 @@
+flowchart BT
+    subgraph top [Upper]
+      direction LR
+      u1[U one] --> u2[U two] --> u3[U three]
+    end
+    subgraph bot [Lower]
+      l1[L one]
+      l2[L two]
+      l3[L three]
+    end
+    l1 --> u1
+    l2 --> u2
+    l3 --> u3
+    l1 --> u3
+    l3 -->|cross| u1
+    l2 --> l3
+    r[Root] --> l1
+    r --> l2
+    r -.-> u2
+    u3 --> out((Out))
+    r --> out

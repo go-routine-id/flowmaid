@@ -1,0 +1,14 @@
+flowchart LR
+    subgraph O[Data ingestion workers]
+        subgraph G[Shipping and returns desk]
+            m0[db]
+            m1[charge]
+            m2[ledger]
+        end
+        k[k]
+    end
+    m1 --> k
+    s0[src0] -- "lbl6" --> G
+    s0 -- "lbl8" --> m2
+    s1[src1] --> m1
+    s1 --> m0

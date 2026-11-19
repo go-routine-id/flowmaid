@@ -1,0 +1,26 @@
+sequenceDiagram
+    autonumber
+    actor U as Shopper
+    participant W as Web
+    participant O as Orders
+    participant P as Payments
+    U->>+W: checkout
+    W->>+O: create order
+    activate O
+    alt card payment with 3-D secure challenge required
+        O->>+P: charge card
+        P-->>-O: challenge
+        Note right of P: user must confirm in bank app
+    else wallet balance is sufficient for this order
+        O->>O: debit wallet
+    else
+        O-->>W: unsupported
+    end
+    deactivate O
+    O-->>-W: order id
+    par notify by e-mail and also by push
+        W->>U: email
+    and update the analytics pipeline
+        W->>P: settle
+    end
+    W-->>-U: done

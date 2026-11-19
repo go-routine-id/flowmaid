@@ -1,0 +1,48 @@
+flowchart TD
+  n1["audit"]
+  n2["index"]
+  n3["merge store pack<br/>worker"]
+  subgraph B0["Storefront"]
+    n4["queue"]
+    n5["report"]
+  end
+  subgraph B1["Edge services"]
+    n6["mail"]
+    n7["store"]
+    subgraph B1s0["Ingest 0"]
+      n8["billing"]
+    end
+  end
+  subgraph B2["Ingest"]
+    n9["audit"]
+    subgraph B2s0["Storefront 0"]
+      n10["ship"]
+    end
+  end
+  subgraph B3["Ingest"]
+    n11["audit"]
+    n12["split"]
+    n13["merge"]
+  end
+  n14["audit split parse"]
+  n15["index api index"]
+  n14 ==> n13
+  n7 --> n11
+  n1 --> n14
+  n4 --> n6
+  n6 -->|cache| n2
+  n9 --> n1
+  n2 --> n15
+  n2 --> n14
+  n12 -->|notify| n5
+  n12 -->|store| n2
+  n3 --> n8
+  n4 --> n8
+  n9 --> n4
+  n9 -->|split| n6
+  n10 ==> n9
+  n7 -.->|worker| n14
+  n9 ==> n15
+  n2 -->|merge| n10
+  n5 -->|mail| n10
+  n10 --> n15

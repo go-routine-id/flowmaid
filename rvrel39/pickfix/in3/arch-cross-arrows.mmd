@@ -1,0 +1,20 @@
+architecture-beta
+    group g(cloud)[Grid]
+    service tl(server)[TL] in g
+    service t(server)[T] in g
+    service tr(server)[TR] in g
+    service l(server)[L] in g
+    service r(server)[R] in g
+    service bl(server)[BL] in g
+    service b(server)[B] in g
+    service br(server)[BR] in g
+    tl:R --> L:t
+    t:R --> L:tr
+    tl:B --> T:l
+    l:B --> T:bl
+    bl:R --> L:b
+    b:R --> L:br
+    tr:B --> T:r
+    r:B --> T:br
+    t:B <--> T:b
+    l:R <--> L:r

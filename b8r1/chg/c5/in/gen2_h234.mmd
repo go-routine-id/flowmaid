@@ -1,0 +1,21 @@
+flowchart TD
+  s0["metric"]
+  subgraph g0["web zone"]
+    direction LR
+    m0["auth"]
+    m1["user"]
+    m0 --> m1
+  end
+  subgraph g1["pay queue web zone"]
+    direction TB
+    m2["ship index web"]
+  end
+  subgraph g2["log pay web zone"]
+    m3["metric api search"]
+  end
+  s0 --> m0
+  s0 --> m2
+  s0 --> g2
+  s0 --> L4["web auth billing"]
+  s0 --> L5["ship order db"]
+  s0 --> L6["metric"]

@@ -1,0 +1,8 @@
+flowchart LR
+  A[Start] --> B[Work]
+  B --> B
+  B --> C[Check]
+  B --> Y[Other]
+  C --> D[End]
+  Y --> D
+  D -.->|retry| B

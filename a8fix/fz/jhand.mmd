@@ -1,0 +1,11 @@
+architecture-beta
+    service a(server)[A]
+    junction j
+    service b(server)[B]
+    service c(server)[C]
+    service d(server)[D]
+    a:B -- T:j
+    j:B -- T:b
+    a:B -- R:c
+    a:B -- L:d
+    c:R -- L:d

@@ -1,0 +1,13 @@
+flowchart RL
+    N0([Store])
+    N1([Report])
+    N2([Done report])
+    N3([Retry])
+    N4([Parse queue])
+    N0 -->|ok| N1
+    N1 --> N2
+    N2 -->|yes| N3
+    N3 --> N4
+    N3 --> N4
+    N3 -.-> N2
+    N3 ==>|rollback| N2

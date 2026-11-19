@@ -1,0 +1,15 @@
+classDiagram
+A ..> B
+B -- C
+A --> D
+B ..> E
+C "1" ..|> "*" F
+E ..> F
+A o-- A : a0
+A ..> A
+F ..> F : f0
+F *-- F : f1
+F "1" --> "*" F
+F ..> F : f3
+F ..> F : f4
+B --> B

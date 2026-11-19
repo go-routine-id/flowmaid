@@ -1,0 +1,27 @@
+flowchart BT
+  n1["api"]
+  subgraph B0["Edge services"]
+    n2["store"]
+    n3["ingest"]
+    n4["queue"]
+    n5["notify"]
+  end
+  subgraph B1["Back office and finance"]
+    n6["store index ship"]
+    n7["pack"]
+  end
+  n8["mail"]
+  n9["db"]
+  n3 --> n5
+  n9 --> n1
+  n4 ==> n6
+  n8 ==>|cache| n5
+  n7 --> n6
+  n2 --> n5
+  n3 ==>|pack| n4
+  n5 --> n2
+  n6 -.-> n9
+  n2 -->|parse| n9
+  n7 ==>|worker| n2
+  n2 --> n6
+  n4 -->|store| n3

@@ -1,0 +1,18 @@
+flowchart TD
+    subgraph G0[Ops 0]
+        g0m0[g0m0]
+        g0m1[g0m1]
+        g0m2[g0m2]
+    end
+    subgraph G1[Data ingestion workers 1]
+        g1m0[g1m0]
+        g1m1[g1m1]
+    end
+    o1 --> G1
+    G0 -- l9 --> g1m1
+    o2 --> g1m0
+    g0m0 --> o2
+    g0m0 -.-> G0
+    g0m0 --> o1
+    o3 -.-> G1
+    g0m2 --> g0m1

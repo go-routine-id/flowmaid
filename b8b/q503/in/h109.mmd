@@ -1,0 +1,32 @@
+flowchart TD
+  s0["web trace log"]
+  s1["metric"]
+  subgraph g0["web store user zone"]
+    m0["cart"]
+  end
+  subgraph g1["store cart zone"]
+    direction LR
+    m1["notify metric"]
+    m2["auth metric db"]
+    m3["cache index metric"]
+    m4["ship"]
+    m5["billing"]
+    m1 --> m2
+    m1 --> m3
+    m3 --> m4
+    m4 --> m5
+  end
+  subgraph g2["index billing zone"]
+    m6["index"]
+    m7["log billing user"]
+    m8["queue db api"]
+    m9["order queue"]
+    m10["ship"]
+    m6 --> m7
+    m7 --> m8
+    m8 --> m9
+  end
+  s1 --> g0
+  s0 --> g1
+  s0 --> m6
+  s0 --> L11["index"]

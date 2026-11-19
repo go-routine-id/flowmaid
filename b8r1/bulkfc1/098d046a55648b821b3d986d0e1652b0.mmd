@@ -1,0 +1,18 @@
+flowchart LR
+    N0{Parse check}
+    N1([Store validate])
+    N2(Store emit)
+    N3{Done notify}
+    N4(Done report)
+    N5{Parse queue}
+    N6[Done check]
+    N0 -->|no| N1
+    N0 --> N2
+    N0 --> N3
+    N3 --> N4
+    N2 --> N5
+    N3 --> N6
+    N3 --> N5
+    N4 --> N5
+    N6 -.-> N0
+    N4 --> N0

@@ -1,0 +1,16 @@
+flowchart TD
+    N0{Check}
+    N1[Done]
+    N2[Done load]
+    N3([Queue])
+    N4([Queue report])
+    N5[Retry report]
+    N0 --> N1
+    N0 -->|yes| N2
+    N0 --> N3
+    N1 --> N4
+    N4 -->|yes| N5
+    N2 --> N4
+    N1 --> N2
+    N2 ==>|retry| N0
+    N5 ==>|retry| N4

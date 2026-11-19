@@ -1,0 +1,13 @@
+classDiagram
+class A, B
+%%%%
+classDiagram
+class A,B
+%%%%
+classDiagram
+class A~T~
+A~T~ --> B
+%%%%
+classDiagram
+class `A`.B {
+}

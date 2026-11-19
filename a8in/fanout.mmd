@@ -1,0 +1,13 @@
+architecture-beta
+    group edge(internet)[Edge]
+    service gw(internet)[Gateway] in edge
+    group svcs(server)[Services]
+    service s1(server)[Users] in svcs
+    service s2(server)[Orders] in svcs
+    service s3(server)[Payments] in svcs
+    service q(queue)[Queue]
+    gw:R --> L:s1
+    gw:R --> L:s2
+    gw:R --> L:s3
+    s1:B --> T:q
+    s3:R --> L:q

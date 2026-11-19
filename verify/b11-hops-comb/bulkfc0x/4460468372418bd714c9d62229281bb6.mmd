@@ -1,0 +1,19 @@
+flowchart RL
+    N0[Store]
+    N1((Validate))
+    N2(Load parse)
+    N3(Check store)
+    N4[Load notify]
+    N5{Load}
+    N6([Fetch validate])
+    N7[Notify store]
+    N0 --> N1
+    N1 -->|ok| N2
+    N1 --> N3
+    N3 --> N4
+    N2 -->|fail| N5
+    N4 --> N6
+    N4 --> N7
+    N6 ==>|retry| N5
+    N6 -->|rollback| N0
+    N7 ==>|back| N5

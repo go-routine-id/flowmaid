@@ -1,0 +1,59 @@
+diff --git a/src/edgepass.rs b/src/edgepass.rs
+index ce9d0ad..66a9c1d 100644
+--- a/src/edgepass.rs
++++ b/src/edgepass.rs
+@@ -428,30 +428,54 @@ pub(crate) fn finish_blocks(g: &Graph, sc: &mut Scene, blocks: Option<&[Vec<usiz
+     stages(g, sc, cx, Mode::Static);
+ }
+ 
++
++fn fmx_dump(sc: &Scene, tag: &str) {
++    if std::env::var("FMXDUMP").is_err() { return; }
++    for (i, e) in sc.edges.iter().enumerate() {
++        let c = crate::router::ortho_corners(e).unwrap_or_else(|| e.waypoints.clone());
++        let s: Vec<String> = c.iter().map(|p| format!("({:.1},{:.1})", p.0, p.1)).collect();
++        eprintln!("FMX {tag} e{i} {}->{} {}", e.from, e.to, s.join(" "));
++    }
++    if tag == "ports" {
++        for ci in 0..sc.clusters.len() {
++            let r = crate::scene::title_head_measured(&sc.clusters, ci, 1e9, false);
++            let k = crate::scene::title_head_measured(&sc.clusters, ci, 1e9, true);
++            eprintln!("FMX chip {ci} {} reg {:.1} {:.1} {:.1} {:.1} ink {:.1}", sc.clusters[ci].title, r.0, r.1, r.2, r.3, k.2);
++        }
++    }
++}
++
+ /// The edge stages over `sc` with its context built.
+ fn stages(g: &Graph, sc: &mut Scene, mut cx: Ctx, mode: Mode) {
+     let mut moved = vec![false; sc.edges.len()];
+     crate::ports::assign(g, sc, &cx, mode, &mut moved);
++    fmx_dump(sc, "ports");
+     // Every edge on the axes, its corners rounded (report §2.1): from the
+     // ends the ports stage settled, before the router judges them.
+     crate::ortho::orthogonalize(g, sc, &mut cx, mode);
++    fmx_dump(sc, "ortho");
+     crate::router::repair(g, sc, &cx, mode, &mut moved);
++    fmx_dump(sc, "repair");
+     // A rerouted end may have switched to another side of its node and
+     // landed on a port another edge already holds: space those groups
+     // again. Groups the router left alone are already spaced and stay
+     // byte-identical.
+     crate::ports::respace(g, sc, &cx, mode, &mut moved);
++    fmx_dump(sc, "respace");
+     // After the ports are spaced again, so the channel nudge sees (and
+     // keeps) the final ends; in the static scene it ends by putting each
+     // side's ends in the order their paths now head (G9).
+     crate::router::nudge(g, sc, &cx, mode, &mut moved);
++    fmx_dump(sc, "nudge");
+     // Then two unrelated edges the nudge (or the builder) left side by
+     // side under the spacing get one moved clear, where that costs
+     // nothing else (G4).
+     crate::router::spread_close(g, sc, &cx, mode, &mut moved);
++    fmx_dump(sc, "close");
+     // Then a fan's teeth nest: the ports, the tracks and the turns of
+     // each side's ends in one order (report B4, see [`crate::comb`]).
+     crate::comb::comb(sc, &cx, &mut moved);
++    fmx_dump(sc, "comb");
+     glyph_stubs(sc, &cx, &mut moved);
+     straight_cubics(sc, &cx);
+     square_s_cubics(sc, &cx);

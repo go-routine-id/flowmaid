@@ -1,0 +1,11 @@
+flowchart TD
+S --> f@{ shape: fork }
+f --> P
+f --> Q
+subgraph P
+  direction LR
+  a --> b --> c --> d
+end
+Q --> j@{ shape: fork }
+P --> j
+j --> E

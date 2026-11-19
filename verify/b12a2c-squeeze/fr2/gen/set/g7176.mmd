@@ -1,0 +1,68 @@
+flowchart TD
+  n1["mail notify ingest"]
+  n2["report queue audit"]
+  n3["ingest"]
+  subgraph B0["Analytics"]
+    n4["index"]
+    n5["report report auth<br/>mail"]
+    n6["db"]
+  end
+  subgraph B1["Data tier"]
+    n7["pack"]
+    n8["merge auth db<br/>index"]
+    subgraph B1s0["Ops 0"]
+      n9["store"]
+      n10["index"]
+      n11["index split search"]
+    end
+    subgraph B1s1["Fulfilment desk 1"]
+      n12["ingest"]
+      n13["store"]
+      n14["parse<br/>pack"]
+    end
+  end
+  subgraph B2["Analytics"]
+    n15["pack"]
+    n16["merge<br/>notify"]
+    n17["pack"]
+    n18["ship index ship"]
+    subgraph B2s0["Analytics 0"]
+      n19["ingest"]
+      n20["queue"]
+    end
+  end
+  subgraph B3["Edge services"]
+    n21["ship index notify"]
+  end
+  n22["db"]
+  n23["merge"]
+  n21 --> n14
+  n13 -->|worker| n18
+  n22 -.-> n9
+  n16 --> n9
+  n10 ==> n18
+  n20 --> n2
+  n14 -.->|pack| n2
+  n8 --> n12
+  n11 -.-> n4
+  n18 --> n14
+  n15 -->|queue| B2s0
+  n11 -.->|worker| n16
+  n13 --> n3
+  n19 -->|audit| n5
+  n18 -.-> n6
+  n6 -.-> n16
+  n18 --> n17
+  n9 -->|api| n18
+  n12 -->|notify| n2
+  n10 --> n16
+  n6 ==>|merge| n1
+  n21 -.->|db| n6
+  n23 ==>|db| n4
+  n7 -->|db| n16
+  n23 -.-> n6
+  n2 -.-> n7
+  n5 ==> n6
+  n13 --> n5
+  n23 ==>|queue| n17
+  n13 --> B1s0

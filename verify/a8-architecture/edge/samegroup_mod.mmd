@@ -1,0 +1,5 @@
+architecture-beta
+    group g(cloud)[G]
+    service a(server)[A] in g
+    service b(server)[B] in g
+    a{group}:R -- L:b{group}

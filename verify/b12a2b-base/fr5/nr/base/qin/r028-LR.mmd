@@ -1,0 +1,14 @@
+flowchart LR
+    subgraph O[Order processing]
+        subgraph G[Data ingestion workers]
+            m0[x wide member node]
+            m1[auth service]
+            m2[charge]
+        end
+        k[k]
+    end
+    m0 --> k
+    s0[src0] -- "lbl8" --> O
+    s0 --> G
+    s1[src1] -- "lbl7" --> G
+    m2 --> z[end]

@@ -1,0 +1,56 @@
+feat(blocks): one frame function for a block layout's box and jog room; a frame is as wide as its title (B12.7, F1 + F2)
+
+What: the static scene's frames come from one function, `scene::frame_boxes`
+(member boxes, title, graph, the jog room of the displaced title-side
+entries -> box). In a block layout (behind the internal switch) a frame
+narrower than its title chip plus `TITLE_INSET` on both sides grows
+equally on both sides to `scene::title_fit_width`: its breadth in TD /
+BT, its length along the flow in LR / RL, where the title runs along the
+flow (spec 2.7 F1, F2). F2's jog room (step 1's `title_jogs`) is the
+function's other growth; `layout::title_cap` is the `cap(m)` it counts
+with. Without the switch, or outside block mode, the function is the old
+`cluster_raw_boxes` to the last bit.
+
+Why: a block layout cut a title wider than its block where the canvas
+ended (blocks/title-hidden, blocks/p03-ext-dir) and let a one-column LR
+block's title run out over the next frame (blocks/lr); mermaid never
+cuts a title.
+
+The layout keeps the room (block mode only):
+- TD / BT: a wall of a block holds its frame's side FRAME_PAD -
+  BORDER_GAP past itself; where the grown frame reaches past that, the
+  wall takes the excess and the breadths are placed again (at most twice,
+  `TITLE_FIT_PASSES`). A frame whose walls already hold it (inner
+  channels keep them apart, and the scene's frame covers those too)
+  changes nothing: dense-td draws as before.
+- LR / RL: the members on the block's first and last layer reach half
+  the shortfall further along the flow, from a lower bound of the
+  frame's length read before the layer lines (`f1_flow_short`).
+- `title_chip` reads the chip from the F1 box (nested frames' pads
+  included), so X2.5 and the jog count see the chip where it is drawn.
+
+Tests (repository fixtures only): `a_frame_is_as_broad_as_its_title`
+(title-hidden, TD and BT: grown, centred on its members, and as before
+outside block mode), `an_lr_frame_is_as_long_as_its_title` (lr, LR and
+RL), `titles_are_drawn_whole_in_every_direction` (title-entry,
+title-hidden, lr in all four directions: `title_cut` 0, no frames meet),
+`jog_room_counts_only_what_crosses_the_title_side` (title-entry: two
+displaced entries take ROW_CLEAR + TRACK_PITCH; a title-row hub whose
+exits leave downstream and a block whose three entries fit beside the
+chip take none).
+
+Changed test: `scene::a_title_overflowing_its_frame_onto_the_canvas_stays_whole`
+now draws its diagram outside block mode for the case it states (a
+title running past its frame onto the canvas, whole) and asserts the
+block-mode half: the frame grows to the title instead. Its diagram has
+an edge across the frame, so in the suite-on run it is laid out as
+blocks, where the overflow no longer exists. No gate or snapshot
+changes; the default build is byte-identical (off-identity test). In
+the suite-on run the failing tests are A1's eight lib tests and seven
+`tests/quality.rs` tests with the same failure texts; on the repository
+fixtures only title-hidden, p03-ext-dir, lr and interleave change
+(titles whole; their frames as wide as their titles). Local acceptance
+inputs: the musts of checkpoint A1 all hold.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JGDFJkgB3ttBJtcTtc6aL5

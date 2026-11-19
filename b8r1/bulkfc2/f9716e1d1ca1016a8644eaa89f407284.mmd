@@ -1,0 +1,16 @@
+flowchart RL
+    N0([Done emit])
+    N1(Parse report)
+    N2{{Store notify}}
+    N3[Retry]
+    N4(Done)
+    N5[Done]
+    N0 -->|fail| N1
+    N0 --> N2
+    N2 --> N3
+    N2 -->|yes| N4
+    N3 -->|next| N5
+    N0 --> N2
+    N5 --> N4
+    N4 -.->|rollback| N1
+    N5 --> N1

@@ -1,0 +1,7 @@
+1 ('routed vb !=0', 'NOT translation')
+3018 ('routed vb !=0', 'translation')
+1472 ('routed vb 0 0', 'same')
+1000 ('static', 'same')
+head viewBox origin signs among changed: {'x<0 y<0': 1235, 'x<0 y=0': 911, 'x=0 y<0': 818, 'x>0 y<0': 36, 'x<0 y>0': 19}
+bad 1
+   ('464.p_past2.svg', 'skeleton', [-115.0, -16.7])

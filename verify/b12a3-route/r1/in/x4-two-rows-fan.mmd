@@ -1,0 +1,21 @@
+flowchart TD
+  subgraph Top
+    t1 & t2 & t3 & t4
+  end
+  subgraph Mid
+    m1 --> m2
+  end
+  subgraph Low
+    l1
+    l2
+    l3
+  end
+  t1 --> m1
+  t2 --> m1
+  t3 --> m1
+  t4 --> m1
+  m2 --> l1
+  m2 --> l2
+  m2 --> l3
+  t4 --> l3
+  l1 --> t1

@@ -1,0 +1,15 @@
+flowchart RL
+    N0([Check])
+    N1(Retry)
+    N2{Archive}
+    N3([Queue store])
+    N4{Emit queue}
+    N0 --> N1
+    N1 --> N2
+    N0 --> N3
+    N1 -->|next| N4
+    N1 --> N4
+    N0 --> N4
+    N1 --> N4
+    N4 -->|again| N0
+    N3 -->|again| N2

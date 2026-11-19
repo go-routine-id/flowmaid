@@ -1,0 +1,16 @@
+architecture-beta
+group g0(cloud)[Backend Services]
+group g1(database)[Frontend]
+service s0(internet)[Service 0] in g1
+service s1(database)[Service 1] in g0
+service s2(cloud)[Service 2] in g1
+service s3(database)[Service 3] in g0
+service s4(cloud)[Service 4] in g1
+s1:L --> R:s0
+s4:R -[reads config]- B:s3
+s2:L --> R:s4
+s0:T -[publishes order events]- B:s4
+s3:L --> R:s1
+s2:L -[x]-> R:s1
+s1:B --> T:s2
+s4:B -[replicates to standby]- T:s0

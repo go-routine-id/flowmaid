@@ -1,0 +1,36 @@
+architecture-beta
+    group g0(internet)[Observability]
+    group g1(cloud)[Telemetry and Logging Platform]
+    group g2(server)[Backend Services]
+    group g3(nonsense)[Telemetry and Logging Platform]
+    service s0(internet)[Svc 0]
+    service s1(internet)[PostgreSQL Primary 1]
+    service s2(monitoring)[PostgreSQL Primary 2] in g0
+    service s3(monitoring)[PostgreSQL Primary 3] in g1
+    service s4(monitoring)[Svc 4]
+    service s5(internet)[Q 5] in g2
+    service s6(internet)[Authentication and Authorization Service 6] in g2
+    service s7(nonsense)[Q 7]
+    service s8(nonsense)[Authentication and Authorization Service 8] in g1
+    service s9(server)[PostgreSQL Primary 9] in g1
+    service s10(database)[Svc 10] in g0
+    service s11(database)[Authentication and Authorization Service 11] in g0
+    service s12(monitoring)[PostgreSQL Primary 12] in g2
+    service s13(disk)[PostgreSQL Primary 13] in g3
+    s7:T --> T:s4
+    s13:T -[sync]- B:s1
+    s5{group}:T -[replicates to standby]-> B:s9
+    s2:R <-[replicates to standby]-> R:s6
+    s0:T -[sync]-> B:s1
+    s0:B -[sync]-> R:s1
+    s2:R -[REST over https]-> L:s4
+    s5:B -[sync]- L:s6
+    s8:L -[reads config]-> R:s12
+    s13:R -[x]-> L:s8
+    s2:L -[REST over https]-> R:s3
+    s6:T -[grpc stream]- T:s13
+    s3:B -[sync]- T:s7
+    s9:R -[sync]-> L:s12
+    s2:B <-[replicates to standby]-> B:s4
+    s5:T -[replicates to standby]-> B:s1
+    s3:L -[reads config]-> R:s11

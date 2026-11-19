@@ -1,0 +1,29 @@
+architecture-beta
+    group g0(cloud)[WWW]
+    group g1(internet)[Telemetry and Logging Platform]
+    group g2(cloud)[Backend Services]
+    group g3(nonsense)[Ops]
+    service s0(monitoring)[Authentication and Authorization Service 0] in g0
+    service s1(monitoring)[Svc 1] in g0
+    service s2(server)[PostgreSQL Primary 2] in g0
+    service s3(internet)[Authentication and Authorization Service 3] in g0
+    service s4(database)[Svc 4] in g1
+    service s5(database)[Authentication and Authorization Service 5] in g3
+    service s6(disk)[Web App 6] in g0
+    service s7(server)[Web App 7]
+    service s8(cloud)[Authentication and Authorization Service 8] in g2
+    service s9(nonsense)[PostgreSQL Primary 9] in g0
+    service s10(server)[Q 10] in g3
+    s8:L <--> R:s9
+    s8:T --> B:s9{group}
+    s0:L -- T:s3
+    s9:B -[publishes order events]-> T:s10{group}
+    s8:R -- L:s7
+    s6{group}:R <--> L:s4
+    s1:R <-[publishes order events]-> R:s10{group}
+    s1:R --> L:s0
+    s2:T <--> B:s3
+    s5:B -[publishes order events]- T:s1
+    s2:T -- B:s8
+    s1:R <--> L:s7
+    s1:R -[calls]-> T:s5

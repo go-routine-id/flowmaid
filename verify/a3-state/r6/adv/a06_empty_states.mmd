@@ -1,0 +1,11 @@
+stateDiagram-v2
+state Empty {
+}
+state Outer {
+  state Inner {
+  }
+}
+[*] --> Empty
+Empty --> Outer
+note right of Empty : empty composite
+note left of Outer : outer note

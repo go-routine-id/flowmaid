@@ -1,0 +1,14 @@
+flowchart BT
+    A[Ingest] --> B[Normalize]
+    B --> C[Enrich]
+    B --> D[Validate]
+    C --> E[Index]
+    D --> E
+    E --> F[Serve]
+    F -->|stale| A
+    F -->|reindex| C
+    E -->|bad record| B
+    D -->|quarantine| A
+    C <--> D
+    F --> F
+    E --> E

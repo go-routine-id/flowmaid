@@ -1,0 +1,8 @@
+architecture-beta
+    group g(cloud)[🌐 Global Edge]
+    service a(internet)[東京リージョン]
+    service b(server)[Zürich Øst] in g
+    service c(database)[Base de données] in g
+    a:R -[同期 レプリケーション]-> L:b
+    b:B -[écrit données ✓]-> T:c
+    a:B <-[↔ bidirectional ⇄]-> L:c

@@ -1,0 +1,49 @@
+flowchart LR
+  n1["worker"]
+  n2["ingest<br/>store"]
+  subgraph B0["Ops"]
+    n3["ingest merge notify"]
+    n4["search report cache"]
+    n5["ingest"]
+    subgraph B0s0["Ops 0"]
+      n6["cache"]
+      n7["api db billing"]
+    end
+  end
+  subgraph B1["Platform"]
+    n8["index"]
+    n9["billing"]
+    n10["index<br/>index"]
+    subgraph B1s0["Ops 0"]
+      n11["report"]
+      n12["ship<br/>index"]
+    end
+    subgraph B1s1["Ingest 1"]
+      n13["report<br/>auth"]
+      n14["pack<br/>report"]
+      n15["audit audit merge"]
+    end
+  end
+  n16["parse<br/>pack"]
+  n11 -->|ship| n14
+  n6 --> n11
+  n2 --> n3
+  n14 ==> n8
+  n14 -.->|mail| n10
+  n15 --> n10
+  n9 -->|index| n12
+  n8 --> n5
+  n7 -.-> n10
+  n12 -.-> B1
+  n4 ==>|audit| n1
+  n2 --> n4
+  n13 --> n16
+  n15 --> n3
+  n1 --> n8
+  n4 ==>|merge| B1s1
+  n9 ==>|report| n8
+  n13 --> n12
+  n9 ==> n10
+  n13 --> n2
+  n4 --> n3
+  n16 ==> B1

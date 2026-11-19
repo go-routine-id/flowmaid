@@ -1,0 +1,51 @@
+flowchart LR
+  n1["cache"]
+  n2["db store report"]
+  n3["auth<br/>worker"]
+  subgraph B0["Fulfilment desk"]
+    n4["notify"]
+    n5["index"]
+    n6["notify"]
+  end
+  subgraph B1["Platform"]
+    n7["store"]
+    n8["api"]
+    n9["report"]
+  end
+  subgraph B2["Core"]
+    n10["notify<br/>notify"]
+    n11["audit worker parse"]
+    n12["notify audit search"]
+    n13["billing"]
+    subgraph B2s0["Fulfilment desk 0"]
+      n14["api"]
+    end
+    subgraph B2s1["Storefront 1"]
+      n15["cache"]
+      n16["worker"]
+    end
+  end
+  n17["billing report auth"]
+  n18["billing worker index<br/>store"]
+  n13 --> n18
+  n16 --> n14
+  n18 --> n13
+  n7 -->|pack| n3
+  n8 --> n11
+  n16 ==> n13
+  n5 --> n8
+  n13 -.->|pack| n15
+  n17 --> n7
+  n12 --> n6
+  n4 -->|index| B0
+  n7 --> n1
+  n12 -.-> n14
+  n8 --> n4
+  n16 ==> n10
+  n2 --> n8
+  n17 --> n4
+  n6 ==> n12
+  n11 ==> B0
+  n6 -.-> n5
+  n8 --> n1
+  n13 -->|merge| n10

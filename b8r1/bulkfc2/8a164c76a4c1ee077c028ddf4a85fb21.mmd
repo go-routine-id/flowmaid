@@ -1,0 +1,7 @@
+flowchart LR
+  A[Receive the incoming support ticket from the customer portal] --> B{Is the ticket a duplicate of an existing open ticket?}
+  B -->|yes| C[Merge it into the existing ticket and notify the customer]
+  B -->|no| D[Assign the ticket to the first line support queue]
+  D --> E[(Ticket database with the full history)]
+  C --> E
+  E --> F[/Send a weekly summary report to the managers/]

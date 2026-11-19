@@ -1,0 +1,18 @@
+flowchart RL
+  h[Hub with a rather long title] --> n1[One]
+  h --> n2[Two]
+  h --> n3[Three]
+  h --> n4[Four]
+  h --> n5[Five]
+  h --> n6[Six]
+  h --> n7[Seven]
+  h --> n8[Eight]
+  h --> n9[Nine]
+  n1 --> t[Tail]
+  n5 --> t
+  n9 --> t
+  n2 --> n8
+  n3 -.-> n7
+  o[Other] --> n4
+  o --> n6
+  o ==> t

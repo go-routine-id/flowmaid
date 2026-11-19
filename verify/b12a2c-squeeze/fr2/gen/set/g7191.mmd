@@ -1,0 +1,30 @@
+flowchart TD
+  n1["audit"]
+  n2["index"]
+  n3["report"]
+  subgraph B0["Data tier"]
+    n4["ingest"]
+    n5["index"]
+    n6["index<br/>cache"]
+  end
+  subgraph B1["Fulfilment desk"]
+    n7["index"]
+    n8["api notify ship"]
+    n9["parse search store"]
+  end
+  subgraph B2["Fulfilment desk"]
+    n10["queue"]
+  end
+  n11["ingest api billing<br/>db"]
+  n2 --> n7
+  n3 ==> n2
+  n4 --> n7
+  n2 --> n5
+  n6 -.-> n3
+  n5 -.->|report| n8
+  n9 -.->|api| n8
+  n11 --> n9
+  n3 ==> n1
+  n1 --> n11
+  n10 -->|audit| n4
+  n5 -.-> n6

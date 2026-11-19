@@ -1,0 +1,11 @@
+flowchart RL
+  H[Hub] --> A1[One] & A2[Two] & A3[Three] & A4[Four]
+  A1 --> Z[Sink]
+  A2 --> Z
+  A3 --> Z
+  A4 --> Z
+  Z -->|back 1| H
+  Z -->|back 2| H
+  Z -.-> A1
+  Z -.-> A4
+  A3 --> H

@@ -1,0 +1,11 @@
+architecture-beta
+    group g1(cloud)[One]
+    service a(server)[A] in g1
+    service b(database)[B] in g1
+    service c(disk)[C] in g1
+    service x(internet)[X]
+    a:R -- R:b
+    b:L -- L:c
+    c:T -- T:a
+    x:B -- B:a
+    x:L -- R:c

@@ -1,0 +1,47 @@
+flowchart TD
+  n1["search search api"]
+  subgraph B0["Ops"]
+    n2["search"]
+    n3["db"]
+  end
+  subgraph B1["Fulfilment desk"]
+    n4["pack"]
+    subgraph B1s0["Core 0"]
+      n5["ship"]
+      n6["parse"]
+      n7["mail mail report"]
+    end
+    subgraph B1s1["Storefront 1"]
+      n8["cache db parse"]
+    end
+  end
+  subgraph B2["Edge services"]
+    n9["api<br/>auth"]
+    n10["parse"]
+    n11["pack ship pack"]
+    n12["ingest"]
+  end
+  subgraph B3["Back office and finance"]
+    n13["report"]
+    n14["merge"]
+    n15["mail"]
+  end
+  n16["parse"]
+  n17["notify parse parse<br/>api"]
+  n8 -.-> n14
+  n1 ==>|cache| n2
+  n14 --> n1
+  n12 -.->|ship| n9
+  n12 --> n8
+  n11 ==> n7
+  n8 --> n7
+  n9 ==>|search| n5
+  n7 --> n11
+  n9 ==>|index| n4
+  n4 -->|db| n14
+  n5 ==> n16
+  n4 --> n11
+  n10 --> n4
+  n2 --> n10
+  n16 -.-> n4
+  n11 -->|search| n9

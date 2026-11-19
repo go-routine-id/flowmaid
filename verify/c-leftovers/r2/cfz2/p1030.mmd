@@ -1,0 +1,16 @@
+classDiagram
+direction BT
+A "1" -- "*" B
+A *-- C
+B ..> D
+B -- E : uses
+A -- F : has many of
+E "1" o-- "*" G
+E *-- H
+A o-- D
+D o-- D
+D --> D : d1
+D "1" --> "*" D : d2
+D "1" --> "*" D : d3
+F *-- F
+F *-- F : f1

@@ -1,0 +1,67 @@
+classDiagram
+C9 "1" <|-- "*" C12 : <b>bold</b>
+C23 -- C24 : <b>bold</b>
+C10 "1" <--> "*" C4
+C8 *-- C12
+C27 "1" ..|> "*" C3
+C14 ..|> C20
+C4 <|-- C7
+C23 ..> C7
+C0 *-- C19
+C27 ..|> C26 : a&b
+C19 --> C5 : Long label here
+C0 "1" -- "*" C26
+C2 --> C6
+C21 <|-- C26
+C8 "1" <|-- "*" C25
+C16 "1" <|-- "*" C14
+C7 "1" ..> "*" C2
+C7 "1" <|-- "*" C15
+C0 --> C15 : 日本語
+C26 ..|> C19
+C3 -- C19
+C9 "1" ..|> "*" C24 : Customer Order
+C9 <--> C27
+C8 "1" -- "*" C27
+C8 "1" o-- "*" C3 : beta
+C6 "1" o-- "*" C25
+C24 "1" -- "*" C2
+C13 -- C20
+C12 "1" o-- "*" C20 : Customer Order
+note "Long label here"
+class C0 {
+  +int id
+  +name() String
+}
+class C3 {
+  +int id
+  +name() String
+}
+class C8 {
+  +int id
+  +name() String
+}
+class C9 {
+  +int id
+  +name() String
+}
+class C10 {
+  +int id
+  +name() String
+}
+class C11 {
+  +int id
+  +name() String
+}
+class C13 {
+  +int id
+  +name() String
+}
+class C21 {
+  +int id
+  +name() String
+}
+class C22 {
+  +int id
+  +name() String
+}

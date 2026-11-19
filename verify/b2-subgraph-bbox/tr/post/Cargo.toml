@@ -1,0 +1,9 @@
+[package]
+name = "tr-post"
+version = "0.1.0"
+edition = "2021"
+[[bin]]
+name = "tr"
+path = "../main.rs"
+[dependencies]
+flowmaid = { path = "/home/user/flowmaid" }

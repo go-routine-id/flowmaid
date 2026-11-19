@@ -1,0 +1,18 @@
+flowchart LR
+    N0{Validate queue}
+    N1(Done retry)
+    N2([Store])
+    N3[Report parse]
+    N4([Check retry])
+    N5[Done]
+    N6((Queue load))
+    N0 -->|yes| N1
+    N0 --> N2
+    N2 -->|ok| N3
+    N3 --> N4
+    N2 -->|no| N5
+    N4 --> N6
+    N0 --> N5
+    N4 --> N5
+    N4 -.->|rollback| N2
+    N6 ==>|rollback| N1

@@ -1,0 +1,12 @@
+flowchart LR
+    subgraph G[Data ingestion workers]
+        m0[charge]
+        m1[queue]
+        m2[queue]
+        m0 --> m1
+    end
+    s0[src0] --> m1
+    s0 --> G
+    s1[src1] -- "lbl8" --> m1
+    s2[src2] --> m2
+    s3[src3] --> G

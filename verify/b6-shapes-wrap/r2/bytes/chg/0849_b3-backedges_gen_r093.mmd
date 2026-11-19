@@ -1,0 +1,16 @@
+flowchart RL
+    N0((Validate))
+    N1[Fetch]
+    N2{{Check parse}}
+    N3[Check]
+    N4{Done}
+    N5[Emit parse]
+    N0 --> N1
+    N1 --> N2
+    N2 --> N3
+    N2 --> N4
+    N4 -->|yes| N5
+    N1 --> N4
+    N1 --> N2
+    N5 --> N1
+    N3 -->|retry| N0

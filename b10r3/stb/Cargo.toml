@@ -1,0 +1,9 @@
+[package]
+name = "st"
+version = "0.1.0"
+edition = "2021"
+[dependencies]
+flowmaid = { path = "../fmbase" }
+[workspace]
+[profile.release]
+debug = true

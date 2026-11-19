@@ -1,0 +1,16 @@
+flowchart TD
+  c3([actor three]) --> front
+  c2([actor two]) --> front
+  c1([actor one]) --> front
+  subgraph F[Front]
+    front[front door] --> svc[service]
+  end
+  subgraph Bk[Back]
+    db[(database)]
+    idx[(index)]
+    logs[(logs)]
+  end
+  svc --> logs
+  svc --> idx
+  svc --> db
+  Bk -.->|alerts| F

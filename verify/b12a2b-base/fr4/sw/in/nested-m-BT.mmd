@@ -1,0 +1,15 @@
+flowchart BT
+    a[a] --> x
+    b[b] --> I
+    c[c] --> O
+    d[d] --> y
+    subgraph O[MMMM WWWW]
+        subgraph I[MMMM WWWW inner]
+            x[x wide member]
+            y[y]
+        end
+        k[k]
+    end
+    x --> k
+    y --> k
+    k --> z[z]

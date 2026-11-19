@@ -1,0 +1,23 @@
+flowchart TD
+    subgraph O[MMMM WWWW QQQQ]
+        subgraph G[Shipping and returns desk]
+            m0[auth service]
+            m1[y]
+            m2[x wide member node]
+        end
+        k[k]
+    end
+    m0 --> k
+    m1 --> k
+    m2 --> k
+    s0[src0] --> G
+    s0 -- "lbl1" --> G
+    s1[src1] --> G
+    s1 --> O
+    s2[src2] -- "lbl5" --> m2
+    s2 -- "lbl8" --> G
+    s3[src3] --> G
+    s3 --> m1
+    s4[src4] --> G
+    s4 --> m1
+    G --> z2[after]

@@ -1,0 +1,20 @@
+stateDiagram-v2
+[*] --> A
+state K0 {
+  [*] --> K0_0
+  K0_0 --> K0_1
+  K0_1 --> K0_2
+  note right of K0_0 : n0
+}
+state K1 {
+  [*] --> K1_0
+  K1_0 --> K1_1
+  K1_1 --> K1_2
+  note right of K1_0 : n1
+  note left of K1_0 : lead1
+}
+A --> K0
+K0_0 --> K1_0 : go
+K1_0 --> K1_2 : t
+A --> K0_2 : t
+K1 --> [*]

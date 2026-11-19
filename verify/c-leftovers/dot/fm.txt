@@ -1,0 +1,28 @@
+d01.mmd	FM: A.B,C rel=1 [A.B>C] notes=0
+d02.mmd	FM: A.B,C.D rel=1 [A.B>C.D] notes=0
+d03.mmd	FM: com.example.Customer,com.example.Order rel=1 [com.example.Customer>com.example.Order] notes=0
+d04.mmd	FM: A.B,C rel=1 [A.B>C] notes=0
+d05.mmd	FM: A.B,C rel=1 [A.B>C] notes=0
+d06.mmd	FM: A.B,C.D rel=1 [A.B>C.D] notes=0
+d07.mmd	FM: A,B rel=1 [A>B] notes=0
+d08.mmd	FM: A.1,B.2 rel=1 [A.1>B.2] notes=0
+d09.mmd	FM: A.o,B rel=1 [A.o>B] notes=0
+d10.mmd	FM: pkg.o,B rel=1 [pkg.o>B] notes=0
+d11.mmd	FM: pkg.o,B rel=1 [pkg.o>B] notes=0
+d12.mmd	FM: A.B,C.D rel=1 [C.D>A.B] notes=0
+d13.mmd	FM: A.B,C.D rel=1 [C.D>A.B] notes=0
+d14.mmd	FM: A.B,C.D rel=1 [C.D>A.B] notes=0
+d15.mmd	FM: A.B rel=0 [] notes=0
+d16.mmd	FM: A.B rel=0 [] notes=0
+d17.mmd	FM: ERR line 2: class relation needs two class names, got 'A.' / 'B'
+d18.mmd	FM: ERR line 2: class relation needs two class names, got '.A' / 'B'
+d19.mmd	FM: ERR line 2: class relation needs two class names, got 'A' / '.B'
+d20.mmd	FM: ERR line 2: class relation needs two class names, got 'A' / 'B.'
+d21.mmd	FM: A.B,C rel=1 [A.B>C] notes=0
+d22.mmd	FM: A.B,C.D rel=1 [A.B>C.D] notes=0
+d23.mmd	FM: o.A,B rel=1 [o.A>B] notes=0
+d24.mmd	FM: A.B,C.D rel=1 [A.B>C.D] notes=0
+d25.mmd	FM: ERR line 2: class relation needs two class names, got 'A.x' / '.B'
+d26.mmd	FM: C,A.B rel=1 [C>A.B] notes=0
+d27.mmd	FM: A.B,C rel=1 [A.B>C] notes=1
+d28.mmd	FM: A.B,A,B rel=2 [A>B A.B>A] notes=0

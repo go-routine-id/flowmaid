@@ -1,0 +1,14 @@
+flowchart LR
+    Lint
+    Compile
+    Test
+    Deploy
+    subgraph Pipe["Build pipeline"]
+        Lint
+        Compile
+        Test
+    end
+    Lint --> Compile
+    Compile --> Test
+    Test --> Pipe
+    Pipe --> Deploy

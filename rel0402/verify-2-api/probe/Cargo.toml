@@ -1,0 +1,15 @@
+[package]
+name = "probe"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+flowmaid = { path = "../guard" }
+
+[profile.release]
+debug = false
+overflow-checks = true
+debug-assertions = true
+
+[workspace]

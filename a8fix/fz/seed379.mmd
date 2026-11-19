@@ -1,0 +1,40 @@
+architecture-beta
+    group g0(monitoring)[Data]
+    group g1(database)[Data]
+    group g2(internet)[Edge]
+    service s0(server)[Service 0] in g2
+    service s1(database)[Service 1] in g0
+    service s2(database)[Service 2] in g1
+    service s3(monitoring)[Service 3] in g1
+    service s4(database)[Service 4] in g1
+    service s5(internet)[Service 5] in g2
+    service s6(server)[Service 6] in g2
+    service s7(internet)[Service 7] in g1
+    service s8(monitoring)[Service 8] in g2
+    service s9(cloud)[Service 9] in g2
+    service s10(cloud)[Service 10] in g2
+    service s11(server)[Service 11]
+    service s12(internet)[Service 12] in g1
+    service s13(cloud)[Service 13]
+    service s14(cloud)[Service 14]
+    service s15(monitoring)[Service 15] in g1
+    s6:L --> R:s7
+    s4:B --> L:s11
+    s11:B --> T:s7
+    s8:T --> T:s13
+    s1:T --> B:s13
+    s15:R --> T:s13
+    s0:B -- L:s4
+    s15:T -- B:s1
+    s7:R -- L:s6
+    s1:T --> B:s2
+    s11:L --> L:s6
+    s5:T --> B:s9
+    s12:B -- B:s8
+    s1:L --> R:s8
+    s13:T --> B:s6
+    s4:T --> R:s7
+    s3:B --> R:s15
+    s0:L --> L:s10
+    s14:T --> B:s0
+    s13:R --> L:s14

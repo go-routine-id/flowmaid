@@ -1,0 +1,30 @@
+flowchart TD
+  s0["billing"]
+  s1["store"]
+  subgraph g0["web index zone"]
+    m0["cart queue cache"]
+    m1["notify log"]
+    m2["store web queue"]
+    m0 --> m1
+  end
+  subgraph g1["cache log zone"]
+    direction TB
+    m3["billing"]
+    m4["order api"]
+    m5["cache"]
+    m4 --> m5
+  end
+  subgraph g2["web notify db zone"]
+    m6["log"]
+    m7["search pay"]
+    m8["api"]
+    m9["metric auth auth"]
+    m10["cart web"]
+    m6 --> m7
+    m7 --> m8
+    m6 --> m9
+    m8 --> m10
+  end
+  s1 --> m0
+  s0 --> g1
+  s1 --> g2

@@ -1,0 +1,3 @@
+46:pub struct MindNodeBox { 
+70:pub struct MindLink { 
+79:pub struct MindScene { 

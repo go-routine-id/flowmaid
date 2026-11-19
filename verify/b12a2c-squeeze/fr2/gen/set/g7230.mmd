@@ -1,0 +1,36 @@
+flowchart RL
+  n1["db auth billing"]
+  n2["search"]
+  subgraph B0["Storefront"]
+    n3["report"]
+    n4["cache auth split"]
+    n5["mail"]
+    n6["store split report"]
+    subgraph B0s0["Ingest 0"]
+      n7["pack"]
+    end
+    subgraph B0s1["Platform 1"]
+      n8["api"]
+    end
+  end
+  subgraph B1["Back office and finance"]
+    n9["notify"]
+    subgraph B1s0["Fulfilment desk 0"]
+      n10["search<br/>merge"]
+      n11["ship"]
+    end
+  end
+  n12["ingest"]
+  n13["ingest"]
+  n4 --> n5
+  n1 ==> n11
+  n1 ==> n2
+  n12 ==> n4
+  n3 -->|notify| n5
+  n4 -->|mail| n1
+  n10 --> n7
+  n8 --> n7
+  n12 --> n1
+  n6 --> n9
+  n2 --> n7
+  n11 -->|merge| n6

@@ -1,0 +1,294 @@
+b9-inside-BT	along=0.0	across=89.7	cut=0/0		LOG
+b9-inside-LR	along=0.0	across=56.0	cut=0/0		LOG
+b9-inside-RL	along=0.0	across=63.0	cut=0/0		LOG
+b9-inside-TD	along=0.0	across=164.4	cut=0/0		LOG
+b9-inside2-BT	along=12.5	across=65.7	cut=0/0	OUTER s=(66.2,252.5,382.8,354.5) r=(106.1,265.0,342.8,342.0)	LOG
+b9-inside2-LR	along=0.0	across=40.0	cut=0/0		LOG
+b9-inside2-RL	along=0.0	across=40.0	cut=0/0		LOG
+b9-inside2-TD	along=0.0	across=65.7	cut=0/0		LOG
+bench-75-BT	along=75.0	across=538.2	cut=0/0	edge s=(193.0,1907.5,1154.9,292.5) r=(660.5,1832.5,149.2,367.5)	edge
+bench-75-LR	along=0.0	across=459.5	cut=0/0		edge
+bench-75-RL	along=0.0	across=459.5	cut=0/0		edge
+bench-75-TD	along=12.5	across=538.2	cut=0/0	edge s=(179.1,141.0,1154.9,280.0) r=(646.5,128.5,149.2,292.5)	edge
+blocks-overview-BT	along=12.5	across=42.3	cut=0/0	ORD s=(516.5,608.0,413.3,373.0) r=(516.5,620.5,413.3,360.5)	OBS
+blocks-overview-LR	along=0.0	across=44.8	cut=0/0	EDGE s=(265.9,189.2,168.6,501.0) r=(265.9,189.2,168.6,501.0)	OBS
+blocks-overview-RL	along=0.0	across=44.8	cut=0/0	ORD s=(857.8,315.5,507.3,269.2) r=(857.8,315.5,507.3,269.2)	OBS
+blocks-overview-TD	along=0.0	across=42.3	cut=0/0		OBS
+blocks-overview-actors-reversed-BT	along=12.5	across=42.3	cut=0/0	ORD s=(516.5,608.0,413.3,373.0) r=(516.5,620.5,413.3,360.5)	OBS
+blocks-overview-actors-reversed-LR	along=0.0	across=44.8	cut=0/0	EDGE s=(265.9,189.2,168.6,501.0) r=(265.9,189.2,168.6,501.0)	OBS
+blocks-overview-actors-reversed-RL	along=0.0	across=44.8	cut=0/0	ORD s=(857.8,315.5,507.3,269.2) r=(857.8,315.5,507.3,269.2)	OBS
+blocks-overview-actors-reversed-TD	along=0.0	across=42.3	cut=0/0		OBS
+blocks-overview-bt-BT	along=12.5	across=42.3	cut=0/0	ORD s=(516.5,608.0,413.3,373.0) r=(516.5,620.5,413.3,360.5)	OBS
+blocks-overview-bt-LR	along=0.0	across=44.8	cut=0/0	EDGE s=(265.9,189.2,168.6,501.0) r=(265.9,189.2,168.6,501.0)	OBS
+blocks-overview-bt-RL	along=0.0	across=44.8	cut=0/0	ORD s=(857.8,315.5,507.3,269.2) r=(857.8,315.5,507.3,269.2)	OBS
+blocks-overview-bt-TD	along=0.0	across=42.3	cut=0/0		OBS
+blocks-overview-edges-reversed-BT	along=12.5	across=42.3	cut=0/0	ORD s=(516.5,608.0,413.3,373.0) r=(516.5,620.5,413.3,360.5)	OBS
+blocks-overview-edges-reversed-LR	along=0.0	across=44.8	cut=0/0	EDGE s=(265.9,189.2,168.6,501.0) r=(265.9,189.2,168.6,501.0)	OBS
+blocks-overview-edges-reversed-RL	along=0.0	across=44.8	cut=0/0	ORD s=(857.8,315.5,507.3,269.2) r=(857.8,315.5,507.3,269.2)	OBS
+blocks-overview-edges-reversed-TD	along=0.0	across=42.3	cut=0/0		OBS
+blocks-overview-edges-rotated-BT	along=12.5	across=42.3	cut=0/0	ORD s=(516.5,608.0,413.3,373.0) r=(516.5,620.5,413.3,360.5)	OBS
+blocks-overview-edges-rotated-LR	along=0.0	across=44.8	cut=0/0	EDGE s=(265.9,189.2,168.6,501.0) r=(265.9,189.2,168.6,501.0)	OBS
+blocks-overview-edges-rotated-RL	along=0.0	across=44.8	cut=0/0	ORD s=(857.8,315.5,507.3,269.2) r=(857.8,315.5,507.3,269.2)	OBS
+blocks-overview-edges-rotated-TD	along=0.0	across=42.3	cut=0/0		OBS
+blocks-overview-lr-BT	along=12.5	across=42.3	cut=0/0	ORD s=(516.5,608.0,413.3,373.0) r=(516.5,620.5,413.3,360.5)	OBS
+blocks-overview-lr-LR	along=0.0	across=44.8	cut=0/0	EDGE s=(265.9,189.2,168.6,501.0) r=(265.9,189.2,168.6,501.0)	OBS
+blocks-overview-lr-RL	along=0.0	across=44.8	cut=0/0	ORD s=(857.8,315.5,507.3,269.2) r=(857.8,315.5,507.3,269.2)	OBS
+blocks-overview-lr-TD	along=0.0	across=42.3	cut=0/0		OBS
+blocks-overview-rl-BT	along=12.5	across=42.3	cut=0/0	ORD s=(516.5,608.0,413.3,373.0) r=(516.5,620.5,413.3,360.5)	OBS
+blocks-overview-rl-LR	along=0.0	across=44.8	cut=0/0	EDGE s=(265.9,189.2,168.6,501.0) r=(265.9,189.2,168.6,501.0)	OBS
+blocks-overview-rl-RL	along=0.0	across=44.8	cut=0/0	ORD s=(857.8,315.5,507.3,269.2) r=(857.8,315.5,507.3,269.2)	OBS
+blocks-overview-rl-TD	along=0.0	across=42.3	cut=0/0		OBS
+blocks-overview-subgraphs-reversed-BT	along=12.5	across=42.3	cut=0/0	ORD s=(516.5,608.0,413.3,373.0) r=(516.5,620.5,413.3,360.5)	OBS
+blocks-overview-subgraphs-reversed-LR	along=0.0	across=44.8	cut=0/0	EDGE s=(265.9,189.2,168.6,501.0) r=(265.9,189.2,168.6,501.0)	OBS
+blocks-overview-subgraphs-reversed-RL	along=0.0	across=44.8	cut=0/0	ORD s=(857.8,315.5,507.3,269.2) r=(857.8,315.5,507.3,269.2)	OBS
+blocks-overview-subgraphs-reversed-TD	along=0.0	across=42.3	cut=0/0		OBS
+cycle2-BT	along=12.5	across=45.2	cut=0/0	A s=(62.8,290.0,172.5,202.5) r=(108.0,277.5,82.0,215.0)	A
+cycle2-LR	along=0.0	across=43.5	cut=0/0		A
+cycle2-RL	along=0.0	across=43.5	cut=0/0		A
+cycle2-TD	along=0.0	across=45.2	cut=0/0		A
+cycle2-tie-BT	along=0.0	across=16.7	cut=0/0		A
+cycle2-tie-LR	along=0.0	across=11.2	cut=0/0		A
+cycle2-tie-RL	along=0.0	across=11.2	cut=0/0		A
+cycle2-tie-TD	along=0.0	across=16.7	cut=0/0		A
+cycle2-tie-swapped-BT	along=0.0	across=19.4	cut=0/0		A
+cycle2-tie-swapped-LR	along=0.0	across=11.2	cut=0/0	B s=(316.7,28.0,196.0,135.5) r=(316.7,28.0,196.0,124.2)	A
+cycle2-tie-swapped-RL	along=0.0	across=11.2	cut=0/0	A s=(307.8,28.0,204.9,135.5) r=(307.8,28.0,204.9,124.2)	A
+cycle2-tie-swapped-TD	along=0.0	across=19.4	cut=0/0		A
+dense-lr-BT	along=0.0	across=1039.5	cut=0/0	g3 s=(5141.4,889.7,1170.0,415.1) r=(5141.4,889.7,1170.0,415.1)	g11
+dense-lr-LR	along=0.0	across=471.0	cut=0/0		g11
+dense-lr-RL	along=0.0	across=471.0	cut=0/0	g10 s=(850.9,28.0,425.6,429.4) r=(850.9,28.0,425.6,429.4)	g11
+dense-lr-TD	along=12.5	across=1001.0	cut=0/0	g11 s=(107.4,1587.4,5060.1,426.6) r=(1108.4,1599.9,4059.1,414.1)	g11
+dense-td-BT	along=12.5	across=22.6	cut=0/0	g2 s=(111.5,1537.3,1626.3,513.5) r=(111.5,1524.8,1626.3,526.0)	g10
+dense-td-LR	along=0.0	across=1076.1	cut=0/0		g9
+dense-td-RL	along=0.0	across=1076.1	cut=0/0	g5 s=(702.1,1164.0,592.6,1444.6) r=(702.1,1164.0,592.6,1444.6)	g9
+dense-td-TD	along=37.5	across=49.9	cut=0/0	g8 s=(28.0,1802.6,1687.6,409.1) r=(28.0,1765.1,1665.0,446.6)	g9
+empty-target-BT	along=0.0	across=0.0	cut=0/0		
+empty-target-LR	along=0.0	across=0.0	cut=0/0		
+empty-target-RL	along=0.0	across=0.0	cut=0/0		
+empty-target-TD	along=0.0	across=0.0	cut=0/0		
+fanout-frames-BT	along=0.0	across=0.0	cut=0/0		
+fanout-frames-LR	along=0.0	across=0.0	cut=0/0		
+fanout-frames-RL	along=0.0	across=0.0	cut=0/0	g3 s=(28.0,932.0,261.5,650.0) r=(28.0,932.0,261.5,650.0)	
+fanout-frames-TD	along=0.0	across=0.0	cut=0/0		
+hub5-BT	along=0.0	across=122.4	cut=0/0		E
+hub5-LR	along=0.0	across=131.5	cut=0/0		E
+hub5-RL	along=0.0	across=131.5	cut=0/0		E
+hub5-TD	along=0.0	across=122.4	cut=0/0		E
+interleave-BT	along=0.0	across=0.0	cut=0/0		S
+interleave-LR	along=0.0	across=0.0	cut=0/0		
+interleave-RL	along=0.0	across=0.0	cut=0/0		
+interleave-TD	along=0.0	across=0.0	cut=0/0		S
+iso-lane-BT	along=0.0	across=0.0	cut=0/0		
+iso-lane-LR	along=0.0	across=2.0	cut=0/0		S
+iso-lane-RL	along=0.0	across=2.0	cut=0/0		S
+iso-lane-TD	along=0.0	across=0.0	cut=0/0		
+iso-lane-lr-BT	along=0.0	across=0.0	cut=0/0		
+iso-lane-lr-LR	along=0.0	across=2.0	cut=0/0		S
+iso-lane-lr-RL	along=0.0	across=2.0	cut=0/0		S
+iso-lane-lr-TD	along=0.0	across=0.0	cut=0/0		
+iso-nest-BT	along=0.0	across=0.0	cut=0/0		
+iso-nest-LR	along=0.0	across=0.0	cut=0/0		
+iso-nest-RL	along=0.0	across=0.0	cut=0/0		
+iso-nest-TD	along=0.0	across=0.0	cut=0/0		
+l5loop-BT	along=0.0	across=0.0	cut=0/0		
+l5loop-LR	along=0.0	across=0.0	cut=0/0		
+l5loop-RL	along=0.0	across=0.0	cut=0/0		
+l5loop-TD	along=0.0	across=0.0	cut=0/0		
+lr-BT	along=0.0	across=82.8	cut=0/0		ORD
+lr-LR	along=0.0	across=68.0	cut=0/0		ORD
+lr-RL	along=0.0	across=68.0	cut=0/0		ORD
+lr-TD	along=0.0	across=82.8	cut=0/0		ORD
+nested-BT	along=0.0	across=44.7	cut=0/0		SIDE
+nested-LR	along=0.0	across=43.2	cut=0/0		SIDE
+nested-RL	along=0.0	across=43.2	cut=0/0		SIDE
+nested-TD	along=0.0	across=44.7	cut=0/0		SIDE
+nested-cases-BT	along=0.0	across=112.7	cut=0/0		X
+nested-cases-LR	along=0.0	across=68.5	cut=0/0		X
+nested-cases-RL	along=0.0	across=68.5	cut=0/0		X
+nested-cases-TD	along=0.0	across=112.7	cut=0/0		X
+nested-chain-BT	along=12.5	across=7.4	cut=0/0	Y s=(42.0,290.0,125.9,300.5) r=(42.0,277.5,118.4,313.0)	X
+nested-chain-LR	along=0.0	across=0.0	cut=0/0		
+nested-chain-RL	along=0.0	across=0.0	cut=0/0		
+nested-chain-TD	along=12.5	across=5.5	cut=0/0	Z s=(42.0,388.0,122.0,202.5) r=(42.0,375.5,116.5,215.0)	X
+nested-self-only-BT	along=0.0	across=0.0	cut=0/0		
+nested-self-only-LR	along=0.0	across=0.0	cut=0/0	OUT s=(28.0,28.0,338.7,220.0) r=(28.0,28.0,338.7,220.0)	
+nested-self-only-RL	along=0.0	across=0.0	cut=0/0		
+nested-self-only-TD	along=0.0	across=0.0	cut=0/0		
+nested-wide-title-BT	along=0.0	across=0.0	cut=0/0		
+nested-wide-title-LR	along=0.0	across=0.0	cut=0/0	IN s=(155.2,68.0,340.1,92.0) r=(155.2,68.0,340.1,92.0)	
+nested-wide-title-RL	along=0.0	across=0.0	cut=0/0	OUT s=(132.1,28.0,368.1,196.0) r=(132.1,28.0,368.1,196.0)	
+nested-wide-title-TD	along=0.0	across=0.0	cut=0/0		
+own-centre-BT	along=0.0	across=0.0	cut=0/0		
+own-centre-LR	along=0.0	across=0.0	cut=0/0		
+own-centre-RL	along=0.0	across=0.0	cut=0/0		
+own-centre-TD	along=0.0	across=0.0	cut=0/0		
+p01-iso-BT	along=0.0	across=0.0	cut=0/0		
+p01-iso-LR	along=0.0	across=0.0	cut=0/0		
+p01-iso-RL	along=0.0	across=0.0	cut=0/0		
+p01-iso-TD	along=0.0	across=0.0	cut=0/0		
+p02-iso-dir-BT	along=0.0	across=0.0	cut=0/0		
+p02-iso-dir-LR	along=0.0	across=0.0	cut=0/0		
+p02-iso-dir-RL	along=0.0	across=0.0	cut=0/0		
+p02-iso-dir-TD	along=0.0	across=0.0	cut=0/0		
+p03-ext-dir-BT	along=0.0	across=0.0	cut=0/0		
+p03-ext-dir-LR	along=0.0	across=0.0	cut=0/0		
+p03-ext-dir-RL	along=0.0	across=0.0	cut=0/0		
+p03-ext-dir-TD	along=0.0	across=0.0	cut=0/0		
+p04-to-cluster-BT	along=0.0	across=0.0	cut=0/0		
+p04-to-cluster-LR	along=0.0	across=0.0	cut=0/0		
+p04-to-cluster-RL	along=0.0	across=0.0	cut=0/0		
+p04-to-cluster-TD	along=0.0	across=0.0	cut=0/0		
+p05-siblings-BT	along=0.0	across=0.0	cut=0/0		
+p05-siblings-LR	along=0.0	across=0.0	cut=0/0		
+p05-siblings-RL	along=0.0	across=0.0	cut=0/0		
+p05-siblings-TD	along=0.0	across=0.0	cut=0/0		
+p06-block-cycle-BT	along=0.0	across=12.4	cut=0/0		A
+p06-block-cycle-LR	along=0.0	across=11.2	cut=0/0		A
+p06-block-cycle-RL	along=0.0	across=11.2	cut=0/0		A
+p06-block-cycle-TD	along=0.0	across=12.4	cut=0/0		A
+p07-nested-BT	along=0.0	across=5.5	cut=0/0		O
+p07-nested-LR	along=0.0	across=9.5	cut=0/0		O
+p07-nested-RL	along=0.0	across=9.5	cut=0/0		O
+p07-nested-TD	along=12.5	across=5.5	cut=0/0	O s=(48.0,112.0,170.5,460.5) r=(48.0,124.5,165.0,448.0)	O
+p08-chain3-BT	along=0.0	across=10.7	cut=0/0		A
+p08-chain3-LR	along=0.0	across=0.0	cut=0/0		
+p08-chain3-RL	along=0.0	across=0.0	cut=0/0		
+p08-chain3-TD	along=0.0	across=10.7	cut=0/0		A
+p09-disconnected-BT	along=0.0	across=0.0	cut=0/0		
+p09-disconnected-LR	along=0.0	across=0.0	cut=0/0		
+p09-disconnected-RL	along=0.0	across=0.0	cut=0/0		
+p09-disconnected-TD	along=0.0	across=0.0	cut=0/0		
+p10-mixed-rank-BT	along=0.0	across=0.0	cut=0/0		
+p10-mixed-rank-LR	along=0.0	across=0.0	cut=0/0		
+p10-mixed-rank-RL	along=0.0	across=0.0	cut=0/0		
+p10-mixed-rank-TD	along=0.0	across=0.0	cut=0/0		
+p11-lr-BT	along=0.0	across=6.8	cut=0/0		A
+p11-lr-LR	along=0.0	across=0.0	cut=0/0		
+p11-lr-RL	along=0.0	across=0.0	cut=0/0		
+p11-lr-TD	along=0.0	across=6.8	cut=0/0		A
+p13-inner-dir-ext-BT	along=0.0	across=0.0	cut=1/1		
+p13-inner-dir-ext-LR	along=0.0	across=0.0	cut=0/0		
+p13-inner-dir-ext-RL	along=0.0	across=0.0	cut=0/0		
+p13-inner-dir-ext-TD	along=0.0	across=0.0	cut=0/0		S
+p14-empty-and-self-BT	along=0.0	across=0.0	cut=0/0		
+p14-empty-and-self-LR	along=0.0	across=0.0	cut=0/0		
+p14-empty-and-self-RL	along=0.0	across=0.0	cut=0/0		
+p14-empty-and-self-TD	along=0.0	across=0.0	cut=0/0		
+ratio2-BT	along=0.0	across=0.0	cut=0/0		
+ratio2-LR	along=0.0	across=0.0	cut=0/0		
+ratio2-RL	along=0.0	across=0.0	cut=0/0		
+ratio2-TD	along=0.0	across=0.0	cut=0/0		
+ratio2x4-BT	along=0.0	across=8.1	cut=0/0		A
+ratio2x4-LR	along=0.0	across=11.2	cut=0/0		A
+ratio2x4-RL	along=0.0	across=11.2	cut=0/0		A
+ratio2x4-TD	along=0.0	across=8.1	cut=0/0		A
+ratio3-BT	along=0.0	across=0.0	cut=0/0		B
+ratio3-LR	along=0.0	across=0.0	cut=0/0		
+ratio3-RL	along=0.0	across=0.0	cut=0/0	A s=(223.5,28.0,199.4,385.2) r=(223.5,28.0,199.4,385.2)	
+ratio3-TD	along=0.0	across=0.0	cut=0/0		B
+ratio4-BT	along=0.0	across=8.1	cut=0/0		A
+ratio4-LR	along=0.0	across=11.2	cut=0/0		A
+ratio4-RL	along=0.0	across=11.2	cut=0/0		A
+ratio4-TD	along=0.0	across=8.1	cut=0/0		A
+ratio4mask-BT	along=0.0	across=8.1	cut=0/0		A
+ratio4mask-LR	along=0.0	across=11.2	cut=0/0		A
+ratio4mask-RL	along=0.0	across=11.2	cut=0/0		A
+ratio4mask-TD	along=0.0	across=8.1	cut=0/0		A
+reqresp-BT	along=0.0	across=25.6	cut=0/0		A
+reqresp-LR	along=0.0	across=11.2	cut=0/0		B
+reqresp-RL	along=0.0	across=11.2	cut=0/0	B s=(28.0,28.0,232.1,135.5) r=(28.0,28.0,232.1,124.2)	B
+reqresp-TD	along=0.0	across=25.6	cut=0/0		A
+reqresp22-BT	along=0.0	across=25.6	cut=0/0		A
+reqresp22-LR	along=0.0	across=11.2	cut=0/0		B
+reqresp22-RL	along=0.0	across=11.2	cut=0/0		B
+reqresp22-TD	along=0.0	across=25.6	cut=0/0		A
+self-member-BT	along=0.0	across=0.0	cut=0/0		
+self-member-LR	along=0.0	across=0.0	cut=0/0		
+self-member-RL	along=0.0	across=0.0	cut=0/0		
+self-member-TD	along=0.0	across=0.0	cut=0/0		
+selfsub-nested-BT	along=0.0	across=0.0	cut=0/0		
+selfsub-nested-LR	along=0.0	across=0.0	cut=0/0		
+selfsub-nested-RL	along=0.0	across=0.0	cut=0/0		
+selfsub-nested-TD	along=0.0	across=0.0	cut=0/0		
+sub-nested-self-BT	along=0.0	across=26.5	cut=0/0		OUT
+sub-nested-self-LR	along=0.0	across=0.0	cut=0/0		
+sub-nested-self-RL	along=0.0	across=0.0	cut=0/0		
+sub-nested-self-TD	along=0.0	across=26.5	cut=0/0		OUT
+swim-cycle-BT	along=0.0	across=0.0	cut=0/0		B
+swim-cycle-LR	along=0.0	across=0.0	cut=0/0		
+swim-cycle-RL	along=0.0	across=0.0	cut=0/0		
+swim-cycle-TD	along=0.0	across=0.0	cut=0/0		B
+swim-nested-BT	along=0.0	across=0.0	cut=0/0		B
+swim-nested-LR	along=0.0	across=0.0	cut=0/0		
+swim-nested-RL	along=0.0	across=0.0	cut=0/0	A s=(184.3,28.0,130.4,284.0) r=(184.3,28.0,130.4,284.0)	
+swim-nested-TD	along=0.0	across=0.0	cut=0/0		B
+swimlane-BT	along=0.0	across=0.0	cut=0/0		B
+swimlane-LR	along=0.0	across=0.0	cut=0/0		
+swimlane-RL	along=0.0	across=0.0	cut=0/0	A s=(189.7,28.0,807.9,92.0) r=(189.7,28.0,807.9,92.0)	
+swimlane-TD	along=0.0	across=0.0	cut=0/0		B
+swimlane-nested-BT	along=0.0	across=0.0	cut=0/0		
+swimlane-nested-LR	along=0.0	across=0.0	cut=0/0		
+swimlane-nested-RL	along=0.0	across=0.0	cut=0/0	B s=(28.0,290.0,484.3,180.0) r=(28.0,290.0,484.3,180.0)	
+swimlane-nested-TD	along=0.0	across=0.0	cut=0/0		
+t1-nest-own-BT	along=0.0	across=0.0	cut=0/0		
+t1-nest-own-LR	along=0.0	across=0.0	cut=0/0	OUT s=(28.0,86.0,338.7,146.0) r=(28.0,86.0,338.7,146.0)	
+t1-nest-own-RL	along=0.0	across=0.0	cut=0/0		
+t1-nest-own-TD	along=0.0	across=0.0	cut=0/0		
+t2-self-nested-BT	along=0.0	across=0.0	cut=0/0		
+t2-self-nested-LR	along=0.0	across=0.0	cut=0/0		
+t2-self-nested-RL	along=0.0	across=0.0	cut=0/0		
+t2-self-nested-TD	along=0.0	across=0.0	cut=0/0		
+t2b-self-nested-order-BT	along=0.0	across=0.0	cut=0/0		
+t2b-self-nested-order-LR	along=0.0	across=0.0	cut=0/0		
+t2b-self-nested-order-RL	along=0.0	across=0.0	cut=0/0		
+t2b-self-nested-order-TD	along=0.0	across=0.0	cut=0/0		
+t9-frames-8px-BT	along=0.0	across=0.0	cut=0/0		
+t9-frames-8px-LR	along=0.0	across=0.0	cut=0/0		
+t9-frames-8px-RL	along=0.0	across=0.0	cut=0/0		
+t9-frames-8px-TD	along=0.0	across=0.0	cut=0/0		
+t9b-frames-8px-lr-BT	along=0.0	across=0.0	cut=0/0		
+t9b-frames-8px-lr-LR	along=0.0	across=0.0	cut=0/0		
+t9b-frames-8px-lr-RL	along=0.0	across=0.0	cut=0/0		
+t9b-frames-8px-lr-TD	along=0.0	across=0.0	cut=0/0		
+t9c-frames-8px-two-way-BT	along=0.0	across=0.0	cut=0/0		
+t9c-frames-8px-two-way-LR	along=0.0	across=0.0	cut=0/0		
+t9c-frames-8px-two-way-RL	along=0.0	across=0.0	cut=0/0		
+t9c-frames-8px-two-way-TD	along=0.0	across=0.0	cut=0/0		
+title-entry-BT	along=0.0	across=0.0	cut=0/0	S s=(43.5,112.0,340.1,217.1) r=(43.5,112.0,340.1,217.1)	
+title-entry-LR	along=0.0	across=0.0	cut=0/0	S s=(134.4,28.0,340.1,194.6) r=(134.4,28.0,340.1,194.6)	S
+title-entry-RL	along=0.0	across=0.0	cut=0/0	S s=(103.9,28.0,340.1,194.6) r=(103.9,28.0,340.1,194.6)	S
+title-entry-TD	along=0.0	across=0.0	cut=0/0		
+title-hidden-BT	along=0.0	across=0.0	cut=0/0		
+title-hidden-LR	along=0.0	across=0.0	cut=0/0		
+title-hidden-RL	along=0.0	across=0.0	cut=0/0	S s=(28.0,28.0,302.0,122.5) r=(28.0,28.0,302.0,122.5)	
+title-hidden-TD	along=0.0	across=0.0	cut=0/0		S
+turned-blocks-BT	along=0.0	across=66.1	cut=0/0		SHIP
+turned-blocks-LR	along=0.0	across=26.5	cut=0/0		SHIP
+turned-blocks-RL	along=0.0	across=26.5	cut=0/0	QA s=(311.1,96.4,238.1,124.2) r=(311.1,96.4,238.1,124.2)	SHIP
+turned-blocks-TD	along=12.5	across=121.7	cut=0/0	SHIP s=(52.2,852.5,260.4,217.5) r=(173.9,865.0,138.8,205.0)	SHIP
+wide-stroke-BT	along=0.0	across=33.7	cut=0/0		A
+wide-stroke-LR	along=0.0	across=40.0	cut=0/0		C
+wide-stroke-RL	along=0.0	across=40.0	cut=0/0	C s=(28.0,52.5,236.7,167.5) r=(28.0,77.2,236.7,102.8)	C
+wide-stroke-TD	along=0.0	across=33.7	cut=0/0		A
+x1-broad-frame-bold-title-BT	along=0.0	across=0.0	cut=0/0		WIDE
+x1-broad-frame-bold-title-LR	along=0.0	across=0.0	cut=0/0		
+x1-broad-frame-bold-title-RL	along=0.0	across=0.0	cut=0/0	WIDE s=(143.1,28.0,278.1,268.0) r=(143.1,28.0,278.1,268.0)	
+x1-broad-frame-bold-title	along=0.0	across=0.0	cut=0/0		WIDE
+x2-wide-caps-title-BT	along=0.0	across=0.0	cut=0/0		WM
+x2-wide-caps-title-LR	along=0.0	across=0.0	cut=0/0	WM s=(143.3,28.0,299.3,180.0) r=(143.3,28.0,299.3,180.0)	
+x2-wide-caps-title-RL	along=0.0	across=0.0	cut=0/0	WM s=(263.2,28.0,299.3,180.0) r=(263.2,28.0,299.3,180.0)	
+x2-wide-caps-title	along=0.0	across=0.0	cut=0/0		WM
+x3-nested-lr-multiline-BT	along=0.0	across=53.8	cut=0/0		OUTER
+x3-nested-lr-multiline-RL	along=0.0	across=0.0	cut=0/0	INNER s=(275.3,82.6,239.6,92.0) r=(275.3,82.6,239.6,92.0)	OUTER
+x3-nested-lr-multiline-TD	along=12.5	across=53.8	cut=0/0	OUTER s=(28.0,176.1,321.3,359.1) r=(28.0,163.6,267.6,371.6)	OUTER
+x3-nested-lr-multiline	along=0.0	across=0.0	cut=0/0		OUTER
+x4-channel-broadens-BT	along=0.0	across=26.5	cut=0/0		C
+x4-channel-broadens-LR	along=0.0	across=18.5	cut=0/0	B s=(152.1,132.0,244.3,122.5) r=(152.1,132.0,244.3,122.5)	C
+x4-channel-broadens-RL	along=0.0	across=18.5	cut=0/0	B s=(275.0,132.0,244.3,122.5) r=(275.0,132.0,244.3,122.5)	C
+x4-channel-broadens	along=12.5	across=26.7	cut=0/0	B s=(126.5,128.5,258.9,202.5) r=(126.5,116.0,244.3,215.0)	C
+x5-state-long-composite	along=0.0	across=0.0	cut=0/0		
+x6-two-title-bound-siblings-BT	along=0.0	across=0.0	cut=0/0		B
+x6-two-title-bound-siblings-LR	along=0.0	across=0.0	cut=0/0	B s=(508.7,28.0,255.7,92.0) r=(508.7,28.0,255.7,92.0)	
+x6-two-title-bound-siblings-RL	along=0.0	across=0.0	cut=0/0	B s=(132.0,28.0,255.7,92.0) r=(132.0,28.0,255.7,92.0)	
+x6-two-title-bound-siblings	along=0.0	across=0.0	cut=0/0		B
+x7-nonlatin-titles	along=0.0	across=0.0	cut=0/0		EU

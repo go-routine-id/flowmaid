@@ -1,0 +1,13 @@
+architecture-beta
+    group g0(database)[Private API]
+    group g1(cloud)[Private API] in g0
+    group g2(database)[Ops]
+    service s0(monitoring)[Service 0] in g0
+    service s1(monitoring)[Service 1]
+    service s2(cloud)[Service 2] in g1
+    service s3(monitoring)[Service 3]
+    service s4(disk)[Service 4]
+    s4:R -- L:s2
+    s0:B -- L:s1
+    s1:T --> B:s4
+    s3:R -- B:s4

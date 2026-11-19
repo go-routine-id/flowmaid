@@ -1,6 +1,6 @@
 # flowmaid: resuming on Monday (START HERE)
 
-**PAUSED (2026-11-19 ~17:00 UTC, user: "rehat dulu").** 0.40.2 released (tag + crates.io). Step 3 passed; b12a2c-squeeze STOPPED after 4 fix rounds (A2 static must-fail 86 -> 65, not met), branch = origin = b82d584, NOT merged to dev. Push loop and hourly task are off. On return read HANDOFF.md last entry: first a D5 cleanup commit in b82d584's test/comments, then ask the user (opt-in 0.41.0 with block mode, and/or a compaction design study).
+**PAUSED (2026-11-19 ~17:00 UTC, user: "rehat dulu").** 0.40.2 released (tag + crates.io). Step 3 passed; b12a2c-squeeze STOPPED after 4 fix rounds (A2 static must-fail 86 -> 65, not met), branch = origin = b82d584, NOT merged to dev. Push loop and hourly task are off. On return read HANDOFF.md last entry: first a D5 cleanup commit in b82d584's test/comments, then ask the user (opt-in 0.41.0 with block mode, and/or a compaction design study). Everything is on GitHub: code on `ccr-ccc6d89a-5cxd7e` (b82d584), planning in `backup/parity-workspace` (this folder), roadmap update in PR #141 (to dev). See HANDOFF last entry for the full list and how to restore.
 >
 > **2026-11-17 ~16:55 UTC: STEP 2 FOLLOW-UP RUNS** (user chose "Paket lanjutan fokus"): run `wf_89aae2e9-344` (packages b12a2b-base then b12a2b-squeeze; args `b12/run-b12a2b-args.json`), push loop `backup/b12a2b-finish-wip`. Judge's bend counter fixed first (A2 at 7122a53 = 89). See HANDOFF last entries and SPEC §0's last lead note.
 >

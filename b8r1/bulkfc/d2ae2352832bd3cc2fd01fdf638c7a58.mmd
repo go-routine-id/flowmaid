@@ -1,0 +1,13 @@
+flowchart TD
+  a[Alpha] --> b[Beta]
+  b --> c[Gamma]
+  c --> d[Delta]
+  a e1@--> d
+  b e2@--> x[Side]
+  x e3@--> d
+  e1@{ curve: step }
+  e2@{ curve: stepAfter }
+  e3@{ curve: stepBefore }
+  linkStyle 3 stroke-width:20px,stroke:#c33
+  linkStyle 4 stroke-width:16px
+  linkStyle 5 stroke-width:24px,stroke:#36c

@@ -1,0 +1,27 @@
+erDiagram
+direction LR
+E3 ||--|{ E3 : r0
+E4 }|..|{ E4 : r1
+E2 }o--o{ E4 : r2
+E1 ||--|| E1 : has
+E6 |o--|| E2 : r4
+E3 }|..|{ E1 : has
+E0 |o--|| E4 : has
+E1 }o--o{ E1 : r7
+E4 }o--o{ E1 : "two words"
+E2 ||--|| E4 : "two words"
+E5 ||--|| E0 : r10
+E4 ||--|{ E5 : has
+E6 }o--o{ E4 : "two words"
+E3 {
+  int id PK
+  string name "comment"
+}
+E4 {
+  int id PK
+  string name "comment"
+}
+E6 {
+  int id PK
+  string name "comment"
+}

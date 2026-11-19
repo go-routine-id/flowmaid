@@ -1,0 +1,12 @@
+stateDiagram-v2
+  [*] --> Idle
+  Idle --> Review : submit
+  state Review {
+    [*] --> Queue
+    Queue --> Check
+  }
+  Review --> Running : approved
+  state Running {
+    [*] --> Boot
+  }
+  Running --> Idle : done

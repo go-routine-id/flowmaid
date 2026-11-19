@@ -1,0 +1,7 @@
+flowchart LR
+  S[Request] -->|valid| V[Validate]
+  S -->|invalid| R[Reject]
+  S -->|throttled| T[Throttle]
+  V -->|yes| OK[Done]
+  V -->|no| R
+  T -->|later| S

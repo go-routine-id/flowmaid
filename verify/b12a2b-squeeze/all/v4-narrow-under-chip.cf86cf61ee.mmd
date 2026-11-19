@@ -1,0 +1,11 @@
+flowchart TD
+    s1[src one] --> n1
+    s2[src two] --> n1
+    s3[src three] --> n1
+    s4[src four] --> G
+    s5[src five] --> G
+    subgraph G[A very long subgraph title that is much wider than its member]
+        n1[x]
+        n2[y]
+    end
+    n1 --> n2

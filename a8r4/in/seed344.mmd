@@ -1,0 +1,24 @@
+architecture-beta
+    group g0(disk)[Observability]
+    service s0(database)[Web App 0] in g0
+    service s1(cloud)[Q 1]
+    service s2(internet)[Authentication and Authorization Service 2]
+    service s3(monitoring)[Authentication and Authorization Service 3]
+    service s4(monitoring)[Authentication and Authorization Service 4]
+    service s5(nonsense)[Svc 5] in g0
+    service s6(internet)[Authentication and Authorization Service 6] in g0
+    service s7(internet)[Q 7] in g0
+    service s8(monitoring)[Web App 8] in g0
+    service s9(monitoring)[Svc 9]
+    service s10(monitoring)[PostgreSQL Primary 10] in g0
+    service s11(database)[Svc 11] in g0
+    s3:R --> L:s2
+    s1:R -[reads config]- L:s10
+    s0{group}:R -- L:s4
+    s4:T -- B:s5
+    s5:B <--> L:s11
+    s10:B --> T:s0
+    s11:R --> L:s6
+    s1:R -[x]-> L:s2
+    s2:T --> B:s6
+    s10:T <--> B:s1

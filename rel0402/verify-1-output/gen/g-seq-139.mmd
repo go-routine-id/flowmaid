@@ -1,0 +1,31 @@
+sequenceDiagram
+autonumber
+participant P0 as Long label here
+participant P1 as gamma
+P1--xP0: alpha
+par delta
+end
+P1-)P1: <b>bold</b>
+Note left of P1: 日本語
+opt beta
+end
+opt Long label here
+P0-->>P0: delta
+P0->>P0: self <b>bold</b>
+end
+P0->>P0: self a&b
+P0->P0: a&b
+P0-)P1: 日本語
+activate P1
+P1->>P0: act
+deactivate P1
+P0->P0: <b>bold</b>
+activate P0
+P0->>P0: act
+deactivate P0
+activate P0
+P0->>P0: act
+deactivate P0
+P1-->P1: gamma
+P0->P1: Long label here
+P0-xP1: x

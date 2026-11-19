@@ -1,0 +1,160 @@
+diff --git a/src/layout.rs b/src/layout.rs
+index b7c910e..e29929e 100644
+--- a/src/layout.rs
++++ b/src/layout.rs
+@@ -4968,7 +4968,28 @@ fn place(
+             }
+             let held = FRAME_PAD - BORDER_GAP;
+             let mut grew = false;
+-            for (c, f) in f1_breadths(g, n, &bpos, &absize).iter().enumerate() {
++            // The displaced entries of each block at these breadths: a
++            // frame grown to its title holds their columns too (X2.2).
++            let cols: Vec<usize> = title_counts(
++                g,
++                &TitleRows {
++                    nc,
++                    apath: &apath,
++                    alayer: &alayer,
++                    absize: &absize,
++                    bpos: &bpos,
++                    border: &border_side,
++                    preds: &preds,
++                    succs: &succs,
++                    edge_chain: &edge_chain,
++                    cluster_span: &cluster_span,
++                    n,
++                },
++            )
++            .into_iter()
++            .map(|(entries, runs)| entries + runs)
++            .collect();
++            for (c, f) in f1_breadths(g, n, &bpos, &absize, &cols).iter().enumerate() {
+                 let &Some((lo, hi, short)) = f else {
+                     continue;
+                 };
+@@ -5897,10 +5918,19 @@ const TITLE_FIT_EPS: f64 = 0.5;
+ /// `scene::frame_boxes` in layout coordinates, without the jog room,
+ /// which grows the frame along the flow): its direct members' boxes
+ /// and its nested frames with [`FRAME_PAD`] round them, deepest first,
+-/// grown equally on both sides to [`crate::scene::title_fit_width`].
++/// grown equally on both sides to [`crate::scene::title_fit_width`],
++/// and, for a frame so grown whose title row takes `cols` displaced
++/// entries (by subgraph; missing 0), to the columns past its chip
++/// ([`crate::scene::title_column_width`]).
+ /// Per subgraph `(lo, hi, shortfall)`: the grown box and what it grew
+ /// by. `None` for a block without members.
+-fn f1_breadths(g: &Graph, n: usize, bpos: &[f64], absize: &[f64]) -> Vec<Option<(f64, f64, f64)>> {
++fn f1_breadths(
++    g: &Graph,
++    n: usize,
++    bpos: &[f64],
++    absize: &[f64],
++    cols: &[usize],
++) -> Vec<Option<(f64, f64, f64)>> {
+     let ns = g.subgraphs.len();
+     let mut depth = vec![0usize; ns];
+     for (i, d) in depth.iter_mut().enumerate() {
+@@ -5931,9 +5961,21 @@ fn f1_breadths(g: &Graph, n: usize, bpos: &[f64], absize: &[f64]) -> Vec<Option<
+             continue;
+         }
+         let (mut lo, mut hi) = (lo - FRAME_PAD, hi + FRAME_PAD);
+-        let short = (crate::scene::title_fit_width(&g.subgraphs[i].title) - (hi - lo)).max(0.0);
++        let title = &g.subgraphs[i].title;
++        let least = crate::scene::title_fit_width(title);
++        let short = (least - (hi - lo)).max(0.0);
+         lo -= short / 2.0;
+         hi += short / 2.0;
++        // Grown to its title: its displaced entries' columns past the
++        // chip, on the chip's side (`scene::frame_boxes`).
++        let k = cols.get(i).copied().unwrap_or(0);
++        let more = if short > 0.0 {
++            (crate::scene::title_column_width(title, k) - (hi - lo)).max(0.0)
++        } else {
++            0.0
++        };
++        lo -= more;
++        let short = short + more;
+         boxes[i] = Some((lo, hi, short));
+     }
+     boxes
+@@ -6022,7 +6064,7 @@ fn title_chip(g: &Graph, t: &TitleRows, c: usize) -> Option<TitleChip> {
+     // title's breadth: [`f1_breadths`]), then the channels inside it.
+     // A frame grown to its title measures the title as it is drawn,
+     // bold, as the scene does (`scene::title_text_width`).
+-    let f1 = f1_breadths(g, t.n, t.bpos, t.absize)
++    let f1 = f1_breadths(g, t.n, t.bpos, t.absize, &[])
+         .get(c)
+         .copied()
+         .flatten();
+diff --git a/src/scene.rs b/src/scene.rs
+index 4b1a6f2..5bbf606 100644
+--- a/src/scene.rs
++++ b/src/scene.rs
+@@ -6379,6 +6379,43 @@ pub(crate) fn title_fit_width(title: &str) -> f64 {
+     crate::layout::bold_text_width(title) * TITLE_SCALE + 8.0 + 2.0 * TITLE_INSET
+ }
+ 
++/// How many displaced title-side entries a frame's jog room `jog` holds
++/// (B12 F2: [`crate::ortho::ROW_CLEAR`] for the first, a
++/// [`crate::ortho::TRACK_PITCH`] for each past it; 0 without jog room).
++pub(crate) fn jog_entries(jog: f64) -> usize {
++    if jog <= 0.0 {
++        return 0;
++    }
++    ((jog - crate::ortho::ROW_CLEAR) / crate::ortho::TRACK_PITCH).round() as usize + 1
++}
++
++/// The least breadth (px) of a frame grown to its title (B12 F1) whose
++/// title row takes `k` displaced entries (F2, X2.2's breadth): its chip
++/// ([`crate::clearance::CHIP_INSET_X`], the bold title,
++/// [`crate::clearance::CHIP_PAD_W`]) and, past the chip's clearance
++/// [`crate::ortho::CHIP_CLEAR`], a corner's rounding
++/// ([`crate::router::CORNER_R`]) to the first displaced column, a
++/// [`crate::ortho::TRACK_PITCH`] to each next one and [`LANE_PAD`] to
++/// the frame's side: where `ortho` crosses such an entry over the title
++/// side (its title sides take no column that would leave the frame).
++/// A frame exactly as broad as its title had no such column, and the
++/// router took the entry in through the frame's lateral wall
++/// (blocks/nested-wide-title: `src -> a1` round the right of the nested
++/// frame). 0 without displaced entries.
++pub(crate) fn title_column_width(title: &str, k: usize) -> f64 {
++    use crate::clearance::{CHIP_INSET_X, CHIP_PAD_W};
++    if k == 0 || title.trim().is_empty() {
++        return 0.0;
++    }
++    CHIP_INSET_X
++        + crate::layout::bold_text_width(title) * TITLE_SCALE
++        + CHIP_PAD_W
++        + crate::ortho::CHIP_CLEAR
++        + crate::router::CORNER_R
++        + (k - 1) as f64 * crate::ortho::TRACK_PITCH
++        + LANE_PAD
++}
++
+ /// How far a frame's top border lies above its first row's box without
+ /// jog room: its pad and its title strip (`frame_boxes`). Test-only.
+ #[cfg(test)]
+@@ -6457,7 +6494,7 @@ fn frame_boxes(
+         // box is the same to the last bit.)
+         let jog = jog.get(i).copied().unwrap_or(0.0);
+         let (mut x, mut w) = (minx - SUB_PAD, (maxx - minx) + 2.0 * SUB_PAD);
+-        let least = if title_fit {
++        let mut least = if title_fit {
+             title_fit_width(&g.subgraphs[i].title)
+         } else {
+             0.0
+@@ -6466,6 +6503,14 @@ fn frame_boxes(
+             x -= (least - w) / 2.0;
+             w = least;
+             bound[i] = true;
++            // Grown to its title: with displaced entries it holds their
++            // columns past the chip too (X2.2's breadth), grown on the
++            // chip's side, which moves the chip off them.
++            let cols = title_column_width(&g.subgraphs[i].title, jog_entries(jog));
++            if cols > w {
++                x -= cols - w;
++                w = cols;
++            }
+         }
+         boxes[i] = Some((
+             x,

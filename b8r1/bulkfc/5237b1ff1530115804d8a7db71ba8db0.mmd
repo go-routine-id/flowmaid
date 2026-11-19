@@ -1,0 +1,20 @@
+flowchart BT
+    N0[Report notify]
+    N1([Archive validate])
+    N2{Parse}
+    N3([Load check])
+    N4([Notify])
+    N5([Notify store])
+    N6[Load]
+    N7[Emit notify]
+    N8(Archive done)
+    N0 -->|no| N1
+    N1 --> N2
+    N0 --> N3
+    N2 -->|next| N4
+    N2 --> N5
+    N4 -->|next| N6
+    N4 -->|ok| N7
+    N7 --> N8
+    N6 ==> N4
+    N5 -.->|rollback| N3

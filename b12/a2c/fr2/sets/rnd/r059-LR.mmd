@@ -1,0 +1,9 @@
+flowchart LR
+    subgraph G[Core]
+        m0[y]
+        m1[x wide member node]
+    end
+    s0[src0] -- "lbl9" --> m1
+    s0 --> G
+    s1[src1] --> G
+    m1 --> z[end]

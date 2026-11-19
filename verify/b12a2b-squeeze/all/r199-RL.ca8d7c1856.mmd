@@ -1,0 +1,11 @@
+flowchart RL
+    subgraph G[WWW Mammoth Wombat Overview]
+        m0[queue]
+        m1[db]
+        m2[db]
+        m0 --> m1
+    end
+    s0[src0] -- "lbl5" --> G
+    s1[src1] --> G
+    s1 --> m1
+    G --> z2[after]

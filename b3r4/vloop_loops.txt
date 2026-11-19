@@ -1,0 +1,1 @@
+TOTAL static own=0 other=0 routed own=0 other=0

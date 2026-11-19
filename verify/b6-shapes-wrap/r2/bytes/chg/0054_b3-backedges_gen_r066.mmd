@@ -1,0 +1,21 @@
+flowchart RL
+    N0[Archive]
+    N1([Fetch])
+    N2{Notify}
+    N3[Queue done]
+    N4{Notify store}
+    N5((Retry))
+    N6[/Parse/]
+    N7{Done}
+    N8[Retry]
+    N0 --> N1
+    N1 --> N2
+    N1 -->|no| N3
+    N3 --> N4
+    N4 --> N5
+    N4 --> N6
+    N5 --> N7
+    N7 --> N8
+    N1 --> N4
+    N0 --> N7
+    N8 -.->|back| N4

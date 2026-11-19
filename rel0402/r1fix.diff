@@ -1,0 +1,114 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index e991679..4226bbb 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -12,7 +12,9 @@ project adheres to [Semantic Versioning](https://semver.org/).
+ ### Highlights
+ 
+ A patch release that only adds to the API: every static drawing is byte for
+-byte that of 0.40.1, and every existing function returns what it did.
++byte that of 0.40.1, and every existing function returns the same values.
++Only the `Debug` text differs: a `Scene` also prints two new private
++fields (see Internal), which a snapshot test of `{:?}` output sees.
+ 
+ - **`route_partial` for ER, class and mindmap diagrams**: a drag redraws
+   only what is attached to a moved box and keeps the rest of the previous
+@@ -33,15 +35,20 @@ byte that of 0.40.1, and every existing function returns what it did.
+   previous drawing (`base`) and the positions it was drawn at, they draw
+   afresh only what is attached to a moved box. Every other line keeps
+   its `base` drawing exactly, with its label, end glyphs and class
+-  cardinalities, even where a moved box now covers it (route the drop
+-  with `route` to clear that). Positions are kept as given. An ER or
+-  class frame's canvas grows over whatever a drag pushes past any of its
+-  sides, as `route`'s does (#76); a mindmap frame's canvas is the one
+-  `mindmap::route` gives, which does not grow up or left. When `base` no
+-  longer matches the diagram (other counts, or an edit since), the
+-  result is `route`'s; after a change of direction, route the first
+-  frame with `route`. A class diagram takes class centres, or class and
+-  note centres. `try_route_partial` returns `None` where
++  cardinalities, even where a moved box now covers it (for ER and
++  class, route the drop with `route` to clear that). Positions are kept
++  as given. An ER or class frame's canvas grows over whatever a drag
++  pushes past any of its sides (#76), so every box, line and label of
++  the frame is on it, also a class line routed round the top or left,
++  which a class `route`'s canvas can leave out; a mindmap frame's canvas
++  is the one `mindmap::route` gives, which does not grow up or left.
++  When `base` no longer matches the diagram (other counts, or an edit
++  since), the result is `route`'s; after a change of direction, route
++  the first frame with `route`. A class diagram takes class centres, or
++  class and note centres; with a `class::scene` base of a diagram with
++  notes, pass class and note centres: `scene` can place a note
++  elsewhere than `route` does from class centres alone, and the frame is
++  then a full `route`. `try_route_partial` returns `None` where
+   `route_partial` would panic or `try_route` refuses the positions.
+   `mindmap::link_ends` names a connector's two nodes.
+   `cargo run --release --example drag_bench` times a one-node drag on
+@@ -69,7 +76,11 @@ byte that of 0.40.1, and every existing function returns what it did.
+ 
+ - **Subgraphs as blocks, step 2 of 4, first part** (frames sized to their
+   titles, room for labels in the gaps between blocks), behind an internal
+-  switch that is off: no drawing changes.
++  switch that is off: no drawing changes. It adds two private fields that
++  `{:?}` prints, both `false` while the switch is off: the `Debug` text
++  of a `Scene` (also inside a `ClassScene`, `ErScene` and the other
++  scenes that hold one) lists `block_layout: false`, and
++  `bold_title: false` for each subgraph frame.
+ 
+ ## [0.40.1] - 2026-11-17
+ 
+diff --git a/README.md b/README.md
+index bbbe913..30d5ebb 100644
+--- a/README.md
++++ b/README.md
+@@ -526,7 +526,7 @@ Beyond static SVG, the engine exposes the geometry it draws, so GUI apps can pai
+ - **`scene::scene(&graph)`** returns a `Scene`: the position, size and shape of every node plus the path of every edge, in final coordinates, ready to draw with any painter. A static `Scene`'s `width` × `height` and node centres are exactly the SVG's canvas and coordinates. Nodes and edges keep a stable identity (`SceneNode.id`, `SceneEdge.from` / `to`).
+ - **`scene::route(&graph, &positions)`** re-routes every edge for custom node positions (a user's drag) *without* re-running layout, so nodes never jump back.
+ - **`scene::route_partial`** re-routes only the edges a move can affect, keeping the rest of a base drawing, so a drag frame costs what lies near the drag (see [Interactive editing](#interactive-editing)). It combs its small fans only; the larger ones are combed when the drag ends and `route()` runs.
+-- **`scene::try_route`** (and `class::`, `er::`, `mindmap::try_route`, and their `try_route_partial`) is `route` returning `None` for positions it cannot route: a count that does not match the diagram, or a coordinate that is not finite or lies more than a million px from zero. For a host whose position list may be out of date.
++- **`scene::try_route`** (and `class::`, `er::`, `mindmap::try_route`) is `route` returning `None` for positions it cannot route: a count that does not match the diagram, or a coordinate that is not finite or lies more than a million px from zero. `class::`, `er::` and `mindmap::try_route_partial` are `route_partial` doing the same. For a host whose position list may be out of date.
+ - **`scene::box_edge_bezier`** gives flowmaid's curve for one edge between two freely placed boxes, for hosts that own their node model.
+ - **`scene::to_svg(&scene)`** exports any state, including after drags. A routed drawing that reaches past the top-left margin keeps its coordinates on both axes: the `viewBox` starts before zero by the overflow, so a pointer maps through the `viewBox` straight to scene coordinates. `render()` is just a wrapper over the same pipeline, so the SVG and the interactive flow always agree.
+ - **Compact layout.** `fold::scene_compact` folds a long linear chain into balanced rows that fit a viewport (CLI `--compact <px>`).
+diff --git a/docs/ROADMAP.md b/docs/ROADMAP.md
+index 4200681..2b82130 100644
+--- a/docs/ROADMAP.md
++++ b/docs/ROADMAP.md
+@@ -21,7 +21,7 @@ Last updated 2026-11-19 (latest release: 0.40.2).
+ | 0.39.0 | Crossing lines hop over each other. A hub's fan is drawn as a comb. |
+ | 0.40.0 | Class diagrams: dotted names, a fan of six without crossings, self-relations kept off a neighbour. State diagrams: a drag inside a composite no longer resizes a fork or join bar. |
+ | 0.40.1 | Interactive API: `try_route`, a `route` that turns down positions that do not fit the diagram. A drag past the top-left margin no longer shifts the rest of the drawing. Class diagrams: a declared name with a stray dot is an error, as in mermaid. The first step of subgraphs as blocks (below) is in, switched off. |
+-| 0.40.2 | Interactive API: a drag in an ER, class or mindmap diagram redraws only what moved (`route_partial`), and mindmap, sequence, pie, journey, timeline and sankey scenes can be picked (`hit_test`). The first part of step 2 of subgraphs as blocks is in, switched off. 0.40.1 was not published to crates.io, so this is the first published release with its changes too. |
++| 0.40.2 | Interactive API: a drag in an ER, class or mindmap diagram redraws only what is attached to a moved box (`route_partial`), and mindmap, sequence, pie, journey, timeline and sankey scenes can be picked (`hit_test`). The first part of step 2 of subgraphs as blocks is in, switched off. 0.40.1 was not published to crates.io, so this is the first published release with its changes too. |
+ 
+ [CHANGELOG.md](../CHANGELOG.md) has the details and the measurements for each release.
+ 
+diff --git a/src/class.rs b/src/class.rs
+index 61106f5..ab81a64 100644
+--- a/src/class.rs
++++ b/src/class.rs
+@@ -164,9 +164,10 @@ pub struct ClassScene {
+ /// [`card_spots`] lists them.
+ type CardSpots = [Option<(f64, f64)>; 2];
+ 
+-/// As `#[derive(Debug)]` writes the public fields, so a scene that keeps
+-/// no cardinalities prints as it always did; a [`route_partial`] frame
+-/// that keeps some prints them last.
++/// As `#[derive(Debug)]` writes the public fields: a scene that keeps no
++/// cardinalities prints the fields 0.40.1's derive printed, in the same
++/// order (`scene` as [`Scene`]'s own `Debug` writes it); a
++/// [`route_partial`] frame that keeps some prints them last.
+ impl std::fmt::Debug for ClassScene {
+     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+         let mut s = f.debug_struct("ClassScene");
+@@ -288,7 +289,10 @@ pub fn try_route(d: &ClassDiagram, centers: &[(f64, f64)]) -> Option<ClassScene>
+ /// or per class and note (without note centres each note is placed as
+ /// [`route`] places it, beside its class). `base` is a drawing of `d` with
+ /// its boxes at `base_centers`: the [`scene`] output with its own
+-/// centres, or a [`route`] (or `route_partial`) output.
++/// centres, or a [`route`] (or `route_partial`) output. For a [`scene`]
++/// base of a diagram with notes, its own centres are its class and note
++/// centres: [`scene`] can place a note elsewhere than [`route`] does from
++/// class centres alone, and with those the frame is a full [`route`].
+ ///
+ /// Every box sits at its centre, taken as given, and every relationship
+ /// or note link without an end on a moved box keeps its `base` route,

@@ -1,0 +1,31 @@
+classDiagram
+direction RL
+C1 -- C14
+C4 -- C2
+C14 "1" --> "*" C10
+C0 "1" <--> "*" C15
+C7 ..|> C11
+C3 "1" --> "*" C4
+note for C8 "a&b"
+note for C0 "delta"
+note for C11 "Customer Order"
+class C1 {
+  +int id
+  +name() String
+}
+class C4 {
+  +int id
+  +name() String
+}
+class C6 {
+  +int id
+  +name() String
+}
+class C7 {
+  +int id
+  +name() String
+}
+class C12 {
+  +int id
+  +name() String
+}

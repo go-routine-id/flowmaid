@@ -1,0 +1,9 @@
+53:pub struct PartBox { 
+65:pub struct Lifeline { 
+75:pub struct MsgLine { 
+92:pub struct NoteBox { 
+103:pub struct ActBar { 
+114:pub struct FrameBox { 
+131:#[non_exhaustive] 132:pub struct SeqScene { 
+152:pub struct Head { 
+192:#[non_exhaustive] 193:pub struct ActorFigure { 

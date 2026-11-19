@@ -1,0 +1,19 @@
+flowchart RL
+  H0 ---|retry| N3
+  H0 -->|gift wrap| N1
+  H0 --> N5
+  H0 -->|a much longer label here| N3
+  H0 ---|yes| N5
+  H0 -->|gift wrap| N4
+  H0 --> N1
+  H0 ---|a much longer label here| N1
+  H0 --> N3
+  H1 ---|gift wrap| N1
+  H1 ---|ok| N3
+  H1 --- N4
+  H1 -.->|yes| N1
+  H1 --- N0
+  H1 ==>|retry| N4
+  H1 ---|no| N1
+  H1 ==>|ok| N5
+  N4 -->|express| N5

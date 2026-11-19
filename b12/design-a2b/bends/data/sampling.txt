@@ -1,0 +1,42 @@
+== start
+{"edges":1289,"sampling_dependent":{"live":631,"fixed":38}}
+  advanced.svg W1 → W1 [1px,6,12,24] = 0,3,2,0
+  blocks-overview-actors-reversed.svg SHOP → LB [1px,6,12,24] = 1,1,2,1
+  dense-td.svg n16 → n21 [1px,6,12,24] = 1,1,1,2
+  fork-twins.svg note → K0NN_1 [1px,6,12,24] = 3,2,2,3
+  fork-twins.svg K1_1 → note [1px,6,12,24] = 0,2,0,0
+  infra-lr.svg ARGO → TG [1px,6,12,24] = 3,4,3,3
+  infra-overview-v2.svg DNS → TR2 [1px,6,12,24] = 6,7,6,6
+  infra-rl.svg ARGO → TG [1px,6,12,24] = 3,4,3,3
+  near-drag.svg note → K0_0 [1px,6,12,24] = 0,2,0,0
+  near-drag.svg note → A [1px,6,12,24] = 0,2,0,0
+  nested-composite.svg note → K0NN_2 [1px,6,12,24] = 0,2,2,2
+  nested-composite.svg note → K0NN_0 [1px,6,12,24] = 1,2,2,1
+== fm038
+{"edges":1289,"sampling_dependent":{"live":623,"fixed":38}}
+  advanced.svg W1 → W1 [1px,6,12,24] = 0,3,2,0
+  blocks-overview-actors-reversed.svg SHOP → LB [1px,6,12,24] = 1,1,2,1
+  dense-td.svg n16 → n21 [1px,6,12,24] = 1,1,1,2
+  fork-twins.svg note → K0NN_1 [1px,6,12,24] = 3,2,2,3
+  fork-twins.svg K1_1 → note [1px,6,12,24] = 0,2,0,0
+  infra-lr.svg ARGO → TG [1px,6,12,24] = 3,4,3,3
+  infra-overview-v2.svg DNS → TR2 [1px,6,12,24] = 6,7,6,6
+  infra-rl.svg ARGO → TG [1px,6,12,24] = 3,4,3,3
+  near-drag.svg note → K0_0 [1px,6,12,24] = 0,2,0,0
+  near-drag.svg note → A [1px,6,12,24] = 0,2,0,0
+  nested-composite.svg note → K0NN_2 [1px,6,12,24] = 0,2,2,2
+  nested-composite.svg note → K0NN_0 [1px,6,12,24] = 1,2,2,1
+== fr4-split
+{"edges":1293,"sampling_dependent":{"live":679,"fixed":50}}
+  advanced.svg W1 → W1 [1px,6,12,24] = 0,3,2,0
+  blocks-overview-lr.svg LB → GATE [1px,6,12,24] = 4,3,3,3
+  blocks-overview-rl.svg LB → GATE [1px,6,12,24] = 4,3,3,3
+  dense-td.svg n4 → n43 [1px,6,12,24] = 3,4,4,3
+  fork-twins.svg note → K0NN_0 [1px,6,12,24] = 0,2,2,2
+  fork-twins.svg note → K0NN_1 [1px,6,12,24] = 0,2,3,0
+  fork-twins.svg K0NN_2 → note [1px,6,12,24] = 0,2,0,0
+  fork-twins.svg note → K1_2 [1px,6,12,24] = 0,2,0,0
+  infra-lr.svg T1 → DNS [1px,6,12,24] = 0,0,1,1
+  infra-rl.svg T1 → DNS [1px,6,12,24] = 0,0,1,1
+  interleave.svg N0 → t1 [1px,6,12,24] = 1,1,2,2
+  l5loop.svg s2 → t1 [1px,6,12,24] = 1,1,2,2

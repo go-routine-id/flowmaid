@@ -1,0 +1,50 @@
+flowchart RL
+  n1["ship ingest store"]
+  n2["audit"]
+  subgraph B0["Core"]
+    n3["ingest"]
+  end
+  subgraph B1["Back office and finance"]
+    n4["pack"]
+    subgraph B1s0["Edge services 0"]
+      n5["audit"]
+    end
+  end
+  subgraph B2["Storefront"]
+    n6["mail"]
+    n7["auth"]
+    subgraph B2s0["Core 0"]
+      n8["auth parse store"]
+      n9["merge audit parse"]
+      n10["ingest"]
+    end
+    subgraph B2s1["Core 1"]
+      n11["mail"]
+      n12["index"]
+    end
+  end
+  subgraph B3["Ingest"]
+    n13["auth<br/>store"]
+    n14["parse index cache<br/>notify"]
+    n15["api notify worker<br/>notify"]
+  end
+  n16["split<br/>worker"]
+  n17["report cache api<br/>cache"]
+  n11 ==> n15
+  n7 --> n2
+  n17 -->|store| B1s0
+  n11 --> n14
+  n3 -->|store| B2s0
+  n4 -.-> n9
+  n12 --> n1
+  n12 -->|merge| n8
+  n13 --> n10
+  n7 ==>|worker| n13
+  n1 -.-> n16
+  n10 ==> n8
+  n6 -->|notify| n11
+  n9 --> n2
+  n9 -->|ingest| n16
+  n6 --> n5
+  n14 ==>|ingest| n3
+  n16 -->|parse| n10

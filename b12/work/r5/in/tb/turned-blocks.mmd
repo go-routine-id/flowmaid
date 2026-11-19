@@ -1,0 +1,21 @@
+flowchart TD
+  start([Start]) --> INTAKE
+  subgraph INTAKE[Intake]
+    i1[Receive] --> i2[Sort]
+  end
+  subgraph WORK[Work area]
+    w1[Assemble] --> w2[Test]
+    subgraph QA[Quality]
+      q1[Inspect] --> q2[Stamp]
+    end
+    w2 --> q1
+  end
+  subgraph SHIP[Shipping]
+    s1[Pack] --> s2[Load]
+  end
+  INTAKE --> WORK
+  WORK --> SHIP
+  SHIP -->|returns| INTAKE
+  QA -.->|rework| INTAKE
+  SHIP --> start
+  s2 -->|damaged| w1

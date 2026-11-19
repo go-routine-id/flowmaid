@@ -1,0 +1,5 @@
+  - The review's 244 loop-heavy inputs (seven to nine loops on one class
+    in most) take 10-14 % longer in total to draw, to route and to drag,
+    single ones up to three times as long: eight unlabelled loops on a
+    class 0.1 -> 0.3 ms to draw, and one drag frame 1.0 -> 2.3 ms.
+    Ordinary class diagrams take the same time.

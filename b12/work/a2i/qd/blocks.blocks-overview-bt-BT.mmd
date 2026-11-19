@@ -1,0 +1,74 @@
+%% Block layout fixture: the storefront platform of blocks-overview.mmd
+%% with the flow direction BT; the graph is the same.
+flowchart BT
+    SHOP([Shopper<br/>web and mobile])
+    OPS([Operations team])
+
+    subgraph EDGE[Edge and shared services]
+        CDN[CDN<br/>static assets]
+        LB[Load balancer<br/>TLS termination]
+        MAIL[Mail relay]
+        PAGER[On-call pager]
+    end
+
+    subgraph CI[Build pipeline]
+        REPO[source repository]
+        BUILD[build and test]
+        REG[(image registry)]
+        REPO --> BUILD --> REG
+    end
+
+    subgraph WEB[Storefront cluster]
+        GATE[API gateway]
+        CART[cart service]
+        SEARCH[search service]
+        GATE --> CART
+        GATE --> SEARCH
+    end
+
+    subgraph ORD[Order processing]
+        QUEUE[[order queue]]
+        SHIP[shipping worker]
+        subgraph PAY[Payments]
+            CHARGE[charge worker]
+            LEDGER[(ledger)]
+            CHARGE --> LEDGER
+        end
+        QUEUE --> CHARGE
+        QUEUE --> SHIP
+    end
+
+    subgraph DATA[Data tier]
+        DB[(orders database)]
+        CACHE[(session cache)]
+        INDEX[(search index)]
+    end
+
+    subgraph OBS[Observability]
+        METRICS[metrics store]
+        ALERT[alert rules]
+        METRICS --> ALERT
+    end
+
+    SHOP -->|browse| CDN
+    SHOP -->|checkout| LB
+    OPS -->|merge| REPO
+    OPS -.->|dashboards| OBS
+    CDN -->|cache miss| GATE
+    LB -->|HTTPS| GATE
+    LB -->|webhooks| QUEUE
+    REG ==>|deploy| WEB
+    REG ==>|deploy| ORD
+    CART -->|place order| QUEUE
+    CART -->|sessions| CACHE
+    SEARCH -->|query| INDEX
+    SHIP -->|write| DB
+    LEDGER -->|write| DB
+    CHARGE -.->|receipt| MAIL
+    SHIP -.->|tracking mail| MAIL
+    DB -->|reindex| INDEX
+    WEB -.->|scrape| METRICS
+    ORD -.->|scrape| METRICS
+    DATA -.->|scrape| METRICS
+    ALERT -->|page| PAGER
+    ALERT -.->|digest| MAIL

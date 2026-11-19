@@ -1,0 +1,258 @@
+   Compiling flowmaid v0.38.0 (/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/d-hybrid/tree)
+    Finished `release` profile [optimized] target(s) in 2.20s
+     Running tests/quality.rs (/tmp/claude-0/-home-user-flowmaid/cac93b13-7009-5470-94b5-477c61df0333/scratchpad/b12/target-d-hybrid/release/deps/quality-871fbc7f35609a50)
+
+running 13 tests
+test a_one_px_drag_leaves_unrelated_edges_put ... FAILED
+test channels_keep_edges_apart_and_off_chips ... FAILED
+test crossing_gaps_do_not_read_as_dashes ... FAILED
+test defect_baseline_gate ... FAILED
+test edge_line_order_barely_moves_the_dense_layouts ... ok
+test every_fixture_has_a_ceiling ... ok
+test every_shape_end_sits_on_its_outline ... ok
+test edges_keep_off_frame_borders ... FAILED
+test layout_shape_gate ... ok
+test labels_cover_nothing_they_must_not ... FAILED
+test long_labels_wrap_and_dense_labels_do_not_tower ... ok
+test moving_a_node_declaration_barely_moves_dense_td ... ok
+test quality_gate ... FAILED
+
+failures:
+
+---- a_one_px_drag_leaves_unrelated_edges_put stdout ----
+quality/dense-lr: 2 drag jumps
+quality/dense-td: 17 drag jumps
+quality/bench-75: 55 drag jumps
+notes/spread-face: 0 drag jumps
+notes/fork-twins: 0 drag jumps
+notes/near-drag: 0 drag jumps
+
+thread 'a_one_px_drag_leaves_unrelated_edges_put' (25958) panicked at tests/quality.rs:1029:5:
+quality/dense-lr: 2 > 0 drag jumps
+  drag n11: n12 -> n26 94.5
+  drag n30: n12 -> n36 28.3
+quality/dense-td: 17 > 5 drag jumps
+  drag n31: n16 -> n17 23.5
+  drag n31: n16 -> n37 20.6
+  drag n31: n16 -> n21 79.4
+  drag n31: n21 -> n16 29.4
+  drag n32: n16 -> n17 23.5
+  drag n32: n16 -> n37 20.6
+  drag n32: n16 -> n21 79.4
+  drag n32: n21 -> n16 29.4
+  drag n43: n16 -> n17 35.3
+  drag n43: n16 -> n37 20.6
+  drag n43: n16 -> n21 79.4
+  drag n43: n16 -> n29 21.6
+  drag n43: n21 -> n16 29.4
+  drag n44: n16 -> n17 23.5
+  drag n44: n16 -> n37 20.6
+  drag n44: n16 -> n21 79.4
+  drag n44: n21 -> n16 29.4
+quality/bench-75: 55 > 16 drag jumps
+  drag user: svc4 -> cache 56.0
+  drag user: gw -> logs 46.1
+  drag ext: svc4 -> cache 56.0
+  drag ext: gw -> logs 46.1
+  drag gw: svc4 -> cache 56.0
+  drag gw: svc2 -> logs 45.2
+  drag lb: svc4 -> cache 56.0
+  drag lb: alerts -> gw 33.0
+  drag lb: gw -> logs 46.1
+  drag svc1: svc4 -> cache 56.0
+  drag svc1: svc5 -> logs 28.0
+  drag svc1: gw -> logs 46.1
+  drag svc2: svc1 -> cache 50.5
+  drag svc2: svc4 -> cache 24.2
+  drag svc2: svc5 -> objects 50.6
+  drag svc2: gw -> logs 46.1
+  drag svc3: svc1 -> cache 50.5
+  drag svc3: svc4 -> cache 56.0
+  drag svc3: svc6 -> db 44.9
+  drag svc3: svc5 -> objects 50.6
+  drag svc3: gw -> logs 46.1
+  drag svc4: svc1 -> cache 50.5
+  drag svc4: svc3 -> db 43.3
+  drag svc4: svc6 -> db 44.9
+  drag svc4: svc5 -> objects 50.6
+  drag svc4: gw -> logs 46.1
+  drag svc5: svc4 -> cache 56.0
+  drag svc5: gw -> logs 46.1
+  drag svc6: svc4 -> cache 56.0
+  drag svc6: svc5 -> db 22.5
+  drag svc6: svc5 -> logs 28.0
+  drag svc6: gw -> logs 46.1
+  drag db: svc4 -> cache 56.0
+  drag db: gw -> logs 46.1
+  drag cache: gw -> logs 46.1
+  drag queue: svc4 -> cache 56.0
+  drag queue: gw -> logs 46.1
+  drag objects: svc4 -> cache 57.0
+  drag objects: svc5 -> logs 28.0
+  drag objects: queue -> metrics 39.4
+  drag objects: gw -> logs 46.1
+  drag logs: svc4 -> cache 56.0
+  drag metrics: svc4 -> cache 56.0
+  drag metrics: gw -> logs 47.1
+  drag alerts: svc4 -> cache 56.0
+  drag alerts: gw -> logs 46.1
+  drag dash: svc4 -> cache 56.0
+  drag dash: gw -> logs 46.1
+  drag job1: svc4 -> cache 56.0
+  drag job1: gw -> logs 46.1
+  drag job2: svc4 -> cache 56.0
+  drag job2: gw -> logs 46.1
+  drag job3: svc4 -> cache 56.0
+  drag job3: svc5 -> logs 28.0
+  drag job3: gw -> logs 46.1
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: <quality::a_one_px_drag_leaves_unrelated_edges_put::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- channels_keep_edges_apart_and_off_chips stdout ----
+
+thread 'channels_keep_edges_apart_and_off_chips' (25959) panicked at tests/quality.rs:520:5:
+routed edge_chip 8
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: <quality::channels_keep_edges_apart_and_off_chips::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- crossing_gaps_do_not_read_as_dashes stdout ----
+
+thread 'crossing_gaps_do_not_read_as_dashes' (25960) panicked at tests/quality.rs:437:5:
+static xgap_max 10
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: <quality::crossing_gaps_do_not_read_as_dashes::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- defect_baseline_gate stdout ----
+static	end_tilt	0.0000
+static	end_tilt_max	5.1609
+static	end_gaps	0.0000
+static	end_gap_max	0.0483
+static	lat_wiggles	37.0000
+static	lat_backtrack	11105.3793
+static	own_frame_x	0.0000
+static	own_frame_len	0.0000
+static	band_pairs	202.0000
+static	band_len	86584.0000
+static	ink	0.1222
+static	idiom_ortho	185.0000
+static	idiom_scubic	0.0000
+static	idiom_spline	0.0000
+static	idiom_bow	0.0000
+static	x_drawn	639.0000
+static	end_kink	0.0000
+static	ink_out	0.0000
+routed	end_tilt	1.0000
+routed	end_tilt_max	36.6977
+routed	end_gaps	0.0000
+routed	end_gap_max	0.0483
+routed	lat_wiggles	18.0000
+routed	lat_backtrack	2464.3957
+routed	own_frame_x	0.0000
+routed	own_frame_len	0.0000
+routed	band_pairs	159.0000
+routed	band_len	65496.0000
+routed	ink	0.1176
+routed	idiom_ortho	185.0000
+routed	idiom_scubic	0.0000
+routed	idiom_spline	0.0000
+routed	idiom_bow	0.0000
+routed	x_drawn	739.0000
+routed	end_kink	1.0000
+routed	ink_out	0.0000
+
+thread 'defect_baseline_gate' (25961) panicked at tests/quality.rs:809:5:
+defect baseline regressions:
+static end_tilt_max 5.16 > ceiling 0.3
+static lat_wiggles 37.00 > ceiling 15
+static lat_backtrack 11105.38 > ceiling 1870
+static band_pairs 202.00 > ceiling 124
+static band_len 86584.00 > ceiling 71360
+static x_drawn 639.00 > ceiling 428
+routed end_tilt 1.00 > ceiling 0
+routed end_tilt_max 36.70 > ceiling 0.6
+routed lat_wiggles 18.00 > ceiling 5
+routed lat_backtrack 2464.40 > ceiling 440
+routed band_pairs 159.00 > ceiling 139
+routed x_drawn 739.00 > ceiling 494
+routed end_kink 1.00 > ceiling 0
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: <quality::defect_baseline_gate::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- edges_keep_off_frame_borders stdout ----
+
+thread 'edges_keep_off_frame_borders' (25963) panicked at tests/quality.rs:259:5:
+routed border_len 4530
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: <quality::edges_keep_off_frame_borders::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- labels_cover_nothing_they_must_not stdout ----
+
+thread 'labels_cover_nothing_they_must_not' (25966) panicked at tests/quality.rs:330:5:
+static lbl_edge 8 > 6
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: <quality::labels_cover_nothing_they_must_not::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- quality_gate stdout ----
+file	mode	nodes	edges	frames	edge_node_x	edge_node_pairs	edge_frame_x	edge_frame_pairs	edge_edge_x	overlap_pairs	overlap_len	node_near	min_node_gap	min_edge_gap	node_overlap	node_frame	frame_overlap	lbl_node	lbl_lbl	lbl_chip	lbl_edge	lbl_arrow	shared_ports	arrow_on_start	wiggles	backtrack	frame_side	center_off	width	height	aspect	area_per_node	defects	corner_touch	border_runs	border_len	overlap_max	tight_pairs	tight_len	hug_runs	hug_len	hug_max	edge_chip	end_cross	xgap_max	dash_edges	lbl_crowd	ortho_edges	xnotches	end_tilt	end_tilt_max	end_gaps	end_gap_max	lat_wiggles	lat_backtrack	own_frame_x	own_frame_len	band_pairs	band_len	ink	idiom_ortho	idiom_scubic	idiom_spline	idiom_bow	x_drawn	end_kink	ink_out
+back-edge	static	6.00	6.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	12.89	40.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.04	290.00	543.70	1.87	26278.83	0	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	3.00	0.00	0.00	0.00	0.00	0.05	0.00	0.00	0.00	0.00	0.00	0.00	0.14	6.00	0.00	0.00	0.00	0.00	0.00	0.00
+back-edge	routed	6.00	6.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	12.89	40.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.04	290.00	543.70	1.87	26278.83	0	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	3.00	0.00	0.00	0.00	0.00	0.05	0.00	0.00	0.00	0.00	0.00	0.00	0.14	6.00	0.00	0.00	0.00	0.00	0.00	0.00
+bench-75	static	21.00	75.00	5.00	0.00	0.00	0.00	0.00	397.00	22.00	1320.00	0.00	11.94	12.06	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.51	1849.20	970.75	1.90	85481.47	22	2.00	7.00	989.37	266.00	68.00	8354.00	9.00	987.23	341.01	0.00	0.00	9.00	0.00	0.00	75.00	0.00	0.00	0.00	0.00	0.05	13.00	2356.81	0.00	0.00	108.00	25724.00	0.09	75.00	0.00	0.00	0.00	397.00	0.00	0.00
+bench-75	routed	21.00	75.00	5.00	0.00	0.00	0.00	0.00	454.00	41.00	2270.00	0.00	12.50	2.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.74	1849.20	909.00	2.03	80043.94	41	8.00	12.00	1429.51	368.00	68.00	11338.00	19.00	2137.91	303.63	3.00	15.00	11.00	0.00	0.00	75.00	0.00	1.00	36.70	0.00	0.05	7.00	494.27	0.00	0.00	97.00	25868.00	0.09	75.00	0.00	0.00	0.00	454.00	1.00	0.00
+dense-lr	static	52.00	42.00	11.00	0.00	0.00	1.00	1.00	40.00	1.00	60.00	1.00	5.82	12.50	0.00	0.00	0.00	0.00	0.00	0.00	6.00	0.00	2.00	0.00	0.00	0.00	0.00	0.07	3677.15	2557.11	1.44	180824.36	4	0.00	1.00	46.00	60.00	10.00	1724.00	2.00	184.58	131.17	0.00	0.00	3.00	0.00	0.00	38.00	0.00	0.00	1.83	0.00	0.04	8.00	3460.17	0.00	0.00	31.00	14352.00	0.07	42.00	0.00	0.00	0.00	41.00	0.00	0.00
+dense-lr	routed	52.00	42.00	11.00	0.00	0.00	4.00	5.00	66.00	2.00	102.00	2.00	2.85	22.45	0.00	0.00	0.00	0.00	0.00	0.00	4.00	0.00	0.00	0.00	0.00	0.00	0.00	0.09	3677.15	2504.86	1.47	177129.53	7	0.00	4.00	530.48	54.00	7.00	1180.00	11.00	1445.83	248.42	1.00	2.00	3.00	0.00	0.00	38.00	0.00	0.00	1.59	0.00	0.04	5.00	1066.23	0.00	0.00	22.00	9116.00	0.07	42.00	0.00	0.00	0.00	69.00	0.00	0.00
+dense-td	static	46.00	47.00	10.00	0.00	0.00	1.00	1.00	197.00	3.00	2426.00	0.00	12.22	12.49	0.00	0.00	0.00	0.00	0.00	0.00	2.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	3854.60	1929.43	2.00	161677.73	4	0.00	0.00	0.00	1982.00	9.00	5716.00	2.00	1665.98	1164.45	0.00	0.00	10.00	0.00	0.00	42.00	0.00	0.00	5.16	0.00	0.01	15.00	5260.40	0.00	0.00	55.00	43924.00	0.09	47.00	0.00	0.00	0.00	201.00	0.00	0.00
+dense-td	routed	46.00	47.00	10.00	1.00	1.00	10.00	27.00	204.00	4.00	2816.00	0.00	9.35	8.62	0.00	0.00	0.00	0.00	0.00	0.00	2.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	3840.60	1929.43	1.99	161090.51	32	0.00	5.00	2570.44	1870.00	13.00	4796.00	15.00	4627.54	879.12	4.00	2.00	12.00	0.00	0.00	44.00	0.00	0.00	0.00	0.00	0.01	5.00	875.90	0.00	0.00	33.00	28238.00	0.08	47.00	0.00	0.00	0.00	215.00	0.00	0.00
+fanout-frames	static	22.00	7.00	6.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	14.00	40.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.09	579.50	2311.00	3.99	60873.84	0	0.00	0.00	0.00	0.00	1.00	28.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	6.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	4.00	1876.00	0.15	7.00	0.00	0.00	0.00	0.00	0.00	0.00
+fanout-frames	routed	22.00	7.00	6.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	14.00	40.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.09	579.50	2311.00	3.99	60873.84	0	0.00	0.00	0.00	0.00	1.00	26.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	6.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	4.00	1712.00	0.15	7.00	0.00	0.00	0.00	0.00	0.00	0.00
+wide-labels	static	6.00	8.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	20.25	40.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.46	1971.00	156.30	12.61	51343.93	0	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	6.00	0.00	0.00	0.00	0.00	0.00	1.00	28.00	0.00	0.00	4.00	708.00	0.21	8.00	0.00	0.00	0.00	0.00	0.00	0.00
+wide-labels	routed	6.00	8.00	0.00	0.00	0.00	0.00	0.00	1.00	0.00	0.00	0.00	16.25	40.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.17	1971.00	181.30	10.87	59556.43	0	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	0.00	1.00	0.00	0.00	6.00	0.00	0.00	0.00	0.00	0.00	1.00	28.00	0.00	0.00	3.00	562.00	0.18	8.00	0.00	0.00	0.00	1.00	0.00	0.00
+
+thread 'quality_gate' (25973) panicked at tests/quality.rs:197:5:
+quality regressions:
+bench-75 static: defects = 22 > ceiling 4
+bench-75 static: min_edge_gap = 12.06 < floor 14.7
+bench-75 routed: defects = 41 > ceiling 2
+bench-75 routed: min_edge_gap = 2.00 < floor 10.6
+dense-lr static: shared_ports = 2 > ceiling 0
+dense-td routed: edge_node_pairs = 1 > ceiling 0
+dense-td routed: edge_node_x = 1 > ceiling 0
+dense-td routed: defects = 32 > ceiling 30
+dense-td routed: min_edge_gap = 8.62 < floor 12
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: <quality::quality_gate::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+
+failures:
+    a_one_px_drag_leaves_unrelated_edges_put
+    channels_keep_edges_apart_and_off_chips
+    crossing_gaps_do_not_read_as_dashes
+    defect_baseline_gate
+    edges_keep_off_frame_borders
+    labels_cover_nothing_they_must_not
+    quality_gate
+
+test result: FAILED. 6 passed; 7 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.18s
+
+error: test failed, to rerun pass `--test quality`
+quality exit=101

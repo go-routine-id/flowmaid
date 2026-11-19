@@ -1,0 +1,13 @@
+flowchart TD
+    N0[Notify load]
+    N1{Store emit}
+    N2{Report done}
+    N3(Fetch)
+    N4{Load}
+    N0 -->|next| N1
+    N1 --> N2
+    N1 --> N3
+    N3 --> N4
+    N2 --> N4
+    N3 -->|again| N1
+    N3 ==> N2

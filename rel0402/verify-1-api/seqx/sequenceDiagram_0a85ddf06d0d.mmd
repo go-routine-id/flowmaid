@@ -1,0 +1,19 @@
+sequenceDiagram
+    actor U
+    participant S as Service
+    U->>+S: request
+    S->>+S: validate
+    S->>+S: deep check
+    S-->>-S: deep ok
+    loop retry
+        alt connect
+            S->>U: progress
+        else timeout
+            Note right of S: give up after three attempts total
+        end
+    end
+    S-->>-S: validated
+    S-->>-U: done
+    opt when failed
+        S->>U: abort
+    end

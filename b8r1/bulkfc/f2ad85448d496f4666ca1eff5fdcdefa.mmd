@@ -1,0 +1,19 @@
+flowchart BT
+    N0(Parse archive)
+    N1(Check report)
+    N2{Check retry}
+    N3([Validate])
+    N4[Queue retry]
+    N5{Queue report}
+    N6{Retry}
+    N0 --> N1
+    N0 --> N2
+    N0 --> N3
+    N3 --> N4
+    N4 --> N5
+    N4 --> N6
+    N1 --> N2
+    N4 --> N5
+    N5 --> N2
+    N3 -->|retry| N2
+    N5 --> N0

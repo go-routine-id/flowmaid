@@ -1,0 +1,16 @@
+sequenceDiagram
+autonumber
+participant P0 as 日本語
+actor P1 as 日本語
+actor P2 as Customer Order
+loop Customer Order
+P1-->>P0: Customer Order
+P2->P2: alpha
+end
+P2->P0: x
+activate P2
+P2->>P0: act
+deactivate P2
+activate P0
+P0->>P0: act
+deactivate P0

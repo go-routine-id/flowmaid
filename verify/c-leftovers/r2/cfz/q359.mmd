@@ -1,0 +1,24 @@
+classDiagram
+direction TB
+A -- B
+B "1" o-- "*" C : x
+C --|> D
+A --|> E : owns
+C --|> D
+C "1" --> "*" C : c0
+C --> C : c1
+C --> C : c2
+C o-- C
+C --> C : c4
+C --> C : c5
+A *-- A : a0
+A ..> A
+B o-- B : b0
+B ..> B : b1
+B ..> B : b2
+B --> B : b3
+B --> B : b4
+B --> B : b5
+B o-- B : b6
+B --> B : b7
+B "1" --> "*" B

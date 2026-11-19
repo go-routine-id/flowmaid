@@ -1,0 +1,24 @@
+flowchart RL
+    N0[Store report]
+    N1{Done}
+    N2{Done}
+    N3[(Store)]
+    N4(Notify)
+    N5[Archive]
+    N6([Done])
+    N7([Retry])
+    N8(Fetch)
+    N9([Done parse])
+    N0 --> N1
+    N0 -->|fail| N2
+    N2 -->|fail| N3
+    N2 --> N4
+    N2 --> N5
+    N3 --> N6
+    N6 --> N7
+    N7 --> N8
+    N7 --> N9
+    N2 --> N9
+    N9 -->|retry| N5
+    N4 -->|retry| N2
+    N9 -->|again| N0

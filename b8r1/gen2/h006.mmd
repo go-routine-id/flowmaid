@@ -1,0 +1,22 @@
+flowchart TD
+  s0["auth store"]
+  subgraph g0["billing auth store zone"]
+    m0["queue metric web"]
+    m1["auth report"]
+    m2["search"]
+    m0 --> m1
+    m0 --> m2
+  end
+  subgraph g1["search zone"]
+    m3["trace"]
+  end
+  subgraph g2["auth pay zone"]
+    direction LR
+    m4["cache notify"]
+    m5["metric db"]
+    m6["pay search log"]
+    m4 --> m5
+  end
+  s0 --> m0
+  s0 --> g1
+  s0 --> g2

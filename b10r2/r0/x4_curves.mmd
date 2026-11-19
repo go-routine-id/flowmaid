@@ -1,0 +1,14 @@
+flowchart TD
+    A[Start] e1@--> B[Mid one]
+    A e2@--> C[Mid two]
+    A --> D[Mid three]
+    B --> E[End]
+    C --> E
+    D -->|done| E
+    A --> E
+    e1@{ curve: basis }
+    e2@{ curve: stepBefore }
+    linkStyle 2 stroke:#e00,stroke-width:4px,interpolate natural
+    linkStyle 3 stroke:#0a0,stroke-width:3px
+    classDef hot fill:#fdd,stroke:#c00
+    class B hot
