@@ -3775,3 +3775,54 @@ fn a_followed_path_is_rounded_as_the_router_rounds_one() {
         assert!(checked > 50, "{checked} paths checked");
     });
 }
+
+#[test]
+fn sibling_frames_of_a_band_start_level_and_keep_their_size() {
+    // B12 X4: top-level frames that share their first row start level,
+    // the later one moved upstream as a whole. The public fixture's build
+    // pipeline (one-line first row) started 21 px below the shared
+    // services (two-line nodes): side by side and neither's span holding
+    // the other's (`sib_stagger`). Drawn TD and BT; the frames keep the
+    // size their members give them, and `route()` at the scene's centres
+    // draws the same frames.
+    let src = std::fs::read_to_string(format!(
+        "{}/tests/fixtures/blocks/blocks-overview.mmd",
+        env!("CARGO_MANIFEST_DIR")
+    ))
+    .unwrap();
+    for dir in ["TD", "BT"] {
+        let g = graph(&in_direction(&src, dir));
+        let sc = block_scene(&g);
+        let q = crate::quality::measure(&g, &sc);
+        assert_eq!(q.sib_stagger, 0, "{dir}");
+        let (ci, edge) = (frame_box(&sc, "CI"), frame_box(&sc, "EDGE"));
+        // Side by side, one's span along the flow holds the other's.
+        let holds =
+            |a: (f64, f64, f64, f64), b: (f64, f64, f64, f64)| a.1 <= b.1 + 0.5 && a.3 >= b.3 - 0.5;
+        assert!(holds(ci, edge) || holds(edge, ci), "{dir}: {ci:?} {edge:?}");
+        if dir == "TD" {
+            assert!((ci.1 - edge.1).abs() < 0.5, "{dir}: {ci:?} {edge:?}");
+        }
+        // The build pipeline's frame is its members and their pad, as
+        // before the shift (it moved, it did not grow).
+        let members = ["REPO", "BUILD", "REG"].map(|id| node_box(&sc, id));
+        let span = members
+            .iter()
+            .map(|b| b.3)
+            .fold(f64::NEG_INFINITY, f64::max)
+            - members.iter().map(|b| b.1).fold(f64::INFINITY, f64::min);
+        assert!((ci.3 - ci.1) - span < 80.0, "{dir}: {ci:?} round {span}");
+        let at: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+        let routed = crate::levels::with_blocks(true, || crate::scene::route(&g, &at));
+        for id in ["CI", "EDGE"] {
+            let (a, b) = (frame_box(&sc, id), frame_box(&routed, id));
+            assert!(
+                (a.0 - b.0).abs() < 0.5
+                    && (a.1 - b.1).abs() < 0.5
+                    && (a.2 - b.2).abs() < 0.5
+                    && (a.3 - b.3).abs() < 0.5,
+                "{dir} {id}: {a:?} routed {b:?}"
+            );
+        }
+    }
+}

@@ -5863,10 +5863,25 @@ fn place(
     }
     let total_b = (maxb - minb) + 2.0 * MARGIN;
 
+    // B12 X4: the top-level sibling frames of a band start level.
+    let lpos = match (block_paths, node_cluster) {
+        (Some(_), Some(nc)) => level_sibling_frames(
+            g,
+            nc,
+            &apath,
+            &alayer,
+            &alsize,
+            &lcoord,
+            &cluster_span,
+            &header,
+            &title_jog,
+        ),
+        _ => (0..na).map(|v| lcoord[alayer[v]]).collect(),
+    };
     let nodes = (0..n)
         .map(|v| Placed {
             b: bpos[v],
-            l: lcoord[alayer[v]],
+            l: lpos[v],
             bsize: absize[v],
             lsize: alsize[v],
             layer: alayer[v],
@@ -5877,12 +5892,7 @@ fn place(
     // renderer that wants to spline the edge through its channel.
     let edge_paths: Vec<Vec<(f64, f64)>> = edge_chain
         .iter()
-        .map(|chain| {
-            chain
-                .iter()
-                .map(|&d| (bpos[d], lcoord[alayer[d]]))
-                .collect()
-        })
+        .map(|chain| chain.iter().map(|&d| (bpos[d], lpos[d])).collect())
         .collect();
     // The search judges the candidate on its judged layer lines (see
     // `layer_lines`).
@@ -5958,6 +5968,107 @@ const TITLE_FIT_PASSES: usize = 2;
 /// Excess (px) under which a grown frame counts as held by its walls
 /// already: float noise of the breadth placement.
 const TITLE_FIT_EPS: f64 = 0.5;
+
+/// B12 X4: the positions along the flow of a block layout's nodes and
+/// chain dummies (by augmented index). Each sits on its layer line, with
+/// one exception that levels sibling frames: on a layer that is the
+/// first row of two or more top-level blocks, every block whose frame
+/// starts later than the earliest of them moves upstream, as a whole
+/// (its members at any depth and the dummies of the chains it holds),
+/// until its frame's leading edge meets the earliest. A frame's leading
+/// edge is its first-row members' upstream edges less, per frame from
+/// that block inwards that opens on the layer, what the scene's frame
+/// reaches past them there: [`FRAME_PAD`] and, in TD, the title strip
+/// and the jog room ([`title_jogs`]).
+///
+/// It needs no room: the earliest leading edge is one the layer lines
+/// already reserve (`reach_of` takes the largest reach on the layer),
+/// and the gap after a moved block only grows. The block moves whole,
+/// so its frame keeps its size: moving only its first-row members (the
+/// spec's first wording) stretched the frame by the shift, which cost
+/// frame compactness, and left the dummies of its inner chains on the
+/// old line. Top-level blocks only: levelling nested siblings changed
+/// no frame the gates read and lengthened a dense drawing's parallel
+/// runs (dense-td drawn TD: `band_len` +242). TD / BT only: in LR / RL
+/// the shift took one more crossing on dense-lr and moved two lines of
+/// `notes/spread-bottom` 4 px nearer. The shift is a layout coordinate,
+/// not a frame rule: frames stay functions of their own members, so
+/// `route()` at the scene's centres draws them the same. Without it,
+/// sibling frames of a band whose first rows differ in height started
+/// apart and read as interleaved (the public fixture's build pipeline
+/// beside the shared services: `sib_stagger`).
+#[allow(clippy::too_many_arguments)] // internal: one bundle of layered-graph state
+fn level_sibling_frames(
+    g: &Graph,
+    nc: &[Vec<usize>],
+    apath: &[Vec<usize>],
+    alayer: &[usize],
+    alsize: &[f64],
+    lcoord: &[f64],
+    cluster_span: &BTreeMap<usize, (usize, usize)>,
+    header: &[f64],
+    title_jog: &[f64],
+) -> Vec<f64> {
+    let n = g.nodes.len();
+    let na = alayer.len();
+    let mut lpos: Vec<f64> = (0..na).map(|v| lcoord[alayer[v]]).collect();
+    if !matches!(g.direction, Direction::TD | Direction::BT) {
+        return lpos;
+    }
+    let td = matches!(g.direction, Direction::TD);
+    // What frame `c` reaches upstream past a member on its first row.
+    let grow = |c: usize| -> f64 {
+        FRAME_PAD
+            + if td {
+                header.get(c).copied().unwrap_or(0.0) + title_jog.get(c).copied().unwrap_or(0.0)
+            } else {
+                0.0
+            }
+    };
+    // Block `c`'s leading edge along the flow, from its members on its
+    // first row `li`.
+    let edge = |c: usize, li: usize| -> Option<f64> {
+        let mut out: Option<f64> = None;
+        for v in (0..n).filter(|&v| alayer[v] == li && nc[v].contains(&c)) {
+            let at = nc[v].iter().position(|&x| x == c).unwrap_or(0);
+            let reach: f64 = nc[v][at..]
+                .iter()
+                .filter(|c2| cluster_span.get(c2).is_some_and(|&(lo, _)| lo == li))
+                .map(|&c2| grow(c2))
+                .sum();
+            let e = lcoord[li] - alsize[v] / 2.0 - reach;
+            out = Some(out.map_or(e, |o: f64| o.min(e)));
+        }
+        out
+    };
+    // Top-level blocks by their first row.
+    let mut groups: BTreeMap<usize, Vec<usize>> = BTreeMap::new();
+    for (&c, &(lo, _)) in cluster_span {
+        if g.subgraphs[c].parent.is_none() {
+            groups.entry(lo).or_default().push(c);
+        }
+    }
+    for (li, blocks) in groups {
+        if blocks.len() < 2 {
+            continue;
+        }
+        let edges: Vec<(usize, f64)> = blocks
+            .iter()
+            .filter_map(|&c| edge(c, li).map(|e| (c, e)))
+            .collect();
+        let target = edges.iter().map(|e| e.1).fold(f64::INFINITY, f64::min);
+        for (c, e) in edges {
+            let d = target - e;
+            if d.abs() < ALIGN_EPS {
+                continue;
+            }
+            for v in (0..na).filter(|&v| apath[v].first() == Some(&c)) {
+                lpos[v] += d;
+            }
+        }
+    }
+    lpos
+}
 
 /// Each block's F1 frame across the flow at these breadths (TD / BT;
 /// `scene::frame_boxes` in layout coordinates, without the jog room,

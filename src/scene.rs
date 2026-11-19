@@ -734,7 +734,7 @@ impl<'a> HopPick<'a> {
         } else {
             (start, segs)
         };
-        let Some(strokes) = hopped(start, &segs, &hops) else {
+        let Some(strokes) = hopped(start, &segs, &hops, self.sc.block_layout) else {
             return d;
         };
         let mut best = f64::INFINITY;
@@ -1249,6 +1249,15 @@ impl Seg {
         }
     }
 
+    /// The command with its end moved to `p` (its controls kept).
+    fn ending_at(self, p: (f64, f64)) -> Seg {
+        match self {
+            Seg::L(_) => Seg::L(p),
+            Seg::Q(c, _) => Seg::Q(c, p),
+            Seg::C(a, b, _) => Seg::C(a, b, p),
+        }
+    }
+
     /// The command with every point mapped through `t`.
     fn map(self, t: &impl Fn((f64, f64)) -> (f64, f64)) -> Seg {
         match self {
@@ -1458,6 +1467,17 @@ enum Stroke {
     A { r: f64, cw: bool, to: (f64, f64) },
 }
 
+/// How far (px) a hop's foot may lie off its line and still be set on
+/// it in a block layout's painting ([`hopped`]'s `on_line`): below the
+/// SVG's 0.1 px writing, so the stroke moves by nothing a pick or an eye
+/// can tell. The stroke's spline turns a hair before a corner: on a line
+/// at y .25 a foot a millionth of a px past it was written 0.1 px off
+/// the line before it (.3 against .2), which read as a step at the hop
+/// (the public fixture's `REG --> ORD` once its build pipeline was
+/// levelled with the shared services, B12 X4: five turns counted
+/// instead of four).
+const FOOT_SNAP: f64 = 0.05;
+
 /// The path `(start, segs)` with each of `hops` (in the path's own
 /// coordinates) drawn in (report M15, [`crate::hops`]): where the path
 /// reaches a hop's near foot it leaves its line on a quarter circle up
@@ -1466,8 +1486,15 @@ enum Stroke {
 /// stretch of line under the hop left out. A hop whose near foot the path does not
 /// pass on its line is left out and the path drawn through; `None`
 /// when it never comes down from one (the caller then draws the path
-/// plain).
-fn hopped(start: (f64, f64), segs: &[Seg], hops: &[crate::hops::Hop]) -> Option<Vec<Stroke>> {
+/// plain). With `on_line` (a block layout's scene, `Scene::block_layout`)
+/// a foot within [`FOOT_SNAP`] of the hop's line is set on it, so both
+/// feet and the line before them are written alike.
+fn hopped(
+    start: (f64, f64),
+    segs: &[Seg],
+    hops: &[crate::hops::Hop],
+    on_line: bool,
+) -> Option<Vec<Stroke>> {
     let mut out = Vec::with_capacity(segs.len() + 3 * hops.len());
     let mut cur = start;
     // The hop the path is stepping over, and whether it runs towards
@@ -1496,7 +1523,15 @@ fn hopped(start: (f64, f64), segs: &[Seg], hops: &[crate::hops::Hop]) -> Option<
             match (inside, is_near) {
                 (None, true) if t >= from => {
                     if t > from {
-                        out.push(Stroke::S(seg.part(cur, from, t).1));
+                        let part = seg.part(cur, from, t).1;
+                        let foot = part.end();
+                        out.push(Stroke::S(
+                            if on_line && (foot.1 - hops[h].y).abs() < FOOT_SNAP {
+                                part.ending_at((foot.0, hops[h].y))
+                            } else {
+                                part
+                            },
+                        ));
                     }
                     inside = Some((h, fwd));
                 }
@@ -1504,6 +1539,11 @@ fn hopped(start: (f64, f64), segs: &[Seg], hops: &[crate::hops::Hop]) -> Option<
                     let hop = &hops[h];
                     let (r, cw) = (hop.r, fwd);
                     let foot = cubic_at(&b, t);
+                    let foot = if on_line && (foot.1 - hop.y).abs() < FOOT_SNAP {
+                        (foot.0, hop.y)
+                    } else {
+                        foot
+                    };
                     let top = hop.y - r;
                     let (a, z) = if fwd {
                         (hop.x0, hop.x1)
@@ -1543,8 +1583,8 @@ fn hopped(start: (f64, f64), segs: &[Seg], hops: &[crate::hops::Hop]) -> Option<
 
 /// [`curve_d`] of the path `(start, segs)` with each of `hops` drawn in
 /// ([`hopped`]).
-fn hopped_d(start: (f64, f64), segs: &[Seg], hops: &[crate::hops::Hop]) -> String {
-    let strokes = match hopped(start, segs, hops) {
+fn hopped_d(start: (f64, f64), segs: &[Seg], hops: &[crate::hops::Hop], on_line: bool) -> String {
+    let strokes = match hopped(start, segs, hops, on_line) {
         Some(s) if !hops.is_empty() => s,
         _ => return curve_d(start, segs, |p| p),
     };
@@ -2769,7 +2809,7 @@ fn painted_path(
     p: &PaintedEdge,
     t: impl Fn((f64, f64)) -> (f64, f64),
 ) -> (String, Option<f64>) {
-    painted_path_hops(e, p, t, &[])
+    painted_path_hops(e, p, t, &[], false)
 }
 
 /// [`painted_path`] with the edge's crossing `hops` drawn in (scene
@@ -2782,6 +2822,7 @@ fn painted_path_hops(
     p: &PaintedEdge,
     t: impl Fn((f64, f64)) -> (f64, f64),
     hops: &[crate::hops::Hop],
+    on_line: bool,
 ) -> (String, Option<f64>) {
     let (start, segs) = if p.cuts == [None, None] {
         plain_segs(e, &t)
@@ -2802,11 +2843,11 @@ fn painted_path_hops(
     let (a0, a3) = arrow_trims(e);
     if (t0, t3) != (a0, a3) {
         if let (_, _, Some(len)) = trim_segs_or_len(start, segs.clone(), a0, a3) {
-            return (hopped_d(start, &segs, &hops), Some(len));
+            return (hopped_d(start, &segs, &hops, on_line), Some(len));
         }
     }
     let (start, segs, whole) = trim_segs_or_len(start, segs, t0, t3);
-    (hopped_d(start, &segs, &hops), whole)
+    (hopped_d(start, &segs, &hops, on_line), whole)
 }
 
 /// How far (px) the painter stops a stroke `width` px wide short of an
@@ -9199,7 +9240,10 @@ pub fn to_svg_a11y_with(sc: &Scene, default_title: &str, a11y: &A11y, opts: &Svg
         .iter()
         .zip(&painted)
         .enumerate()
-        .map(|(i, (e, p))| p.as_ref().map(|p| painted_path_hops(e, p, t, &hops[i])))
+        .map(|(i, (e, p))| {
+            p.as_ref()
+                .map(|p| painted_path_hops(e, p, t, &hops[i], sc.block_layout))
+        })
         .collect();
     let whole: Vec<Option<f64>> = paths.iter().map(|p| p.as_ref().and_then(|p| p.1)).collect();
     let markers = edge_markers(&sc.edges, &head_sizes(sc, &painted, &whole), &pal.line);
@@ -14018,7 +14062,8 @@ mod tests {
                     // arrowhead; the head inks that stretch, so the
                     // whole curve is what a pick must cover.
                     let shift = |p: (f64, f64)| (p.0 + tx, p.1 + ty);
-                    let painted = painted_path_hops(e, &painted_edge(e), shift, hops).0;
+                    let painted =
+                        painted_path_hops(e, &painted_edge(e), shift, hops, s.block_layout).0;
                     assert!(
                         svg.contains(&format!("<path d=\"{painted}\"")),
                         "{what}: {painted} not painted"
@@ -14033,7 +14078,7 @@ mod tests {
                             ..*h
                         })
                         .collect();
-                    let d = hopped_d(start, &segs, &hops);
+                    let d = hopped_d(start, &segs, &hops, s.block_layout);
                     assert_eq!(hops.is_empty(), !d.contains(" A "), "{what}: {d}");
                     assert_eq!(
                         painted.matches(" A ").count(),
@@ -20737,6 +20782,40 @@ mod tests {
     }
 
     #[test]
+    fn a_block_layouts_hop_feet_are_written_on_their_line() {
+        // A level stroke at y .25 whose spline lies a hair (1e-7 px) off
+        // its line where it reaches a hop: the foot was written 0.1 px off
+        // the line before it (.3 against .2), which a reader of the SVG
+        // takes for a step at the hop. In a block layout's painting
+        // (`on_line`) the feet sit on the hop's line; elsewhere the paint
+        // is as before.
+        let y = 100.25 + 1e-7;
+        let hop = crate::hops::Hop {
+            y: 100.25,
+            x0: 50.0,
+            x1: 50.0,
+            r: 5.0,
+            over: 1,
+        };
+        let segs = [Seg::L((100.0, y))];
+        let on = hopped_d((0.0, 100.25), &segs, &[hop], true);
+        let off = hopped_d((0.0, 100.25), &segs, &[hop], false);
+        assert!(
+            on.contains("L 45.0 100.2 A") && on.contains(" 55.0 100.2 "),
+            "{on}"
+        );
+        assert!(
+            off.contains("L 45.0 100.3 A") && off.contains(" 55.0 100.3 "),
+            "{off}"
+        );
+        // A foot farther off its line than the SVG writes stays where
+        // the stroke is.
+        let far = [Seg::L((100.0, 100.4))];
+        let d = hopped_d((0.0, 100.25), &far, &[hop], true);
+        assert_eq!(d, hopped_d((0.0, 100.25), &far, &[hop], false));
+    }
+
+    #[test]
     fn marquee_selects_an_edge_once_its_painted_stroke_touches() {
         // hits_in_rect used to test the rectangle against edge_polyline,
         // the sampled centre line: a marquee that covered only the
@@ -20772,7 +20851,7 @@ mod tests {
                 // sampled (written to 0.1, so up to ~0.07 off), with the
                 // hops it steps over the lines it crosses on.
                 let (start, segs) = drawn_segs(e, |p| p);
-                let pts = path_d_points(&hopped_d(start, &segs, &hops[i]), 0.5);
+                let pts = path_d_points(&hopped_d(start, &segs, &hops[i], s.block_layout), 0.5);
                 let gap = |r: &[f64; 4]| {
                     pts.iter()
                         .map(|&p| PickTarget::box_gap(p, r[0], r[1], r[2], r[3]))

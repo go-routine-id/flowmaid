@@ -1585,8 +1585,7 @@ impl Track {
         // A label that lies in one is preferred where its line leaves it
         // nearest the spot it held (the outside spot nearest that), not
         // at the line's middle: so it stays as near its end as the frames
-        // let it (a long edge's middle lay 818 px from either end, the
-        // chip had sat 465 px from one).
+        // let it (on a long edge the middle can lie far from both).
         if !off.0.is_empty() {
             let meets = |k: usize| {
                 let r = label_rect(spots[k], w);
