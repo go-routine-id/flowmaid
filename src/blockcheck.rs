@@ -3828,6 +3828,49 @@ fn sibling_frames_of_a_band_start_level_and_keep_their_size() {
 }
 
 #[test]
+fn a_chip_kept_off_its_end_blocks_stays_on_its_line() {
+    // B12 G3 keeps a label off the frames that hold one end of its edge
+    // only while that leaves it a clean spot ON its line: where the best
+    // spot outside them lay beside the line, chips came off their lines
+    // (the public fixture drawn BT set `place order` 41 px beside its line
+    // by the Storefront title, drawn LR `write` 20 px; `response` hung
+    // 35 px beside its line). Mermaid centres a chip on its line; here a
+    // chip inside its end block still reads as its line's label.
+    for (name, label) in [
+        ("blocks-overview-bt", "place order"),
+        ("blocks-overview-lr", "write"),
+        ("reqresp", "response"),
+    ] {
+        let g = fixture(&format!("blocks/{name}"));
+        let sc = block_scene(&g);
+        for e in &sc.edges {
+            let Some((text, at, _)) = &e.label else {
+                continue;
+            };
+            if text != label {
+                continue;
+            }
+            let path = crate::scene::edge_polyline(e);
+            let seg = |a: (f64, f64), b: (f64, f64)| {
+                let (dx, dy) = (b.0 - a.0, b.1 - a.1);
+                let l2 = dx * dx + dy * dy;
+                let t = if l2 > 0.0 {
+                    (((at.0 - a.0) * dx + (at.1 - a.1) * dy) / l2).clamp(0.0, 1.0)
+                } else {
+                    0.0
+                };
+                (a.0 + t * dx - at.0).hypot(a.1 + t * dy - at.1)
+            };
+            let off = path
+                .windows(2)
+                .map(|s| seg(s[0], s[1]))
+                .fold(f64::INFINITY, f64::min);
+            assert!(off <= 3.0, "{name} `{label}`: {off:.1} px off its line");
+        }
+    }
+}
+
+#[test]
 fn a_block_its_links_take_room_from_stays_on_its_layer_lines() {
     // B12 X4 levels a staggered sibling frame by moving its block
     // upstream; the shift comes out of the gaps its own links cross. A

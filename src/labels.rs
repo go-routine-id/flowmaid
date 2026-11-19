@@ -1593,10 +1593,24 @@ impl Track {
                     .iter()
                     .any(|f| r.0 < f.2 && r.2 > f.0 && r.1 < f.3 && r.3 > f.1)
             };
-            if inner.iter().any(|&k| !meets(k)) {
-                inner.retain(|&k| !meets(k));
-                if let Some(p) = off.1 {
-                    let d2 = |k: usize| (spots[k].0 - p.0).powi(2) + (spots[k].1 - p.1).powi(2);
+            // A label that lies in one leaves it only for a spot no
+            // farther from its line's nearer end: past that, the gap
+            // between the blocks is no nearer the end the label tells
+            // about than the frame's inside, and a long edge would carry
+            // its chip off to its middle (B12 G3 against `lbl_endpx`).
+            let end = |k: usize| arc[k].min(s - arc[k]);
+            let near = |p: (f64, f64)| {
+                let d2 = |k: usize| (spots[k].0 - p.0).powi(2) + (spots[k].1 - p.1).powi(2);
+                (0..spots.len()).min_by(|&a, &b| d2(a).total_cmp(&d2(b)))
+            };
+            let held = off.1.and_then(near).map(|k| (k, end(k)));
+            let keeps = |k: usize| !meets(k) && held.map_or(true, |(_, e)| end(k) <= e + TOUCH_EPS);
+            if inner.iter().any(|&k| keeps(k)) {
+                inner.retain(|&k| keeps(k));
+                if let Some((h, _)) = held {
+                    let d2 = |k: usize| {
+                        (spots[k].0 - spots[h].0).powi(2) + (spots[k].1 - spots[h].1).powi(2)
+                    };
                     if let Some(&k) = inner.iter().min_by(|&&a, &&b| d2(a).total_cmp(&d2(b))) {
                         mid = arc[k];
                     }
@@ -2037,6 +2051,10 @@ fn place_long(
         .map(|e| pairs.get(&pair(e)).is_some_and(|&k| k > 1))
         .collect();
     let mut tracks: Vec<Option<Track>> = (0..n).map(|_| None).collect();
+    // Per edge with end blocks, its spots with none kept off them: the
+    // search a label falls back on when the frames leave it no clean
+    // spot on its line (lead ruling on G3: a chip stays on its line).
+    let mut whole_tracks: Vec<Option<Track>> = (0..n).map(|_| None).collect();
     // A fan label left in the near half of its line (the builder's
     // midpoint slot, say) is stacked into the far part first; one that
     // finds no spot there is re-placed below like a detached one.
@@ -2247,9 +2265,32 @@ fn place_long(
                     at
                 }
             } else {
-                best_spot(
+                let (to, key) = best_spot(
                     &field, &placed, &edges[ei], nodes, ei, at, w, track, off_line,
-                )
+                );
+                // B12 G3 keeps a label off its end blocks only while that
+                // leaves it a clean spot ON its line. Where the best spot
+                // outside them lies beside the line (or is not clean),
+                // the label is searched as if there were no end blocks:
+                // a chip inside its end block still reads as its line's
+                // label, one beside the line no longer does (mermaid
+                // centres every chip on its line). The public fixture
+                // drawn BT set `place order` 41 px beside its line by the
+                // Storefront title once the frame's stretch of the line
+                // was barred.
+                let on_line = key.tier == Tier::Line && field.settled(&key);
+                match (&lines[ei], off_ends[ei].0.is_empty() || on_line) {
+                    (Some(pts), false) => {
+                        let whole = whole_tracks[ei].get_or_insert_with(|| {
+                            Track::new(pts, hub[ei].0, w, keep[ei], &field, &(Vec::new(), None))
+                        });
+                        best_spot(
+                            &field, &placed, &edges[ei], nodes, ei, at, w, whole, off_line,
+                        )
+                        .0
+                    }
+                    _ => to,
+                }
             };
             tried[ei] = true;
             if to != at {
@@ -2967,7 +3008,7 @@ fn best_spot(
     w: f64,
     track: &Track,
     off_line: bool,
-) -> (f64, f64) {
+) -> ((f64, f64), SpotKey) {
     let mut best = (at, SpotKey::WORST);
     if !off_line {
         // The old spot keeps its slot unless it hits something: being
@@ -3029,15 +3070,21 @@ fn best_spot(
         }
     }
     if !best.1.blocked {
-        return best.0;
+        return best;
     }
     // Out of work: the best spot so far, or (none found off the line)
     // the line's own preferred one.
     if field.spent(placed) {
         return if off_line && best.1.dev.is_infinite() {
-            track.own_spot()
+            (
+                track.own_spot(),
+                SpotKey {
+                    tier: Tier::Line,
+                    ..SpotKey::WORST
+                },
+            )
         } else {
-            best.0
+            best
         };
     }
     // 3. Anywhere on the line (near its ends, past a self-loop): the
@@ -3057,7 +3104,7 @@ fn best_spot(
     if let Some(p) = clear {
         let key = tier_key(p, Hits::default(), false, 0);
         if key.better(&best.1) {
-            return p;
+            return (p, key);
         }
     }
     let touch = |p: &(f64, f64)| {
@@ -3081,7 +3128,7 @@ fn best_spot(
             }
         }
     }
-    best.0
+    best
 }
 
 /// Fallback when the scans found nothing clear: every spot along the
@@ -3417,6 +3464,61 @@ mod tests {
             &(vec![(-50.0, -10.0, 50.0, 410.0)], Some((0.0, 150.0))),
         );
         assert_eq!(all.scan.len(), free.scan.len());
+    }
+
+    #[test]
+    fn a_label_leaves_its_end_block_for_no_spot_farther_from_an_end() {
+        // A label that sat inside an end block, 300 px down a 1000 px
+        // line, leaves it only for a spot at most 300 px from an end of
+        // its line: the stretch between the blocks lies past that on a
+        // long edge, and the chip would be carried off to its middle.
+        let pts = [(0.0, 0.0), (0.0, 1000.0)];
+        let field = Field {
+            fixed: Fixed::new(),
+            lines: &[],
+            stroke_grid: OnceCell::new(),
+            budget: usize::MAX,
+            strokes_matter: true,
+            labelled: Vec::new(),
+        };
+        let w = 60.0;
+        let near = (-50.0, -10.0, 50.0, 600.0);
+        let free = Track::new(
+            &pts,
+            LABEL_PREFER,
+            w,
+            LABEL_KEEP,
+            &field,
+            &(Vec::new(), None),
+        );
+        // The far end's block leaves 610..880 outside: only its far part
+        // (700 on) lies no farther from an end than the label sat.
+        let far = (-50.0, 890.0, 50.0, 1010.0);
+        let kept = Track::new(
+            &pts,
+            LABEL_PREFER,
+            w,
+            LABEL_KEEP,
+            &field,
+            &(vec![near, far], Some((0.0, 300.0))),
+        );
+        assert!(!kept.scan.is_empty());
+        for &(_, k) in &kept.scan {
+            let y = kept.spots[k].1;
+            assert!((700.0 - TOUCH_EPS..880.0).contains(&y), "{y}");
+        }
+        // The far block leaves only 610..670: every spot there lies
+        // farther from both ends, so the label keeps its whole line.
+        let far = (-50.0, 680.0, 50.0, 1010.0);
+        let whole = Track::new(
+            &pts,
+            LABEL_PREFER,
+            w,
+            LABEL_KEEP,
+            &field,
+            &(vec![near, far], Some((0.0, 300.0))),
+        );
+        assert_eq!(whole.scan.len(), free.scan.len());
     }
 
     #[test]
