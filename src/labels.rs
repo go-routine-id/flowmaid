@@ -1522,6 +1522,10 @@ impl Field<'_> {
     }
 }
 
+/// The frames a label keeps off (B12 G3's end blocks, (x0, y0, x1, y1))
+/// and, when it lies in one, its spot ([`Track::new`]).
+type OffEnds = (Vec<(f64, f64, f64, f64)>, Option<(f64, f64)>);
+
 /// One label's spots along its drawn curve, kept across rounds.
 struct Track {
     /// The densified curve.
@@ -1550,7 +1554,14 @@ struct Track {
 }
 
 impl Track {
-    fn new(pts: &[(f64, f64)], prefer: f64, w: f64, keep: f64, field: &Field) -> Self {
+    fn new(
+        pts: &[(f64, f64)],
+        prefer: f64,
+        w: f64,
+        keep: f64,
+        field: &Field,
+        off: &OffEnds,
+    ) -> Self {
         let spots = densify(pts);
         let mut arc = Vec::with_capacity(spots.len());
         let mut s = 0.0;
@@ -1561,12 +1572,37 @@ impl Track {
             arc.push(s);
         }
         let (lo, hi) = (s * LABEL_SCAN_END, s * (1.0 - LABEL_SCAN_END));
-        let mid = s * prefer;
+        let mut mid = s * prefer;
         let mut inner: Vec<usize> = (0..spots.len())
             .filter(|&k| arc[k] >= lo && arc[k] <= hi)
             .collect();
         if inner.is_empty() {
             inner = (0..spots.len()).collect();
+        }
+        // A block layout's label keeps off the frames that hold one end of
+        // its edge and not the other (B12 G3, `off`): the spots whose chip
+        // would meet one are not tried, unless no other is left.
+        // A label that lies in one is preferred where its line leaves it
+        // nearest the spot it held (the outside spot nearest that), not
+        // at the line's middle: so it stays as near its end as the frames
+        // let it (a long edge's middle lay 818 px from either end, the
+        // chip had sat 465 px from one).
+        if !off.0.is_empty() {
+            let meets = |k: usize| {
+                let r = label_rect(spots[k], w);
+                off.0
+                    .iter()
+                    .any(|f| r.0 < f.2 && r.2 > f.0 && r.1 < f.3 && r.3 > f.1)
+            };
+            if inner.iter().any(|&k| !meets(k)) {
+                inner.retain(|&k| !meets(k));
+                if let Some(p) = off.1 {
+                    let d2 = |k: usize| (spots[k].0 - p.0).powi(2) + (spots[k].1 - p.1).powi(2);
+                    if let Some(&k) = inner.iter().min_by(|&&a, &&b| d2(a).total_cmp(&d2(b))) {
+                        mid = arc[k];
+                    }
+                }
+            }
         }
         // A long curve is scanned at a coarser stride, so a label costs
         // at most LABEL_MAX_SPOTS spots (route() runs on every drag).
@@ -1723,7 +1759,10 @@ const ROW_APART: f64 = 12.0;
 /// along its run counts as long too, whoever flagged it. In a block
 /// layout (`blocks`) a label re-placed at its line's preferred spot keeps
 /// off the frames that hold only one end of its edge (B12 G3,
-/// [`crate::scene::label_off_frames`]).
+/// [`crate::scene::label_off_frames`]), and so does every spot the
+/// search tries ([`Track::new`]): a label that a crossing track pushed
+/// off its slot slid along its line into the block its edge started in
+/// (the chip's own spot was clean only inside that frame).
 fn place_long(
     nodes: &[SceneNode],
     frames: &[SceneCluster],
@@ -1771,6 +1810,23 @@ fn place_long(
         .iter()
         .map(|e| {
             (edge_drawn(e) && !matches!(e.kind, EdgeKind::Invisible)).then(|| edge_polyline(e))
+        })
+        .collect();
+    // Per edge, the frames its label keeps off in a block layout (B12
+    // G3's end blocks; [`Track::new`]), and the label's spot when it lies
+    // in one.
+    let off_ends: Vec<OffEnds> = edges
+        .iter()
+        .map(|e| match (&e.label, blocks) {
+            (Some((_, at, w)), true) => {
+                let rects = end_blocks(e, nodes, frames);
+                let r = label_rect(*at, *w);
+                let inside = rects
+                    .iter()
+                    .any(|f| r.0 < f.2 && r.2 > f.0 && r.1 < f.3 && r.3 > f.1);
+                (rects, inside.then_some(*at))
+            }
+            _ => (Vec::new(), None),
         })
         .collect();
 
@@ -1989,8 +2045,8 @@ fn place_long(
         let (Some(from_point), Some(pts)) = (fan[ei], &lines[ei]) else {
             return false;
         };
-        let track =
-            tracks[ei].get_or_insert_with(|| Track::new(pts, hub[ei].0, w, keep[ei], &field));
+        let track = tracks[ei]
+            .get_or_insert_with(|| Track::new(pts, hub[ei].0, w, keep[ei], &field, &off_ends[ei]));
         let f = track.share_at(at);
         (if from_point { f } else { 1.0 - f }) < FAN_FAR
     };
@@ -2033,7 +2089,9 @@ fn place_long(
             let up = restack.contains(if from_point { &e.from } else { &e.to });
             if up {
                 let w = e.label.as_ref().map_or(0.0, |l| l.2);
-                tracks[ei].get_or_insert_with(|| Track::new(pts, hub[ei].0, w, keep[ei], &field));
+                tracks[ei].get_or_insert_with(|| {
+                    Track::new(pts, hub[ei].0, w, keep[ei], &field, &off_ends[ei])
+                });
             }
             up
         })
@@ -2152,7 +2210,14 @@ fn place_long(
                 continue;
             }
             if tracks[ei].is_none() {
-                tracks[ei] = Some(Track::new(pts, hub[ei].0, *w, keep[ei], &field));
+                tracks[ei] = Some(Track::new(
+                    pts,
+                    hub[ei].0,
+                    *w,
+                    keep[ei],
+                    &field,
+                    &off_ends[ei],
+                ));
             }
             todo.push((ei, off_line));
         }
@@ -3285,6 +3350,75 @@ pub(crate) fn label_clashes(nodes: &[SceneNode], edges: &[SceneEdge]) -> Vec<boo
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_labels_spots_keep_off_its_end_blocks() {
+        // B12 G3 in the label stage: a block layout's label searching for
+        // a spot tries none whose chip meets a frame that holds one end of
+        // its edge, and one that sat in such a frame prefers the outside
+        // spot nearest where it sat (as near its end as the frames let
+        // it), not the middle of its line. A line 400 px down, the first
+        // 300 px of it inside its source's block.
+        let pts = [(0.0, 0.0), (0.0, 400.0)];
+        let frame = (-50.0, -10.0, 50.0, 300.0);
+        let field = Field {
+            fixed: Fixed::new(),
+            lines: &[],
+            stroke_grid: OnceCell::new(),
+            budget: usize::MAX,
+            strokes_matter: true,
+            labelled: Vec::new(),
+        };
+        let w = 60.0;
+        let outside = |p: (f64, f64)| {
+            let r = label_rect(p, w);
+            r.2 <= frame.0 || r.0 >= frame.2 || r.3 <= frame.1 || r.1 >= frame.3
+        };
+        // Without end blocks the search starts at the middle, inside.
+        let free = Track::new(
+            &pts,
+            LABEL_PREFER,
+            w,
+            LABEL_KEEP,
+            &field,
+            &(Vec::new(), None),
+        );
+        assert!(!outside(free.own_spot()), "{:?}", free.own_spot());
+        // With them every spot it tries lies outside.
+        let kept = Track::new(
+            &pts,
+            LABEL_PREFER,
+            w,
+            LABEL_KEEP,
+            &field,
+            &(vec![frame], None),
+        );
+        assert!(!kept.scan.is_empty());
+        for &(_, k) in &kept.scan {
+            assert!(outside(kept.spots[k]), "{:?}", kept.spots[k]);
+        }
+        // A label that sat inside, at 150, starts next to the frame.
+        let near = Track::new(
+            &pts,
+            LABEL_PREFER,
+            w,
+            LABEL_KEEP,
+            &field,
+            &(vec![frame], Some((0.0, 150.0))),
+        );
+        let first = near.own_spot();
+        assert!(outside(first) && first.1 < 300.0 + LABEL_BOX_H, "{first:?}");
+        // No spot outside: the frames are no reason to give up the line.
+        let all = Track::new(
+            &pts,
+            LABEL_PREFER,
+            w,
+            LABEL_KEEP,
+            &field,
+            &(vec![(-50.0, -10.0, 50.0, 410.0)], Some((0.0, 150.0))),
+        );
+        assert_eq!(all.scan.len(), free.scan.len());
+    }
 
     #[test]
     fn floor_i64_is_the_floor_cast_everywhere() {
