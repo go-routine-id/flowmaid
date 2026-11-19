@@ -32,11 +32,14 @@
 //! [`scene`]: crate::scene::scene
 //! [`route`]: crate::scene::route
 
-use crate::clearance::{CLEAR_GAP, CRAMP_NODE_GAP, EDGE_SPACING, FRAME_INSET};
-use crate::model::{Direction, End, Graph};
+use crate::clearance::{
+    CHIP_SEP, CLEAR_GAP, CRAMP_NODE_GAP, CROSS_MERGE, EDGE_SPACING, FRAME_INSET, NODE_CLEARANCE,
+    PARALLEL_COS, PORT_ZONE,
+};
+use crate::model::{Direction, EdgeKind, End, Graph};
 use crate::scene::{
     basis_sample_with, edge_drawn, edge_polyline, grow_canvas, own_box_targets, sample_cubic,
-    shift_scene, Bbox, Scene, ARROW_MARKER_PX, MARGIN,
+    shift_scene, Bbox, Scene, SceneEdge, ARROW_MARKER_PX, MARGIN,
 };
 
 type Pt = (f64, f64);
@@ -443,60 +446,574 @@ pub(crate) fn finish_blocks(g: &Graph, sc: &mut Scene, blocks: Option<&[Vec<usiz
 /// give up and count as no worse ([`stages`]): the quality checks'
 /// own tolerance.
 const GAP_SLACK: f64 = 0.5;
+/// How much farther (px) a chip may lie from its own line in one
+/// drawing than in the other and count as no farther ([`stages`]):
+/// rounding, as a chip set on its line comes back to the same spot.
+const CHIP_OFF_SLACK: f64 = 0.5;
+/// The shortest stretch (px) over which two lines closer than
+/// [`EDGE_SPACING`] read as one stroke ([`Tally`]): half an arrowhead,
+/// so a pin's head standing on another line counts, while two lines
+/// merely passing at a corner do not.
+const CLOSE_RUN: f64 = ARROW_MARKER_PX / 2.0;
 
 /// The edge stages over `sc` with its context built.
 ///
 /// In a block layout's static scene, a title side's frame pins dealt
 /// with its displaced entries as one set ([`crate::ortho`]) are kept
 /// only where the finished drawing is no worse for it than with the
-/// pins where the ports stage put them, as the quality harness counts
-/// a drawing ([`crate::quality::measure`]): no more defects, crossings,
-/// fan crossings or chips on lines, no chip farther off its own line
-/// ([`crate::labels::chips_off_lines`]); and no more entries through a
-/// frame's wall or into a node's flank and no smaller gap between two
-/// lines, unless the set takes away a defect (an arrowhead on another,
-/// two lines on one column). Moving a frame's pins past its entries had
-/// traded one overlap for six crossings on a frame with five pins under
-/// a long title, and three crossings for a lateral entry on another.
+/// pins where the ports stage put them. Where the set moves a pin, the
+/// stages after the ortho stage run on both drawings, and the two are
+/// weighed by a [`Tally`] of the edges they draw differently, against
+/// every other edge: no more lines on one another (or a head on another
+/// line), through a node or over a chip; no more crossings, fan
+/// crossings or lines past a frame title; no chip farther off its own
+/// line ([`chips_no_farther`]); and no more entries through a frame's
+/// wall or into a node's flank and no smaller gap between two lines,
+/// unless the set takes one of the first away. Moving a frame's pins
+/// past its entries had traded one overlap for six crossings on a frame
+/// with five pins under a long title, and three crossings for a lateral
+/// entry on another; and a set that only moved a pin's head from 0.4 to
+/// 1.6 px beside an entry read to the quality harness as an overlap
+/// taken away (its overlap needs a longer run), which the tally does not
+/// count as one. Cost: the ports stage once, the ortho stage twice, the
+/// later stages twice only where the two ortho drawings differ, and a
+/// tally that samples only the lines near what they disagree on (the
+/// quality harness, run twice per drawing here, had made a block
+/// layout's scene up to ten times slower).
 /// `route()` draws a block layout from the static scene, and its drags
 /// with [`Ctx::blocks`] off, so they never deal title sides.
-fn stages(g: &Graph, sc: &mut Scene, cx: Ctx, mode: Mode) {
-    let alt = (mode == Mode::Static && cx.blocks).then(|| (sc.clone(), cx.clone()));
-    if !stages_with(g, sc, cx, mode, true) {
-        return;
-    }
-    let Some((mut apart, cx)) = alt else {
+fn stages(g: &Graph, sc: &mut Scene, mut cx: Ctx, mode: Mode) {
+    let mut moved = vec![false; sc.edges.len()];
+    crate::ports::assign(g, sc, &cx, mode, &mut moved);
+    let alt = (mode == Mode::Static && cx.blocks).then(|| (sc.clone(), cx.clone(), moved.clone()));
+    // Every edge on the axes, its corners rounded (report §2.1): from the
+    // ends the ports stage settled, before the router judges them.
+    let set_dealt = crate::ortho::orthogonalize(g, sc, &mut cx, mode, true);
+    let Some((mut apart, mut cx_apart, moved_apart)) = alt.filter(|_| set_dealt) else {
+        after_ortho(g, sc, cx, mode, moved);
         return;
     };
-    stages_with(g, &mut apart, cx, mode, false);
+    crate::ortho::orthogonalize(g, &mut apart, &mut cx_apart, mode, false);
+    let same = |a: &Scene, b: &Scene| {
+        a.edges
+            .iter()
+            .zip(&b.edges)
+            .all(|(a, b)| a.waypoints == b.waypoints && a.bezier == b.bezier && a.label == b.label)
+    };
+    if same(sc, &apart) && cx.chain == cx_apart.chain && cx.shaped == cx_apart.shaped {
+        // The set moved no pin: one drawing.
+        after_ortho(g, sc, cx, mode, moved);
+        return;
+    }
+    let ends = cx.ends.clone();
+    after_ortho(g, sc, cx, mode, moved);
+    after_ortho(g, &mut apart, cx_apart, mode, moved_apart);
+    let touched: Vec<bool> = sc
+        .edges
+        .iter()
+        .zip(&apart.edges)
+        .map(|(a, b)| {
+            a.waypoints != b.waypoints
+                || a.bezier != b.bezier
+                || a.label.as_ref().map(|l| l.1) != b.label.as_ref().map(|l| l.1)
+        })
+        .collect();
+    if !touched.contains(&true) {
+        return;
+    }
     let (set, kept) = (
-        crate::quality::measure(g, sc),
-        crate::quality::measure(g, &apart),
+        Tally::of(g.direction, sc, &ends, &touched),
+        Tally::of(g.direction, &apart, &ends, &touched),
     );
-    let fewer_defects = set.defects() < kept.defects();
-    let holds = set.defects() <= kept.defects()
-        && crate::labels::chips_off_lines(&sc.edges)
-            <= crate::labels::chips_off_lines(&apart.edges) + GAP_SLACK
-        && set.x_drawn <= kept.x_drawn
-        && set.fan_x <= kept.fan_x
-        && set.edge_chip <= kept.edge_chip
+    let chips_held = chips_no_farther(&sc.edges, &apart.edges, &touched);
+    let fewer_defects = set.close < kept.close;
+    let holds = set.close <= kept.close
+        && chips_held
+        && set.cross <= kept.cross
+        && set.fan <= kept.fan
+        && set.titles <= kept.titles
         && (fewer_defects
-            || set.lateral_x <= kept.lateral_x
-                && set.side_ends <= kept.side_ends
-                && set.min_edge_gap >= kept.min_edge_gap - GAP_SLACK);
+            || set.lateral <= kept.lateral
+                && set.flank <= kept.flank
+                && set.gap >= kept.gap - GAP_SLACK);
     if !holds {
         *sc = apart;
     }
 }
 
-/// [`stages`] with the ortho stage's `pins_as_set`; returns whether a
-/// title side was dealt with its pins as one set.
-fn stages_with(g: &Graph, sc: &mut Scene, mut cx: Ctx, mode: Mode, pins_as_set: bool) -> bool {
-    let mut moved = vec![false; sc.edges.len()];
-    crate::ports::assign(g, sc, &cx, mode, &mut moved);
-    // Every edge on the axes, its corners rounded (report §2.1): from the
-    // ends the ports stage settled, before the router judges them.
-    let pins_moved = crate::ortho::orthogonalize(g, sc, &mut cx, mode, pins_as_set);
+/// Whether no chip of the `touched` edges of drawing `a` lies farther
+/// off its own line than in drawing `b` ([`crate::labels::chip_off_line`];
+/// a chip within [`crate::labels::ON_LINE_TOL`] counts as on it), chip by
+/// chip: a sum could hide one chip moving off its line while another
+/// comes back.
+fn chips_no_farther(a: &[SceneEdge], b: &[SceneEdge], touched: &[bool]) -> bool {
+    a.iter()
+        .zip(b)
+        .zip(touched)
+        .filter(|(_, &t)| t)
+        .all(|((a, b), _)| {
+            let (Some(x), y) = (
+                crate::labels::chip_off_line(a),
+                crate::labels::chip_off_line(b),
+            ) else {
+                return true;
+            };
+            x <= y.unwrap_or(0.0).max(crate::labels::ON_LINE_TOL) + CHIP_OFF_SLACK
+        })
+}
+
+/// A local count of what two drawings of one graph do differently
+/// ([`stages`]): the edges flagged `touched` measured against every
+/// edge, node, chip and frame of their drawing. It reads the stroke as
+/// [`edge_polyline`] samples it and boxes for nodes and chips, enough
+/// to rank two drawings of the same edges; the quality harness is the
+/// yardstick for a drawing on its own.
+#[derive(Debug, Default, PartialEq)]
+struct Tally {
+    /// Pairs of lines closer than [`EDGE_SPACING`] side by side over
+    /// [`CLOSE_RUN`] or more, touching ([`TOUCH_GAP`]) away from their
+    /// crossings, or with one's end that close to the other, all away
+    /// from the ends they share; lines through a node they do not end
+    /// on; label chips a line other than their own runs through.
+    close: usize,
+    /// Crossings between two lines.
+    cross: usize,
+    /// Crossings between two lines that end on one side of one end
+    /// taking [`FAN_MIN`] ends or more.
+    fan: usize,
+    /// Lines past a frame's title chip closer than [`CHIP_SEP`] (or
+    /// touching it, for a line that ends on that frame).
+    titles: usize,
+    /// Crossings of a frame's wall along the flow by a line with one end
+    /// inside the frame.
+    lateral: usize,
+    /// Ends on a node's side along the flow.
+    flank: usize,
+    /// The smallest gap (px) between two lines that neither cross nor
+    /// share an end ([`f64::INFINITY`] when there are none).
+    gap: f64,
+}
+
+impl Tally {
+    fn of(
+        dir: Direction,
+        sc: &Scene,
+        ends: &[Option<(EndRef, EndRef)>],
+        touched: &[bool],
+    ) -> Tally {
+        let mut t = Tally {
+            gap: f64::INFINITY,
+            ..Tally::default()
+        };
+        let drawn = |e: &SceneEdge| {
+            e.from != e.to && edge_drawn(e) && !matches!(e.kind, EdgeKind::Invisible)
+        };
+        // A box round each line from its control points (the curve lies
+        // inside their hull), and where it starts and ends.
+        let hull: Vec<Option<(Rect4, Pt, Pt)>> = sc
+            .edges
+            .iter()
+            .map(|e| {
+                let ctl: &[Pt] = if e.waypoints.len() >= 2 {
+                    &e.waypoints
+                } else {
+                    &e.bezier
+                };
+                (drawn(e) && !ctl.is_empty()).then(|| (bounds(ctl), ctl[0], ctl[ctl.len() - 1]))
+            })
+            .collect();
+        // Only the lines near what the two drawings disagree on are
+        // sampled: the touched lines and their chips, grown by the
+        // farthest any count reaches.
+        let probe = CLEAR_GAP + EDGE_SPACING;
+        let zones: Vec<Rect4> = sc
+            .edges
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| touched[*i])
+            .flat_map(|(i, e)| {
+                let chip = e
+                    .label
+                    .as_ref()
+                    .map(|(_, at, w)| crate::labels::label_rect(*at, *w));
+                hull[i].map(|h| h.0).into_iter().chain(chip)
+            })
+            .collect();
+        let lines: Vec<Option<(Vec<Pt>, Rect4)>> = sc
+            .edges
+            .iter()
+            .zip(&hull)
+            .enumerate()
+            .map(|(i, (e, h))| {
+                let (bb, _, _) = (*h)?;
+                (touched[i] || zones.iter().any(|&z| boxes_near(bb, z, probe))).then(|| {
+                    let pts = straightened(edge_polyline(e));
+                    let bb = bounds(&pts);
+                    (pts, bb)
+                })
+            })
+            .collect();
+        let end_of = |i: usize| ends.get(i).copied().flatten();
+        let along_x = matches!(dir, Direction::LR | Direction::RL);
+        // The side each end lands on, and how many ends each side takes:
+        // a crossing between two lines ending on one side of one end
+        // that takes [`FAN_MIN`] or more is a fan's.
+        let end_sides: Vec<Option<[(EndRef, Side); 2]>> = hull
+            .iter()
+            .enumerate()
+            .map(|(i, h)| {
+                let ((a, b), (_, p, q)) = (end_of(i)?, (*h)?);
+                let side = |e: EndRef, p: Pt| (e, side_of(end_rect(sc, e), p));
+                Some([side(a, p), side(b, q)])
+            })
+            .collect();
+        let mut side_ends: std::collections::BTreeMap<(EndRef, Side), usize> = Default::default();
+        for s in end_sides.iter().flatten().flatten() {
+            *side_ends.entry(*s).or_default() += 1;
+        }
+        let probe = CLEAR_GAP + EDGE_SPACING;
+        for (i, li) in lines.iter().enumerate() {
+            let Some((pi, bi)) = li else { continue };
+            for (j, lj) in lines.iter().enumerate().skip(i + 1) {
+                // Each pair once, and only where one of the two moved.
+                let Some((pj, bj)) = lj else { continue };
+                if !(touched[i] || touched[j]) {
+                    continue;
+                }
+                if !boxes_near(*bi, *bj, probe) {
+                    continue;
+                }
+                let shared: Vec<Rect4> = match (end_of(i), end_of(j)) {
+                    (Some((a, b)), Some((c, d))) => [a, b]
+                        .into_iter()
+                        .filter(|x| *x == c || *x == d)
+                        .map(|x| end_rect(sc, x))
+                        .collect(),
+                    _ => Vec::new(),
+                };
+                let near_shared = |p: Pt| shared.iter().any(|&r| rect_dist(r, p) < PORT_ZONE);
+                let mut hits: Vec<Pt> = Vec::new();
+                for sa in pi.windows(2) {
+                    let ba = seg_bounds(sa[0], sa[1]);
+                    for sb in pj.windows(2) {
+                        if !boxes_near(ba, seg_bounds(sb[0], sb[1]), 0.0) {
+                            continue;
+                        }
+                        if let Some(p) = seg_cross(sa[0], sa[1], sb[0], sb[1]) {
+                            if hits.iter().all(|&q| dist(p, q) >= CROSS_MERGE) {
+                                hits.push(p);
+                            }
+                        }
+                    }
+                }
+                t.cross += hits.len();
+                let fan = match (end_sides[i], end_sides[j]) {
+                    (Some(a), Some(b)) => a.iter().any(|x| {
+                        b.contains(x) && side_ends.get(x).copied().unwrap_or(0) >= FAN_MIN
+                    }),
+                    _ => false,
+                };
+                if fan {
+                    t.fan += hits.len();
+                }
+                let (run, touch) = side_by_side(pi, pj, &near_shared, &hits);
+                let tips = [(pi, pj), (pj, pi)].iter().any(|(a, b)| {
+                    [a.first(), a.last()].into_iter().flatten().any(|&p| {
+                        !near_shared(p)
+                            && b.windows(2)
+                                .any(|w| seg_dist2(p, w[0], w[1]) < EDGE_SPACING * EDGE_SPACING)
+                    })
+                });
+                if run >= CLOSE_RUN || touch < TOUCH_GAP || tips {
+                    t.close += 1;
+                }
+                if hits.is_empty() && shared.is_empty() {
+                    t.gap = t.gap.min(polyline_gap(pi, pj));
+                }
+            }
+            if !touched[i] {
+                continue;
+            }
+            let (from, to) = match end_of(i) {
+                Some(x) => x,
+                None => continue,
+            };
+            // Through a node it does not end on.
+            for (v, n) in sc.nodes.iter().enumerate() {
+                if from == EndRef::Node(v) || to == EndRef::Node(v) {
+                    continue;
+                }
+                let r = (
+                    n.x - n.w / 2.0,
+                    n.y - n.h / 2.0,
+                    n.x + n.w / 2.0,
+                    n.y + n.h / 2.0,
+                );
+                if boxes_near(*bi, r, 0.0) && crate::labels::rect_line_dist(r, pi) < NODE_CLEARANCE
+                {
+                    t.close += 1;
+                }
+            }
+            // Past a frame's title chip; along the flow through a wall of
+            // a frame that holds one end only.
+            let holds = |f: usize, e: EndRef| match e {
+                EndRef::Node(v) => sc.nodes.get(v).is_some_and(|_| {
+                    let r = end_rect(sc, EndRef::Frame(f));
+                    let c = (sc.nodes[v].x, sc.nodes[v].y);
+                    c.0 > r.0 && c.0 < r.2 && c.1 > r.1 && c.1 < r.3
+                }),
+                EndRef::Frame(c) => {
+                    let (r, q) = (
+                        end_rect(sc, EndRef::Frame(f)),
+                        end_rect(sc, EndRef::Frame(c)),
+                    );
+                    q.0 >= r.0 && q.2 <= r.2 && q.1 >= r.1 && q.3 <= r.3
+                }
+            };
+            for f in 0..sc.clusters.len() {
+                let chip = crate::labels::chip_rect(&sc.clusters, f, f64::INFINITY);
+                let reach = if from == EndRef::Frame(f) || to == EndRef::Frame(f) {
+                    NODE_CLEARANCE
+                } else {
+                    CHIP_SEP
+                };
+                if boxes_near(*bi, chip, reach) && crate::labels::rect_line_dist(chip, pi) < reach {
+                    t.titles += 1;
+                }
+                if holds(f, from) != holds(f, to) {
+                    t.lateral += wall_crossings(pi, end_rect(sc, EndRef::Frame(f)), along_x);
+                }
+            }
+            for (k, end) in [(0, from), (pi.len().saturating_sub(1), to)] {
+                if let (EndRef::Node(_), Some(&p)) = (end, pi.get(k)) {
+                    let side = side_of(end_rect(sc, end), p);
+                    t.flank += usize::from(matches!(side, Side::Left | Side::Right) != along_x);
+                }
+            }
+        }
+        // Chips a line other than their own runs through.
+        for (k, e) in sc.edges.iter().enumerate() {
+            let Some((_, at, w)) = &e.label else { continue };
+            let chip = crate::labels::label_rect(*at, *w);
+            for (j, lj) in lines.iter().enumerate() {
+                let Some((pj, bj)) = lj else { continue };
+                if j == k || !(touched[k] || touched[j]) || !boxes_near(*bj, chip, 0.0) {
+                    continue;
+                }
+                if crate::labels::rect_line_dist(chip, pj) < STROKE_HALF {
+                    t.close += 1;
+                }
+            }
+        }
+        t
+    }
+}
+
+/// Two parallel stretches closer than this (px) anywhere touch (two
+/// rounded corners on one another): half the spacing at which two
+/// strokes read as one, as the quality harness counts a touch.
+const TOUCH_GAP: f64 = EDGE_SPACING / 2.0;
+/// A touch this near (px) a crossing of the same two lines is the
+/// crossing itself: two node clearances, as the harness skips it.
+const TOUCH_CROSS_SKIP: f64 = 2.0 * CRAMP_NODE_GAP;
+/// The ends a side of a node or frame takes before two of its lines
+/// crossing count as a fan's crossing ([`Tally::fan`]), as the harness
+/// counts a fan.
+const FAN_MIN: usize = 3;
+
+/// Half an edge's stroke (px): a line this near a chip runs over it.
+const STROKE_HALF: f64 = crate::scene::EDGE_WIDTH / 2.0;
+
+/// An `(x0, y0, x1, y1)` box.
+type Rect4 = (f64, f64, f64, f64);
+
+/// The box round `pts`.
+fn bounds(pts: &[Pt]) -> Rect4 {
+    pts.iter().fold(
+        (
+            f64::INFINITY,
+            f64::INFINITY,
+            f64::NEG_INFINITY,
+            f64::NEG_INFINITY,
+        ),
+        |r, p| (r.0.min(p.0), r.1.min(p.1), r.2.max(p.0), r.3.max(p.1)),
+    )
+}
+
+/// `pts` with every point that lies on a straight run between its
+/// neighbours dropped: a sampled straight leg as one segment, a rounded
+/// corner kept as sampled.
+fn straightened(pts: Vec<Pt>) -> Vec<Pt> {
+    let mut out: Vec<Pt> = Vec::with_capacity(pts.len());
+    for p in pts {
+        if let [.., a, b] = out[..] {
+            let (u, v) = ((b.0 - a.0, b.1 - a.1), (p.0 - b.0, p.1 - b.1));
+            let cross = u.0 * v.1 - u.1 * v.0;
+            let dot = u.0 * v.0 + u.1 * v.1;
+            if dot > 0.0 && cross.abs() <= 1e-9 * (u.0.hypot(u.1) * v.0.hypot(v.1)).max(1e-9) {
+                out.pop();
+            }
+        }
+        if out.last() != Some(&p) {
+            out.push(p);
+        }
+    }
+    out
+}
+
+/// Whether boxes `a` and `b` come within `pad` of each other.
+fn boxes_near(a: Rect4, b: Rect4, pad: f64) -> bool {
+    a.0 - pad <= b.2 && b.0 - pad <= a.2 && a.1 - pad <= b.3 && b.1 - pad <= a.3
+}
+
+/// Distance from `p` to box `r` (0 inside it).
+fn rect_dist(r: Rect4, p: Pt) -> f64 {
+    let dx = (r.0 - p.0).max(p.0 - r.2).max(0.0);
+    let dy = (r.1 - p.1).max(p.1 - r.3).max(0.0);
+    dx.hypot(dy)
+}
+
+fn dist(a: Pt, b: Pt) -> f64 {
+    (a.0 - b.0).hypot(a.1 - b.1)
+}
+
+/// Proper intersection point of segments `a`–`b` and `c`–`d`.
+fn seg_cross(a: Pt, b: Pt, c: Pt, d: Pt) -> Option<Pt> {
+    let r = (b.0 - a.0, b.1 - a.1);
+    let s = (d.0 - c.0, d.1 - c.1);
+    let den = r.0 * s.1 - r.1 * s.0;
+    if den.abs() < 1e-9 {
+        return None;
+    }
+    let t = ((c.0 - a.0) * s.1 - (c.1 - a.1) * s.0) / den;
+    let u = ((c.0 - a.0) * r.1 - (c.1 - a.1) * r.0) / den;
+    ((0.0..1.0).contains(&t) && (0.0..1.0).contains(&u)).then_some((a.0 + t * r.0, a.1 + t * r.1))
+}
+
+/// How far (px) polylines `a` and `b` run side by side closer than
+/// [`EDGE_SPACING`], and the smallest gap between two of their parallel
+/// stretches away from their crossings `hits` (two corners touching),
+/// both away from the points `skip` excludes (the ends the two share).
+fn side_by_side(a: &[Pt], b: &[Pt], skip: &dyn Fn(Pt) -> bool, hits: &[Pt]) -> (f64, f64) {
+    let (mut run, mut touch) = (0.0, f64::INFINITY);
+    for sa in a.windows(2) {
+        let (d, la) = ((sa[1].0 - sa[0].0, sa[1].1 - sa[0].1), dist(sa[0], sa[1]));
+        if la < 1e-9 {
+            continue;
+        }
+        let u = (d.0 / la, d.1 / la);
+        let ba = seg_bounds(sa[0], sa[1]);
+        for sb in b.windows(2) {
+            // Only stretches nearer than the spacing count at all.
+            if !boxes_near(ba, seg_bounds(sb[0], sb[1]), EDGE_SPACING) {
+                continue;
+            }
+            let lb = dist(sb[0], sb[1]);
+            if lb < 1e-9 {
+                continue;
+            }
+            let cos = ((sb[1].0 - sb[0].0) * u.0 + (sb[1].1 - sb[0].1) * u.1) / lb;
+            if cos.abs() < PARALLEL_COS {
+                continue;
+            }
+            let proj = |p: Pt| (p.0 - sa[0].0) * u.0 + (p.1 - sa[0].1) * u.1;
+            let (t0, t1) = (proj(sb[0]), proj(sb[1]));
+            let (lo, hi) = (t0.min(t1).max(0.0), t0.max(t1).min(la));
+            if hi <= lo {
+                continue;
+            }
+            let m = (lo + hi) / 2.0;
+            let mid = (sa[0].0 + u.0 * m, sa[0].1 + u.1 * m);
+            if skip(mid) {
+                continue;
+            }
+            let off = seg_dist2(mid, sb[0], sb[1]).sqrt();
+            if off < EDGE_SPACING {
+                run += hi - lo;
+            }
+            if hits.iter().all(|&h| dist(h, mid) >= TOUCH_CROSS_SKIP) {
+                touch = touch.min(off);
+            }
+        }
+    }
+    (run, touch)
+}
+
+/// The box round segment `a`–`b`.
+fn seg_bounds(a: Pt, b: Pt) -> Rect4 {
+    (a.0.min(b.0), a.1.min(b.1), a.0.max(b.0), a.1.max(b.1))
+}
+
+/// Squared distance from `p` to the segment `a`–`b`.
+fn seg_dist2(p: Pt, a: Pt, b: Pt) -> f64 {
+    let (dx, dy) = (b.0 - a.0, b.1 - a.1);
+    let l2 = dx * dx + dy * dy;
+    let t = if l2 > 0.0 {
+        (((p.0 - a.0) * dx + (p.1 - a.1) * dy) / l2).clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
+    let (ex, ey) = (p.0 - a.0 - t * dx, p.1 - a.1 - t * dy);
+    ex * ex + ey * ey
+}
+
+/// Squared gap between boxes `a` and `b` (0 when they meet).
+fn box_gap2(a: Rect4, b: Rect4) -> f64 {
+    let dx = (b.0 - a.2).max(a.0 - b.2).max(0.0);
+    let dy = (b.1 - a.3).max(a.1 - b.3).max(0.0);
+    dx * dx + dy * dy
+}
+
+/// The smallest distance (px) between polylines `a` and `b`, which do
+/// not cross: two segments that do not meet are nearest at an end of
+/// one of them.
+fn polyline_gap(a: &[Pt], b: &[Pt]) -> f64 {
+    let mut gap2 = f64::INFINITY;
+    for sa in a.windows(2) {
+        let ba = seg_bounds(sa[0], sa[1]);
+        for sb in b.windows(2) {
+            // A pair whose boxes lie farther apart than the nearest so
+            // far cannot be nearer.
+            if box_gap2(ba, seg_bounds(sb[0], sb[1])) >= gap2 {
+                continue;
+            }
+            gap2 = gap2
+                .min(seg_dist2(sa[0], sb[0], sb[1]))
+                .min(seg_dist2(sa[1], sb[0], sb[1]))
+                .min(seg_dist2(sb[0], sa[0], sa[1]))
+                .min(seg_dist2(sb[1], sa[0], sa[1]));
+        }
+    }
+    gap2.sqrt()
+}
+
+/// How often polyline `pts` crosses a wall of frame `r` that runs along
+/// the flow (its left and right walls when the flow runs down or up,
+/// `along_x` false; its top and bottom when it runs across).
+fn wall_crossings(pts: &[Pt], r: Rect4, along_x: bool) -> usize {
+    let mut n = 0;
+    for w in pts.windows(2) {
+        let (a, b) = if along_x {
+            ((w[0].1, w[0].0), (w[1].1, w[1].0))
+        } else {
+            (w[0], w[1])
+        };
+        let (lo, hi) = if along_x { (r.1, r.3) } else { (r.0, r.2) };
+        let (s0, s1) = if along_x { (r.0, r.2) } else { (r.1, r.3) };
+        for x in [lo, hi] {
+            if (a.0 - x) * (b.0 - x) < 0.0 {
+                let t = (x - a.0) / (b.0 - a.0);
+                let y = a.1 + t * (b.1 - a.1);
+                n += usize::from(y > s0 && y < s1);
+            }
+        }
+    }
+    n
+}
+
+/// The stages after the ortho stage ([`stages`]), with `moved` as the
+/// ports stage left it.
+fn after_ortho(g: &Graph, sc: &mut Scene, cx: Ctx, mode: Mode, mut moved: Vec<bool>) {
     crate::router::repair(g, sc, &cx, mode, &mut moved);
     // A rerouted end may have switched to another side of its node and
     // landed on a port another edge already holds: space those groups
@@ -535,7 +1052,6 @@ fn stages_with(g: &Graph, sc: &mut Scene, mut cx: Ctx, mode: Mode, pins_as_set: 
     // A scene whose painter strokes its own width (ER, class) is drawn
     // on its canvas as-is; a flowchart's is fitted like its SVG.
     refit(sc, mode, g.edge_paint_width.is_none());
-    pins_moved
 }
 
 /// A path the stages drew as one straight leg (two waypoints on an
@@ -1418,6 +1934,70 @@ mod tests {
         let mut w = slant.clone();
         level_end_run(&mut w, true, (0.4, 0.0));
         assert_eq!(w, slant);
+    }
+
+    #[test]
+    fn a_pins_head_beside_an_entry_counts_as_one_line_on_another_however_near() {
+        // B12 2.8: the choice between a title side's pins dealt as one
+        // set and left apart (`stages`) weighs each drawing by a
+        // `Tally`. A pin whose head stands 1.6 px beside an entry is a
+        // line on another, as at 0.4 px: the quality harness stops
+        // counting so short a pair past 1.5 px, and a set that only
+        // pushed an overlap that far was kept as one that took it away.
+        // A track away it is not; nor where the head lands on the entry's
+        // own end.
+        let g = parse("flowchart TD\n  subgraph B\n    b1\n  end\n  a --> b1\n  q --> B\n")
+            .expect("a flowchart");
+        let mut sc = scene(&g);
+        let ends = ctx(&g, &sc).ends;
+        let at = |sc: &Scene, f: &str, t: &str| {
+            sc.edges
+                .iter()
+                .position(|e| e.from == f && e.to == t)
+                .expect("the edge")
+        };
+        let (entry, pin) = (at(&sc, "a", "b1"), at(&sc, "q", "B"));
+        let touched = vec![true; sc.edges.len()];
+        // Far left of every box: the two lines alone.
+        sc.edges[entry].waypoints = vec![(-500.0, -200.0), (-500.0, 300.0)];
+        let mut close_at = |dx: f64| {
+            sc.edges[pin].waypoints = vec![(-500.0 + dx, 92.0), (-500.0 + dx, 100.0)];
+            Tally::of(Direction::TD, &sc, &ends, &touched).close
+        };
+        assert_eq!(close_at(0.4), 1);
+        assert_eq!(close_at(1.6), 1);
+        assert_eq!(close_at(5.0), 1);
+        assert_eq!(close_at(12.0), 0);
+    }
+
+    #[test]
+    fn a_chip_moving_off_its_line_is_not_paid_for_by_another_coming_back() {
+        // `stages` keeps a set only where no chip lies farther off its
+        // own line, chip by chip: summed, one chip 9 px off its line
+        // that comes back paid for another that leaves it by as much.
+        let g = parse("flowchart TD\n  a -- one --> b\n  c -- two --> d\n").expect("a flowchart");
+        let sc = scene(&g);
+        let on: Vec<(f64, f64)> = sc
+            .edges
+            .iter()
+            .map(|e| e.label.as_ref().expect("a chip").1)
+            .collect();
+        assert!(sc
+            .edges
+            .iter()
+            .all(|e| crate::labels::chip_off_line(e).is_some_and(|d| d <= 3.0)));
+        let off = |which: usize| {
+            let mut edges = sc.edges.clone();
+            let l = edges[which].label.as_mut().expect("a chip");
+            l.1 = (on[which].0 + 9.0, on[which].1);
+            edges
+        };
+        let (first_off, second_off) = (off(0), off(1));
+        let all = [true, true];
+        assert!(!chips_no_farther(&first_off, &second_off, &all));
+        assert!(!chips_no_farther(&second_off, &first_off, &all));
+        assert!(chips_no_farther(&sc.edges, &first_off, &all));
+        assert!(chips_no_farther(&first_off, &first_off, &all));
     }
 
     /// `finish` again on a finished scene changes nothing.

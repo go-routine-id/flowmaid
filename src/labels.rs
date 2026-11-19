@@ -76,7 +76,7 @@ const TOUCH_EPS: f64 = 0.5;
 /// How far (px) a chip's centre may lie from its own line and still
 /// read as sitting on it, as mermaid centres every chip on its line;
 /// one farther out hangs beside the line (see [`Field::keeps_air`]).
-const ON_LINE_TOL: f64 = 3.0;
+pub(crate) const ON_LINE_TOL: f64 = 3.0;
 /// Half-thickness of the band a subgraph frame's border line blocks
 /// for edge labels (the line is drawn 1.4px wide).
 pub(crate) const FRAME_BORDER_BAND: f64 = 1.0;
@@ -941,26 +941,23 @@ fn point_seg_dist2(c: (f64, f64), a: (f64, f64), b: (f64, f64)) -> f64 {
     px * px + py * py
 }
 
-/// How far (px) the chips of `edges` that do not sit on their own drawn
-/// lines lie from them, all told (0 when every chip's centre is within
-/// [`ON_LINE_TOL`] of its line; a self-loop's chip, which sits beyond its
-/// loop, is not counted): what the edge stages weigh when they choose
+/// How far (px) the chip of `e` lies from its own drawn line (the
+/// distance from the chip's centre to [`edge_polyline`]); `None` for an
+/// edge without a chip, an undrawn or invisible one, or a self-loop,
+/// whose chip sits beyond its loop. A chip within [`ON_LINE_TOL`] is on
+/// its line. What the edge stages weigh, chip by chip, when they choose
 /// between two drawings of a block layout.
-pub(crate) fn chips_off_lines(edges: &[SceneEdge]) -> f64 {
-    edges
-        .iter()
-        .filter(|e| e.from != e.to && edge_drawn(e) && !matches!(e.kind, EdgeKind::Invisible))
-        .filter_map(|e| {
-            let (_, at, _) = e.label.as_ref()?;
-            let line = edge_polyline(e);
-            let d = line
-                .windows(2)
-                .map(|w| point_seg_dist2(*at, w[0], w[1]))
-                .fold(f64::INFINITY, f64::min)
-                .sqrt();
-            (d.is_finite() && d > ON_LINE_TOL).then_some(d)
-        })
-        .sum()
+pub(crate) fn chip_off_line(e: &SceneEdge) -> Option<f64> {
+    if e.from == e.to || !edge_drawn(e) || matches!(e.kind, EdgeKind::Invisible) {
+        return None;
+    }
+    let (_, at, _) = e.label.as_ref()?;
+    let d = edge_polyline(e)
+        .windows(2)
+        .map(|w| point_seg_dist2(*at, w[0], w[1]))
+        .fold(f64::INFINITY, f64::min)
+        .sqrt();
+    d.is_finite().then_some(d)
 }
 
 /// Does point `c` (a chip's centre) lie on polyline `line`, within
@@ -1012,7 +1009,7 @@ fn rect_seg_dist2(r: Rect, a: (f64, f64), b: (f64, f64)) -> f64 {
 }
 
 /// Distance from box `r` to the polyline `line`.
-fn rect_line_dist(r: Rect, line: &[(f64, f64)]) -> f64 {
+pub(crate) fn rect_line_dist(r: Rect, line: &[(f64, f64)]) -> f64 {
     line.windows(2)
         .map(|w| rect_seg_dist2(r, w[0], w[1]))
         .fold(f64::INFINITY, f64::min)
@@ -1076,7 +1073,7 @@ fn densify(coarse: &[(f64, f64)]) -> Vec<(f64, f64)> {
 }
 
 /// Box of a `w`-wide label centred at `c`.
-fn label_rect(c: (f64, f64), w: f64) -> Rect {
+pub(crate) fn label_rect(c: (f64, f64), w: f64) -> Rect {
     (
         c.0 - w / 2.0,
         c.1 - LABEL_BOX_H / 2.0,
