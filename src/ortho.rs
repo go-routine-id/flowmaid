@@ -183,7 +183,19 @@ enum Corner {
 /// Sets [`Ctx::chain`] for each edge drawn down a dummy chain (a long
 /// edge's channel), which the router accepts before the others as it
 /// did the splines, and [`Ctx::shaped`] for each labelled twin's bulge.
-pub(crate) fn orthogonalize(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
+///
+/// `pins_as_set`: a block layout's title side deals its frame pins and
+/// displaced entries as one set where they would meet
+/// ([`TitleSides::of`]); returns whether a side was dealt so (the edge
+/// stages then judge the drawing against one with the pins left where
+/// the ports stage put them, [`crate::edgepass`]).
+pub(crate) fn orthogonalize(
+    g: &Graph,
+    sc: &mut Scene,
+    cx: &mut Ctx,
+    mode: Mode,
+    pins_as_set: bool,
+) -> bool {
     // Past [`crate::router::ROUTE_MAX_EDGES`] the router and its nudge
     // leave a drawing as built, so the builders' curves stay too: drawn
     // on the axes there, every edge's rounded corners were sampled into
@@ -194,11 +206,10 @@ pub(crate) fn orthogonalize(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode)
         || sc.edges.is_empty()
         || sc.edges.len() > crate::router::ROUTE_MAX_EDGES
     {
-        return;
+        return false;
     }
     if mode != Mode::Static {
-        ortho_pass(g, sc, cx, mode);
-        return;
+        return ortho_pass(g, sc, cx, mode, pins_as_set);
     }
     // (What a pass changes of an edge: its curve, its waypoints and its
     // label's spot.)
@@ -209,7 +220,7 @@ pub(crate) fn orthogonalize(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode)
             .collect()
     };
     let before = snap(&sc.edges);
-    ortho_pass(g, sc, cx, mode);
+    let pins_moved = ortho_pass(g, sc, cx, mode, pins_as_set);
     // The ports stage orders a side's ends by where their edges head,
     // which suits the builders' curves; drawn on the axes, two ends of a
     // side whose paths turn the same way cross twice when the one turning
@@ -221,7 +232,7 @@ pub(crate) fn orthogonalize(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode)
     // fewer lines.
     let moves = untangle(sc, cx, &before);
     if moves.is_empty() {
-        return;
+        return pins_moved;
     }
     let first = snap(&sc.edges);
     restore(&mut sc.edges, before);
@@ -238,7 +249,7 @@ pub(crate) fn orthogonalize(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode)
             line_of(&e)
         })
         .collect();
-    ortho_pass(g, sc, cx, mode);
+    let again = ortho_pass(g, sc, cx, mode, pins_as_set);
     let changed: Vec<usize> = (0..sc.edges.len())
         .filter(|&i| {
             let (a, b) = (&sc.edges[i], &first[i]);
@@ -249,6 +260,9 @@ pub(crate) fn orthogonalize(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode)
     if crossings_of(&lines_now, &changed) >= crossings_of(&lines_first, &changed) {
         restore(&mut sc.edges, first);
         (cx.chain, cx.shaped) = kept;
+        pins_moved
+    } else {
+        again
     }
 }
 
@@ -487,7 +501,10 @@ fn untangle(sc: &Scene, cx: &Ctx, before: &[Geo]) -> Vec<(usize, bool, Pt)> {
 
 /// One pass of [`orthogonalize`] over the scene as the ports stage left
 /// it (or with the ends [`untangle`] moved).
-fn ortho_pass(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
+/// One drawing of the stage. `pins_as_set`: a title side's frame pins
+/// and displaced columns are dealt as one set where they would meet
+/// ([`TitleSides::of`]); returns whether a side was dealt so.
+fn ortho_pass(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode, pins_as_set: bool) -> bool {
     let mut chain = vec![false; sc.edges.len()];
     let dir = g.direction;
     // The rows of boxes along the flow, and the free gaps between them.
@@ -590,7 +607,7 @@ fn ortho_pass(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
     };
     let stubs = breadth_stubs(sc, cx, dir, &boxes);
     let end_stubs = breadth_ends(sc, cx, dir, &boxes);
-    let titles = TitleSides::of(sc, cx, dir, &frames);
+    let titles = TitleSides::of(sc, cx, dir, &frames, pins_as_set);
     let mut jogs: Vec<Jog> = Vec::new();
     let mut plans: Vec<(usize, Vec<Corner>)> = Vec::new();
     // The edges between one pair of ends, either way round (twins): a
@@ -1172,6 +1189,7 @@ fn ortho_pass(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
     }
     cx.chain = chain;
     cx.shaped = bulged;
+    titles.set_dealt
 }
 
 /// Whether segment `a`-`b` meets the rect `(x0, y0, x1, y1)`.
@@ -1393,14 +1411,23 @@ struct TitleSides {
     /// The frame pins moved along a title side to keep a track off the
     /// displaced columns: (edge, whether its target end) -> its breadth.
     pins: std::collections::BTreeMap<(usize, bool), f64>,
+    /// Whether a side was dealt with its pins as one set (the drawing
+    /// may differ from one with the pins left alone).
+    set_dealt: bool,
 }
 
 impl TitleSides {
-    fn of(sc: &Scene, cx: &Ctx, dir: Direction, frames: &[Rect]) -> TitleSides {
+    /// The title sides of `sc`'s frames and the columns their displaced
+    /// crossings take. With `pins_as_set`, a side whose columns, dealt
+    /// from its start a track apart, would come within a track of one of
+    /// its frame pins deals its pins and columns as one set instead
+    /// (moving pins); every other side is dealt as before.
+    fn of(sc: &Scene, cx: &Ctx, dir: Direction, frames: &[Rect], pins_as_set: bool) -> TitleSides {
         let mut out = TitleSides {
             sides: Vec::new(),
             cols: std::collections::BTreeMap::new(),
             pins: std::collections::BTreeMap::new(),
+            set_dealt: false,
         };
         if !cx.blocks || !matches!(dir, Direction::TD | Direction::BT) || sc.clusters.is_empty() {
             return out;
@@ -1531,6 +1558,52 @@ impl TitleSides {
             let mut taken = taken.remove(&k).unwrap_or_default();
             taken.sort_by(f64::total_cmp);
             v.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
+            let room = f1 - crate::scene::LANE_PAD;
+            let side_pins = pins.remove(&k).unwrap_or_default();
+            // The nearest free columns past the chip, in the order of
+            // the breadths they replace, a track apart and a track off
+            // the side's other crossings, from the side's `start`. Not
+            // past another edge's crossing of the side between its port
+            // and the column: its step back to the port would cross that
+            // edge's run inside the frame (blocks/lr drawn BT, `cdn ->
+            // gateway` out past `ship -> pager` and back over it and
+            // `cart -> pager`); drawn as before, as is every entry after.
+            let mut apart: Vec<(usize, f64)> = Vec::new();
+            let mut next = start;
+            for &(b, i, _) in &v {
+                let col = column_clear_of(next, &taken);
+                if col > room || taken.iter().any(|&o| (o - b) * (o - col) < 0.0) {
+                    break;
+                }
+                apart.push((i, col));
+                next = col + TRACK_PITCH;
+            }
+            // Pins and columns are dealt as one set only where a pin
+            // would come within a track of a column, of another pin or of
+            // another line's crossing of the side (nested blocks drawn
+            // TD: the outer frame's pin 5.9 px off the line into the
+            // inner one); elsewhere moving the side's pins only turned
+            // the lines into them. Where it is dealt so, the edge stages
+            // keep the set only if the drawing is no worse for it
+            // ([`crate::edgepass`]'s `stages`).
+            let others = |at: f64| {
+                side_pins
+                    .iter()
+                    .map(|p| p.0)
+                    .chain(apart.iter().map(|a| a.1))
+                    .chain(taken.iter().copied())
+                    .filter(|&o| (o - at).abs() < TRACK_PITCH - EPS)
+                    .count()
+            };
+            // (A pin always finds itself.)
+            let near_pin = side_pins.iter().any(|p| others(p.0) > 1);
+            if !pins_as_set || !near_pin {
+                for (i, col) in apart {
+                    out.cols.entry((i, k)).or_insert(col);
+                }
+                continue;
+            }
+            out.set_dealt = true;
             // The side's pins past the chip, nearest first. A pin and the
             // displaced columns are one set of columns, a track apart, in
             // the order their lines come from (the breadth of their other
@@ -1540,10 +1613,9 @@ impl TitleSides {
             // coming from beyond its own crossed each of them. A pin keeps
             // its place where the columns leave it a track of room, and
             // otherwise moves along the side past the column before it.
-            let mut side_pins = pins.remove(&k).unwrap_or_default();
+            let mut side_pins = side_pins;
             side_pins.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
             let mut side_pins = side_pins.into_iter().peekable();
-            let room = f1 - crate::scene::LANE_PAD;
             // The last column or pin dealt; the next keeps a track off it.
             let mut last: Option<f64> = None;
             let after =
@@ -1587,11 +1659,7 @@ impl TitleSides {
                     break;
                 }
                 // Nor past another edge's crossing of the side between
-                // its port and the column: its step back to the port
-                // would cross that edge's run inside the frame
-                // (blocks/lr drawn BT, `cdn -> gateway` out past
-                // `ship -> pager` and back over it and `cart -> pager`).
-                // Drawn as before; so is every entry after it.
+                // its port and the column (as above).
                 if taken.iter().any(|&o| (o - b) * (o - col) < 0.0) {
                     break;
                 }

@@ -4120,6 +4120,73 @@ fn a_chip_returns_to_its_line_however_near_another_line_passes() {
 }
 
 #[test]
+fn a_frames_pins_move_past_its_entries_only_where_that_draws_no_worse() {
+    // B12 2.8 deals a title side's frame pins and displaced entries as
+    // one set where a pin would meet a column (an arrowhead on another);
+    // the edge stages keep that only where the finished drawing is no
+    // worse for it. Five pins and three entries past a long title, drawn
+    // TD: moving the pins past the entries took one overlap away and drew
+    // six more crossings, a crossing inside a fan and two entries through
+    // the frame's wall. A pin beside entries it does not meet, under
+    // labels, drawn TD: moving it sent an entry into its node's flank
+    // through the frame's wall.
+    let cases = [
+        "flowchart TD
+    subgraph G[Édition générale des données]
+        m0[w]
+        m1[w]
+        m0 --> m1
+    end
+    s0[src0] --> G
+    s1[src1] --> G
+    s1 --> m1
+    s2[src2] --> G
+    s2 -- \"lbl8\" --> G
+    s3[src3] --> m0
+    s3 --> m0
+    s4[src4] --> m0
+    s4 --> G
+    G --> z2[after]",
+        "flowchart TD
+    subgraph A[Order processing]
+        a1[a1 wide node]
+        a2[a2]
+    end
+    subgraph B[Order processing billing]
+        b1[b1]
+        b2[b2 wide node]
+    end
+    a1 -- ship --> b1
+    a2 --> b2
+    a1 -. audit .-> b2
+    p[p] --> A
+    p --> a2
+    q[q] ==> B
+    q --> b1
+    b1 --> z[z]
+    b2 --> z",
+    ];
+    // (crossings, entries through a frame's wall, ends on a node's flank)
+    // with the pins where the ports stage put them.
+    let apart = [(7, 1, 3), (3, 0, 0)];
+    for (src, (x, lat, side)) in cases.iter().zip(apart) {
+        let rep = crate::levels::with_blocks(true, || crate::quality::measure_source(src, false))
+            .expect("a flowchart");
+        assert!(rep.block_mode);
+        let m = &rep.statik;
+        assert!(
+            m.fan_x == 0 && m.x_drawn <= x && m.lateral_x <= lat && m.side_ends <= side,
+            "{src}\nfan_x {} x_drawn {} lateral_x {} side_ends {}\n{:?}",
+            m.fan_x,
+            m.x_drawn,
+            m.lateral_x,
+            m.side_ends,
+            m.details
+        );
+    }
+}
+
+#[test]
 fn a_block_layouts_chips_keep_clear_of_other_lines() {
     // B12 G3: a block layout's chip keeps `CLEAR_GAP` from every other
     // edge's line where its own line leaves it such a spot. The public

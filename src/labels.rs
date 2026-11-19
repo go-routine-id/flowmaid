@@ -941,6 +941,28 @@ fn point_seg_dist2(c: (f64, f64), a: (f64, f64), b: (f64, f64)) -> f64 {
     px * px + py * py
 }
 
+/// How far (px) the chips of `edges` that do not sit on their own drawn
+/// lines lie from them, all told (0 when every chip's centre is within
+/// [`ON_LINE_TOL`] of its line; a self-loop's chip, which sits beyond its
+/// loop, is not counted): what the edge stages weigh when they choose
+/// between two drawings of a block layout.
+pub(crate) fn chips_off_lines(edges: &[SceneEdge]) -> f64 {
+    edges
+        .iter()
+        .filter(|e| e.from != e.to && edge_drawn(e) && !matches!(e.kind, EdgeKind::Invisible))
+        .filter_map(|e| {
+            let (_, at, _) = e.label.as_ref()?;
+            let line = edge_polyline(e);
+            let d = line
+                .windows(2)
+                .map(|w| point_seg_dist2(*at, w[0], w[1]))
+                .fold(f64::INFINITY, f64::min)
+                .sqrt();
+            (d.is_finite() && d > ON_LINE_TOL).then_some(d)
+        })
+        .sum()
+}
+
 /// Does point `c` (a chip's centre) lie on polyline `line`, within
 /// [`ON_LINE_TOL`]?
 fn centre_on_line(c: (f64, f64), line: &[(f64, f64)]) -> bool {

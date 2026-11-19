@@ -71,6 +71,7 @@ pub(crate) enum Side {
 }
 
 /// What every stage knows about the scene's edges, computed once.
+#[derive(Clone)]
 pub(crate) struct Ctx {
     /// Index-parallel with `sc.edges`: the (source, target) ends, or
     /// `None` when an edge could not be matched to the graph.
@@ -438,13 +439,64 @@ pub(crate) fn finish_blocks(g: &Graph, sc: &mut Scene, blocks: Option<&[Vec<usiz
     stages(g, sc, cx, Mode::Static);
 }
 
+/// How much (px) of its smallest gap between two lines a drawing may
+/// give up and count as no worse ([`stages`]): the quality checks'
+/// own tolerance.
+const GAP_SLACK: f64 = 0.5;
+
 /// The edge stages over `sc` with its context built.
-fn stages(g: &Graph, sc: &mut Scene, mut cx: Ctx, mode: Mode) {
+///
+/// In a block layout's static scene, a title side's frame pins dealt
+/// with its displaced entries as one set ([`crate::ortho`]) are kept
+/// only where the finished drawing is no worse for it than with the
+/// pins where the ports stage put them, as the quality harness counts
+/// a drawing ([`crate::quality::measure`]): no more defects, crossings,
+/// fan crossings or chips on lines, no chip farther off its own line
+/// ([`crate::labels::chips_off_lines`]); and no more entries through a
+/// frame's wall or into a node's flank and no smaller gap between two
+/// lines, unless the set takes away a defect (an arrowhead on another,
+/// two lines on one column). Moving a frame's pins past its entries had
+/// traded one overlap for six crossings on a frame with five pins under
+/// a long title, and three crossings for a lateral entry on another.
+/// `route()` draws a block layout from the static scene, and its drags
+/// with [`Ctx::blocks`] off, so they never deal title sides.
+fn stages(g: &Graph, sc: &mut Scene, cx: Ctx, mode: Mode) {
+    let alt = (mode == Mode::Static && cx.blocks).then(|| (sc.clone(), cx.clone()));
+    if !stages_with(g, sc, cx, mode, true) {
+        return;
+    }
+    let Some((mut apart, cx)) = alt else {
+        return;
+    };
+    stages_with(g, &mut apart, cx, mode, false);
+    let (set, kept) = (
+        crate::quality::measure(g, sc),
+        crate::quality::measure(g, &apart),
+    );
+    let fewer_defects = set.defects() < kept.defects();
+    let holds = set.defects() <= kept.defects()
+        && crate::labels::chips_off_lines(&sc.edges)
+            <= crate::labels::chips_off_lines(&apart.edges) + GAP_SLACK
+        && set.x_drawn <= kept.x_drawn
+        && set.fan_x <= kept.fan_x
+        && set.edge_chip <= kept.edge_chip
+        && (fewer_defects
+            || set.lateral_x <= kept.lateral_x
+                && set.side_ends <= kept.side_ends
+                && set.min_edge_gap >= kept.min_edge_gap - GAP_SLACK);
+    if !holds {
+        *sc = apart;
+    }
+}
+
+/// [`stages`] with the ortho stage's `pins_as_set`; returns whether a
+/// title side was dealt with its pins as one set.
+fn stages_with(g: &Graph, sc: &mut Scene, mut cx: Ctx, mode: Mode, pins_as_set: bool) -> bool {
     let mut moved = vec![false; sc.edges.len()];
     crate::ports::assign(g, sc, &cx, mode, &mut moved);
     // Every edge on the axes, its corners rounded (report §2.1): from the
     // ends the ports stage settled, before the router judges them.
-    crate::ortho::orthogonalize(g, sc, &mut cx, mode);
+    let pins_moved = crate::ortho::orthogonalize(g, sc, &mut cx, mode, pins_as_set);
     crate::router::repair(g, sc, &cx, mode, &mut moved);
     // A rerouted end may have switched to another side of its node and
     // landed on a port another edge already holds: space those groups
@@ -483,6 +535,7 @@ fn stages(g: &Graph, sc: &mut Scene, mut cx: Ctx, mode: Mode) {
     // A scene whose painter strokes its own width (ER, class) is drawn
     // on its canvas as-is; a flowchart's is fitted like its SVG.
     refit(sc, mode, g.edge_paint_width.is_none());
+    pins_moved
 }
 
 /// A path the stages drew as one straight leg (two waypoints on an
