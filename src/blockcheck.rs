@@ -3826,3 +3826,107 @@ fn sibling_frames_of_a_band_start_level_and_keep_their_size() {
         }
     }
 }
+
+#[test]
+fn a_block_its_links_take_room_from_stays_on_its_layer_lines() {
+    // B12 X4 levels a staggered sibling frame by moving its block
+    // upstream; the shift comes out of the gaps its own links cross. A
+    // block stays on its layer lines (its first-row members level with
+    // their siblings' centres) when a link from outside comes into it
+    // past its first row, when one node feeds the first rows of two or
+    // more siblings, and when its frame ends within the earliest's span.
+    let cases = [
+        // A tall outside node's labelled edge into the short block's
+        // second row: its chip came to sit on the other line out of X.
+        (
+            "flowchart TD
+  s[Start] --> a1
+  s --> b1
+  s --> x[\"X one<br/>two<br/>three<br/>four<br/>five<br/>six\"]
+  x -->|from the tall outside node| a2
+  x --> b2
+  subgraph A [Short block]
+    a1[a one] --> a2[a two] --> a3[a three]
+  end
+  subgraph B [Tall block]
+    b1[\"b one<br/>two<br/>three<br/>four<br/>five<br/>six\"] --> b2[b two]
+  end",
+            ["a1", "b1"].as_slice(),
+        ),
+        // A node beside the blocks into the moved block's second row: its
+        // line turned twice more round the block's title.
+        (
+            "flowchart TD
+  hub[Hub] --> m1
+  hub --> n1
+  hub --> lone[Lone node beside]
+  lone -->|lone into block row two| m2
+  lone -->|lone into other block| n2
+  subgraph M [Moved block]
+    m1[short] --> m2[m two] --> m3[m three]
+  end
+  subgraph N [Tall first row]
+    n1[\"tall<br/>first<br/>row<br/>node\"] --> n2[n two]
+  end
+  m3 -->|done| out[Out]
+  n2 -->|also done| out",
+            ["m1", "n1"].as_slice(),
+        ),
+        // One entry point feeding three staggered blocks: the fan took a
+        // crossing once the blocks were levelled under it.
+        (
+            "flowchart TD
+  top[Entry point] --> a1
+  top --> b1
+  top --> c1
+  subgraph A [Alpha block]
+    a1[One line] --> a2[Second] --> a3[Third]
+  end
+  subgraph B [Beta block with a longer title]
+    b1[\"Two<br/>lines<br/>tall\"] --> b2[Next]
+  end
+  subgraph C [Gamma]
+    c1[\"A<br/>B\"] --> c2[Down] --> c3[Down more]
+  end
+  a3 --> sink[Sink]
+  b2 --> sink
+  c3 --> sink",
+            ["a1", "b1", "c1"].as_slice(),
+        ),
+        // A frame that ends within the earliest one's span reads as one
+        // band with it already.
+        (
+            "flowchart TD
+  s[Start] --> a1
+  t[Other] --> b1
+  subgraph A [Tall start]
+    a1[\"one<br/>two<br/>three\"] --> a2[a two] --> a3[a three]
+  end
+  subgraph B [Short]
+    b1[b one]
+  end",
+            ["a1", "b1"].as_slice(),
+        ),
+    ];
+    for (src, first) in cases {
+        for dir in ["TD", "BT"] {
+            let g = graph(&in_direction(src, dir));
+            let sc = block_scene(&g);
+            let y = |id: &str| {
+                let b = node_box(&sc, id);
+                (b.1 + b.3) / 2.0
+            };
+            for w in first.windows(2) {
+                assert!(
+                    (y(w[0]) - y(w[1])).abs() < 0.5,
+                    "{dir} {}: {} at {}, {} at {}",
+                    src.lines().nth(1).unwrap_or(""),
+                    w[0],
+                    y(w[0]),
+                    w[1],
+                    y(w[1])
+                );
+            }
+        }
+    }
+}

@@ -5875,6 +5875,7 @@ fn place(
             &cluster_span,
             &header,
             &title_jog,
+            (&preds, &succs),
         ),
         _ => (0..na).map(|v| lcoord[alayer[v]]).collect(),
     };
@@ -5969,34 +5970,58 @@ const TITLE_FIT_PASSES: usize = 2;
 /// already: float noise of the breadth placement.
 const TITLE_FIT_EPS: f64 = 0.5;
 
+/// How far (px) a sibling frame may end past the one that starts first
+/// and still read as lying within its span along the flow (B12 X4; the
+/// judge's `sib_stagger` slack).
+const STAGGER_SLACK: f64 = 2.0;
+
 /// B12 X4: the positions along the flow of a block layout's nodes and
 /// chain dummies (by augmented index). Each sits on its layer line, with
 /// one exception that levels sibling frames: on a layer that is the
-/// first row of two or more top-level blocks, every block whose frame
-/// starts later than the earliest of them moves upstream, as a whole
-/// (its members at any depth and the dummies of the chains it holds),
-/// until its frame's leading edge meets the earliest. A frame's leading
-/// edge is its first-row members' upstream edges less, per frame from
-/// that block inwards that opens on the layer, what the scene's frame
-/// reaches past them there: [`FRAME_PAD`] and, in TD, the title strip
-/// and the jog room ([`title_jogs`]).
+/// first row of two or more top-level blocks, a block whose frame starts
+/// later than the earliest of them and ends past the earliest's span
+/// (the two would read as interleaved: `sib_stagger`) moves upstream, as
+/// a whole (its members at any depth and the dummies of the chains it
+/// holds), until its frame's leading edge meets the earliest. A frame's
+/// leading edge is its first-row members' upstream edges less, per frame
+/// from that block inwards that opens on the layer, what the scene's
+/// frame reaches past them there: [`FRAME_PAD`] and, in TD, the title
+/// strip and the jog room ([`title_jogs`]); its trailing edge likewise
+/// from its last row.
 ///
-/// It needs no room: the earliest leading edge is one the layer lines
-/// already reserve (`reach_of` takes the largest reach on the layer),
-/// and the gap after a moved block only grows. The block moves whole,
-/// so its frame keeps its size: moving only its first-row members (the
-/// spec's first wording) stretched the frame by the shift, which cost
-/// frame compactness, and left the dummies of its inner chains on the
-/// old line. Top-level blocks only: levelling nested siblings changed
-/// no frame the gates read and lengthened a dense drawing's parallel
-/// runs (dense-td drawn TD: `band_len` +242). TD / BT only: in LR / RL
-/// the shift took one more crossing on dense-lr and moved two lines of
-/// `notes/spread-bottom` 4 px nearer. The shift is a layout coordinate,
-/// not a frame rule: frames stay functions of their own members, so
-/// `route()` at the scene's centres draws them the same. Without it,
-/// sibling frames of a band whose first rows differ in height started
-/// apart and read as interleaved (the public fixture's build pipeline
-/// beside the shared services: `sib_stagger`).
+/// The earliest leading edge is one the layer lines already reserve
+/// (`reach_of` takes the largest reach on the layer), but a block's own
+/// links take room from the shift too, so a block stays on its layer
+/// lines when
+/// - a link from outside it comes into it past its first row from
+///   upstream (into a later row, or down through a first-row dummy):
+///   the shift comes out of the gap that link crosses, which the layer
+///   lines sized for its turns and its label. An outside node's labelled
+///   edge into a block's second row put its chip on its neighbour's line
+///   and turned twice more round the block's title;
+/// - one node outside the blocks feeds the first rows of two or more of
+///   them: the turns of its fan share the band above those frames, which
+///   the layer lines sized for the frames as they stand. A fan into
+///   three staggered blocks took a crossing and a 60 px tight pair, one
+///   into nested titles a detour round the outer frame.
+///
+/// A frame that ends within the earliest's span already reads as one
+/// band with it and stays too: moving it only lengthened the links
+/// leaving its last row.
+///
+/// The block moves whole, so its frame keeps its size: moving only its
+/// first-row members (the spec's first wording) stretched the frame by
+/// the shift, which cost frame compactness, and left the dummies of its
+/// inner chains on the old line. Top-level blocks only: levelling nested
+/// siblings changed no frame the gates read and lengthened a dense
+/// drawing's parallel runs (dense-td drawn TD: `band_len` +242). TD / BT
+/// only: in LR / RL the shift took one more crossing on dense-lr and
+/// moved two lines of `notes/spread-bottom` 4 px nearer. The shift is a
+/// layout coordinate, not a frame rule: frames stay functions of their
+/// own members, so `route()` at the scene's centres draws them the same.
+/// Without it, sibling frames of a band whose first rows differ in
+/// height started apart and read as interleaved (the public fixture's
+/// build pipeline beside the shared services).
 #[allow(clippy::too_many_arguments)] // internal: one bundle of layered-graph state
 fn level_sibling_frames(
     g: &Graph,
@@ -6008,6 +6033,7 @@ fn level_sibling_frames(
     cluster_span: &BTreeMap<usize, (usize, usize)>,
     header: &[f64],
     title_jog: &[f64],
+    (preds, succs): (&[Vec<usize>], &[Vec<usize>]),
 ) -> Vec<f64> {
     let n = g.nodes.len();
     let na = alayer.len();
@@ -6015,6 +6041,38 @@ fn level_sibling_frames(
     if !matches!(g.direction, Direction::TD | Direction::BT) {
         return lpos;
     }
+    // A link from outside block `c` comes into it past its first row
+    // `li` from upstream.
+    let held = |c: usize, li: usize| {
+        (0..na).any(|v| {
+            apath[v].first() == Some(&c)
+                && (alayer[v] > li || v >= n)
+                && preds[v]
+                    .iter()
+                    .chain(&succs[v])
+                    .any(|&u| alayer[u] < alayer[v] && apath[u].first() != Some(&c))
+        })
+    };
+    // The blocks of `blocks` one node outside them feeds on their first
+    // row `li` together with another of them.
+    let fan_into = |blocks: &[usize], li: usize| -> Vec<usize> {
+        let mut out = Vec::new();
+        for u in 0..na {
+            if apath[u].first().is_some_and(|c| blocks.contains(c)) {
+                continue;
+            }
+            let fed: std::collections::BTreeSet<usize> = succs[u]
+                .iter()
+                .filter(|&&v| alayer[v] == li && alayer[u] < li)
+                .filter_map(|&v| apath[v].first().copied())
+                .filter(|c| blocks.contains(c))
+                .collect();
+            if fed.len() >= 2 {
+                out.extend(fed);
+            }
+        }
+        out
+    };
     let td = matches!(g.direction, Direction::TD);
     // What frame `c` reaches upstream past a member on its first row.
     let grow = |c: usize| -> f64 {
@@ -6041,6 +6099,33 @@ fn level_sibling_frames(
         }
         out
     };
+    // Block `c`'s trailing edge along the flow, from its members on its
+    // last row: what the scene's frame reaches past them there, the
+    // title strip and jog room in BT.
+    let tail = |c: usize| -> Option<f64> {
+        let &(_, hi) = cluster_span.get(&c)?;
+        let back = |c2: usize| {
+            FRAME_PAD
+                + if td {
+                    0.0
+                } else {
+                    header.get(c2).copied().unwrap_or(0.0)
+                        + title_jog.get(c2).copied().unwrap_or(0.0)
+                }
+        };
+        let mut out: Option<f64> = None;
+        for v in (0..n).filter(|&v| alayer[v] == hi && nc[v].contains(&c)) {
+            let at = nc[v].iter().position(|&x| x == c).unwrap_or(0);
+            let reach: f64 = nc[v][at..]
+                .iter()
+                .filter(|c2| cluster_span.get(c2).is_some_and(|&(_, h)| h == hi))
+                .map(|&c2| back(c2))
+                .sum();
+            let e = lcoord[hi] + alsize[v] / 2.0 + reach;
+            out = Some(out.map_or(e, |o: f64| o.max(e)));
+        }
+        out
+    };
     // Top-level blocks by their first row.
     let mut groups: BTreeMap<usize, Vec<usize>> = BTreeMap::new();
     for (&c, &(lo, _)) in cluster_span {
@@ -6057,7 +6142,18 @@ fn level_sibling_frames(
             .filter_map(|&c| edge(c, li).map(|e| (c, e)))
             .collect();
         let target = edges.iter().map(|e| e.1).fold(f64::INFINITY, f64::min);
+        // How far the frames that start earliest reach along the flow.
+        let reach = edges
+            .iter()
+            .filter(|e| e.1 - target < ALIGN_EPS)
+            .filter_map(|e| tail(e.0))
+            .fold(f64::NEG_INFINITY, f64::max);
+        let fanned = fan_into(&blocks, li);
         for (c, e) in edges {
+            let within = tail(c).is_some_and(|t| t <= reach + STAGGER_SLACK);
+            if within || held(c, li) || fanned.contains(&c) {
+                continue;
+            }
             let d = target - e;
             if d.abs() < ALIGN_EPS {
                 continue;
