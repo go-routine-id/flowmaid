@@ -3957,6 +3957,65 @@ fn sibling_frames_whose_last_rows_fan_into_one_node_stay_on_their_layer_lines() 
 }
 
 #[test]
+fn a_block_beside_a_held_sibling_levels_down_to_it() {
+    // B12 X4: a block entered past its first row from upstream (here a
+    // long link into the staging block's second row) is held on its
+    // layer lines; its sibling, whose taller title had it start 30 px
+    // earlier, moves downstream to it instead, whole, where it has no
+    // link leaving it downstream, room below and no line between the
+    // two in a narrow gap. Before, the two frames started apart and read
+    // as interleaved (`sib_stagger` 1 drawn TD, LR and RL).
+    let src = r#"flowchart TD
+    dns[name server] --> gw[gateway]
+    dns --> mid[audit log]
+    dns --> px[operator]
+    gw --> a1
+    gw --> a2
+    mid --> m1[archive]
+    px --> b1
+    mon[monitor] --> b2
+    subgraph A[Standby site<br/>small shared machine<br/>hosts other sites too]
+        a1[standby copy]
+        a2[public website]
+    end
+    subgraph B[Staging and production]
+        b1[ingress proxy] --> b2[production app]
+        b2 --> b3[git server]
+    end"#;
+    for dir in ["TD", "BT", "LR", "RL"] {
+        let g = graph(&in_direction(src, dir));
+        let sc = block_scene(&g);
+        let q = crate::quality::measure(&g, &sc);
+        assert_eq!(
+            (
+                q.sib_stagger,
+                q.defects(),
+                q.x_drawn,
+                q.lateral_x,
+                q.side_ends
+            ),
+            (0, 0, 0, 0, 0),
+            "{dir}: {:?}",
+            q.details
+        );
+        let frame = |id: &str| sc.clusters.iter().find(|c| c.id == id).expect("a frame");
+        let (a, b) = (frame("A"), frame("B"));
+        let start = |c: &crate::scene::SceneCluster| match dir {
+            "TD" => c.y,
+            "BT" => -(c.y + c.h),
+            "LR" => c.x,
+            _ => -(c.x + c.w),
+        };
+        assert!(
+            (start(a) - start(b)).abs() <= 2.0,
+            "{dir}: A starts at {}, B at {}",
+            start(a),
+            start(b)
+        );
+    }
+}
+
+#[test]
 fn sibling_frames_that_share_their_last_row_end_level() {
     // B12 X4 downstream: two sibling blocks that share their last row but
     // not their first end level, the one that ended earlier moved
