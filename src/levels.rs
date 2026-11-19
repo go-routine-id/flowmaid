@@ -83,43 +83,6 @@ fn forget_layouts() {
     crate::scene::forget_laid_scenes();
 }
 
-/// Whether [`crate::scene::route`] of a part drawn in block mode starts
-/// from the static layout's drawing of it (B12.13, the lead's ruling of
-/// 2026-11-18: at the scene's own centres `route()` is `scene()`, and a
-/// drag re-plans only what the moved nodes touch). On only with `--cfg
-/// flowmaid_route_layout` besides the block layout's switch: at its own
-/// centres the routed drawing then carries the static drawing's numbers,
-/// defects included, which the routed rows judge against the routed
-/// drawing of the release before, so the lead decides when it is on.
-pub(crate) const ROUTE_FROM_LAYOUT_DEFAULT: bool = cfg!(flowmaid_route_layout);
-
-thread_local! {
-    /// A scoped override of [`ROUTE_FROM_LAYOUT_DEFAULT`]
-    /// ([`with_route_from_layout`]), per thread like the block switch.
-    static ROUTE_OVERRIDE: Cell<Option<bool>> = const { Cell::new(None) };
-}
-
-/// Whether `route()` of a block layout starts from the static layout's
-/// drawing on this thread ([`ROUTE_FROM_LAYOUT_DEFAULT`]).
-pub(crate) fn route_from_layout_on() -> bool {
-    ROUTE_OVERRIDE
-        .with(|c| c.get())
-        .unwrap_or(ROUTE_FROM_LAYOUT_DEFAULT)
-}
-
-/// Run `f` with [`route_from_layout_on`] set to `on` on this thread,
-/// and put the former value back afterwards, also when `f` unwinds.
-pub(crate) fn with_route_from_layout<T>(on: bool, f: impl FnOnce() -> T) -> T {
-    struct Reset(Option<bool>);
-    impl Drop for Reset {
-        fn drop(&mut self) {
-            ROUTE_OVERRIDE.with(|c| c.set(self.0));
-        }
-    }
-    let _reset = Reset(ROUTE_OVERRIDE.with(|c| c.replace(Some(on))));
-    f()
-}
-
 thread_local! {
     /// The number of starts the ordering of a block layout takes, when
     /// a report sets it ([`with_order_starts`]).

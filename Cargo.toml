@@ -13,9 +13,7 @@ exclude = ["docs/img/"]
 
 # `flowmaid_blocks` switches the block layout of subgraphs on while it
 # is being built (`src/levels.rs`); no ordinary build sets it.
-# `flowmaid_route_layout` (with it) has `route()` start from the static
-# layout's drawing of a block layout.
 [lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(flowmaid_blocks)', 'cfg(flowmaid_route_layout)'] }
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(flowmaid_blocks)'] }
 
 [dependencies]

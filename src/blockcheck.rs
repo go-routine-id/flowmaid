@@ -3427,46 +3427,44 @@ fn a_drag_leaves_a_hubs_spilled_ends_where_the_scene_put_them() {
 
 #[test]
 fn route_at_the_scenes_centres_draws_the_scene() {
-    // B12.13 under the lead's ruling 1 (with `route()` starting from the
-    // layout): at the scene's own centres `route()` draws what `scene()`
+    // B12.13 under the lead's ruling 1 (`route()` of a block layout starts
+    // from the layout): at the scene's own centres `route()` draws what `scene()`
     // drew, frames and every edge, so the playground's first paint is the
     // static drawing (`fr_max` 0, `ends_apart` 0); a host that moved the
     // whole drawing gets it moved; and the drawing is the same whether
     // or not the layout was kept from an earlier call on this thread.
     crate::levels::with_blocks(true, || {
-        crate::levels::with_route_from_layout(true, || {
-            for dir in ["TD", "BT", "LR", "RL"] {
-                let g = overview_in(dir);
-                let sc = crate::scene::scene(&g);
-                let at: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
-                let r = crate::scene::route(&g, &at);
-                assert!(r.block_layout, "{dir}");
-                assert_eq!(crate::scene::to_svg(&r), crate::scene::to_svg(&sc), "{dir}");
-                crate::scene::forget_laid_scenes();
-                let again = crate::scene::route(&g, &at);
-                assert_eq!(
-                    crate::scene::to_svg(&again),
-                    crate::scene::to_svg(&r),
-                    "{dir}"
+        for dir in ["TD", "BT", "LR", "RL"] {
+            let g = overview_in(dir);
+            let sc = crate::scene::scene(&g);
+            let at: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+            let r = crate::scene::route(&g, &at);
+            assert!(r.block_layout, "{dir}");
+            assert_eq!(crate::scene::to_svg(&r), crate::scene::to_svg(&sc), "{dir}");
+            crate::scene::forget_laid_scenes();
+            let again = crate::scene::route(&g, &at);
+            assert_eq!(
+                crate::scene::to_svg(&again),
+                crate::scene::to_svg(&r),
+                "{dir}"
+            );
+            // The whole drawing moved: the same drawing, moved.
+            let (dx, dy) = (40.0, 25.0);
+            let moved: Vec<(f64, f64)> = at.iter().map(|p| (p.0 + dx, p.1 + dy)).collect();
+            let m = crate::scene::route(&g, &moved);
+            for (a, b) in sc.clusters.iter().zip(&m.clusters) {
+                assert!(
+                    (a.x + dx - b.x).abs() < 1e-9 && (a.y + dy - b.y).abs() < 1e-9,
+                    "{dir}: frame {}",
+                    a.id
                 );
-                // The whole drawing moved: the same drawing, moved.
-                let (dx, dy) = (40.0, 25.0);
-                let moved: Vec<(f64, f64)> = at.iter().map(|p| (p.0 + dx, p.1 + dy)).collect();
-                let m = crate::scene::route(&g, &moved);
-                for (a, b) in sc.clusters.iter().zip(&m.clusters) {
-                    assert!(
-                        (a.x + dx - b.x).abs() < 1e-9 && (a.y + dy - b.y).abs() < 1e-9,
-                        "{dir}: frame {}",
-                        a.id
-                    );
-                }
-                for (a, b) in sc.edges.iter().zip(&m.edges) {
-                    for (p, q) in a.waypoints.iter().zip(&b.waypoints) {
-                        assert!((p.0 + dx - q.0).abs() < 1e-9 && (p.1 + dy - q.1).abs() < 1e-9);
-                    }
+            }
+            for (a, b) in sc.edges.iter().zip(&m.edges) {
+                for (p, q) in a.waypoints.iter().zip(&b.waypoints) {
+                    assert!((p.0 + dx - q.0).abs() < 1e-9 && (p.1 + dy - q.1).abs() < 1e-9);
                 }
             }
-        })
+        }
     });
 }
 
@@ -3477,47 +3475,45 @@ fn route_follows_a_drag_as_route_partial_does_from_the_scene() {
     // from the scene, so a host that calls either during a drag sees the
     // same frame.
     crate::levels::with_blocks(true, || {
-        crate::levels::with_route_from_layout(true, || {
-            let g = overview_in("TD");
-            let sc = crate::scene::scene(&g);
-            let at: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
-            for (who, by) in [
-                ("CART", (1.0, 0.0)),
-                ("METRICS", (-37.0, 12.0)),
-                ("SHOP", (90.0, 0.0)),
-            ] {
-                let v = g.node_index(who).unwrap();
-                let mut c = at.clone();
-                c[v] = (c[v].0 + by.0, c[v].1 + by.1);
-                let r = crate::scene::route(&g, &c);
-                let p = crate::scene::route_partial(&g, &c, &sc, &at);
-                assert_eq!(
-                    crate::scene::to_svg(&r),
-                    crate::scene::to_svg(&p),
-                    "drag {who}"
-                );
-            }
-            // A hub whose drag redraws most of the drawing: both fall back
-            // to drawing it afresh (`route_partial` without drawing the
-            // drag twice), and still agree.
-            let g = graph(
-                "flowchart TD\nH[hub]\nsubgraph A\na1 --> a2\nend\nsubgraph B\nb1 --> b2\nend\n\
-                 H --> a1\nH --> b1\nH --> a2\nH --> b2\n",
-            );
-            let sc = crate::scene::scene(&g);
-            assert!(sc.block_layout);
-            let at: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+        let g = overview_in("TD");
+        let sc = crate::scene::scene(&g);
+        let at: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+        for (who, by) in [
+            ("CART", (1.0, 0.0)),
+            ("METRICS", (-37.0, 12.0)),
+            ("SHOP", (90.0, 0.0)),
+        ] {
+            let v = g.node_index(who).unwrap();
             let mut c = at.clone();
-            let h = g.node_index("H").unwrap();
-            c[h] = (c[h].0 + 120.0, c[h].1 + 30.0);
+            c[v] = (c[v].0 + by.0, c[v].1 + by.1);
             let r = crate::scene::route(&g, &c);
             let p = crate::scene::route_partial(&g, &c, &sc, &at);
             assert_eq!(
                 crate::scene::to_svg(&r),
                 crate::scene::to_svg(&p),
-                "drag the hub"
+                "drag {who}"
             );
-        })
+        }
+        // A hub whose drag redraws most of the drawing: both fall back
+        // to drawing it afresh (`route_partial` without drawing the
+        // drag twice), and still agree.
+        let g = graph(
+            "flowchart TD\nH[hub]\nsubgraph A\na1 --> a2\nend\nsubgraph B\nb1 --> b2\nend\n\
+                 H --> a1\nH --> b1\nH --> a2\nH --> b2\n",
+        );
+        let sc = crate::scene::scene(&g);
+        assert!(sc.block_layout);
+        let at: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+        let mut c = at.clone();
+        let h = g.node_index("H").unwrap();
+        c[h] = (c[h].0 + 120.0, c[h].1 + 30.0);
+        let r = crate::scene::route(&g, &c);
+        let p = crate::scene::route_partial(&g, &c, &sc, &at);
+        assert_eq!(
+            crate::scene::to_svg(&r),
+            crate::scene::to_svg(&p),
+            "drag the hub"
+        );
     });
 }
 
@@ -3625,5 +3621,157 @@ fn dragging_every_node_of_a_block_diagram_keeps_the_contract() {
                 }
             }
         }
+    });
+}
+
+/// One drag of node `who` by `by` from `g`'s static scene, as blocks:
+/// the static scene and the drag frame.
+fn drag_of(g: &Graph, who: &str, by: (f64, f64)) -> (crate::scene::Scene, crate::scene::Scene) {
+    let base = crate::scene::scene(g);
+    assert!(base.block_layout);
+    let at: Vec<(f64, f64)> = base.nodes.iter().map(|n| (n.x, n.y)).collect();
+    let mut c = at.clone();
+    let v = g.node_index(who).unwrap();
+    c[v] = (c[v].0 + by.0, c[v].1 + by.1);
+    let p = crate::scene::route_partial(g, &c, &base, &at);
+    (base, p)
+}
+
+/// The harness's count of `name` in `sc`.
+fn metric(g: &Graph, sc: &crate::scene::Scene, name: &str) -> f64 {
+    let m = crate::quality::measure(g, sc);
+    m.fields()
+        .into_iter()
+        .chain(m.late_fields())
+        .chain(m.tail_fields())
+        .find(|f| f.0 == name)
+        .map_or_else(|| panic!("no metric {name}"), |f| f.1)
+}
+
+#[test]
+fn a_drag_keeps_a_layout_column_only_where_it_adds_no_crossing() {
+    // B12.13 R6 under the lead's ruling of 2026-11-19: an edge a drag
+    // redraws keeps the layout's columns only where following them adds
+    // no crossing, no fan crossing and no node or frame the base path did
+    // not meet; else it is redrawn as the release before redrew it.
+    // Before: hub5 with `invoice` dragged by (60, 25) took `bill` along
+    // the layout's column and then along the invoice's new row, across
+    // `token -> invoice` at the Billing title row (1 crossing, the
+    // release before: 0); examples/advanced with `Job Queue` dragged far
+    // left and down crossed the kept gateway / Redis edges 4 times
+    // (release before: 0).
+    crate::levels::with_blocks(true, || {
+        for (name, who, by) in [
+            ("blocks/hub5", "b1", (60.0, 25.0)),
+            ("examples/advanced", "Q", (-150.0, 80.0)),
+        ] {
+            let g = fixture(name);
+            let (_, p) = drag_of(&g, who, by);
+            for m in ["x_drawn", "fan_x"] {
+                assert_eq!(metric(&g, &p, m), 0.0, "{name}, {who} by {by:?}: {m}");
+            }
+        }
+        // A 1 px drag keeps every followed column: what the layout's own
+        // drawing has is not added by following it.
+        let g = fixture("blocks/hub5");
+        for v in 0..g.nodes.len() {
+            let id = g.nodes[v].id.clone();
+            let (base, p) = drag_of(&g, &id, (1.0, 0.0));
+            assert_eq!(
+                metric(&g, &p, "x_drawn"),
+                metric(&g, &base, "x_drawn"),
+                "drag {id} by 1 px"
+            );
+        }
+    });
+}
+
+#[test]
+fn a_redrawn_frame_keeps_its_room_off_what_it_does_not_hold() {
+    // B12.13 R6 under the lead's ruling of 2026-11-19: a frame a drag
+    // redraws keeps the room the layout gave it where that takes in
+    // nothing foreign, and takes its members' frame (F1, F2) on a side
+    // where the room would cover a node it does not hold. Before:
+    // examples/advanced with `Job Queue` dragged by (-150, 80) kept Async
+    // Workers' static top and grew left over Redis.
+    crate::levels::with_blocks(true, || {
+        let g = fixture("examples/advanced");
+        let (base, p) = drag_of(&g, "Q", (-150.0, 80.0));
+        let frame = |sc: &crate::scene::Scene| {
+            sc.clusters
+                .iter()
+                .find(|c| c.id == "Workers")
+                .cloned()
+                .unwrap()
+        };
+        let redis = &p.nodes[g.node_index("Cache").unwrap()];
+        let (f, o) = (frame(&p), frame(&base));
+        assert!(
+            f.y > redis.y - redis.h / 2.0,
+            "Async Workers' top {} keeps the layout's {} over Redis (top {})",
+            f.y,
+            o.y,
+            redis.y - redis.h / 2.0
+        );
+    });
+}
+
+#[test]
+fn a_followed_path_is_rounded_as_the_router_rounds_one() {
+    // B12.13 R6: a path a drag follows is delivered corner-rounded and
+    // densely sampled as the router delivers one, every corner rounded
+    // alike on both legs, also where the ports stage then slid a held
+    // end leg across (it moved the corner and left the rounding point
+    // before it: 20 px off the corner on one side, 14 on the other).
+    crate::levels::with_blocks(true, || {
+        let mut checked = 0;
+        for (name, g) in [
+            ("blocks-overview LR".to_string(), overview_in("LR")),
+            ("blocks-overview TD".to_string(), overview_in("TD")),
+            ("blocks/hub5".to_string(), fixture("blocks/hub5")),
+        ] {
+            for v in 0..g.nodes.len() {
+                let id = g.nodes[v].id.clone();
+                for by in [(1.0, 0.0), (0.0, 1.0), (60.0, 25.0)] {
+                    let (base, p) = drag_of(&g, &id, by);
+                    for (a, e) in base.edges.iter().zip(&p.edges) {
+                        if (a.from != id && a.to != id) || e.paint_width.is_some() {
+                            continue;
+                        }
+                        let Some(c) = crate::router::ortho_corners(e) else {
+                            continue;
+                        };
+                        if c.len() < 3 {
+                            continue;
+                        }
+                        checked += 1;
+                        // Each corner's rounding point on either leg sits
+                        // no farther from it than the router rounds a
+                        // corner (a glyph stub may add a nearer point).
+                        let d = |a: (f64, f64), b: (f64, f64)| (a.0 - b.0).hypot(a.1 - b.1);
+                        for k in 1..c.len() - 1 {
+                            let w = &e.waypoints;
+                            let Some(j) = w.iter().position(|q| *q == c[k]) else {
+                                continue;
+                            };
+                            if j == 0 || j + 1 >= w.len() {
+                                continue;
+                            }
+                            let r = crate::router::CORNER_R
+                                .min(d(c[k - 1], c[k]) / 2.0)
+                                .min(d(c[k], c[k + 1]) / 2.0);
+                            let (b, f) = (d(w[j - 1], c[k]), d(w[j + 1], c[k]));
+                            assert!(
+                                b.max(f) <= r + 0.5,
+                                "{name}: drag {id} by {by:?}: {} -> {} rounds a corner at {b:.1} / {f:.1} px (router: {r:.1})",
+                                e.from,
+                                e.to
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        assert!(checked > 50, "{checked} paths checked");
     });
 }

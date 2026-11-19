@@ -1773,7 +1773,7 @@ pub(crate) fn label_box(e: &SceneEdge, c: Pt, w: f64) -> Rect {
 }
 
 /// Proper crossings of two polylines.
-fn cross_count(a: &[Pt], b: &[Pt]) -> usize {
+pub(crate) fn cross_count(a: &[Pt], b: &[Pt]) -> usize {
     let mut n = 0;
     for u in a.windows(2) {
         let (x0, x1) = (u[0].0.min(u[1].0), u[0].0.max(u[1].0));
