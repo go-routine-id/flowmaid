@@ -772,6 +772,14 @@ fn ortho_pass(g: &Graph, sc: &mut Scene, cx: &mut Ctx, mode: Mode) {
         };
         let (n0, n3) = (facing(from, to, p0), facing(to, from, p3));
         let (mut f0, mut f3) = (to_flow(dir, p0), to_flow(dir, p3));
+        // A frame pin moved along its title side off a displaced column
+        // ([`TitleSides::of`]).
+        if let Some(&b) = titles.pins.get(&(i, false)) {
+            f0.0 = b;
+        }
+        if let Some(&b) = titles.pins.get(&(i, true)) {
+            f3.0 = b;
+        }
         // A fork / join bar meets each branch right where the branch lies
         // (`scene::toward`): a branch a few px off its bar's port drops
         // straight from the bar instead of stepping.
@@ -1339,6 +1347,10 @@ fn breadth_stubs(sc: &Scene, cx: &Ctx, dir: Direction, boxes: &[Rect]) -> Vec<Op
     out
 }
 
+/// How far (px) along the flow an edge's end may lie from a frame's
+/// title side and still be a pin on it ([`TitleSides::of`]): rounding.
+const PIN_ON_SIDE: f64 = 0.5;
+
 /// A frame's title side as [`TitleSides`] reads it (flow coordinates):
 /// the frame's breadth span, the flow coordinate of its title side,
 /// which way along the flow the frame lies from it, the chip's breadth
@@ -1378,6 +1390,9 @@ struct TitleSides {
     sides: Vec<Option<TitleSide>>,
     /// The displaced crossings: (edge, frame) -> the column it takes.
     cols: std::collections::BTreeMap<(usize, usize), f64>,
+    /// The frame pins moved along a title side to keep a track off the
+    /// displaced columns: (edge, whether its target end) -> its breadth.
+    pins: std::collections::BTreeMap<(usize, bool), f64>,
 }
 
 impl TitleSides {
@@ -1385,6 +1400,7 @@ impl TitleSides {
         let mut out = TitleSides {
             sides: Vec::new(),
             cols: std::collections::BTreeMap::new(),
+            pins: std::collections::BTreeMap::new(),
         };
         if !cx.blocks || !matches!(dir, Direction::TD | Direction::BT) || sc.clusters.is_empty() {
             return out;
@@ -1425,11 +1441,17 @@ impl TitleSides {
                 ))
             })
             .collect();
-        // Every displaced crossing, by frame: (breadth it replaces, edge);
-        // and the breadths the side's other crossings take past the chip.
-        let mut by: std::collections::BTreeMap<usize, Vec<(f64, usize)>> =
+        // Every displaced crossing, by frame: (breadth it replaces, edge,
+        // breadth of the edge's other end); and the breadths the side's
+        // other crossings take past the chip.
+        let mut by: std::collections::BTreeMap<usize, Vec<(f64, usize, f64)>> =
             std::collections::BTreeMap::new();
         let mut taken: std::collections::BTreeMap<usize, Vec<f64>> =
+            std::collections::BTreeMap::new();
+        // The frame pins on a title side past the chip, by frame: (its
+        // breadth, edge, whether its target end, breadth of the other end).
+        #[allow(clippy::type_complexity)]
+        let mut pins: std::collections::BTreeMap<usize, Vec<(f64, usize, bool, f64)>> =
             std::collections::BTreeMap::new();
         for (i, e) in sc.edges.iter().enumerate() {
             if !cx.drawn.get(i).copied().unwrap_or(false)
@@ -1457,18 +1479,48 @@ impl TitleSides {
             };
             let ends = cx.ends.get(i).copied().flatten();
             for (k, b, displaced) in out.all_crossings(&pts) {
-                let end = ends.map(|(f, t)| {
+                let at_target = ends.is_some_and(|(_, t)| {
                     let t_flow = flow_rect(dir, end_rect(sc, t));
-                    if b >= t_flow.0 && b <= t_flow.1 {
-                        t
-                    } else {
-                        f
-                    }
+                    b >= t_flow.0 && b <= t_flow.1
                 });
+                let end = ends.map(|(f, t)| if at_target { t } else { f });
                 if displaced && shaded(end, k) {
-                    by.entry(k).or_default().push((b, i));
+                    let far = if at_target {
+                        pts[0].0
+                    } else {
+                        pts[pts.len() - 1].0
+                    };
+                    by.entry(k).or_default().push((b, i, far));
                 } else {
                     taken.entry(k).or_default().push(b);
+                }
+            }
+            // The frame pins on a title side past the chip: an end on
+            // the side itself, which no crossing of it finds. A displaced
+            // column keeps a track off them as off the crossings
+            // (pins and entries of one side are one set of columns): a
+            // pin a breadth's rounding off a displaced entry ran down the
+            // same column into the frame, the two arrowheads one on the
+            // other (blocks drawn TD with an edge into the frame and an
+            // entry under its chip from one row up).
+            for (end, at, far, target) in ends
+                .map(|(f, t)| {
+                    [
+                        (f, pts.first(), pts.last(), false),
+                        (t, pts.last(), pts.first(), true),
+                    ]
+                })
+                .into_iter()
+                .flatten()
+            {
+                let (EndRef::Frame(k), Some(&p), Some(&far)) = (end, at, far) else {
+                    continue;
+                };
+                let Some((f0, f1, t, _, (_, c1), _)) = out.sides.get(k).copied().flatten() else {
+                    continue;
+                };
+                if (p.1 - t).abs() <= PIN_ON_SIDE && p.0 > f0 && p.0 < f1 && p.0 >= c1 {
+                    pins.entry(k).or_default().push((p.0, i, target, far.0));
                 }
             }
         }
@@ -1479,13 +1531,59 @@ impl TitleSides {
             let mut taken = taken.remove(&k).unwrap_or_default();
             taken.sort_by(f64::total_cmp);
             v.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
+            // The side's pins past the chip, nearest first. A pin and the
+            // displaced columns are one set of columns, a track apart, in
+            // the order their lines come from (the breadth of their other
+            // ends): a pin a breadth's rounding off a displaced column ran
+            // down the same column into the frame (two arrowheads one on
+            // the other), and a column dealt past the pins of the lines
+            // coming from beyond its own crossed each of them. A pin keeps
+            // its place where the columns leave it a track of room, and
+            // otherwise moves along the side past the column before it.
+            let mut side_pins = pins.remove(&k).unwrap_or_default();
+            side_pins.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
+            let mut side_pins = side_pins.into_iter().peekable();
+            let room = f1 - crate::scene::LANE_PAD;
+            // The last column or pin dealt; the next keeps a track off it.
+            let mut last: Option<f64> = None;
+            let after =
+                |last: Option<f64>, from: f64| last.map_or(from, |l| from.max(l + TRACK_PITCH));
+            // Deals one pin: where it is, or past the last column dealt,
+            // and off the side's crossings. None when that leaves the
+            // frame.
+            let put_pin =
+                |pin: (f64, usize, bool, f64), last: Option<f64>, out: &mut TitleSides| {
+                    let at = column_clear_of(after(last, pin.0), &taken);
+                    if at > room {
+                        return None;
+                    }
+                    if (at - pin.0).abs() > EPS {
+                        out.pins.insert((pin.1, pin.2), at);
+                    }
+                    Some(at)
+                };
             // The nearest free columns past the chip, in the order of
             // the breadths they replace, a track apart and a track off
-            // the side's other crossings, from the side's `start`.
-            let mut next = start;
-            for &(b, i) in &v {
-                let col = column_clear_of(next, &taken);
-                if col > f1 - crate::scene::LANE_PAD {
+            // the side's other crossings and pins, from the side's
+            // `start`.
+            let mut dealt = true;
+            for &(b, i, far) in &v {
+                // The pins a track left of where the column would go, and
+                // those whose lines come from nearer the side's start than
+                // this one's, go first; the others move past it.
+                while let Some(&pin) = side_pins.peek() {
+                    let col = column_clear_of(after(last, start), &taken);
+                    if pin.0 > col - TRACK_PITCH && pin.3 >= far {
+                        break;
+                    }
+                    side_pins.next();
+                    match put_pin(pin, last, &mut out) {
+                        Some(at) => last = Some(at),
+                        None => dealt = false,
+                    }
+                }
+                let col = column_clear_of(after(last, start), &taken);
+                if !dealt || col > room {
                     break;
                 }
                 // Nor past another edge's crossing of the side between
@@ -1498,7 +1596,14 @@ impl TitleSides {
                     break;
                 }
                 out.cols.entry((i, k)).or_insert(col);
-                next = col + TRACK_PITCH;
+                last = Some(col);
+            }
+            // The pins past the last column keep a track off it.
+            for pin in side_pins {
+                match put_pin(pin, last, &mut out) {
+                    Some(at) => last = Some(at),
+                    None => break,
+                }
             }
         }
         out

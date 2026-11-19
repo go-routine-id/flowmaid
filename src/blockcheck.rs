@@ -3871,6 +3871,66 @@ fn a_chip_kept_off_its_end_blocks_stays_on_its_line() {
 }
 
 #[test]
+fn a_frames_pins_and_its_displaced_entries_are_one_set_of_columns() {
+    // B12 2.8: an entry under a block's title chip is displaced to a
+    // column past the chip. A pin of an edge into the frame ends on the
+    // same side, which no crossing of it finds: the column was dealt a
+    // breadth's rounding off a pin and the two lines ran down together
+    // (overlapping, the arrowheads one on the other), or, dealt past the
+    // pins, it crossed every line into them. Pins and displaced columns
+    // are one set, a track apart, in the order their lines come from; a
+    // pin moves along the side where a column needs its place.
+    let cases = [
+        "flowchart TD
+    s1[caller] --> q1
+    s2[client] --> G
+    s3[batch] --> G
+    s4[hub] --> q2
+    s4 --> q1
+    subgraph G[Shipping and returns desk]
+        q1[queue]
+        q2[charge]
+        q3[ship]
+        q1 --> q3
+        q2 --> q3
+    end
+    q3 --> m[metrics]",
+        "flowchart TD
+    a[a] --> x
+    b[b] --> I
+    c[c] --> O
+    d[d] --> y
+    subgraph O[Édition générale des données]
+        subgraph I[Édition générale des données inner]
+            x[x wide member]
+            y[y]
+        end
+        k[k]
+    end
+    x --> k
+    y --> k
+    k --> z[z]",
+    ];
+    for src in cases {
+        let rep = crate::levels::with_blocks(true, || crate::quality::measure_source(src, false))
+            .expect("a flowchart");
+        assert!(rep.block_mode);
+        let m = &rep.statik;
+        assert_eq!(
+            (m.overlap_pairs, m.x_drawn),
+            (0, 0),
+            "{src}\n{:?}",
+            m.details
+        );
+        assert!(
+            m.min_edge_gap >= crate::ortho::TRACK_PITCH - 0.5,
+            "{src}\n{}",
+            m.min_edge_gap
+        );
+    }
+}
+
+#[test]
 fn a_block_layouts_chips_keep_clear_of_other_lines() {
     // B12 G3: a block layout's chip keeps `CLEAR_GAP` from every other
     // edge's line where its own line leaves it such a spot. The public
