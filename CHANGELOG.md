@@ -11,54 +11,37 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 - **`route_partial` for ER, class and mindmap diagrams** (#111).
   `er::route_partial`, `class::route_partial` and
-  `mindmap::route_partial` take the diagram, the new positions, a
-  previous drawing (`base`) and the positions it was drawn at, as the
-  flowchart `scene::route_partial` does, and return the scene `route`
-  returns. Only what is attached to a moved box is drawn afresh: every
-  other relationship, note link or connector keeps its `base` drawing
-  exactly (its line, label and end glyphs, and a class relationship's
-  cardinalities, which `class::card_spots` and `class::to_svg` keep
-  where `base` has them), also where a moved box now covers it (route
-  the drop with `route` to clear it). Positions are kept as given, and
-  the canvas (`base`'s) grows over whatever a drag pushes past any of
-  its sides, up or left too, as `route`'s does (#76), so the frame's
-  boxes, lines and labels are all on it. When `base` no
-  longer lines up with the diagram (other counts, or an entity, class,
-  member, note, node, relationship, cardinality or label edited since)
-  the result is `route`'s. A scene records no `direction`, so a change
-  of it alone is not seen, as with the flowchart `route_partial`: route
-  the first frame after one with `route`. A class diagram takes class centres, or
-  class and note centres, as `class::route` does. `try_route_partial`
-  for each returns `None` where `route_partial` would panic or
-  `try_route` refuses the positions. `mindmap::link_ends` names the two
-  nodes of each connector. `cargo run --release --example drag_bench`
-  times a drag of one node in a 240-entity ER diagram, a 240-class
-  diagram and a 1041-node mindmap, each frame routed with `route` and
-  with `route_partial` (from the laid-out drawing, and from the frame
-  before): the partial frame costs a fraction of the full one.
+  `mindmap::route_partial` work like the flowchart
+  `scene::route_partial`: given the diagram, the new positions, a
+  previous drawing (`base`) and the positions it was drawn at, they draw
+  afresh only what is attached to a moved box. Every other line keeps
+  its `base` drawing exactly, with its label, end glyphs and class
+  cardinalities, even where a moved box now covers it (route the drop
+  with `route` to clear that). Positions are kept as given. An ER or
+  class frame's canvas grows over whatever a drag pushes past any of its
+  sides, as `route`'s does (#76); a mindmap frame's canvas is the one
+  `mindmap::route` gives, which does not grow up or left. When `base` no
+  longer matches the diagram (other counts, or an edit since), the
+  result is `route`'s; after a change of direction, route the first
+  frame with `route`. A class diagram takes class centres, or class and
+  note centres. `try_route_partial` returns `None` where
+  `route_partial` would panic or `try_route` refuses the positions. `mindmap::link_ends` names a connector's
+  two nodes. `cargo run --release --example drag_bench` times a one-node
+  drag on large diagrams: a partial frame costs a fifth of a full
+  `route` or less.
 - **Picking on mindmap, sequence, pie, journey, timeline and sankey
   scenes** (#112). `MindScene`, `SeqScene`, `PieScene`, `JourneyScene`,
-  `TimelineScene` and `SankeyScene` each have a `hit_test(x, y, tol)`
-  that returns the topmost element under a scene point, as
-  `Scene::hit_test` does, by its index into the scene's own lists:
-  `MindHit` (node, connector; `mindmap::link_ends` names a connector's
-  two nodes), `SeqHit` (participant box, footer box or lifeline, all by
-  the participant's index; message, note, activation bar; a frame's
-  border, chip, labels or dividers, told apart from a click inside the
-  frame on nothing drawn, so a `loop` does not swallow what lies in
-  it), `PieHit` (slice; percentage label or legend row, each naming its
-  slice), `JourneyHit` (task, legend item, section), `TimelineHit`
-  (section; period as section and period; event as section, period and
-  event) and `SankeyHit` (node or its label, link). They test the
-  shapes the painters draw, in paint order: a mindmap node's own
-  outline, a pie slice's wedge as its path is written (to 0.1 px, its
-  arc where a renderer centres it), a sankey ribbon's
-  curved band at its real thickness, text boxes as the layouts measure
-  them, the outline stroke of a sequence, journey or timeline shape,
-  and a line ending square where the painter ends it (butt caps).
-  `tol` widens strokes only (connectors, message lines, lifelines,
-  dividers, frame borders, timeline axes and task lines, pie leaders),
-  `tol <= 0` is exact, and a point off the canvas picks nothing.
+  `TimelineScene` and `SankeyScene` get `hit_test(x, y, tol)`, like
+  `Scene::hit_test`: it returns the topmost element under a scene point
+  (`MindHit`, `SeqHit`, `PieHit`, `JourneyHit`, `TimelineHit`,
+  `SankeyHit`) by its index into the scene's own lists. It tests the
+  shapes as the painters draw them, in paint order: a pie slice's
+  wedge, a sankey ribbon's curved band at its real thickness, text
+  boxes as the layouts measure them. A click inside a sequence frame
+  (`loop`, `alt`, ...) on nothing drawn is told apart from the frame's
+  border and labels, so the frame does not swallow what lies in it.
+  `tol` widens lines only (connectors, messages, lifelines, borders,
+  axes), `tol <= 0` is exact, and a point off the canvas picks nothing.
 
 ### Internal
 
