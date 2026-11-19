@@ -1,0 +1,334 @@
+[
+ {
+  "name": "demo",
+  "group": "flow",
+  "chip032": "3 berat · 10 total",
+  "verdict032": "Lebih bersih dari mermaid, kecuali back-edge dan kepala thick",
+  "issues032": [
+   "Loop E→B berbentuk lasso, panah 14° setengah tertutup",
+   "kepala ==> 2×",
+   "rank berlabel sempit sehingga yes/no jadi kait"
+  ],
+  "better032": "Spine lurus; diamond 102×65 (mermaid 171×171); chip label; node seukuran teks"
+ },
+ {
+  "name": "advanced",
+  "group": "flow",
+  "chip032": "2 berat · 13 total",
+  "verdict032": "Bentuknya bagus, strukturnya salah",
+  "issues032": [
+   "Async Workers hilang",
+   "edge ke Platform tidak memengaruhi ranking",
+   "Dev→CI stub ke atas",
+   "'fail' dan Cache→Gate keluar frame",
+   "kepala thick 2×"
+  ],
+  "better032": "Self-loop W1 benar (mermaid rusak); Rollback→Platform pendek; urutan Worker terjaga; tidak ada edge menembus judul"
+ },
+ {
+  "name": "subgraph",
+  "group": "flow",
+  "chip032": "0 berat · 7 total",
+  "verdict032": "Benar secara semantik; kalah ritme dan ukuran",
+  "issues032": [
+   "Ruang mati 26px di bawah baris pertama cluster",
+   "spine tidak rata",
+   "nested tidak terbedakan",
+   "fan-out off-centre"
+  ],
+  "better032": "Judul cluster tidak pernah dicoret (mermaid mencoret \"Platform\" dan \"Event bus\"); 4.3 KB vs 38.6 KB"
+ },
+ {
+  "name": "lr",
+  "group": "flow",
+  "chip032": "1 berat · 10 total",
+  "verdict032": "Satu V-loop membuatnya tampak rusak",
+  "issues032": [
+   "V-loop CACHE→SVC (+73px)",
+   "kepala thick 2×",
+   "'denied' menempel di 401",
+   "kipas keputusan asimetris (dup BK)"
+  ],
+  "better032": "Diamond kompak; chip label (garis dotted mermaid menembus label); lebar 790 vs 1074"
+ },
+ {
+  "name": "shapes",
+  "group": "flow",
+  "chip032": "1 berat · 9 total",
+  "verdict032": "Paling dekat ke mermaid",
+  "issues032": [
+   "Ujung edge melayang di sisi miring",
+   "label cylinder terlalu tinggi dan tutupnya kosong",
+   "stroke tipis berkontras rendah"
+  ],
+  "better032": "Semua shape kotak setinggi 38px; diamond dan hexagon kompak"
+ },
+ {
+  "name": "stress",
+  "group": "flow",
+  "chip032": "2 berat · 12 total",
+  "verdict032": "Elemen bagus, edge berebut satu strip 65px",
+  "issues032": [
+   "Thick menembus self-loop",
+   "'parallel' di edge yang salah",
+   "back-edge menyilang thick",
+   "apex diamond penuh",
+   "S-wobble"
+  ],
+  "better032": "Area 38% lebih kecil; self-loop yang jelas; 'no' dekat keputusannya"
+ },
+ {
+  "name": "fanout",
+  "group": "flow",
+  "chip032": "1 berat · 9 total",
+  "verdict032": "Komposisi seimbang, loop-back menembus kipas",
+  "issues032": [
+   "Loop-back 'no' lewat interior (2 crossing, gap berlawanan)",
+   "gaya edge campur",
+   "port Worker off-centre dan tidak merata"
+  ],
+  "better032": "Simetris pada satu spine; area 44% lebih kecil"
+ },
+ {
+  "name": "long-labels",
+  "group": "flow",
+  "chip032": "2 berat · 7 total",
+  "verdict032": "Hampir semua kekalahan karena tidak ada wrap",
+  "issues032": [
+   "Node 442×38, diamond 616×65 (9.5:1), lebar 672 vs 358",
+   "label menjepit gap 60px",
+   "panah meleset 43.7px"
+  ],
+  "better032": "Tidak ada orphan wrap; ujung panah tepat di border (mermaid menyisakan gap 4px)"
+ },
+ {
+  "name": "back-edge",
+  "group": "flow",
+  "chip032": "1 berat · 8 total",
+  "verdict032": "Spine sempurna, back-edge-nya buruk",
+  "issues032": [
+   "Arc \"telinga\", 41% kepala tertutup",
+   "start 14px dari 'no'",
+   "kepala thick 2× dan stub",
+   "kanvas +37px"
+  ],
+  "better032": "Spine lurus (mermaid punya jog Z); diamond kompak"
+ },
+ {
+  "name": "wide-labels",
+  "group": "flow",
+  "chip032": "1 berat · 9 total",
+  "verdict032": "Bug sumbu label menghasilkan loop 230px",
+  "issues032": [
+   "Bow LR memakai lebar label 337px",
+   "viewBox dari titik kontrol",
+   "Database melorot",
+   "label mengambang dengan 3 cara"
+  ],
+  "better032": "Chip berpadding; label satu baris tanpa orphan; port terpisah per edge"
+ },
+ {
+  "name": "fanout-frames",
+  "group": "flow",
+  "chip032": "4 berat · 14 total",
+  "verdict032": "Node rapi, narrowing salah",
+  "issues032": [
+   "g3 dipindah ke kolom kedua (+9% area)",
+   "detour g3 terjepit",
+   "7 edge kipas campur S dan elbow",
+   "2 crossing yang bisa dihindari",
+   "tepi frame tidak rata"
+  ],
+  "better032": "Menghormati <br/> (cylinder 3 baris vs 8); 27% lebih pendek"
+ },
+ {
+  "name": "dense-td",
+  "group": "flow",
+  "chip032": "3 berat · 16 total",
+  "verdict032": "Kompak (43% area), routing belum selesai",
+  "issues032": [
+   "3 gaya edge",
+   "simpul di hub n16",
+   "cluster berdampingan",
+   "'amet' di sisi jauh (edge 3316 unit)",
+   "node tanpa edge di rank 0"
+  ],
+  "better032": "Dotted terjaga (mermaid membuat 2 dari 3 jadi solid); judul tidak tertabrak; tidak ada edge menembus node"
+ },
+ {
+  "name": "dense-lr",
+  "group": "flow",
+  "chip032": "3 berat · 12 total",
+  "verdict032": "Bagian-bagiannya bagus, jaringan kusut, LR jadi portrait",
+  "issues032": [
+   "Hub 12 edge keluar dari 3 sisi",
+   "gaya campur",
+   "frame kosong",
+   "~61 crossing (mermaid ~15)",
+   "4 label lepas"
+  ],
+  "better032": "Area 2.4× lebih kecil; tanpa detour perimeter 3000px"
+ },
+ {
+  "name": "bench-75",
+  "group": "flow",
+  "chip032": "5 berat · 16 total",
+  "verdict032": "Kompak tapi kusut, arah LR hilang",
+  "issues032": [
+   "DFS FAS (33/75 edge ke kanan)",
+   "zona tidak berupa kolom",
+   "hairpin",
+   "324 gap",
+   "364 crossing (mermaid 222)"
+  ],
+  "better032": "Aspek 0.88 vs 4.1; kepala tidak menumpuk jadi blob hitam"
+ },
+ {
+  "name": "class",
+  "group": "other",
+  "chip032": "3 berat · 17 total",
+  "verdict032": "Lebih kecil tapi salah dibaca",
+  "issues032": [
+   "Hierarki terbalik",
+   "panah 'charges' tertutup dan arc raksasa",
+   "note dan «interface» hilang",
+   "waypoint diabaikan",
+   "kontras header",
+   "kompartemen samar"
+  ],
+  "better032": "Komentar %% dibuang; chip label; segitiga 16×14 lebih terbaca"
+ },
+ {
+  "name": "er",
+  "group": "other",
+  "chip032": "2 berat · 8 total",
+  "verdict032": "Tabel lebih bersih, kardinalitas dan komentar hilang",
+  "issues032": [
+   "Chip menutupi lingkaran zero",
+   "33 komentar dibuang",
+   "LR hard-coded sehingga terbentuk kolom kiri",
+   "kontras header 3/4 gagal"
+  ],
+  "better032": "Tanpa grid berat; hierarki tipe/nama/kunci; 602×950 vs 1519×1150"
+ },
+ {
+  "name": "state",
+  "group": "other",
+  "chip032": "2 berat · 11 total",
+  "verdict032": "Elemen lebih bersih, note hilang, LR diabaikan",
+  "issues032": [
+   "Note hilang",
+   "composite LR jadi kolom",
+   "retry arc menyerempet sisi node",
+   "choice 80×64.6",
+   "cabang fork berbentuk S"
+  ],
+  "better032": "<<choice>>/<<fork>> benar (mermaid 12.2 menggambar kotak); tanpa border ganda"
+ },
+ {
+  "name": "sequence",
+  "group": "other",
+  "chip032": "0 berat · 14 total",
+  "verdict032": "Tidak jelek; masalah di presisi dan header",
+  "issues032": [
+   "Panah tidak memperhitungkan bar",
+   "activate telat 14px",
+   "note keluar dari alt",
+   "warna note = peserta",
+   "actor bukan stick figure",
+   "tanpa footer"
+  ],
+  "better032": "Separuh area; autonumber bold; frame full-width sejajar"
+ },
+ {
+  "name": "pie",
+  "group": "other",
+  "chip032": "1 berat · 5 total",
+  "verdict032": "Lebih baik dari mermaid",
+  "issues032": [
+   "\"5%4%\" menyatu/keluar wedge",
+   "teks putih gagal AA di 4/5 slice",
+   "radius 110 kecil",
+   "slice 0.35% hanya garis"
+  ],
+  "better032": "Palet jelas; separator putih; judul di tengah; slice <1% tetap tampil"
+ },
+ {
+  "name": "mindmap",
+  "group": "other",
+  "chip032": "2 berat · 13 total",
+  "verdict032": "Palet lebih tenang, layout ring terlalu jarang",
+  "issues032": [
+   "Ink hanya 9% (ring 172)",
+   "spoke tidak rata",
+   "root pucat",
+   "circle jadi elips",
+   "cloud mirip bang"
+  ],
+  "better032": "Tanpa wrap janggal; urutan radial searah jarum jam"
+ },
+ {
+  "name": "journey",
+  "group": "other",
+  "chip032": "0 berat · 8 total",
+  "verdict032": "Lebih bersih, kurva kepuasan hilang",
+  "issues032": [
+   "Semua wajah di satu baseline",
+   "warna section = aktor = skor",
+   "band saling menempel",
+   "kontras label section"
+  ],
+  "better032": "573×250 vs 1300×540; wajah r=22 berwarna sesuai skor"
+ },
+ {
+  "name": "gitgraph",
+  "group": "other",
+  "chip032": "2 berat · 14 total",
+  "verdict032": "Topologi benar, tampilan seperti draf",
+  "issues032": [
+   "Semua edge navy 2px",
+   "kurva mencoret label merge",
+   "merge/REVERSE/HIGHLIGHT/tag tidak terbedakan",
+   "tanpa lane guide"
+  ],
+  "better032": "Label horizontal 13px (mermaid 10px diputar); palet tenang"
+ },
+ {
+  "name": "timeline",
+  "group": "other",
+  "chip032": "1 berat · 8 total",
+  "verdict032": "Lebih benar dari mermaid",
+  "issues032": [
+   "Garis dashed mencoret teks event",
+   "periode dan event sama secara tipografi",
+   "sumbu samar",
+   "band hijau 3.21:1"
+  ],
+  "better032": "6 periode tampil semua (mermaid membuang 3); 624×201 vs 995×643"
+ },
+ {
+  "name": "sankey",
+  "group": "other",
+  "chip032": "0 berat · 4 total",
+  "verdict032": "Setara atau lebih baik",
+  "issues032": [
+   "Palet 8 warna bentrok (Losses = Electricity)",
+   "label Electricity dan Industry sebaris tanpa pengukuran",
+   "1 crossing tersisa"
+  ],
+  "better032": "1 crossing (mermaid 4); label di atas ribbon dan terpusat; tooltip"
+ },
+ {
+  "name": "architecture",
+  "group": "other",
+  "chip032": "3 berat · 12 total",
+  "verdict032": "Mermaid sendiri rusak; flowmaid rapi tapi topologinya salah",
+  "issues032": [
+   "Edge web tersembunyi",
+   "svc→cache lewat PostgreSQL",
+   "layout satu baris yang mengabaikan port",
+   "emoji 16px"
+  ],
+  "better032": "Tidak ada node bertumpuk (mermaid: \"MWobile App\"); setiap service punya ikon"
+ }
+]

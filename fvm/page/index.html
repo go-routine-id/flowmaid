@@ -1,0 +1,526 @@
+<title>Flowmaid vs Mermaid</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one reading column for findings, a wide two-up gallery for renders */
+:root{
+  --paper:#f6f7fb; --sheet:#ffffff; --ink:#1d2236; --muted:#5b627c; --rule:#dfe2ee;
+  --accent:#3d4fb8; --accent-soft:#e7eafb;
+  --hot:#b4232a; --hot-soft:#fdeaea; --warm:#9a5b00; --warm-soft:#fdf1dc; --ok:#1f7a45; --ok-soft:#e3f5ea;
+  --canvas:#ffffff;
+  --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body:"Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#12141d; --sheet:#1a1d29; --ink:#e6e8f2; --muted:#a0a6c0; --rule:#2c3042;
+  --accent:#9aa8ff; --accent-soft:#262c4d;
+  --hot:#ff8a8f; --hot-soft:#3a1d22; --warm:#f2b75c; --warm-soft:#38291a; --ok:#6fd49a; --ok-soft:#173326;
+  --canvas:#ffffff; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --paper:#12141d; --sheet:#1a1d29; --ink:#e6e8f2; --muted:#a0a6c0; --rule:#2c3042;
+  --accent:#9aa8ff; --accent-soft:#262c4d;
+  --hot:#ff8a8f; --hot-soft:#3a1d22; --warm:#f2b75c; --warm-soft:#38291a; --ok:#6fd49a; --ok-soft:#173326;
+  --canvas:#ffffff; color-scheme:dark }
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font:17px/1.55 var(--f-body);
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:0 64px}
+.wrap{max-width:1180px;margin:0 auto}
+.col{max-width:760px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;line-height:1.15}
+h1{font-size:clamp(2.1rem,5vw,3.2rem);margin:0;font-weight:700;letter-spacing:-.01em}
+h2{font-size:1.6rem;margin:0 0 14px;font-weight:700}
+h3{font-size:1.1rem;margin:0;font-weight:600}
+h4{font:600 .78rem/1.3 var(--f-body);text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:0 0 6px}
+code{font-family:var(--f-mono);font-size:.86em;background:var(--accent-soft);padding:.05em .35em;border-radius:4px}
+a{color:var(--accent)}
+.hero{padding-block:44px 28px;border-bottom:1px solid var(--rule);margin-bottom:36px}
+.eyebrow{font:600 .8rem var(--f-mono);color:var(--accent);letter-spacing:.04em;margin-bottom:10px}
+.lede{font-size:1.18rem;color:var(--ink);margin:16px 0 0}
+.meta{display:flex;flex-wrap:wrap;gap:8px 22px;margin-top:20px;font:400 .85rem var(--f-mono);color:var(--muted)}
+.meta b{color:var(--ink);font-weight:600}
+section{margin-bottom:52px}
+.reasons{counter-reset:r;list-style:none;padding:0;margin:0;display:grid;gap:12px}
+.reasons li{counter-increment:r;display:grid;grid-template-columns:2.2rem 1fr;gap:4px 12px;background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:14px 16px}
+.reasons li::before{content:counter(r);font:700 1.3rem var(--f-display);color:var(--accent);grid-row:span 2}
+.reasons strong{display:block}
+.reasons span{color:var(--muted);font-size:.95rem}
+.tablewrap{overflow-x:auto;border:1px solid var(--rule);border-radius:10px;background:var(--sheet)}
+table{border-collapse:collapse;width:100%;font-size:.93rem}
+th,td{text-align:left;vertical-align:top;padding:10px 12px;border-bottom:1px solid var(--rule)}
+th{font:600 .75rem var(--f-body);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);background:var(--paper)}
+tr:last-child td{border-bottom:0}
+td.n{font:600 .85rem var(--f-mono);color:var(--muted);white-space:nowrap}
+.proto{display:grid;gap:18px}
+.proto .row{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+.proto figure,.pair figure{margin:0;min-width:0}
+figcaption{font:600 .78rem var(--f-mono);color:var(--muted);margin-bottom:6px}
+.canvas{background:var(--canvas);border:1px solid var(--rule);border-radius:8px;padding:8px;overflow:auto;max-height:720px}
+.canvas img{display:block;width:100%;height:auto}
+.note{font-size:.92rem;color:var(--muted);margin:6px 0 0}
+.filters{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 18px}
+.filters button{font:600 .88rem var(--f-body);border:1px solid var(--rule);background:var(--sheet);color:var(--ink);padding:7px 14px;border-radius:999px;cursor:pointer}
+.filters button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--sheet)}
+.filters button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.toc{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:22px}
+.toc a{font:400 .8rem var(--f-mono);text-decoration:none;padding:3px 8px;border-radius:5px;background:var(--sheet);border:1px solid var(--rule);color:var(--ink)}
+.cards{display:grid;gap:26px}
+.card{background:var(--sheet);border:1px solid var(--rule);border-radius:12px;padding:18px;scroll-margin-top:16px}
+.card-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.card-head code{background:none;padding:0;font-size:1.05rem}
+.chip{font:600 .75rem var(--f-mono);padding:3px 9px;border-radius:999px}
+.chip-hot{background:var(--hot-soft);color:var(--hot)}
+.chip-warm{background:var(--warm-soft);color:var(--warm)}
+.chip-ok{background:var(--ok-soft);color:var(--ok)}
+.verdict{margin:0 0 14px;color:var(--muted)}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.notes{display:grid;grid-template-columns:1.4fr 1fr;gap:18px;margin-top:16px;font-size:.95rem}
+.notes ul{margin:0;padding-left:1.1em}
+.notes li{margin-bottom:4px}
+.notes p{margin:0}
+.road{display:grid;gap:16px}
+.road .tier{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:16px 18px}
+.road ol{margin:8px 0 0;padding-left:1.3em}
+.road li{margin-bottom:6px}
+.tier h3 small{font:600 .75rem var(--f-mono);color:var(--muted);margin-left:8px}
+.keep{columns:2 320px;column-gap:28px;padding-left:1.1em;margin:0}
+.keep li{break-inside:avoid;margin-bottom:6px}
+@media (max-width:760px){
+  .pair,.proto .row,.notes{grid-template-columns:1fr}
+  body{font-size:16px}
+}
+@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+
+/* additions for the 19 Nov update */
+.sub{color:var(--muted);margin:-6px 0 18px}
+.chip-acc{background:var(--accent-soft);color:var(--accent)}
+.reasons li{grid-template-columns:2.2rem minmax(0,1fr)}
+.reasons li>div,.reasons li>span,.reasons li>details{grid-column:2;min-width:0}
+.reasons li::before{grid-row:span 3}
+.rtop{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
+.rtop strong{display:inline!important;margin-right:2px}
+.rel{font:600 .75rem var(--f-mono);color:var(--muted)}
+td .rel{margin-top:4px}
+.reasons .now{color:var(--ink)!important;font-size:.98rem!important}
+details summary{cursor:pointer;color:var(--accent);font-size:.88rem;margin-top:4px}
+details summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.reasons details span{display:block;margin-top:6px}
+td .chip{white-space:nowrap}
+.three{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:start;margin:4px 0 14px}
+.three figure{margin:0;min-width:0}
+.steps{margin-top:14px}
+.olist{list-style:none;padding-left:0!important}
+.olist li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:baseline}
+.olist .chip{font-size:.68rem;padding:2px 7px}
+.oi{display:block}
+.onote{display:block;color:var(--muted);font-size:.88rem}
+.was{margin-top:14px}
+.was .canvas{margin-top:10px;max-width:560px}
+@media (max-width:760px){ .three{grid-template-columns:1fr} }
+.road .tablewrap{margin-top:10px}
+ul.plain{margin:8px 0 0;padding-left:1.2em}
+ul.plain li{margin-bottom:6px}
+.tier .note{margin-top:10px}
+</style>
+<div class="wrap">
+<header class="hero">
+  <div class="eyebrow">LAPORAN PARITAS VISUAL · DIPERBARUI 19 NOV 2026</div>
+  <h1>Flowmaid vs Mermaid</h1>
+  <p class="lede col">Sumber <code>.mmd</code> yang sama, dirender dengan mermaid.js 12.2.0 dan flowmaid 0.40.2. Laporan pertama (30 Oktober, flowmaid 0.32) menyimpulkan bahwa flowmaid kalah di <strong>komposisi</strong>: bentuk edge, back-edge, kepala panah, dan layout cluster. Sepuluh rilis kemudian, halaman ini memeriksa ulang setiap temuan itu pada gambar hari ini.</p>
+  <div class="meta"><span><b>25</b> diagram</span><span>lebih baik <b>20</b> · setara <b>0</b> · campur <b>5</b> · masih kalah <b>0</b></span><span>isu 30 Okt: <b>88</b> beres · <b>11</b> sebagian · <b>8</b> masih ada (dari 107)</span><span>commit <b>c202cfc</b> (0.40.2)</span></div>
+</header>
+<section class="col">
+  <h2>Lima alasan terbesar, sekarang</h2>
+  <p class="sub">Lima penyebab utama dari laporan 30 Oktober. Statusnya diperiksa di CHANGELOG dan di gambar 0.40.2.</p>
+  <ol class="reasons">
+    <li><div class="rtop"><strong>Tiga gaya edge dalam satu gambar</strong><span class="chip chip-ok">beres</span><span class="rel">0.34.0 + 0.38.0</span></div><span class="now">Semua edge flowchart dan state kini orthogonal dengan sudut membulat; S-cubic dan spline sudah hilang dari korpus.</span><details><summary>Temuan 30 Okt</summary><span>Edge antar-rank bersebelahan jadi cubic S, edge panjang jadi B-spline, dan hanya edge yang diperbaiki router yang orthogonal. Mermaid 12.2 (ELK) membuat semua edge orthogonal dengan sudut membulat. Terlihat di sekitar 14 diagram.</span></details></li>
+    <li><div class="rtop"><strong>Back-edge digambar sebagai satu lengkungan lebar</strong><span class="chip chip-ok">beres</span><span class="rel">0.34.0</span></div><span class="now">Back-edge kini lane orthogonal di samping gambar, masuk tegak lurus; laso dan loop V hilang, kanvas mengecil.</span><details><summary>Temuan 30 Okt</summary><span>Hasilnya bentuk laso dan loop V yang menggantung. Panah masuk pada sudut sekitar 14° dan setengahnya tertutup node. Kanvas jadi membengkak. Terlihat di sekitar 11 diagram (<code>scene.rs:3347-3370</code>).</span></details></li>
+    <li><div class="rtop"><strong>Kepala panah tidak konsisten</strong><span class="chip chip-ok">beres</span><span class="rel">0.34.0</span></div><span class="now">Satu ukuran kepala 11 px termasuk ==&gt;, ujung tepat di border dan tegak lurus. Sisa kecil: satu panah miring 30°.</span><details><summary>Temuan 30 Okt</summary><span>Pada <code>==&gt;</code> kepalanya 2× ukuran normal (<code>scene.rs:2494</code>). Glyph-nya sempit dan stroke menyembul melewati ujung. Segmen terakhir tidak tegak lurus terhadap sisi node.</span></details></li>
+    <li><div class="rtop"><strong>Struktur layout salah pada diagram ber-cluster dan diagram padat</strong><span class="chip chip-warm">sebagian</span><span class="rel">0.34.0 + 0.35.0 + 0.36.0 + 0.37.0</span></div><span class="now">Subgraph bersarang dan direction beres. dense-lr masih portrait, crossing masih lebih banyak dari mermaid; subgraph sebagai blok sedang dikerjakan.</span><details><summary>Temuan 30 Okt</summary><span>Subgraph bersarang hilang dan <code>direction</code> di subgraph diabaikan. Node tanpa edge diparkir di rank 0. Akibatnya diagram LR berubah portrait, dan crossing-nya 1,6–4× lebih banyak dari mermaid.</span></details></li>
+    <li><div class="rtop"><strong>Informasi hilang atau artinya salah</strong><span class="chip chip-ok">beres</span><span class="rel">0.33.0 + 0.34.0</span></div><span class="now">Note state dan class, «interface», dan komentar ER kini tampil; lingkaran zero terlihat; parent class di atas anaknya.</span><details><summary>Temuan 30 Okt</summary><span>Note di state dan class, <code>«interface»</code>, dan komentar ER tidak ikut dirender. Chip label ER menutupi lingkaran "zero", jadi <code>o{</code> terbaca <code>|{</code>. Hierarki class terbalik.</span></details></li>
+  </ol>
+</section>
+<section>
+  <div class="col"><h2>Bug kebenaran</h2><p class="sub">Sepuluh bug yang membuat gambar salah atau kehilangan informasi. 10 dari 10 sudah beres.</p></div>
+  <div class="tablewrap"><table>
+    <thead><tr><th>#</th><th>Bug (30 Okt)</th><th>Diagram</th><th>Status</th><th>Sekarang</th></tr></thead>
+    <tbody>
+      <tr><td class="n">1</td><td>Subgraph bersarang "Async Workers" tidak digambar</td><td>advanced</td><td><span class="chip chip-ok">beres</span><div class="rel">0.34.0</div></td><td>Async Workers kini digambar sebagai frame bersarang di dalam Production Platform.</td></tr>
+      <tr><td class="n">2</td><td>Edge ke subgraph (<code>Reg --&gt; Platform</code>) tidak memengaruhi ranking, sehingga CI berada di samping Platform</td><td>advanced</td><td><span class="chip chip-ok">beres</span><div class="rel">0.34.0</div></td><td>CI kini di atas Platform, dan Reg --&gt; Platform turun lurus ke sisi atas frame.</td></tr>
+      <tr><td class="n">3</td><td><code>Dev --&gt; CI</code> digambar sebagai panah ke atas yang berhenti di border frame</td><td>advanced</td><td><span class="chip chip-ok">beres</span><div class="rel">0.34.0</div></td><td>Dev --&gt; CI kini digambar lurus ke bawah dari Dev ke Build, node pertama di CI.</td></tr>
+      <tr><td class="n">4</td><td>Chip label menutupi lingkaran "zero", jadi kardinalitas terbaca salah</td><td>er</td><td><span class="chip chip-ok">beres</span><div class="rel">0.33.0</div></td><td>Label kini diletakkan di luar glyph, jadi lingkaran zero pada o{ terlihat jelas.</td></tr>
+      <tr><td class="n">5</td><td>Hierarki terbalik: parent dan interface digambar di bawah anak</td><td>class</td><td><span class="chip chip-ok">beres</span><div class="rel">0.34.0</div></td><td>Relasi kini disusun sesuai urutan sumber: Person di atas Customer, PaymentMethod di atas CreditCard dan PayPal.</td></tr>
+      <tr><td class="n">6</td><td>Edge hasil reroute digambar lurus menembus kotak, dan segitiga inheritance hilang</td><td>class</td><td><span class="chip chip-ok">beres</span><div class="rel">0.34.0</div></td><td>Edge class kini orthogonal dan digambar mengikuti rutenya; segitiga inheritance tampil utuh.</td></tr>
+      <tr><td class="n">7</td><td>Note, <code>«interface»</code>, dan komentar atribut dibuang tanpa peringatan</td><td>state, class, er</td><td><span class="chip chip-ok">beres</span><div class="rel">0.33.0 + 0.34.0</div></td><td>Note class dan state, «interface», serta komentar atribut ER kini dirender.</td></tr>
+      <tr><td class="n">8</td><td>Ujung edge melayang 7–10px dari sisi miring parallelogram/hexagon</td><td>shapes, advanced</td><td><span class="chip chip-ok">beres</span><div class="rel">0.34.0</div></td><td>Ujung edge kini tepat di outline asli, termasuk sisi miring parallelogram dan titik hexagon.</td></tr>
+      <tr><td class="n">9</td><td><code>direction LR</code> di subgraph atau composite state diabaikan</td><td>state, flowchart</td><td><span class="chip chip-ok">beres</span><div class="rel">0.37.0</div></td><td>Composite Validating dengan direction LR kini satu baris. Tiga poin kecil masih tercatat di roadmap.</td></tr>
+      <tr><td class="n">10</td><td>Edge architecture tersembunyi di belakang node lain atau menembus kotak</td><td>architecture</td><td><span class="chip chip-ok">beres</span><div class="rel">0.33.0</div></td><td>Edge architecture kini terlihat semua, mengikuti port yang ditulis, dan tidak menembus kotak service.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+<section>
+  <div class="col">
+    <h2>Sedang dikerjakan: subgraph sebagai blok</h2>
+    <p>Diagram dengan banyak subgraph yang saling terhubung masih kalah rapi dari mermaid. Layout baru membuat setiap subgraph jadi satu blok padat: blok yang terhubung ditumpuk searah alur, edge berjalan di celah antar-blok, dan label punya ruang sendiri. Layout ini sudah ada di kode, tetapi masih dimatikan sampai lolos perbandingan dengan mermaid.</p>
+  </div>
+  <div class="three">
+    <figure><figcaption>mermaid.js 12.2.0</figcaption><div class="canvas"><img src="img/blocks-overview.mermaid.webp" width="788" height="1500" alt="blocks-overview dirender mermaid" loading="lazy"></div></figure>
+    <figure><figcaption>flowmaid 0.40.2 (sekarang)</figcaption><div class="canvas"><img src="img/blocks-overview.default.webp" width="1100" height="1330" alt="blocks-overview dirender flowmaid 0.40.2" loading="lazy"></div></figure>
+    <figure><figcaption>mode blok (belum dirilis)</figcaption><div class="canvas"><img src="img/blocks-overview.blocks.webp" width="950" height="1500" alt="blocks-overview dalam mode blok" loading="lazy"></div></figure>
+  </div>
+  <div class="col">
+    <p class="note">Input: <code>tests/fixtures/blocks/blocks-overview.mmd</code>. Gambar mode blok diambil dari branch kerja (commit b82d584), tanpa drag.</p>
+    <div class="tablewrap steps"><table>
+      <thead><tr><th>Langkah</th><th>Isi</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td class="n">1</td><td>Struktur: pohon blok, layering, urutan</td><td><span class="chip chip-ok">masuk 0.40.1</span> dimatikan</td></tr>
+        <tr><td class="n">2</td><td>Geometri: frame, koordinat, ruang untuk celah dan label. Bagian kedua (frame lebih rapat, rantai tetap lurus) belum mencapai target setelah dua putaran kerja.</td><td><span class="chip chip-warm">sebagian</span> bagian pertama masuk 0.40.2</td></tr>
+        <tr><td class="n">3</td><td>Routing saat drag: <code>route()</code> menggambar sama dengan layout statis, drag hanya menggambar ulang yang bergerak.</td><td><span class="chip chip-ok">lolos review</span> di branch kerja</td></tr>
+        <tr><td class="n">4</td><td>Koridor untuk edge yang digambar ulang, perbandingan penuh dengan mermaid, lalu jadi default</td><td><span class="chip chip-hot">belum mulai</span></td></tr>
+      </tbody>
+    </table></div>
+    <p class="note">Diagram uji padat (<code>dense-td</code>): mode blok menggambar 42 crossing, layout sekarang 66 (statis) dan 76 (setelah <code>route()</code>).</p>
+  </div>
+</section>
+<section>
+  <div class="col"><h2>Galeri per diagram</h2><p class="sub">Mermaid di kiri, flowmaid 0.40.2 di kanan, dari input yang identik. Chip menunjukkan penilaian 0.40.2 terhadap mermaid. Di bawahnya, isu dari laporan 30 Oktober dengan statusnya sekarang. Gambar 0.32 ada di bagian yang bisa dibuka.</p></div>
+  <div class="filters" role="group" aria-label="Saring diagram">
+    <button type="button" id="f-all" data-f="all" aria-pressed="true">Semua (25)</button>
+    <button type="button" id="f-flow" data-f="flow" aria-pressed="false">Flowchart (14)</button>
+    <button type="button" id="f-other" data-f="other" aria-pressed="false">Tipe lain (11)</button>
+    <button type="button" id="f-behind" data-f="behind" aria-pressed="false">Belum setara (5)</button>
+  </div>
+  <nav class="toc" aria-label="Lompat ke diagram" id="toc"></nav>
+  <div class="cards" id="cards">
+<article class="card" data-group="flow" data-behind="no" id="d-demo">
+<header class="card-head"><h3><code>demo.mmd</code></h3><span class="chip chip-ok">lebih baik</span></header>
+<p class="verdict">Lebih rapi dari mermaid, sisa kecil di posisi chip yes/no</p>
+<div class="pair">
+<figure><figcaption>mermaid.js 12.2.0</figcaption><div class="canvas"><img src="img/demo.mermaid.webp" width="564" height="947" alt="demo dirender mermaid" loading="lazy"></div></figure>
+<figure><figcaption>flowmaid 0.40.2</figcaption><div class="canvas"><img src="img/demo.fm0402.webp" width="482" height="816" alt="demo dirender flowmaid 0.40.2" loading="lazy"></div></figure>
+</div>
+<div class="notes"><div><h4>Isu 30 Okt, sekarang</h4><ul class="olist"><li><span class="chip chip-ok">beres</span><span><span class="oi">Loop E→B berbentuk lasso, panah 14° setengah tertutup</span> <span class=onote>E→B kini jalur siku di kanan (x=239), kepala utuh masuk tegak ke sisi bawah Read input.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">kepala ==&gt; 2×</span> <span class=onote>Satu ukuran kepala 11px untuk semua edge; D→F tebal 3.5px, kepalanya sama.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">rank berlabel sempit sehingga yes/no jadi kait</span> <span class=onote>Gap rank berlabel 72px (dulu 60). yes/no kini siku turun-samping-turun, tanpa kait.</span></span></li></ul></div><div><h4>Masih terlihat di 0.40.2</h4><ul><li>Chip yes/no menutupi tikungan; mermaid menaruh label di segmen tegak</li><li>Chip yes/no tidak simetris: beda tinggi 2.4px, garis yes di tepi chip</li></ul><h4>Flowmaid lebih baik</h4><p>Diamond 102×65 vs 171×171, kanvas 321×544 vs 360×615, jalur no tanpa tangga (mermaid 18px), label berupa chip berbingkai.</p></div></div>
+<details class="was"><summary>Lihat gambar 0.32 (30 Okt) · penilaian waktu itu: Lebih bersih dari mermaid, kecuali back-edge dan kepala thick</summary><div class="canvas"><img src="img/demo.flowmaid.webp" width="599" height="822" alt="demo dirender flowmaid 0.32" loading="lazy"></div></details>
+</article>
+<article class="card" data-group="flow" data-behind="no" id="d-advanced">
+<header class="card-head"><h3><code>advanced.mmd</code></h3><span class="chip chip-ok">lebih baik</span></header>
+<p class="verdict">Struktur kini benar dan lebih rapi dari mermaid</p>
+<div class="pair">
+<figure><figcaption>mermaid.js 12.2.0</figcaption><div class="canvas"><img src="img/advanced.mermaid.webp" width="922" height="1500" alt="advanced dirender mermaid" loading="lazy"></div></figure>
+<figure><figcaption>flowmaid 0.40.2</figcaption><div class="canvas"><img src="img/advanced.fm0402.webp" width="723" height="1500" alt="advanced dirender flowmaid 0.40.2" loading="lazy"></div></figure>
+</div>
+<div class="notes"><div><h4>Isu 30 Okt, sekarang</h4><ul class="olist"><li><span class="chip chip-ok">beres</span><span><span class="oi">Async Workers hilang</span> <span class=onote>Frame Async Workers ada (Job Queue, Worker 1, Worker 2), isinya lebih gelap dari Platform.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">edge ke Platform tidak memengaruhi ranking</span> <span class=onote>CI/CD Pipeline kini di atas Production Platform; Reg→Platform lurus 46px ke tepi frame.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">Dev→CI stub ke atas</span> <span class=onote>Tidak ada stub lagi; Dev→CI digambar lurus 60px ke Build &amp; Test sebagai wakil frame.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">&#x27;fail&#x27; dan Cache→Gate keluar frame</span> <span class=onote>fail (x≤508) di dalam CI/CD (tepi 520); Cache→Gate (x≤521) di dalam Platform (tepi 568).</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">kepala thick 2×</span> <span class=onote>Gate==&gt;Q tebal 3.5px dengan kepala 11px, sama dengan edge lain.</span></span></li></ul></div><div><h4>Masih terlihat di 0.40.2</h4><ul><li>Chip yes di tikungan dan 20px lebih tinggi dari chip no</li><li>Panah yes masuk Live 15px dari tengah lingkaran</li><li>Q→W1 masuk Worker 1 36px dari tengah, 8px dari sudut kanan</li><li>Panah no masuk Rollback 12px dari sudut kirinya</li></ul><h4>Flowmaid lebih baik</h4><p>Self-loop W1 utuh (mermaid rusak), Rollback→Platform lurus 167px (mermaid memutar sisi kanan), judul Async Workers tidak dicoret, kanvas 596×1236 vs 906×1484.</p></div></div>
+<details class="was"><summary>Lihat gambar 0.32 (30 Okt) · penilaian waktu itu: Bentuknya bagus, strukturnya salah</summary><div class="canvas"><img src="img/advanced.flowmaid.webp" width="1100" height="1031" alt="advanced dirender flowmaid 0.32" loading="lazy"></div></details>
+</article>
+<article class="card" data-group="flow" data-behind="no" id="d-subgraph">
+<header class="card-head"><h3><code>subgraph.mmd</code></h3><span class="chip chip-ok">lebih baik</span></header>
+<p class="verdict">Ritme dan spine kini rapi, lebih bersih dari mermaid</p>
+<div class="pair">
+<figure><figcaption>mermaid.js 12.2.0</figcaption><div class="canvas"><img src="img/subgraph.mermaid.webp" width="723" height="1148" alt="subgraph dirender mermaid" loading="lazy"></div></figure>
+<figure><figcaption>flowmaid 0.40.2</figcaption><div class="canvas"><img src="img/subgraph.fm0402.webp" width="573" height="1137" alt="subgraph dirender flowmaid 0.40.2" loading="lazy"></div></figure>
+</div>
+<div class="notes"><div><h4>Isu 30 Okt, sekarang</h4><ul class="olist"><li><span class="chip chip-ok">beres</span><span><span class="oi">Ruang mati 26px di bawah baris pertama cluster</span> <span class=onote>Auth→User DB kini 60px (dulu 86px), sama dengan gap lain di dalam frame.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">spine tidak rata</span> <span class=onote>Semua node spine di x=190.9; gap 60px di dalam frame, 84-86px saat melewati tepi frame.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">nested tidak terbedakan</span> <span class=onote>Event bus kini isi #eceef6 dengan garis lebih gelap, Platform #f6f7fb. Terlihat, walau halus.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">fan-out off-centre</span> <span class=onote>Broker→Consumer A/B simetris: keluar ±24.8px, masuk tepat di tengah tiap consumer.</span></span></li></ul></div><div><h4>Masih terlihat di 0.40.2</h4><ul><li>Consumer→Warehouse keluar 36px dari tengah, masuk 8px dari sudut Warehouse</li><li>Beda warna frame luar dan dalam masih halus dibanding mermaid</li></ul><h4>Flowmaid lebih baik</h4><p>Judul frame tidak dicoret (mermaid mencoret Platform dan Event bus), gap dalam frame rata 60px (mermaid 24 dan 60), lebar 382 vs 466.</p></div></div>
+<details class="was"><summary>Lihat gambar 0.32 (30 Okt) · penilaian waktu itu: Benar secara semantik; kalah ritme dan ukuran</summary><div class="canvas"><img src="img/subgraph.flowmaid.webp" width="597" height="1203" alt="subgraph dirender flowmaid 0.32" loading="lazy"></div></details>
+</article>
+<article class="card" data-group="flow" data-behind="no" id="d-lr">
+<header class="card-head"><h3><code>lr.mmd</code></h3><span class="chip chip-ok">lebih baik</span></header>
+<p class="verdict">V-loop hilang, kini lebih ringkas dan rapi dari mermaid</p>
+<div class="pair">
+<figure><figcaption>mermaid.js 12.2.0</figcaption><div class="canvas"><img src="img/lr.mermaid.webp" width="1100" height="243" alt="lr dirender mermaid" loading="lazy"></div></figure>
+<figure><figcaption>flowmaid 0.40.2</figcaption><div class="canvas"><img src="img/lr.fm0402.webp" width="1100" height="296" alt="lr dirender flowmaid 0.40.2" loading="lazy"></div></figure>
+</div>
+<div class="notes"><div><h4>Isu 30 Okt, sekarang</h4><ul class="olist"><li><span class="chip chip-ok">beres</span><span><span class="oi">V-loop CACHE→SVC (+73px)</span> <span class=onote>CACHE→SVC kini siku pendek bersarang dengan SVC→CACHE, tanpa crossing. Tinggi kanvas 226 (dulu 299), sama dengan mermaid.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">kepala thick 2×</span> <span class=onote>SVC==&gt;DB memakai kepala 11px yang sama dengan edge lain.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">&#x27;denied&#x27; menempel di 401</span> <span class=onote>Chip denied berakhir di x=458.7, 401 Response mulai di x=505.5: jarak 47px.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">kipas keputusan asimetris (dup BK)</span> <span class=onote>SVC dan 401 Response ±44px dari sumbu Auth?, garis keluar ±7.5px. Yang beda hanya chip dan tikungan (7px).</span></span></li></ul></div><div><h4>Masih terlihat di 0.40.2</h4><ul><li>Chip denied menutupi tikungan, chip ok di segmen lurus, jadi tidak sejajar</li><li>Garis tebal ke Database keluar 5px dari sudut atas Service Layer</li></ul><h4>Flowmaid lebih baik</h4><p>Lebar 839 vs 1074 dengan tinggi sama 226, diamond 98×65 vs 171×171, label berupa chip berbingkai, warna per jenis node.</p></div></div>
+<details class="was"><summary>Lihat gambar 0.32 (30 Okt) · penilaian waktu itu: Satu V-loop membuatnya tampak rusak</summary><div class="canvas"><img src="img/lr.flowmaid.webp" width="1100" height="430" alt="lr dirender flowmaid 0.32" loading="lazy"></div></details>
+</article>
+<article class="card" data-group="flow" data-behind="no" id="d-shapes">
+<header class="card-head"><h3><code>shapes.mmd</code></h3><span class="chip chip-ok">lebih baik</span></header>
+<p class="verdict">Semua ujung tepat di border, tinggal kontras garis yang kalah</p>
+<div class="pair">
+<figure><figcaption>mermaid.js 12.2.0</figcaption><div class="canvas"><img src="img/shapes.mermaid.webp" width="1100" height="102" alt="shapes dirender mermaid" loading="lazy"></div></figure>
+<figure><figcaption>flowmaid 0.40.2</figcaption><div class="canvas"><img src="img/shapes.fm0402.webp" width="1100" height="103" alt="shapes dirender flowmaid 0.40.2" loading="lazy"></div></figure>
+</div>
+<div class="notes"><div><h4>Isu 30 Okt, sekarang</h4><ul class="olist"><li><span class="chip chip-ok">beres</span><span><span class="oi">Ujung edge melayang di sisi miring</span> <span class=onote>Ujung panah tepat di sisi miring: I→J di x=1479.9, J→K di x=1683.7, pas dengan garis polygon.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">label cylinder terlalu tinggi dan tutupnya kosong</span> <span class=onote>Label di y=92.2, di badan di bawah tutup (77.8-111.8); tutup kini elips penuh ry 10.</span></span></li><li><span class="chip chip-warm">sebagian</span><span><span class="oi">stroke tipis berkontras rendah</span> <span class=onote>Garis node 1.8px (dulu 1.6), warna sama: oranye 2.35:1 dan hijau 2.84:1 terhadap isi.</span></span></li></ul></div><div><h4>Masih terlihat di 0.40.2</h4><ul><li>Garis oranye 2.35:1 dan hijau 2.84:1 terhadap isi, di bawah 3:1</li></ul><h4>Flowmaid lebih baik</h4><p>Lebih ringkas: lebar 1813 vs 2157, diamond 128×65 vs 171×171, hexagon 116×38 vs 204×91; warna per kelompok shape.</p></div></div>
+<details class="was"><summary>Lihat gambar 0.32 (30 Okt) · penilaian waktu itu: Paling dekat ke mermaid</summary><div class="canvas"><img src="img/shapes.flowmaid.webp" width="1100" height="111" alt="shapes dirender flowmaid 0.32" loading="lazy"></div></details>
+</article>
+<article class="card" data-group="flow" data-behind="no" id="d-stress">
+<header class="card-head"><h3><code>stress.mmd</code></h3><span class="chip chip-ok">lebih baik</span></header>
+<p class="verdict">Nol crossing dan self-loop jelas; chip &#x27;parallel&#x27; menempel edge thick</p>
+<div class="pair">
+<figure><figcaption>mermaid.js 12.2.0</figcaption><div class="canvas"><img src="img/stress.mermaid.webp" width="458" height="900" alt="stress dirender mermaid" loading="lazy"></div></figure>
+<figure><figcaption>flowmaid 0.40.2</figcaption><div class="canvas"><img src="img/stress.fm0402.webp" width="395" height="659" alt="stress dirender flowmaid 0.40.2" loading="lazy"></div></figure>
+</div>
+<div class="notes"><div><h4>Isu 30 Okt, sekarang</h4><ul class="olist"><li><span class="chip chip-ok">beres</span><span><span class="oi">Thick menembus self-loop</span> <span class=onote>Thick turun di x=233, sekitar 21px di kanan self-loop; tidak bersentuhan.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">&#x27;parallel&#x27; di edge yang salah</span> <span class=onote>Chip kini di samping edge lurus &#x27;A → B: parallel&#x27; (x=164).</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">back-edge menyilang thick</span> <span class=onote>&#x27;no&#x27; lewat lane kiri, thick lewat kanan; 0 crossing di seluruh diagram.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">apex diamond penuh</span> <span class=onote>Hanya B→C di apex atas; &#x27;no&#x27; keluar dari sisi kiri atas, &#x27;yes&#x27; dari sisi kanan bawah.</span></span></li><li><span class="chip chip-warm">sebagian</span><span><span class="oi">S-wobble</span> <span class=onote>Lengkung S hilang. Masih ada jog siku di A→B, &#x27;yes&#x27; dan thick; mermaid juga punya jog serupa.</span></span></li></ul></div><div><h4>Masih terlihat di 0.40.2</h4><ul><li>Chip &#x27;parallel&#x27; menempel di bawah belokan thick, jarak kurang dari 1px.</li><li>&#x27;no&#x27; memutar lewat lane kiri; labelnya 75px di atas Check.</li><li>Chip &#x27;yes&#x27; menutupi jog; garis masuk dari kiri, keluar dari bawah.</li></ul><h4>Flowmaid lebih baik</h4><p>Self-loop bulat yang jelas (mermaid hanya stub kecil), diamond 101×65 vs 171×171, area 31% lebih kecil.</p></div></div>
+<details class="was"><summary>Lihat gambar 0.32 (30 Okt) · penilaian waktu itu: Elemen bagus, edge berebut satu strip 65px</summary><div class="canvas"><img src="img/stress.flowmaid.webp" width="401" height="647" alt="stress dirender flowmaid 0.32" loading="lazy"></div></details>
+</article>
+<article class="card" data-group="flow" data-behind="no" id="d-fanout">
+<header class="card-head"><h3><code>fanout.mmd</code></h3><span class="chip chip-ok">lebih baik</span></header>
+<p class="verdict">Spine lurus, 0 crossing, loop-back &#x27;no&#x27; lewat lane kanan</p>
+<div class="pair">
+<figure><figcaption>mermaid.js 12.2.0</figcaption><div class="canvas"><img src="img/fanout.mermaid.webp" width="1100" height="724" alt="fanout dirender mermaid" loading="lazy"></div></figure>
+<figure><figcaption>flowmaid 0.40.2</figcaption><div class="canvas"><img src="img/fanout.fm0402.webp" width="1100" height="766" alt="fanout dirender flowmaid 0.40.2" loading="lazy"></div></figure>
+</div>
+<div class="notes"><div><h4>Isu 30 Okt, sekarang</h4><ul class="olist"><li><span class="chip chip-ok">beres</span><span><span class="oi">Loop-back &#x27;no&#x27; lewat interior (2 crossing, gap berlawanan)</span> <span class=onote>&#x27;no&#x27; lewat lane kanan x=711, 39px dari Worker 5, masuk sisi kanan Dispatcher; 0 crossing.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">gaya edge campur</span> <span class=onote>Semua edge siku membulat; kipas keluar dan masuk bersarang rapi.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">port Worker off-centre dan tidak merata</span> <span class=onote>Edge masuk dan keluar tepat di tengah tiap Worker; port Dispatcher jarak 14px, Aggregator 17px.</span></span></li></ul></div><div><h4>Masih terlihat di 0.40.2</h4><ul><li>Label &#x27;no&#x27; di tengah lane, jauh dari diamond; mermaid sama.</li></ul><h4>Flowmaid lebih baik</h4><p>Spine lurus dari Dispatcher sampai Done, &#x27;no&#x27; masuk di sisi kanan Dispatcher (mermaid di samping port kipas), area 38% lebih kecil.</p></div></div>
+<details class="was"><summary>Lihat gambar 0.32 (30 Okt) · penilaian waktu itu: Komposisi seimbang, loop-back menembus kipas</summary><div class="canvas"><img src="img/fanout.flowmaid.webp" width="1074" height="794" alt="fanout dirender flowmaid 0.32" loading="lazy"></div></details>
+</article>
+<article class="card" data-group="flow" data-behind="yes" id="d-long-labels">
+<header class="card-head"><h3><code>long-labels.mmd</code></h3><span class="chip chip-warm">campur</span></header>
+<p class="verdict">Wrap beres dan diamond kompak; chip label menutupi belokan</p>
+<div class="pair">
+<figure><figcaption>mermaid.js 12.2.0</figcaption><div class="canvas"><img src="img/long-labels.mermaid.webp" width="561" height="1034" alt="long-labels dirender mermaid" loading="lazy"></div></figure>
+<figure><figcaption>flowmaid 0.40.2</figcaption><div class="canvas"><img src="img/long-labels.fm0402.webp" width="609" height="867" alt="long-labels dirender flowmaid 0.40.2" loading="lazy"></div></figure>
+</div>
+<div class="notes"><div><h4>Isu 30 Okt, sekarang</h4><ul class="olist"><li><span class="chip chip-ok">beres</span><span><span class="oi">Node 442×38, diamond 616×65 (9.5:1), lebar 672 vs 358</span> <span class=onote>Label kini di-wrap: node A 201×72 (3 baris), diamond 220×151 (1.45:1). Lebar 406 vs 358, tinggi 578 vs 672.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">label menjepit gap 60px</span> <span class=onote>Gap diamond ke node kini 72 sampai 80px, chip punya ruang. Chip duduk di belokan, lihat sisa masalah.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">panah meleset 43.7px</span> <span class=onote>Kedua panah masuk tepat di tengah node (x=104.7 dan 304.5), ujung di border.</span></span></li></ul></div><div><h4>Masih terlihat di 0.40.2</h4><ul><li>Chip &#x27;complete&#x27; dan &#x27;incomplete&#x27; menutupi belokan; garis &#x27;incomplete&#x27; masuk dari atas chip.</li><li>Dua chip beda tinggi 10px; mermaid sejajar di segmen lurus.</li><li>Node C satu baris, D dua baris; tinggi kedua node tidak sama.</li><li>Kanvas 48px lebih lebar dari mermaid (406 vs 358).</li></ul><h4>Flowmaid lebih baik</h4><p>Diamond 220×151 (mermaid 234×234), node A tiga baris (mermaid empat), kanvas 94px lebih pendek.</p></div></div>
+<details class="was"><summary>Lihat gambar 0.32 (30 Okt) · penilaian waktu itu: Hampir semua kekalahan karena tidak ada wrap</summary><div class="canvas"><img src="img/long-labels.flowmaid.webp" width="1032" height="668" alt="long-labels dirender flowmaid 0.32" loading="lazy"></div></details>
+</article>
+<article class="card" data-group="flow" data-behind="no" id="d-back-edge">
+<header class="card-head"><h3><code>back-edge.mmd</code></h3><span class="chip chip-ok">lebih baik</span></header>
+<p class="verdict">Back-edge kini siku rapi; chip yes/no masih menutupi belokan</p>
+<div class="pair">
+<figure><figcaption>mermaid.js 12.2.0</figcaption><div class="canvas"><img src="img/back-edge.mermaid.webp" width="564" height="947" alt="back-edge dirender mermaid" loading="lazy"></div></figure>
+<figure><figcaption>flowmaid 0.40.2</figcaption><div class="canvas"><img src="img/back-edge.fm0402.webp" width="435" height="816" alt="back-edge dirender flowmaid 0.40.2" loading="lazy"></div></figure>
+</div>
+<div class="notes"><div><h4>Isu 30 Okt, sekarang</h4><ul class="olist"><li><span class="chip chip-ok">beres</span><span><span class="oi">Arc &quot;telinga&quot;, 41% kepala tertutup</span> <span class=onote>Back-edge kini siku: naik di x=216, masuk dari bawah Read input; kepala tidak tertutup.</span></span></li><li><span class="chip chip-warm">sebagian</span><span><span class="oi">start 14px dari &#x27;no&#x27;</span> <span class=onote>Titik start kini sekitar 45px dari chip &#x27;no&#x27;, tapi lane naiknya masih 15px dari chip itu.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">kepala thick 2× dan stub</span> <span class=onote>Kepala thick D→F seukuran kepala lain (11px); garis lurus sampai border Done.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">kanvas +37px</span> <span class=onote>Lane di dalam kolom Show error; margin kanan 28px sama dengan kiri.</span></span></li></ul></div><div><h4>Masih terlihat di 0.40.2</h4><ul><li>E→B belok tepat di bawah kepala, tanpa stub lurus; mermaid sama.</li><li>Lane E→B naik hanya 15px dari chip &#x27;no&#x27;.</li><li>Chip &#x27;yes&#x27; dan &#x27;no&#x27; menutupi belokan; garis keluar dari bawah chip.</li></ul><h4>Flowmaid lebih baik</h4><p>Spine Start sampai Valid? lurus (mermaid ada jog Z), diamond 102×65 vs 171×171, area 29% lebih kecil.</p></div></div>
+<details class="was"><summary>Lihat gambar 0.32 (30 Okt) · penilaian waktu itu: Spine sempurna, back-edge-nya buruk</summary><div class="canvas"><img src="img/back-edge.flowmaid.webp" width="551" height="822" alt="back-edge dirender flowmaid 0.32" loading="lazy"></div></details>
+</article>
+<article class="card" data-group="flow" data-behind="yes" id="d-wide-labels">
+<header class="card-head"><h3><code>wide-labels.mmd</code></h3><span class="chip chip-warm">campur</span></header>
+<p class="verdict">Bow dan kanvas beres; satu chip melayang, beberapa menutupi belokan</p>
+<div class="pair">
+<figure><figcaption>mermaid.js 12.2.0</figcaption><div class="canvas"><img src="img/wide-labels.mermaid.webp" width="1100" height="88" alt="wide-labels dirender mermaid" loading="lazy"></div></figure>
+<figure><figcaption>flowmaid 0.40.2</figcaption><div class="canvas"><img src="img/wide-labels.fm0402.webp" width="1100" height="87" alt="wide-labels dirender flowmaid 0.40.2" loading="lazy"></div></figure>
+</div>
+<div class="notes"><div><h4>Isu 30 Okt, sekarang</h4><ul class="olist"><li><span class="chip chip-ok">beres</span><span><span class="oi">Bow LR memakai lebar label 337px</span> <span class=onote>Return &#x27;cached response…&#x27; kini siku pendek y 80→101 di bawah Gateway; tidak ada bow.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">viewBox dari titik kontrol</span> <span class=onote>Kanvas 1971×156; margin bawah 28px, tidak ada ruang kosong.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">Database melorot</span> <span class=onote>Database sebaris dengan Client dan Service; C→D lurus horizontal.</span></span></li><li><span class="chip chip-warm">sebagian</span><span><span class="oi">label mengambang dengan 3 cara</span> <span class=onote>&#x27;forwarded…&#x27; 16px di atas garisnya dan tidak menyentuh garis. &#x27;writes the projection&#x27; menutupi step-nya, garis panjangnya 9px di bawah chip. Chip lain di garisnya.</span></span></li></ul></div><div><h4>Masih terlihat di 0.40.2</h4><ul><li>Chip &#x27;forwarded…&#x27; melayang 16px di atas garis B→C, 4.5px di atas Service.</li><li>Chip &#x27;cached&#x27;, &#x27;publish&#x27;, &#x27;writes&#x27;, &#x27;health probe&#x27; menutupi belokan; garis muncul dari sisi chip.</li><li>Chip &#x27;writes the projection&#x27; hanya 4px dari Worker.</li><li>Garis B→C lewat 7px di atas chip &#x27;health probe&#x27;.</li></ul><h4>Flowmaid lebih baik</h4><p>Label panjang satu baris (mermaid dua baris), port terpisah per edge (mermaid menumpuk di satu titik), kanvas 1971 vs 2257 lebar.</p></div></div>
+<details class="was"><summary>Lihat gambar 0.32 (30 Okt) · penilaian waktu itu: Bug sumbu label menghasilkan loop 230px</summary><div class="canvas"><img src="img/wide-labels.flowmaid.webp" width="1100" height="253" alt="wide-labels dirender flowmaid 0.32" loading="lazy"></div></details>
+</article>
+<article class="card" data-group="flow" data-behind="no" id="d-fanout-frames">
+<header class="card-head"><h3><code>fanout-frames.mmd</code></h3><span class="chip chip-ok">lebih baik</span></header>
+<p class="verdict">Kipas bersih tanpa crossing, teks node tetap terbaca</p>
+<div class="pair">
+<figure><figcaption>mermaid.js 12.2.0</figcaption><div class="canvas"><img src="img/fanout-frames.mermaid.webp" width="436" height="1500" alt="fanout-frames dirender mermaid" loading="lazy"></div></figure>
+<figure><figcaption>flowmaid 0.40.2</figcaption><div class="canvas"><img src="img/fanout-frames.fm0402.webp" width="367" height="1500" alt="fanout-frames dirender flowmaid 0.40.2" loading="lazy"></div></figure>
+</div>
+<div class="notes"><div><h4>Isu 30 Okt, sekarang</h4><ul class="olist"><li><span class="chip chip-ok">beres</span><span><span class="oi">g3 dipindah ke kolom kedua (+9% area)</span> <span class=onote>Semua frame kini satu kolom; area 11% lebih kecil dari mermaid.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">detour g3 terjepit</span> <span class=onote>Edge ke g3 kini satu garis lurus mendatar.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">7 edge kipas campur S dan elbow</span> <span class=onote>Ketujuh edge kini siku semua, tanpa kurva S.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">2 crossing yang bisa dihindari</span> <span class=onote>0 crossing, dihitung dari SVG.</span></span></li><li><span class="chip chip-hot">masih ada</span><span><span class="oi">tepi frame tidak rata</span> <span class=onote>Tepi kiri frame di x 276 sampai 304; di mermaid semua sejajar.</span></span></li></ul></div><div><h4>Masih terlihat di 0.40.2</h4><ul><li>Tepi kiri frame tidak sejajar, selisih 28 px; mermaid rata kiri</li><li>Edge ke g6 dan ipsum keluar dari bawah n0</li><li>Node frame ditumpuk satu kolom; frame g3 setinggi 650, mermaid 400</li></ul><h4>Flowmaid lebih baik</h4><p>Teks node mengikuti &lt;br/&gt; (cylinder 3 baris, mermaid 7), urutan node di frame sesuai sumber, area 11% lebih kecil.</p></div></div>
+<details class="was"><summary>Lihat gambar 0.32 (30 Okt) · penilaian waktu itu: Node rapi, narrowing salah</summary><div class="canvas"><img src="img/fanout-frames.flowmaid.webp" width="763" height="1500" alt="fanout-frames dirender flowmaid 0.32" loading="lazy"></div></details>
+</article>
+<article class="card" data-group="flow" data-behind="yes" id="d-dense-td">
+<header class="card-head"><h3><code>dense-td.mmd</code></h3><span class="chip chip-warm">campur</span></header>
+<p class="verdict">Kompak dan siku semua, tapi frame berdampingan merusak alur TB</p>
+<div class="pair">
+<figure><figcaption>mermaid.js 12.2.0</figcaption><div class="canvas"><img src="img/dense-td.mermaid.webp" width="1100" height="1165" alt="dense-td dirender mermaid" loading="lazy"></div></figure>
+<figure><figcaption>flowmaid 0.40.2</figcaption><div class="canvas"><img src="img/dense-td.fm0402.webp" width="1100" height="468" alt="dense-td dirender flowmaid 0.40.2" loading="lazy"></div></figure>
+</div>
+<div class="notes"><div><h4>Isu 30 Okt, sekarang</h4><ul class="olist"><li><span class="chip chip-ok">beres</span><span><span class="oi">3 gaya edge</span> <span class=onote>Ke-47 edge kini siku dengan hop; di 0.32 ada 22 edge berkurva atau miring.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">simpul di hub n16</span> <span class=onote>12 edge keluar n16 jadi satu sisir rapi dari sisi bawah.</span></span></li><li><span class="chip chip-hot">masih ada</span><span><span class="oi">cluster berdampingan</span> <span class=onote>g5, g1, g8 masih sejajar mendatar; mermaid menumpuk dari atas ke bawah.</span></span></li><li><span class="chip chip-hot">masih ada</span><span><span class="oi">&#x27;amet&#x27; di sisi jauh (edge 3316 unit)</span> <span class=onote>&#x27;amet&#x27; tetap di pojok kiri atas; edge ke g8 masih 3267 unit.</span></span></li><li><span class="chip chip-hot">masih ada</span><span><span class="oi">node tanpa edge di rank 0</span> <span class=onote>n24, n26, n27, n34 masih di baris teratas bersama &#x27;amet&#x27;.</span></span></li></ul></div><div><h4>Masih terlihat di 0.40.2</h4><ul><li>Frame g5, g1, g8 berdampingan; alur atas ke bawah tidak terbaca</li><li>&#x27;amet&#x27; dan node tanpa edge di baris atas; edge &#x27;amet&#x27; 3267 unit</li><li>Chip &#x27;do&#x27; menutup dua garis sejajar, pemiliknya tidak jelas</li><li>Putus garis tepat di atas 2 kepala panah (ke g1, n13); kepala tampak lepas</li></ul><h4>Flowmaid lebih baik</h4><p>Area 42% dari mermaid, panjang edge total 45%, crossing setara (66 vs 68), ketiga edge dotted tetap dotted (mermaid hanya 1).</p></div></div>
+<details class="was"><summary>Lihat gambar 0.32 (30 Okt) · penilaian waktu itu: Kompak (43% area), routing belum selesai</summary><div class="canvas"><img src="img/dense-td.flowmaid.webp" width="1100" height="474" alt="dense-td dirender flowmaid 0.32" loading="lazy"></div></details>
+</article>
+<article class="card" data-group="flow" data-behind="yes" id="d-dense-lr">
+<header class="card-head"><h3><code>dense-lr.mmd</code></h3><span class="chip chip-warm">campur</span></header>
+<p class="verdict">Jauh lebih rapi dari 0.32, tapi crossing 4.5× mermaid</p>
+<div class="pair">
+<figure><figcaption>mermaid.js 12.2.0</figcaption><div class="canvas"><img src="img/dense-lr.mermaid.webp" width="1100" height="856" alt="dense-lr dirender mermaid" loading="lazy"></div></figure>
+<figure><figcaption>flowmaid 0.40.2</figcaption><div class="canvas"><img src="img/dense-lr.fm0402.webp" width="996" height="1500" alt="dense-lr dirender flowmaid 0.40.2" loading="lazy"></div></figure>
+</div>
+<div class="notes"><div><h4>Isu 30 Okt, sekarang</h4><ul class="olist"><li><span class="chip chip-hot">masih ada</span><span><span class="oi">Hub 12 edge keluar dari 3 sisi</span> <span class=onote>n12 masih memakai 3 sisi: 7 kanan, 3 bawah, 2 atas. Kini tertata rapi.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">gaya campur</span> <span class=onote>Ke-42 edge kini siku; di 0.32 ada 21 edge berkurva.</span></span></li><li><span class="chip chip-hot">masih ada</span><span><span class="oi">frame kosong</span> <span class=onote>Frame g9 dan g11 masih banyak ruang kosong; isi g9 di kiri, satu node di kanan.</span></span></li><li><span class="chip chip-warm">sebagian</span><span><span class="oi">~61 crossing (mermaid ~15)</span> <span class=onote>Kini 45 crossing; 0.32 61, mermaid 10 dengan hitungan yang sama.</span></span></li><li><span class="chip chip-warm">sebagian</span><span><span class="oi">4 label lepas</span> <span class=onote>Semua chip menempel di garisnya; 5 di samping garis dan 5 menutup garis lain, termasuk &#x27;magna&#x27; dan &#x27;laboris&#x27;.</span></span></li></ul></div><div><h4>Masih terlihat di 0.40.2</h4><ul><li>Crossing 45, mermaid 10 dengan hitungan yang sama</li><li>Diagram LR tetap portrait; frame g9 dan g11 banyak ruang kosong</li><li>Hub n12 keluar dari 3 sisi: 7 kanan, 3 bawah, 2 atas</li><li>5 chip menutup garis edge lain; &#x27;magna&#x27; dan &#x27;laboris&#x27; di samping garisnya</li></ul><h4>Flowmaid lebih baik</h4><p>Area 2.4× lebih kecil, panjang edge total separuh mermaid, tanpa detour keliling sampai 6000 unit.</p></div></div>
+<details class="was"><summary>Lihat gambar 0.32 (30 Okt) · penilaian waktu itu: Bagian-bagiannya bagus, jaringan kusut, LR jadi portrait</summary><div class="canvas"><img src="img/dense-lr.flowmaid.webp" width="984" height="1500" alt="dense-lr dirender flowmaid 0.32" loading="lazy"></div></details>
+</article>
+<article class="card" data-group="flow" data-behind="yes" id="d-bench-75">
+<header class="card-head"><h3><code>bench-75.mmd</code></h3><span class="chip chip-warm">campur</span></header>
+<p class="verdict">Siku semua dan kompak, tapi arah LR dan kolom zona hilang</p>
+<div class="pair">
+<figure><figcaption>mermaid.js 12.2.0</figcaption><div class="canvas"><img src="img/bench-75.mermaid.webp" width="1100" height="271" alt="bench-75 dirender mermaid" loading="lazy"></div></figure>
+<figure><figcaption>flowmaid 0.40.2</figcaption><div class="canvas"><img src="img/bench-75.fm0402.webp" width="1100" height="973" alt="bench-75 dirender flowmaid 0.40.2" loading="lazy"></div></figure>
+</div>
+<div class="notes"><div><h4>Isu 30 Okt, sekarang</h4><ul class="olist"><li><span class="chip chip-warm">sebagian</span><span><span class="oi">DFS FAS (33/75 edge ke kanan)</span> <span class=onote>Penyebab di kode tidak terlihat. Gejala: 46/75 panah masuk dari kiri (0.32: 35, mermaid 66).</span></span></li><li><span class="chip chip-hot">masih ada</span><span><span class="oi">zona tidak berupa kolom</span> <span class=onote>data zone di bawah app zone, jobs di bawah data; mermaid lima kolom.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">hairpin</span> <span class=onote>Tidak ada belokan U sempit; cache-svc4 dan db-svc2 kini siku biasa.</span></span></li><li><span class="chip chip-warm">sebagian</span><span><span class="oi">324 gap</span> <span class=onote>Putus garis turun dari 324 ke 27; sisa crossing digambar sebagai 205 hop.</span></span></li><li><span class="chip chip-warm">sebagian</span><span><span class="oi">364 crossing (mermaid 222)</span> <span class=onote>Kini 294; 0.32 362, mermaid 222 dengan hitungan yang sama.</span></span></li></ul></div><div><h4>Masih terlihat di 0.40.2</h4><ul><li>Crossing 294, mermaid 222 dengan hitungan yang sama</li><li>Zona tidak berupa kolom; data dan jobs di bawah app</li><li>26 dari 75 panah masuk dari atas atau bawah, 3 dari kanan</li><li>Area tengah padat: 205 hop dan 27 putus garis</li></ul><h4>Flowmaid lebih baik</h4><p>Kepala panah terpisah per port (mermaid menumpuk jadi blob hitam), aspek 1.13 vs 4.1, panjang edge total 80k vs 106k.</p></div></div>
+<details class="was"><summary>Lihat gambar 0.32 (30 Okt) · penilaian waktu itu: Kompak tapi kusut, arah LR hilang</summary><div class="canvas"><img src="img/bench-75.flowmaid.webp" width="1100" height="1250" alt="bench-75 dirender flowmaid 0.32" loading="lazy"></div></details>
+</article>
+<article class="card" data-group="other" data-behind="no" id="d-class">
+<header class="card-head"><h3><code>class.mmd</code></h3><span class="chip chip-ok">lebih baik</span></header>
+<p class="verdict">Isi setara mermaid, lebih pendek, tanpa komentar bocor</p>
+<div class="pair">
+<figure><figcaption>mermaid.js 12.2.0</figcaption><div class="canvas"><img src="img/class.mermaid.webp" width="615" height="1500" alt="class dirender mermaid" loading="lazy"></div></figure>
+<figure><figcaption>flowmaid 0.40.2</figcaption><div class="canvas"><img src="img/class.fm0402.webp" width="915" height="1410" alt="class dirender flowmaid 0.40.2" loading="lazy"></div></figure>
+</div>
+<div class="notes"><div><h4>Isu 30 Okt, sekarang</h4><ul class="olist"><li><span class="chip chip-ok">beres</span><span><span class="oi">Hierarki terbalik</span> <span class=onote>Person di atas Customer; PaymentMethod di atas CreditCard dan PayPal.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">panah &#x27;charges&#x27; tertutup dan arc raksasa</span> <span class=onote>charges kini garis putus siku pendek dengan kepala V terbuka.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">note dan «interface» hilang</span> <span class=onote>Note kuning dan «interface» di PaymentMethod tampil.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">waypoint diabaikan</span> <span class=onote>Penyebab di kode tidak terlihat; di gambar semua edge ikut rute siku, tanpa kurva bebas.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">kontras header</span> <span class=onote>Semua teks header minimal 4.5:1; terendah 4.58 di Product.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">kompartemen samar</span> <span class=onote>Garis pembagi kini warna border kelas dan jelas terlihat.</span></span></li></ul></div><div><h4>Masih terlihat di 0.40.2</h4><ul><li>Belokan S kecil di edge CreditCard dan PayPal, sama seperti mermaid</li></ul><h4>Flowmaid lebih baik</h4><p>Komentar %% tidak bocor ke label &#x27;charges&#x27; seperti di mermaid; tinggi 940 vs 1412 dengan susunan yang sama.</p></div></div>
+<details class="was"><summary>Lihat gambar 0.32 (30 Okt) · penilaian waktu itu: Lebih kecil tapi salah dibaca</summary><div class="canvas"><img src="img/class.flowmaid.webp" width="1100" height="907" alt="class dirender flowmaid 0.32" loading="lazy"></div></details>
+</article>
+<article class="card" data-group="other" data-behind="no" id="d-er">
+<header class="card-head"><h3><code>er.mmd</code></h3><span class="chip chip-ok">lebih baik</span></header>
+<p class="verdict">Lebih ringkas dari mermaid, semua komentar dan kardinalitas tampil</p>
+<div class="pair">
+<figure><figcaption>mermaid.js 12.2.0</figcaption><div class="canvas"><img src="img/er.mermaid.webp" width="1100" height="835" alt="er dirender mermaid" loading="lazy"></div></figure>
+<figure><figcaption>flowmaid 0.40.2</figcaption><div class="canvas"><img src="img/er.fm0402.webp" width="1100" height="525" alt="er dirender flowmaid 0.40.2" loading="lazy"></div></figure>
+</div>
+<div class="notes"><div><h4>Isu 30 Okt, sekarang</h4><ul class="olist"><li><span class="chip chip-ok">beres</span><span><span class="oi">Chip menutupi lingkaran zero</span> <span class=onote>Chip has di y 342–362, lingkaran zero di y 377–387. Jarak 15px, lingkaran terlihat utuh.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">33 komentar dibuang</span> <span class=onote>33 komentar tampil miring abu-abu di kolom keempat semua tabel.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">LR hard-coded sehingga terbentuk kolom kiri</span> <span class=onote>categories di atas questions, schedules dan settings sejajar di kanan. Susunannya mirip mermaid, kanvas 1475×704.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">kontras header 3/4 gagal</span> <span class=onote>Header hijau/oranye/pink kini teks gelap (6.0/7.3/4.65:1), biru teks putih 4.78:1. Semua lulus 4.5.</span></span></li></ul></div><div><h4>Masih terlihat di 0.40.2</h4><ul><li>Kanan bawah kosong lebar (mermaid sama)</li></ul><h4>Flowmaid lebih baik</h4><p>Tanpa grid berat, kolom tipe/nama/kunci/komentar jelas, PK/FK tebal, komentar miring; kanvas 1475×704 vs 1519×1150.</p></div></div>
+<details class="was"><summary>Lihat gambar 0.32 (30 Okt) · penilaian waktu itu: Tabel lebih bersih, kardinalitas dan komentar hilang</summary><div class="canvas"><img src="img/er.flowmaid.webp" width="927" height="1449" alt="er dirender flowmaid 0.32" loading="lazy"></div></details>
+</article>
+<article class="card" data-group="other" data-behind="no" id="d-state">
+<header class="card-head"><h3><code>state.mmd</code></h3><span class="chip chip-ok">lebih baik</span></header>
+<p class="verdict">Lebih rapi dan benar dari mermaid; note dan LR kini tampil</p>
+<div class="pair">
+<figure><figcaption>mermaid.js 12.2.0</figcaption><div class="canvas"><img src="img/state.mermaid.webp" width="998" height="1353" alt="state dirender mermaid" loading="lazy"></div></figure>
+<figure><figcaption>flowmaid 0.40.2</figcaption><div class="canvas"><img src="img/state.fm0402.webp" width="803" height="1310" alt="state dirender flowmaid 0.40.2" loading="lazy"></div></figure>
+</div>
+<div class="notes"><div><h4>Isu 30 Okt, sekarang</h4><ul class="olist"><li><span class="chip chip-ok">beres</span><span><span class="oi">Note hilang</span> <span class=onote>Note kuning &quot;shown to the user&quot; tampil di bawah Rejected dengan garis titik-titik.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">composite LR jadi kolom</span> <span class=onote>Di dalam Validating, start → Syntax → Semantics → end kini satu baris.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">retry arc menyerempet sisi node</span> <span class=onote>retry kini jalur siku di x 486, 45px dari tepi Validating, lalu masuk Idle dari bawah. Tidak menyentuh node lain dan tidak memotong garis.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">choice 80×64.6</span> <span class=onote>Diamond choice kini 28×28.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">cabang fork berbentuk S</span> <span class=onote>Persist dan Notify tersambung garis vertikal lurus dari bar fork ke bar join.</span></span></li></ul></div><div><h4>Masih terlihat di 0.40.2</h4><ul><li>Chip valid duduk tepat di tikungan garis</li><li>Cabang valid/invalid keluar dari sisi miring diamond</li><li>Note right of Rejected ditaruh di bawah (mermaid juga)</li></ul><h4>Flowmaid lebih baik</h4><p>Choice jadi diamond dan fork jadi bar (mermaid 12.2 menggambar keduanya kotak); garis siku rapi; chip label terbaca; kanvas 535×873 vs 649×886.</p></div></div>
+<details class="was"><summary>Lihat gambar 0.32 (30 Okt) · penilaian waktu itu: Elemen lebih bersih, note hilang, LR diabaikan</summary><div class="canvas"><img src="img/state.flowmaid.webp" width="547" height="1500" alt="state dirender flowmaid 0.32" loading="lazy"></div></details>
+</article>
+<article class="card" data-group="other" data-behind="no" id="d-sequence">
+<header class="card-head"><h3><code>sequence.mmd</code></h3><span class="chip chip-ok">lebih baik</span></header>
+<p class="verdict">Kini lebih rapi dari mermaid; semua masalah lama hilang</p>
+<div class="pair">
+<figure><figcaption>mermaid.js 12.2.0</figcaption><div class="canvas"><img src="img/sequence.mermaid.webp" width="1100" height="1438" alt="sequence dirender mermaid" loading="lazy"></div></figure>
+<figure><figcaption>flowmaid 0.40.2</figcaption><div class="canvas"><img src="img/sequence.fm0402.webp" width="1044" height="1500" alt="sequence dirender flowmaid 0.40.2" loading="lazy"></div></figure>
+</div>
+<div class="notes"><div><h4>Isu 30 Okt, sekarang</h4><ul class="olist"><li><span class="chip chip-ok">beres</span><span><span class="oi">Panah tidak memperhitungkan bar</span> <span class=onote>Pesan 2 dan 4 berhenti di tepi kiri bar (x 388.4), pesan 5 mulai dan 6 berakhir di tepi kanan (x 396.4), pesan 3 dan 7 keluar dari tepi bar.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">activate telat 14px</span> <span class=onote>Bar API mulai di y 308, sama dengan garis pesan 4.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">note keluar dari alt</span> <span class=onote>&quot;indexed by tenant&quot; di x 548.9–683.9, di dalam frame alt yang sampai x 693.9.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">warna note = peserta</span> <span class=onote>Note kini kuning #fff8c5 bergaris zaitun. Peserta hijau/oranye/pink.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">actor bukan stick figure</span> <span class=onote>Visitor kini stick figure dengan label tebal di bawahnya.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">tanpa footer</span> <span class=onote>Baris peserta diulang di bawah, termasuk stick figure Visitor.</span></span></li></ul></div><div><h4>Masih terlihat di 0.40.2</h4><ul><li>Lifeline dan garis frame pucat (kontras 2.0:1), mermaid gelap</li></ul><h4>Flowmaid lebih baik</h4><p>Area separuh mermaid (718×1032 vs 1060×1391); frame selebar penuh dan sejajar; nomor tebal inline; label frame tidak ditembus lifeline; komentar %% tidak bocor.</p></div></div>
+<details class="was"><summary>Lihat gambar 0.32 (30 Okt) · penilaian waktu itu: Tidak jelek; masalah di presisi dan header</summary><div class="canvas"><img src="img/sequence.flowmaid.webp" width="1100" height="1387" alt="sequence dirender flowmaid 0.32" loading="lazy"></div></details>
+</article>
+<article class="card" data-group="other" data-behind="no" id="d-pie">
+<header class="card-head"><h3><code>pie.mmd</code></h3><span class="chip chip-ok">lebih baik</span></header>
+<p class="verdict">Lebih jelas dari mermaid; label kini terpisah dan kontras lulus</p>
+<div class="pair">
+<figure><figcaption>mermaid.js 12.2.0</figcaption><div class="canvas"><img src="img/pie.mermaid.webp" width="1025" height="699" alt="pie dirender mermaid" loading="lazy"></div></figure>
+<figure><figcaption>flowmaid 0.40.2</figcaption><div class="canvas"><img src="img/pie.fm0402.webp" width="705" height="501" alt="pie dirender flowmaid 0.40.2" loading="lazy"></div></figure>
+</div>
+<div class="notes"><div><h4>Isu 30 Okt, sekarang</h4><ul class="olist"><li><span class="chip chip-ok">beres</span><span><span class="oi">&quot;5%4%&quot; menyatu/keluar wedge</span> <span class=onote>5% dan 4% berjarak sekitar 8px dan keduanya di dalam wedge. 4% hanya sisa 3–4px ke tepi.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">teks putih gagal AA di 4/5 slice</span> <span class=onote>Hanya 38% yang putih di biru (4.78:1). Label lain teks gelap 4.65–7.34:1.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">radius 110 kecil</span> <span class=onote>Radius kini 130. Pie memakai sekitar 55% lebar kanvas, sama dengan mermaid (r 185 di kanvas 666). Ukuran absolut tetap lebih kecil.</span></span></li><li><span class="chip chip-hot">masih ada</span><span><span class="oi">slice 0.35% hanya garis</span> <span class=onote>Trace elements masih garis ungu sekitar 3px di busur atas. Proporsinya memang 0.35%; mermaid tidak menggambarnya sama sekali.</span></span></li></ul></div><div><h4>Masih terlihat di 0.40.2</h4><ul><li>Slice Trace elements hanya garis ungu tipis di atas</li><li>Label 4% mepet tepi wedge Zinc (3–4px)</li></ul><h4>Flowmaid lebih baik</h4><p>Palet jelas dan beda tiap slice, label tebal lulus AA, pemisah putih, judul tebal di tengah, slice 0.35% tetap terlihat.</p></div></div>
+<details class="was"><summary>Lihat gambar 0.32 (30 Okt) · penilaian waktu itu: Lebih baik dari mermaid</summary><div class="canvas"><img src="img/pie.flowmaid.webp" width="683" height="465" alt="pie dirender flowmaid 0.32" loading="lazy"></div></details>
+</article>
+<article class="card" data-group="other" data-behind="no" id="d-mindmap">
+<header class="card-head"><h3><code>mindmap.mmd</code></h3><span class="chip chip-ok">lebih baik</span></header>
+<p class="verdict">Lebih rapi dan ringkas dari mermaid; bentuk node kini benar</p>
+<div class="pair">
+<figure><figcaption>mermaid.js 12.2.0</figcaption><div class="canvas"><img src="img/mindmap.mermaid.webp" width="1100" height="673" alt="mindmap dirender mermaid" loading="lazy"></div></figure>
+<figure><figcaption>flowmaid 0.40.2</figcaption><div class="canvas"><img src="img/mindmap.fm0402.webp" width="1100" height="617" alt="mindmap dirender flowmaid 0.40.2" loading="lazy"></div></figure>
+</div>
+<div class="notes"><div><h4>Isu 30 Okt, sekarang</h4><ul class="olist"><li><span class="chip chip-ok">beres</span><span><span class="oi">Ink hanya 9% (ring 172)</span> <span class=onote>Ring sudah hilang, cabang rapat ke root. Ink 23.6% (mermaid 30.2%), kanvas 790×443 vs 810×490.</span></span></li><li><span class="chip chip-warm">sebagian</span><span><span class="oi">spoke tidak rata</span> <span class=onote>Spoke cabang panjangnya 115–148 (mermaid 145–152). Celah sudut antar cabang 54°–150° (mermaid 55°–115°).</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">root pucat</span> <span class=onote>Root kini navy #2f3768 dengan teks putih tebal (11.2:1).</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">circle jadi elips</span> <span class=onote>Root kini lingkaran r 48.8.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">cloud mirip bang</span> <span class=onote>Eleven diagram types kini awan bergelembung, Zero dependencies bang bergerigi. Mermaid menggambar keduanya mirip awan.</span></span></li></ul></div><div><h4>Masih terlihat di 0.40.2</h4><ul><li>Spoke tidak sama panjang (115–148), celah sudut sampai 150°</li><li>Warna teks cabang campur: Input putih, cabang lain gelap (mermaid juga)</li></ul><h4>Flowmaid lebih baik</h4><p>Palet tenang dengan kontras cukup, label tidak dipecah dua baris, bang dan cloud dibedakan, ikon file tampil, kanvas sedikit lebih kecil.</p></div></div>
+<details class="was"><summary>Lihat gambar 0.32 (30 Okt) · penilaian waktu itu: Palet lebih tenang, layout ring terlalu jarang</summary><div class="canvas"><img src="img/mindmap.flowmaid.webp" width="1100" height="938" alt="mindmap dirender flowmaid 0.32" loading="lazy"></div></details>
+</article>
+<article class="card" data-group="other" data-behind="no" id="d-journey">
+<header class="card-head"><h3><code>journey.mmd</code></h3><span class="chip chip-ok">lebih baik</span></header>
+<p class="verdict">Lebih ringkas dan jelas, kurva kepuasan kini tampil</p>
+<div class="pair">
+<figure><figcaption>mermaid.js 12.2.0</figcaption><div class="canvas"><img src="img/journey.mermaid.webp" width="1100" height="464" alt="journey dirender mermaid" loading="lazy"></div></figure>
+<figure><figcaption>flowmaid 0.40.2</figcaption><div class="canvas"><img src="img/journey.fm0402.webp" width="864" height="465" alt="journey dirender flowmaid 0.40.2" loading="lazy"></div></figure>
+</div>
+<div class="notes"><div><h4>Isu 30 Okt, sekarang</h4><ul class="olist"><li><span class="chip chip-ok">beres</span><span><span class="oi">Semua wajah di satu baseline</span> <span class=onote>Wajah kini naik-turun per skor: skor 5 di y=174, skor 3 di y=202, skor 1 di y=230.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">warna section = aktor = skor</span> <span class=onote>Band kini pastel (#d4d9ef, #cae7d5), Me biru #5b6dc0, Cat ungu #8a5cd6. Tidak ada warna yang sama persis lagi; band Go to work masih tint biru Me.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">band saling menempel</span> <span class=onote>Ada celah 8px: Go to work x 24–336, Go home x 344–552.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">kontras label section</span> <span class=onote>Teks gelap #0a0e1a di band pastel, kontras 13.7:1 dan 14.6:1. Dulu teks putih di hijau, 3.21:1.</span></span></li></ul></div><div><h4>Masih terlihat di 0.40.2</h4><ul><li>Label task ikut naik-turun dengan wajah, tidak sebaris seperti mermaid</li><li>Garis kurva pucat #c2c8dc, kontras 1.67:1 di latar putih</li></ul><h4>Flowmaid lebih baik</h4><p>Wajah r=22 berwarna per skor, naik-turun sesuai skor dan dihubungkan garis kurva; 576×310 vs 1300×540, tanpa garis putus-putus panjang.</p></div></div>
+<details class="was"><summary>Lihat gambar 0.32 (30 Okt) · penilaian waktu itu: Lebih bersih, kurva kepuasan hilang</summary><div class="canvas"><img src="img/journey.flowmaid.webp" width="884" height="399" alt="journey dirender flowmaid 0.32" loading="lazy"></div></details>
+</article>
+<article class="card" data-group="other" data-behind="no" id="d-gitgraph">
+<header class="card-head"><h3><code>gitgraph.mmd</code></h3><span class="chip chip-ok">lebih baik</span></header>
+<p class="verdict">Kini selengkap mermaid, label horizontal lebih mudah dibaca</p>
+<div class="pair">
+<figure><figcaption>mermaid.js 12.2.0</figcaption><div class="canvas"><img src="img/gitgraph.mermaid.webp" width="786" height="407" alt="gitgraph dirender mermaid" loading="lazy"></div></figure>
+<figure><figcaption>flowmaid 0.40.2</figcaption><div class="canvas"><img src="img/gitgraph.fm0402.webp" width="860" height="383" alt="gitgraph dirender flowmaid 0.40.2" loading="lazy"></div></figure>
+</div>
+<div class="notes"><div><h4>Isu 30 Okt, sekarang</h4><ul class="olist"><li><span class="chip chip-ok">beres</span><span><span class="oi">Semua edge navy 2px</span> <span class=onote>Edge kini 5px dengan warna branch: main #5b6dc0, feat #33a35c, hotfix #d99114.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">kurva mencoret label merge</span> <span class=onote>Garis kini siku vertikal; label merge-feat dan merge-hotfix di kanan garis dengan halo putih, jarak sekitar 4px, tidak tercoret.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">merge/REVERSE/HIGHLIGHT/tag tidak terbedakan</span> <span class=onote>Merge = lingkaran berlubang putih, REVERSE = tanda X, HIGHLIGHT = kotak, tag = pill v1.0 dan v1.1.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">tanpa lane guide</span> <span class=onote>Ada garis putus-putus per lane dan pill nama branch berwarna di kiri.</span></span></li></ul></div><div><h4>Masih terlihat di 0.40.2</h4><ul><li>Garis feat dan hotfix di bawah merge-feat nyaris menempel (celah 1.4px)</li></ul><h4>Flowmaid lebih baik</h4><p>Label commit horizontal 13px (mermaid 10px diputar) dan tidak tertimpa garis; tipe commit, tag dan lane sama lengkap dengan palet lebih tenang.</p></div></div>
+<details class="was"><summary>Lihat gambar 0.32 (30 Okt) · penilaian waktu itu: Topologi benar, tampilan seperti draf</summary><div class="canvas"><img src="img/gitgraph.flowmaid.webp" width="1100" height="318" alt="gitgraph dirender flowmaid 0.32" loading="lazy"></div></details>
+</article>
+<article class="card" data-group="other" data-behind="no" id="d-timeline">
+<header class="card-head"><h3><code>timeline.mmd</code></h3><span class="chip chip-ok">lebih baik</span></header>
+<p class="verdict">Lebih benar dan rapi dari mermaid, semua periode tampil</p>
+<div class="pair">
+<figure><figcaption>mermaid.js 12.2.0</figcaption><div class="canvas"><img src="img/timeline.mermaid.webp" width="1100" height="717" alt="timeline dirender mermaid" loading="lazy"></div></figure>
+<figure><figcaption>flowmaid 0.40.2</figcaption><div class="canvas"><img src="img/timeline.fm0402.webp" width="936" height="317" alt="timeline dirender flowmaid 0.40.2" loading="lazy"></div></figure>
+</div>
+<div class="notes"><div><h4>Isu 30 Okt, sekarang</h4><ul class="olist"><li><span class="chip chip-ok">beres</span><span><span class="oi">Garis dashed mencoret teks event</span> <span class=onote>Dashed kini hanya potongan pendek di celah antar baris (y 142.5–146 dan 162.5–171), tidak melewati teks.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">periode dan event sama secara tipografi</span> <span class=onote>Tahun kini tebal, event tetap normal.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">sumbu samar</span> <span class=onote>Sumbu kini #8a90a8 2px (dulu #c2c8dc 1.5px), kontras 3.16:1.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">band hijau 3.21:1</span> <span class=onote>Band Mobile kini #5b6dc0 dengan teks putih, kontras 4.78:1.</span></span></li></ul></div><div><h4>Masih terlihat di 0.40.2</h4><ul><li>Sumbu tanpa panah arah waktu; mermaid memakai panah</li></ul><h4>Flowmaid lebih baik</h4><p>Keenam periode tampil (mermaid membuang 2002, 2004, 2005), tahun tebal dan event tidak tercoret; 624×211 vs 995×643.</p></div></div>
+<details class="was"><summary>Lihat gambar 0.32 (30 Okt) · penilaian waktu itu: Lebih benar dari mermaid</summary><div class="canvas"><img src="img/timeline.flowmaid.webp" width="960" height="326" alt="timeline dirender flowmaid 0.32" loading="lazy"></div></details>
+</article>
+<article class="card" data-group="other" data-behind="no" id="d-sankey">
+<header class="card-head"><h3><code>sankey.mmd</code></h3><span class="chip chip-ok">lebih baik</span></header>
+<p class="verdict">0 crossing dan warna terbedakan, lebih rapi dari mermaid</p>
+<div class="pair">
+<figure><figcaption>mermaid.js 12.2.0</figcaption><div class="canvas"><img src="img/sankey.mermaid.webp" width="924" height="624" alt="sankey dirender mermaid" loading="lazy"></div></figure>
+<figure><figcaption>flowmaid 0.40.2</figcaption><div class="canvas"><img src="img/sankey.fm0402.webp" width="900" height="600" alt="sankey dirender flowmaid 0.40.2" loading="lazy"></div></figure>
+</div>
+<div class="notes"><div><h4>Isu 30 Okt, sekarang</h4><ul class="olist"><li><span class="chip chip-ok">beres</span><span><span class="oi">Palet 8 warna bentrok (Losses = Electricity)</span> <span class=onote>11 node dengan 11 warna berbeda; Electricity #33a35c, Losses #10645c. Kolom kanan memakai versi gelap dari rona kiri.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">label Electricity dan Industry sebaris tanpa pengukuran</span> <span class=onote>Penyebab di kode tidak bisa dinilai dari gambar. Di gambar tidak ada tabrakan: Electricity y=207.8, Industry y=229.5, selisih 22px.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">1 crossing tersisa</span> <span class=onote>0 crossing; ujung semua ribbon berurutan monoton di dua kolom (dihitung dari path SVG).</span></span></li></ul></div><div><h4>Masih terlihat di 0.40.2</h4><ul><li>Urutan node di ketiga kolom beda dari file, mis. Gas di atas Coal</li><li>Label Industry, light lebih tinggi dari ribbonnya; tepi ribbon lewat di balik teks</li></ul><h4>Flowmaid lebih baik</h4><p>0 crossing (mermaid 4) dan 11 node dengan 11 warna berbeda (mermaid: Coal dan Industry, light sama #4e79a7).</p></div></div>
+<details class="was"><summary>Lihat gambar 0.32 (30 Okt) · penilaian waktu itu: Setara atau lebih baik</summary><div class="canvas"><img src="img/sankey.flowmaid.webp" width="924" height="624" alt="sankey dirender flowmaid 0.32" loading="lazy"></div></details>
+</article>
+<article class="card" data-group="other" data-behind="no" id="d-architecture">
+<header class="card-head"><h3><code>architecture.mmd</code></h3><span class="chip chip-ok">lebih baik</span></header>
+<p class="verdict">Topologi dan port kini benar, mermaid masih menumpuk node</p>
+<div class="pair">
+<figure><figcaption>mermaid.js 12.2.0</figcaption><div class="canvas"><img src="img/architecture.mermaid.webp" width="1100" height="775" alt="architecture dirender mermaid" loading="lazy"></div></figure>
+<figure><figcaption>flowmaid 0.40.2</figcaption><div class="canvas"><img src="img/architecture.fm0402.webp" width="1100" height="592" alt="architecture dirender flowmaid 0.40.2" loading="lazy"></div></figure>
+</div>
+<div class="notes"><div><h4>Isu 30 Okt, sekarang</h4><ul class="olist"><li><span class="chip chip-ok">beres</span><span><span class="oi">Edge web tersembunyi</span> <span class=onote>web→api kini garis lurus x 198→296 di y=109, tidak tertutup node.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">svc→cache lewat PostgreSQL</span> <span class=onote>svc→cache kini lurus vertikal di x=577, dari bawah Business Logic ke atas Redis.</span></span></li><li><span class="chip chip-ok">beres</span><span><span class="oi">layout satu baris yang mengabaikan port</span> <span class=onote>Layout 2D: Mobile di bawah Web, Redis di bawah Business Logic (B→T), PostgreSQL di kanan (R→L).</span></span></li><li><span class="chip chip-warm">sebagian</span><span><span class="oi">emoji 16px</span> <span class=onote>Ikon kini emoji 24px dan lebih terbaca; masih emoji, ikon mermaid 80px.</span></span></li></ul></div><div><h4>Masih terlihat di 0.40.2</h4><ul><li>Ikon masih emoji 24px; ikon mermaid 80px</li><li>Garis Business Logic↔PostgreSQL berjalan 8px dari tepi kanan grup Backend</li><li>Grup Data 404×246 untuk dua node, banyak ruang kosong</li><li>Edge Mobile App menyatu dengan edge Web App sebelum API Gateway</li></ul><h4>Flowmaid lebih baik</h4><p>Semua 5 edge terlihat dan port dihormati; tidak ada node bertumpuk (mermaid: &quot;MWobile App&quot;) dan tidak ada garis mencoret label (mermaid: Business Logic).</p></div></div>
+<details class="was"><summary>Lihat gambar 0.32 (30 Okt) · penilaian waktu itu: Mermaid sendiri rusak; flowmaid rapi tapi topologinya salah</summary><div class="canvas"><img src="img/architecture.flowmaid.webp" width="1100" height="177" alt="architecture dirender flowmaid 0.32" loading="lazy"></div></details>
+</article>
+  </div>
+</section>
+
+<section class="col">
+  <h2>Roadmap</h2>
+  <p class="sub">Tiga sprint di laporan 30 Oktober sudah dikerjakan dalam rilis 0.33.0 sampai 0.40.2. Yang tersisa ada di bagian Berikutnya.</p>
+  <div class="road">
+    <div class="tier"><h3>Sudah dirilis <small>0.33.0 – 0.40.2</small></h3>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Rilis</th><th>Isi</th></tr></thead>
+        <tbody>
+          <tr><td class="n">0.33.0</td><td>ER, sequence, gitGraph, pie, journey, timeline, sankey, mindmap, dan architecture digarap ulang supaya terbaca minimal sebaik mermaid. Router mode advance ditulis ulang.</td></tr>
+          <tr><td class="n">0.34.0</td><td>Flowchart: satu ukuran kepala panah, back-edge di lane orthogonal, subgraph bersarang dan perbaikan kanvas, ruang untuk label dan port, ujung edge di outline asli tiap shape, empat tema mermaid. Class dan state digarap ulang.</td></tr>
+          <tr><td class="n">0.35.0</td><td>Layering: subgraph yang diumpan hub, penyempitan flowchart yang terlalu lebar, gambar tetap stabil saat baris di sumber berpindah.</td></tr>
+          <tr><td class="n">0.36.0</td><td>Lanjutan layering. Wrap teks journey dan timeline, merge di gitGraph, label ER, pie lebih dari enam belas slice.</td></tr>
+          <tr><td class="n">0.37.0</td><td><code>direction</code> di dalam subgraph atau composite state.</td></tr>
+          <tr><td class="n">0.38.0</td><td>Edge flowchart dan state berjalan orthogonal, dengan sudut membulat.</td></tr>
+          <tr><td class="n">0.39.0</td><td>Garis yang bersilangan saling melompati. Kipas dari hub digambar seperti sisir.</td></tr>
+          <tr><td class="n">0.40.0</td><td>Class: nama bertitik, kipas enam tanpa crossing, self-relation tidak menabrak tetangga. State: drag di dalam composite tidak lagi mengubah ukuran bar fork atau join.</td></tr>
+          <tr><td class="n">0.40.1</td><td>API interaktif: <code>try_route</code>. Drag melewati margin kiri-atas tidak lagi menggeser gambar. Langkah 1 subgraph sebagai blok masuk, masih dimatikan.</td></tr>
+          <tr><td class="n">0.40.2</td><td>API interaktif: drag di diagram ER, class, dan mindmap hanya menggambar ulang yang terhubung ke kotak yang dipindah (<code>route_partial</code>). Mindmap, sequence, pie, journey, timeline, dan sankey bisa di-pick (<code>hit_test</code>). Bagian pertama langkah 2 subgraph sebagai blok masuk, masih dimatikan.</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+    <div class="tier"><h3>Berikutnya <small>urut</small></h3><ol>
+      <li><strong>Studi desain untuk blok yang lebih rapat.</strong> Beberapa cara merapatkan frame dan meluruskan rantai dibuat berdampingan, lalu dibandingkan gambar per gambar dengan mermaid 12.2.0 sebelum satu dipilih.</li>
+      <li><strong>Langkah 2 (bagian kedua) dan langkah 3 masuk ke dev</strong>, tetap dimatikan, setelah lolos review.</li>
+      <li><strong>Langkah 4</strong>, lalu layout blok menjadi default dalam satu rilis.</li>
+    </ol>
+    <p class="note">Sedang dipertimbangkan: merilis mode blok lebih awal sebagai opsi yang dinyalakan sendiri, dengan layout sekarang tetap jadi default.</p></div>
+    <div class="tier"><h3>Belum dijadwalkan</h3><ul class="plain">
+      <li>Class dengan tiga self-relation atau lebih pada satu kelas.</li>
+      <li>Tiga detail kecil pada subgraph dengan <code>direction</code> sendiri, dicek ulang setelah layout blok masuk.</li>
+      <li>Graf besar: graf padat seribu node masih butuh beberapa detik.</li>
+      <li>Hook id dan class di SVG, pemecahan fungsi layout yang panjang, math di label.</li>
+    </ul></div>
+  </div>
+</section>
+
+<section class="col">
+  <h2>Yang jangan sampai hilang</h2>
+  <p>Hal-hal berikut sudah lebih baik di flowmaid, jadi jangan dikorbankan demi meniru mermaid.</p>
+  <ul class="keep">
+    <li>Chip label putih yang berpadding. Label mermaid berupa blok abu-abu dan sering ditembus garis.</li>
+    <li>Judul cluster tidak pernah tertabrak edge. Mermaid mencoret "Platform" dan "Event bus".</li>
+    <li>Diamond kompak untuk label pendek (102×65, sementara mermaid 171×171).</li>
+    <li>SVG portabel: pakai <code>&lt;text&gt;</code> tanpa <code>foreignObject</code>, ukurannya 5–10× lebih kecil, dan punya aria.</li>
+    <li>Menghormati <code>&lt;br/&gt;</code> dan tidak menghasilkan wrap yatim. Auto-wrap cukup untuk label tanpa break eksplisit.</li>
+    <li>Self-loop yang jelas. Self-loop di mermaid rusak di advanced dan stress.</li>
+    <li>Semantik dotted dan thick tetap terjaga. Mermaid mengubah 2 edge dotted jadi solid di dense-td.</li>
+    <li><code>&lt;&lt;choice&gt;&gt;</code>/<code>&lt;&lt;fork&gt;&gt;</code> di state digambar benar. Mermaid 12.2 menggambarnya sebagai kotak.</li>
+    <li>Pie, journey, timeline, dan sankey sudah setara atau lebih baik.</li>
+    <li>Palet semantik per-shape. Tawarkan tema netral sebagai opsi, bukan pengganti.</li>
+  </ul>
+</section>
+
+<section class="col">
+  <h2>Metode</h2>
+  <p class="note">Sumber, konfigurasi mermaid, dan render mermaid sama dengan laporan 30 Oktober: <code>examples/*.mmd</code> dan <code>tests/fixtures/quality/*.mmd</code>, mermaid di Chromium headless dengan konfigurasi default. Gambar flowmaid 0.40.2 dibuat dengan CLI release build dari commit c202cfc. Setiap diagram ditinjau satu agent terhadap gambar mermaid, gambar 0.32, dan gambar 0.40.2, termasuk status setiap isu lama. Agent kedua lalu mencoba membantah setiap klaim dengan melihat gambar dan SVG-nya sendiri, dan mengoreksi 29 klaim. Status lima alasan besar dan sepuluh bug dicek di CHANGELOG dan di gambar hari ini. Gambar mode blok berasal dari branch kerja (b82d584) dan belum dirilis.</p>
+</section>
+</div>
+
+<script>
+(function(){
+  var cards=[].slice.call(document.querySelectorAll('.card'));
+  var toc=document.getElementById('toc');
+  cards.forEach(function(c){var a=document.createElement('a');a.href='#'+c.id;a.textContent=c.id.slice(2);a.dataset.group=c.dataset.group;a.dataset.behind=c.dataset.behind;toc.appendChild(a);});
+  var btns=[].slice.call(document.querySelectorAll('.filters button'));
+  function show(el,f){return f==='all'||(f==='behind'?el.dataset.behind==='yes':el.dataset.group===f);}
+  function apply(f){
+    btns.forEach(function(b){b.setAttribute('aria-pressed', String(b.dataset.f===f));});
+    cards.forEach(function(c){c.hidden=!show(c,f);});
+    [].slice.call(toc.children).forEach(function(a){a.hidden=!show(a,f);});
+    try{localStorage.setItem('fm-filter',f);}catch(e){}
+  }
+  btns.forEach(function(b){b.addEventListener('click',function(){apply(b.dataset.f);});});
+  var saved='all';try{saved=localStorage.getItem('fm-filter')||'all';}catch(e){}
+  if(!btns.some(function(b){return b.dataset.f===saved;})) saved='all';
+  apply(saved);
+})();
+</script>

@@ -1,0 +1,1017 @@
+{
+ "diagrams": [
+  {
+   "name": "demo",
+   "verdict": "lebih baik",
+   "verdict_line": "Lebih rapi dari mermaid, sisa kecil di posisi chip yes/no",
+   "old_issues": [
+    {
+     "issue": "Loop E→B berbentuk lasso, panah 14° setengah tertutup",
+     "status": "beres",
+     "note": "E→B kini jalur siku di kanan (x=239), kepala utuh masuk tegak ke sisi bawah Read input."
+    },
+    {
+     "issue": "kepala ==> 2×",
+     "status": "beres",
+     "note": "Satu ukuran kepala 11px untuk semua edge; D→F tebal 3.5px, kepalanya sama."
+    },
+    {
+     "issue": "rank berlabel sempit sehingga yes/no jadi kait",
+     "status": "beres",
+     "note": "Gap rank berlabel 72px (dulu 60). yes/no kini siku turun-samping-turun, tanpa kait."
+    }
+   ],
+   "remaining": [
+    "Chip yes/no menutupi tikungan; mermaid menaruh label di segmen tegak",
+    "Chip yes/no tidak simetris: beda tinggi 2.4px, garis yes di tepi chip"
+   ],
+   "better": "Diamond 102×65 vs 171×171, kanvas 321×544 vs 360×615, jalur no tanpa tangga (mermaid 18px), label berupa chip berbingkai.",
+   "evidence": "Read all three PNGs plus 2x zoom crops of the 0.40.2 mid section and thick edge. SVG: E→B path goes up x=239 to y=184, left to x=201.7, tip at B bottom y=164; one marker (userSpaceOnUse, 11) shared by all edges incl. the 3.5px D→F; labelled rank gap 288.6→360.6 = 72 (0.32: 60); yes chip top y=293.5 vs no 295.9, yes chip centre 16px right of its vertical (x=85.1 at chip's left edge). Canvas 321×544 vs mermaid viewBox 360×614.5; mermaid diamond polygon 171×171; mermaid C→E path has an 18px jog at y=434. Crossing script over sampled paths: 0 crossing pairs. Checker: re-derived every number from both SVGs (0.32 diamond bottom 288.6 → D top 348.6 = 60; mermaid C→E jog 239.8→258 at y=434) and a 2x crop of the yes/no area; mermaid labels sit on the vertical segments (x=88 and 239.8). All claims hold."
+  },
+  {
+   "name": "advanced",
+   "verdict": "lebih baik",
+   "verdict_line": "Struktur kini benar dan lebih rapi dari mermaid",
+   "old_issues": [
+    {
+     "issue": "Async Workers hilang",
+     "status": "beres",
+     "note": "Frame Async Workers ada (Job Queue, Worker 1, Worker 2), isinya lebih gelap dari Platform."
+    },
+    {
+     "issue": "edge ke Platform tidak memengaruhi ranking",
+     "status": "beres",
+     "note": "CI/CD Pipeline kini di atas Production Platform; Reg→Platform lurus 46px ke tepi frame."
+    },
+    {
+     "issue": "Dev→CI stub ke atas",
+     "status": "beres",
+     "note": "Tidak ada stub lagi; Dev→CI digambar lurus 60px ke Build & Test sebagai wakil frame."
+    },
+    {
+     "issue": "'fail' dan Cache→Gate keluar frame",
+     "status": "beres",
+     "note": "fail (x≤508) di dalam CI/CD (tepi 520); Cache→Gate (x≤521) di dalam Platform (tepi 568)."
+    },
+    {
+     "issue": "kepala thick 2×",
+     "status": "beres",
+     "note": "Gate==>Q tebal 3.5px dengan kepala 11px, sama dengan edge lain."
+    }
+   ],
+   "remaining": [
+    "Chip yes di tikungan dan 20px lebih tinggi dari chip no",
+    "Panah yes masuk Live 15px dari tengah lingkaran",
+    "Q→W1 masuk Worker 1 36px dari tengah, 8px dari sudut kanan",
+    "Panah no masuk Rollback 12px dari sudut kirinya"
+   ],
+   "better": "Self-loop W1 utuh (mermaid rusak), Rollback→Platform lurus 167px (mermaid memutar sisi kanan), judul Async Workers tidak dicoret, kanvas 596×1236 vs 906×1484.",
+   "evidence": "Read the full 0.40.2 SVG plus zoom crops of the Platform frame and the Healthy? area. Frames: CI 305.7-520.3 x 28-493, Platform 28-567.8 x 525-991.5, Workers 42-320.8 x 671-877.5; fail path max x 492.1, fail chip to 508.3; Cache→Gate max x 520.7. One marker for all edges. Dev→CI path runs 123→183 into Build & Test's top. Mon→Done enters Live at x=191.9 vs cx 177; yes chip cy 1097.4 vs no 1117. Rollback→Platform 1158.5→991.5. Canvas 596×1236 vs mermaid viewBox 906×1484. Crossing script: 0 pairs; node-hit check: none. Mermaid PNG checked for the broken W1 self-loop, the Rollback detour round the right side and the thick Gate→Q line through the 'Async Workers' title. Checker: confirmed all of the above in the SVG; also Q→W1 runs straight at x=136.9 into Worker 1 (56.0-144.9, centre 100.5), 8px from its right corner, while Q→W2 lands at W2's centre (262.3) and mermaid's Q→W1 lands at W1's centre (x=350); Mon→Rollback at x=269.2 lands 12px from Rollback's top-left corner (top edge 257.0-352.9), while mermaid's lands near the middle of that edge (PNG). Both visible in 1.5x crops of the Workers frame and the bottom."
+  },
+  {
+   "name": "subgraph",
+   "verdict": "lebih baik",
+   "verdict_line": "Ritme dan spine kini rapi, lebih bersih dari mermaid",
+   "old_issues": [
+    {
+     "issue": "Ruang mati 26px di bawah baris pertama cluster",
+     "status": "beres",
+     "note": "Auth→User DB kini 60px (dulu 86px), sama dengan gap lain di dalam frame."
+    },
+    {
+     "issue": "spine tidak rata",
+     "status": "beres",
+     "note": "Semua node spine di x=190.9; gap 60px di dalam frame, 84-86px saat melewati tepi frame."
+    },
+    {
+     "issue": "nested tidak terbedakan",
+     "status": "beres",
+     "note": "Event bus kini isi #eceef6 dengan garis lebih gelap, Platform #f6f7fb. Terlihat, walau halus."
+    },
+    {
+     "issue": "fan-out off-centre",
+     "status": "beres",
+     "note": "Broker→Consumer A/B simetris: keluar ±24.8px, masuk tepat di tengah tiap consumer."
+    }
+   ],
+   "remaining": [
+    "Consumer→Warehouse keluar 36px dari tengah, masuk 8px dari sudut Warehouse",
+    "Beda warna frame luar dan dalam masih halus dibanding mermaid"
+   ],
+   "better": "Judul frame tidak dicoret (mermaid mencoret Platform dan Event bus), gap dalam frame rata 60px (mermaid 24 dan 60), lebar 382 vs 466.",
+   "evidence": "Read the full 0.40.2 SVG and the 0.32 SVG geometry, plus a crop of the Event bus area. Spine node centres all x=190.9. Rank gaps 60/86/60/86/60/84 (0.32: 60/86/86/86/86/60). Frame fills #f6f7fb/#eceef6, strokes #858db0/#7b83a6 (0.32: both #f7f8fd, #c9cfe8). Bus→C1/C2 exit 166.1/215.8 and enter 111.0/270.8 (node centres). C1/C2→Store at x=147.1/234.8 vs Warehouse 139.1-242.8. Canvas 382×758 vs mermaid viewBox 466×749. File size 4697 B vs 38565 B. Crossing script: 0 pairs. Mermaid PNG: GW→Auth and Users→Bus lines run through the 'Platform' and 'Event bus' titles. Checker: mermaid's spine is also straight (Client, GW, Auth, Users, Bus, Store all at translate x=237), so 'spine lurus' is not a win over mermaid; mermaid node heights 45 give inner gaps Auth→Users 24 and Bus→Consumers 60, while flowmaid has 60 for both. Mermaid C→Store exits C1/C2 at their centres and enters Store 22px from its centre."
+  },
+  {
+   "name": "lr",
+   "verdict": "lebih baik",
+   "verdict_line": "V-loop hilang, kini lebih ringkas dan rapi dari mermaid",
+   "old_issues": [
+    {
+     "issue": "V-loop CACHE→SVC (+73px)",
+     "status": "beres",
+     "note": "CACHE→SVC kini siku pendek bersarang dengan SVC→CACHE, tanpa crossing. Tinggi kanvas 226 (dulu 299), sama dengan mermaid."
+    },
+    {
+     "issue": "kepala thick 2×",
+     "status": "beres",
+     "note": "SVC==>DB memakai kepala 11px yang sama dengan edge lain."
+    },
+    {
+     "issue": "'denied' menempel di 401",
+     "status": "beres",
+     "note": "Chip denied berakhir di x=458.7, 401 Response mulai di x=505.5: jarak 47px."
+    },
+    {
+     "issue": "kipas keputusan asimetris (dup BK)",
+     "status": "beres",
+     "note": "SVC dan 401 Response ±44px dari sumbu Auth?, garis keluar ±7.5px. Yang beda hanya chip dan tikungan (7px)."
+    }
+   ],
+   "remaining": [
+    "Chip denied menutupi tikungan, chip ok di segmen lurus, jadi tidak sejajar",
+    "Garis tebal ke Database keluar 5px dari sudut atas Service Layer"
+   ],
+   "better": "Lebar 839 vs 1074 dengan tinggi sama 226, diamond 98×65 vs 171×171, label berupa chip berbingkai, warna per jenis node.",
+   "evidence": "Read the full 0.40.2 SVG and the 0.32 path data, plus 2x crops of the decision fan and the SVC/Redis pair (and a crop of mermaid's labels). CACHE→SVC: 692.9,148.3 → x 653.1 → y 105 → tip on SVC right side; SVC→CACHE turns at x=665.6. Crossing script: 0 pairs. Canvas 839×226 vs mermaid viewBox 1074×226 (0.32: 790×299). One 11px marker for all edges. Denied chip 402.3-458.7, ERR x=505.5. SVC cy 91, ERR cy 179, Auth? cy 135; exits at y 127.5/142.5. The ok chip starts at x=431.1, past the bend at 417.9; the denied chip covers the bend at x=410.8. Mermaid diamond polygon 171×171. Checker: re-checked the nested pair segment by segment (no crossing); the ok and denied bends are 7px apart (417.9 vs 410.8), so the fan differs in more than the chips. SVC→DB (3.5px) starts at y=77.0 with SVC's top at 72.0, so it leaves right under the top-right corner (visible in a 1.5x crop); mermaid's thick edge starts 16px below SVC's top (87.6 vs 71.3)."
+  },
+  {
+   "name": "shapes",
+   "verdict": "lebih baik",
+   "verdict_line": "Semua ujung tepat di border, tinggal kontras garis yang kalah",
+   "old_issues": [
+    {
+     "issue": "Ujung edge melayang di sisi miring",
+     "status": "beres",
+     "note": "Ujung panah tepat di sisi miring: I→J di x=1479.9, J→K di x=1683.7, pas dengan garis polygon."
+    },
+    {
+     "issue": "label cylinder terlalu tinggi dan tutupnya kosong",
+     "status": "beres",
+     "note": "Label di y=92.2, di badan di bawah tutup (77.8-111.8); tutup kini elips penuh ry 10."
+    },
+    {
+     "issue": "stroke tipis berkontras rendah",
+     "status": "sebagian",
+     "note": "Garis node 1.8px (dulu 1.6), warna sama: oranye 2.35:1 dan hijau 2.84:1 terhadap isi."
+    }
+   ],
+   "remaining": [
+    "Garis oranye 2.35:1 dan hijau 2.84:1 terhadap isi, di bawah 3:1"
+   ],
+   "better": "Lebih ringkas: lebar 1813 vs 2157, diamond 128×65 vs 171×171, hexagon 116×38 vs 204×91; warna per kelompok shape.",
+   "evidence": "Read the full 0.40.2 SVG plus 2x crops of the cylinder and slanted shapes. Every edge end plus 5.5 (half of the 11px userSpaceOnUse marker) falls on the outline at y=84.8: parallelogram left side x=1479.9, reverse left side 1683.7, hexagon/diamond vertices, double-circle r 56.8, cylinder x=969.1. Cylinder: lid ry 10 spanning 57.8-77.8, body to 111.8, label y=92.2 (0.32: ry 8, label 84.8). Stroke widths node 1.8 / edge 2.0 (0.32: 1.6/1.7). Computed WCAG contrast of stroke against fill: blue 4.24, purple 3.96, teal 3.08, cylinder 3.00, green 2.84, orange 2.35. Mermaid uses #28253D at 2px. Mermaid polygons: diamond 171×171, hexagon 204×91. Canvas 1813×170 vs 2157×187. Crossing script: 0 pairs. Checker: recomputed the slanted-side intersections from the polygon points and the contrast ratios (same values). Colours are shared by shape groups (Diamond, Parallelogram and Reverse all #fcf2da/#d99114; Stadium and Double circle green; Circle and Hexagon purple; Rectangle and Subroutine blue), so they do not tell every shape apart."
+  },
+  {
+   "name": "stress",
+   "verdict": "lebih baik",
+   "verdict_line": "Nol crossing dan self-loop jelas; chip 'parallel' menempel edge thick",
+   "old_issues": [
+    {
+     "issue": "Thick menembus self-loop",
+     "status": "beres",
+     "note": "Thick turun di x=233, sekitar 21px di kanan self-loop; tidak bersentuhan."
+    },
+    {
+     "issue": "'parallel' di edge yang salah",
+     "status": "beres",
+     "note": "Chip kini di samping edge lurus 'A → B: parallel' (x=164)."
+    },
+    {
+     "issue": "back-edge menyilang thick",
+     "status": "beres",
+     "note": "'no' lewat lane kiri, thick lewat kanan; 0 crossing di seluruh diagram."
+    },
+    {
+     "issue": "apex diamond penuh",
+     "status": "beres",
+     "note": "Hanya B→C di apex atas; 'no' keluar dari sisi kiri atas, 'yes' dari sisi kanan bawah."
+    },
+    {
+     "issue": "S-wobble",
+     "status": "sebagian",
+     "note": "Lengkung S hilang. Masih ada jog siku di A→B, 'yes' dan thick; mermaid juga punya jog serupa."
+    }
+   ],
+   "remaining": [
+    "Chip 'parallel' menempel di bawah belokan thick, jarak kurang dari 1px.",
+    "'no' memutar lewat lane kiri; labelnya 75px di atas Check.",
+    "Chip 'yes' menutupi jog; garis masuk dari kiri, keluar dari bawah."
+   ],
+   "better": "Self-loop bulat yang jelas (mermaid hanya stub kecil), diamond 101×65 vs 171×171, area 31% lebih kecil.",
+   "evidence": "Read mermaid, 0.32 and 0.40.2 PNGs plus zoomed crops of the parallel and yes areas. Parsed fvm/svg/stress.svg: thick A→D vertical at x=233.3 vs self-loop bezier max x≈212 (21px clear); 'parallel' chip x162.8–222.9 y104–124 beside path titled 'A → B: parallel' at x=163.8; thick horizontal y=102 (stroke 3.5, bottom 103.75) vs chip top 104 (<1px); 'no' lane x=42.8, its chip y141–161 vs Check top y=236; 'yes' chip covers the jog at y=316. Segment-pair check of all 7 paths: 0 crossings (mermaid also 0). Diamond 101.3×64.6 vs mermaid polygon 171×171. viewBox 263×439 vs 288.75×584 = -31.5% area. Checker re-verified all of the above against the SVG and a zoomed crop; no change."
+  },
+  {
+   "name": "fanout",
+   "verdict": "lebih baik",
+   "verdict_line": "Spine lurus, 0 crossing, loop-back 'no' lewat lane kanan",
+   "old_issues": [
+    {
+     "issue": "Loop-back 'no' lewat interior (2 crossing, gap berlawanan)",
+     "status": "beres",
+     "note": "'no' lewat lane kanan x=711, 39px dari Worker 5, masuk sisi kanan Dispatcher; 0 crossing."
+    },
+    {
+     "issue": "gaya edge campur",
+     "status": "beres",
+     "note": "Semua edge siku membulat; kipas keluar dan masuk bersarang rapi."
+    },
+    {
+     "issue": "port Worker off-centre dan tidak merata",
+     "status": "beres",
+     "note": "Edge masuk dan keluar tepat di tengah tiap Worker; port Dispatcher jarak 14px, Aggregator 17px."
+    }
+   ],
+   "remaining": [
+    "Label 'no' di tengah lane, jauh dari diamond; mermaid sama."
+   ],
+   "better": "Spine lurus dari Dispatcher sampai Done, 'no' masuk di sisi kanan Dispatcher (mermaid di samping port kipas), area 38% lebih kecil.",
+   "evidence": "Read all three PNGs. fvm/svg/fanout.svg: Dispatcher exits x=322.2/336.2/350.2/364.2/378.2 (14px pitch), Worker ends at node centres 72.5/211.3/350.2/489.2/628.1, Aggregator entries 316.2..384.2 (17px pitch); fan-out horizontals nest at y=88.5/101, fan-in at 186.5/199. 'no' path: diamond upper-right slant (393.4,336.5) → y=302 → lane x=711.3 (Worker 5 right edge 672.5) → y=47 into Dispatcher right side. Segment check: 0 crossings (mermaid also 0). Diamond 192×64.6 vs 171×171. viewBox 754×525 vs 991.6×648 = -38.4% area. Checker re-derived the fan nesting and the 'no' path by hand from the SVG; no change."
+  },
+  {
+   "name": "long-labels",
+   "verdict": "campur",
+   "verdict_line": "Wrap beres dan diamond kompak; chip label menutupi belokan",
+   "old_issues": [
+    {
+     "issue": "Node 442×38, diamond 616×65 (9.5:1), lebar 672 vs 358",
+     "status": "beres",
+     "note": "Label kini di-wrap: node A 201×72 (3 baris), diamond 220×151 (1.45:1). Lebar 406 vs 358, tinggi 578 vs 672."
+    },
+    {
+     "issue": "label menjepit gap 60px",
+     "status": "beres",
+     "note": "Gap diamond ke node kini 72 sampai 80px, chip punya ruang. Chip duduk di belokan, lihat sisa masalah."
+    },
+    {
+     "issue": "panah meleset 43.7px",
+     "status": "beres",
+     "note": "Kedua panah masuk tepat di tengah node (x=104.7 dan 304.5), ujung di border."
+    }
+   ],
+   "remaining": [
+    "Chip 'complete' dan 'incomplete' menutupi belokan; garis 'incomplete' masuk dari atas chip.",
+    "Dua chip beda tinggi 10px; mermaid sejajar di segmen lurus.",
+    "Node C satu baris, D dua baris; tinggi kedua node tidak sama.",
+    "Kanvas 48px lebih lebar dari mermaid (406 vs 358)."
+   ],
+   "better": "Diamond 220×151 (mermaid 234×234), node A tiga baris (mermaid empat), kanvas 94px lebih pendek.",
+   "evidence": "Read all three PNGs plus zoomed crops of the diamond and label area. fvm/svg/long-labels.svg: A rect 200.9×72 with 3 tspans; diamond polygon 219.6×151.3 with 4 tspans, text fits inside; C rect 153.4×38 (1 line), D rect 146.2×55 (2 lines). Edge ends y=386.3/377.8 + 5.5px marker half = node tops 391.8/383.3, at x=104.7/304.5 = node centres. 'complete' chip y316.9–336.9 centred on jog horizontal y=326.9, 'incomplete' chip y326.6–346.6 on y=336.6. Checker fix: 'complete' enters its chip from the right side (vertical x=173.6 is right of chip edge 160.8), but the 'incomplete' vertical x=235.6 lies inside its chip's x-range 228.8–311.2, so that line enters through the chip top (confirmed on a zoomed crop); both leave from the bottom. Gap diamond bottom 311.3 to C top 391.8 = 80.5px, to D top = 72px. Mermaid diamond 234×234, A 4 lines. viewBox 406×578 vs 358×672.2 = -2.5% area."
+  },
+  {
+   "name": "back-edge",
+   "verdict": "lebih baik",
+   "verdict_line": "Back-edge kini siku rapi; chip yes/no masih menutupi belokan",
+   "old_issues": [
+    {
+     "issue": "Arc \"telinga\", 41% kepala tertutup",
+     "status": "beres",
+     "note": "Back-edge kini siku: naik di x=216, masuk dari bawah Read input; kepala tidak tertutup."
+    },
+    {
+     "issue": "start 14px dari 'no'",
+     "status": "sebagian",
+     "note": "Titik start kini sekitar 45px dari chip 'no', tapi lane naiknya masih 15px dari chip itu."
+    },
+    {
+     "issue": "kepala thick 2× dan stub",
+     "status": "beres",
+     "note": "Kepala thick D→F seukuran kepala lain (11px); garis lurus sampai border Done."
+    },
+    {
+     "issue": "kanvas +37px",
+     "status": "beres",
+     "note": "Lane di dalam kolom Show error; margin kanan 28px sama dengan kiri."
+    }
+   ],
+   "remaining": [
+    "E→B belok tepat di bawah kepala, tanpa stub lurus; mermaid sama.",
+    "Lane E→B naik hanya 15px dari chip 'no'.",
+    "Chip 'yes' dan 'no' menutupi belokan; garis keluar dari bawah chip."
+   ],
+   "better": "Spine Start sampai Valid? lurus (mermaid ada jog Z), diamond 102×65 vs 171×171, area 29% lebih kecil.",
+   "evidence": "Read all three PNGs plus zoomed crops of the E→B head, the yes/no labels and the thick end. fvm/svg/back-edge.svg: E→B leaves Show error top at x=215.6, rises to y=184, jogs to x=178.3; its corner curve ends at y=174, inside the head base (175), so no straight stub. Checker: a zoomed crop of the mermaid render shows its E→B also turns right under the head with no stub, so that point is shared and not the verdict's distinguishing issue; the yes/no chips covering the bends (mermaid puts yes/no on straight segments) are. 'no' chip right edge x=200.3 vs lane x=215.6 (15px); start point to chip ≈45px. D→F stroke 3.5 uses the shared 11px userSpaceOnUse marker. Rightmost ink Show error 262 + 28 = 290 canvas, left margin 28. Mermaid has a Z jog Read input→Valid? and a hook before Show error. viewBox 290×544 vs 360×614.5 = -28.7% area."
+  },
+  {
+   "name": "wide-labels",
+   "verdict": "campur",
+   "verdict_line": "Bow dan kanvas beres; satu chip melayang, beberapa menutupi belokan",
+   "old_issues": [
+    {
+     "issue": "Bow LR memakai lebar label 337px",
+     "status": "beres",
+     "note": "Return 'cached response…' kini siku pendek y 80→101 di bawah Gateway; tidak ada bow."
+    },
+    {
+     "issue": "viewBox dari titik kontrol",
+     "status": "beres",
+     "note": "Kanvas 1971×156; margin bawah 28px, tidak ada ruang kosong."
+    },
+    {
+     "issue": "Database melorot",
+     "status": "beres",
+     "note": "Database sebaris dengan Client dan Service; C→D lurus horizontal."
+    },
+    {
+     "issue": "label mengambang dengan 3 cara",
+     "status": "sebagian",
+     "note": "'forwarded…' 16px di atas garisnya dan tidak menyentuh garis. 'writes the projection' menutupi step-nya, garis panjangnya 9px di bawah chip. Chip lain di garisnya."
+    }
+   ],
+   "remaining": [
+    "Chip 'forwarded…' melayang 16px di atas garis B→C, 4.5px di atas Service.",
+    "Chip 'cached', 'publish', 'writes', 'health probe' menutupi belokan; garis muncul dari sisi chip.",
+    "Chip 'writes the projection' hanya 4px dari Worker.",
+    "Garis B→C lewat 7px di atas chip 'health probe'."
+   ],
+   "better": "Label panjang satu baris (mermaid dua baris), port terpisah per edge (mermaid menumpuk di satu titik), kanvas 1971 vs 2257 lebar.",
+   "evidence": "Read all three PNGs plus zoomed left/mid/right crops of the 0.40.2 render and both halves of the mermaid render (mermaid stacks Client, Gateway and Service-left ends at one point). fvm/svg/wide-labels.svg: B→A path y=80 → step at x=276.3 → y=101.3 (no bow); viewBox 1971×156, lowest ink Database bottom 128.3 + 28 margin. Database body centre on the Client/Service row, C→D straight at y=108.3. 'forwarded' chip bottom 77.8 vs B→C horizontal y=94.3 (16.5px) and touches no segment of its path; checker adds: its right edge 870.6 is over Service's left edge 870.0 with only 4.5px to Service top 82.3. Checker fix: 'writes the projection' chip x1693.1–1832.7 y60.5–80.5 covers F→D's first run (y=69) and its step at x=1701.3, so it sits on its line; only the long run at y=90 is 9.5px below; chip left 1693.1 vs Worker right 1688.8 (4.3px). 'cached', 'publish' and 'health probe' chips sit over their steps ('health probe' covers the A→C step at x=706.4, y115.3→108.3, so the line leaves the chip 7px higher than it enters); B→C y=94.3 vs 'health probe' chip top 101.8 (7.5px). Client right side ports at y=87.3/101.3/115.3. Segment check: 0 crossings (mermaid also 0). Mermaid viewBox 2256.5×165.9 = -17.9% area for flowmaid."
+  },
+  {
+   "name": "fanout-frames",
+   "verdict": "lebih baik",
+   "verdict_line": "Kipas bersih tanpa crossing, teks node tetap terbaca",
+   "old_issues": [
+    {
+     "issue": "g3 dipindah ke kolom kedua (+9% area)",
+     "status": "beres",
+     "note": "Semua frame kini satu kolom; area 11% lebih kecil dari mermaid."
+    },
+    {
+     "issue": "detour g3 terjepit",
+     "status": "beres",
+     "note": "Edge ke g3 kini satu garis lurus mendatar."
+    },
+    {
+     "issue": "7 edge kipas campur S dan elbow",
+     "status": "beres",
+     "note": "Ketujuh edge kini siku semua, tanpa kurva S."
+    },
+    {
+     "issue": "2 crossing yang bisa dihindari",
+     "status": "beres",
+     "note": "0 crossing, dihitung dari SVG."
+    },
+    {
+     "issue": "tepi frame tidak rata",
+     "status": "masih",
+     "note": "Tepi kiri frame di x 276 sampai 304; di mermaid semua sejajar."
+    }
+   ],
+   "remaining": [
+    "Tepi kiri frame tidak sejajar, selisih 28 px; mermaid rata kiri",
+    "Edge ke g6 dan ipsum keluar dari bawah n0",
+    "Node frame ditumpuk satu kolom; frame g3 setinggi 650, mermaid 400"
+   ],
+   "better": "Teks node mengikuti <br/> (cylinder 3 baris, mermaid 7), urutan node di frame sesuai sumber, area 11% lebih kecil.",
+   "evidence": "Viewed mermaid/0.32/0.40.2 PNGs plus a zoom crop of the fan. Parsed edge paths from the SVGs (hop arcs flattened to straight runs) and counted segment intersections: mermaid 0, 0.32 2 (matches the old note), 0.40.2 0. All 7 edges orthogonal; n0->g3 is a straight run at y=1226.5. Frame rect left x in 0.40.2: 276.0, 278.9, 299.6, 301.4, 303.9, 304.1; mermaid cluster rects all at x=244. Exit sides: 5 edges leave n0's right side, n0->g6 and n0->n21 leave the bottom. Size 566x2311 vs mermaid 648x2271 (area ratio 0.89). Mermaid cylinder n1 wraps to 7 lines (zoom crop), flowmaid 3. g3 frame 650 tall vs mermaid 400. Edge-through-node check: 0. Checker: recount with true arc/cubic sampling and a side-switch test gives the same 0/2/0; no gap masks in this SVG. Node order inside frames: mermaid g1 rows are n5,n3 / n2,n4 / n1 and g3 is also scrambled; 0.40.2 stacks n1..n5 and n9..n14 in source order."
+  },
+  {
+   "name": "dense-td",
+   "verdict": "campur",
+   "verdict_line": "Kompak dan siku semua, tapi frame berdampingan merusak alur TB",
+   "old_issues": [
+    {
+     "issue": "3 gaya edge",
+     "status": "beres",
+     "note": "Ke-47 edge kini siku dengan hop; di 0.32 ada 22 edge berkurva atau miring."
+    },
+    {
+     "issue": "simpul di hub n16",
+     "status": "beres",
+     "note": "12 edge keluar n16 jadi satu sisir rapi dari sisi bawah."
+    },
+    {
+     "issue": "cluster berdampingan",
+     "status": "masih",
+     "note": "g5, g1, g8 masih sejajar mendatar; mermaid menumpuk dari atas ke bawah."
+    },
+    {
+     "issue": "'amet' di sisi jauh (edge 3316 unit)",
+     "status": "masih",
+     "note": "'amet' tetap di pojok kiri atas; edge ke g8 masih 3267 unit."
+    },
+    {
+     "issue": "node tanpa edge di rank 0",
+     "status": "masih",
+     "note": "n24, n26, n27, n34 masih di baris teratas bersama 'amet'."
+    }
+   ],
+   "remaining": [
+    "Frame g5, g1, g8 berdampingan; alur atas ke bawah tidak terbaca",
+    "'amet' dan node tanpa edge di baris atas; edge 'amet' 3267 unit",
+    "Chip 'do' menutup dua garis sejajar, pemiliknya tidak jelas",
+    "Putus garis tepat di atas 2 kepala panah (ke g1, n13); kepala tampak lepas"
+   ],
+   "better": "Area 42% dari mermaid, panjang edge total 45%, crossing setara (66 vs 68), ketiga edge dotted tetap dotted (mermaid hanya 1).",
+   "evidence": "Same intersection script on all three SVGs: mermaid 68, 0.32 92, 0.40.2 65 (0.40.2 SVG draws 56 hops + 8 gap masks). Non-orthogonal edge check (slanted L or cubic spanning >30px in both axes): 0.32 22/47, 0.40.2 0/47. n16 box sides from SVG: all 12 out-edges start on the bottom side; in-edges on L, T, T, B, R. Edge-through-node check over 46 node boxes: 0 hits. n45->g8 path length 3267 (0.32 3316). Size 4249x1806 vs mermaid 4131x4378 (area 0.42); total edge length 63.3k vs 142.2k. Label chips: all 21 touch their own edge; 'do' (n25->n38) chip centre 3.5px from a foreign line vs 9px from its own. Zoom crops of the hub and bottom bundles. Checker: side-switch crossing test on true arc geometry (window 4-14px) gives mermaid 68, 0.40.2 66 (55 under single hops, 4 under bridges, 6 at gaps, 1 bare). Mermaid 12.2 is also fully orthogonal (0/47 edges with a diagonal run >30px) and showed 0 edge-through-node hits on the boxes parsed, so those were dropped from 'better'. Dotted: 0.40.2 draws n8->n42, n22->n40, n46->g9 with dasharray 2 3; mermaid gives n8->n42 and n22->n40 dasharray '0 0 L 2' (solid; crops of 'magna veniam magna' and 'aliqua sit amet' show solid lines). Gap masks near arrow ends: n46->g1 circle at (2589.8,288.6), 10.5px before the path end, and n12->n13 11px before its end; zoom crops show the stem stopping above the crossing line and the head floating below it."
+  },
+  {
+   "name": "dense-lr",
+   "verdict": "campur",
+   "verdict_line": "Jauh lebih rapi dari 0.32, tapi crossing 4.5× mermaid",
+   "old_issues": [
+    {
+     "issue": "Hub 12 edge keluar dari 3 sisi",
+     "status": "masih",
+     "note": "n12 masih memakai 3 sisi: 7 kanan, 3 bawah, 2 atas. Kini tertata rapi."
+    },
+    {
+     "issue": "gaya campur",
+     "status": "beres",
+     "note": "Ke-42 edge kini siku; di 0.32 ada 21 edge berkurva."
+    },
+    {
+     "issue": "frame kosong",
+     "status": "masih",
+     "note": "Frame g9 dan g11 masih banyak ruang kosong; isi g9 di kiri, satu node di kanan."
+    },
+    {
+     "issue": "~61 crossing (mermaid ~15)",
+     "status": "sebagian",
+     "note": "Kini 45 crossing; 0.32 61, mermaid 10 dengan hitungan yang sama."
+    },
+    {
+     "issue": "4 label lepas",
+     "status": "sebagian",
+     "note": "Semua chip menempel di garisnya; 5 di samping garis dan 5 menutup garis lain, termasuk 'magna' dan 'laboris'."
+    }
+   ],
+   "remaining": [
+    "Crossing 45, mermaid 10 dengan hitungan yang sama",
+    "Diagram LR tetap portrait; frame g9 dan g11 banyak ruang kosong",
+    "Hub n12 keluar dari 3 sisi: 7 kanan, 3 bawah, 2 atas",
+    "5 chip menutup garis edge lain; 'magna' dan 'laboris' di samping garisnya"
+   ],
+   "better": "Area 2.4× lebih kecil, panjang edge total separuh mermaid, tanpa detour keliling sampai 6000 unit.",
+   "evidence": "Intersection script: mermaid 10, 0.32 61 (matches old ~61). SVG has 27 hop marks (19 single hops + 8 multi-line bridges) + 4 gap masks. n12 out-edge start points vs cylinder bbox (719-907 x 1312-1356): 7 on right side, 3 bottom (n33, n36, n38), 2 top (n43, n44). Non-orthogonal edges 0/42 (0.32 21/42). Label chips vs own edge polyline: all 21 touch it; 5 sit 22-40px beside their line (labore, magna, sit ullamco, nostrud, laboris). Size 2302x3468 vs mermaid 4959x3858 (area 0.42); total edge length 38.5k vs 78.4k; mermaid longest edges ~6000 (0.40.2 longest 3160). Zoom crops of hub, top and middle; edge-through-node check 0. Checker: a strict interior-only segment test gives 33 for 0.40.2 because the feet of the multi-line bridges sit exactly on the crossed lines (zoom crop at x 1025-1060, y 681: one bridge over 3 lines, strict test counted 1). Side-switch test on true arc geometry gives 45 (19 single hops + 21 lines under bridges + 4 gaps + 1 bare), stable for windows 4-14px; mermaid 10 and 0.32 61 unchanged. Exact segment/rectangle clipping finds a foreign line under 5 chips: 'tempor eiusmod' (n21->n47), 'eiusmod nostrud' (n12->n38), 'magna' n12->n26 (n12->n22, 2.5px from centre), 'laboris' (n12->n30), 'magna' n26->n47 (n36->n45); zoom crops confirm. Mermaid is also 0/42 non-orthogonal, so 'semua edge siku' was dropped from 'better'."
+  },
+  {
+   "name": "bench-75",
+   "verdict": "campur",
+   "verdict_line": "Siku semua dan kompak, tapi arah LR dan kolom zona hilang",
+   "old_issues": [
+    {
+     "issue": "DFS FAS (33/75 edge ke kanan)",
+     "status": "sebagian",
+     "note": "Penyebab di kode tidak terlihat. Gejala: 46/75 panah masuk dari kiri (0.32: 35, mermaid 66)."
+    },
+    {
+     "issue": "zona tidak berupa kolom",
+     "status": "masih",
+     "note": "data zone di bawah app zone, jobs di bawah data; mermaid lima kolom."
+    },
+    {
+     "issue": "hairpin",
+     "status": "beres",
+     "note": "Tidak ada belokan U sempit; cache-svc4 dan db-svc2 kini siku biasa."
+    },
+    {
+     "issue": "324 gap",
+     "status": "sebagian",
+     "note": "Putus garis turun dari 324 ke 27; sisa crossing digambar sebagai 205 hop."
+    },
+    {
+     "issue": "364 crossing (mermaid 222)",
+     "status": "sebagian",
+     "note": "Kini 294; 0.32 362, mermaid 222 dengan hitungan yang sama."
+    }
+   ],
+   "remaining": [
+    "Crossing 294, mermaid 222 dengan hitungan yang sama",
+    "Zona tidak berupa kolom; data dan jobs di bawah app",
+    "26 dari 75 panah masuk dari atas atau bawah, 3 dari kanan",
+    "Area tengah padat: 205 hop dan 27 putus garis"
+   ],
+   "better": "Kepala panah terpisah per port (mermaid menumpuk jadi blob hitam), aspek 1.13 vs 4.1, panjang edge total 80k vs 106k.",
+   "evidence": "Gap masks: 0.32 has 324 black mask circles (= old '324 gap'), 0.40.2 has 27 circles + 205 hop marks (152 single hops + 53 multi-line bridges). Direction of each edge's last segment: rightward 0.32 35/75, 0.40.2 46/75, mermaid 66/75. By node-centre x all three have 66/75 edges pointing right, so the old '33/75' reads as the arrival-direction symptom. Non-orthogonal edges 0/75 (0.32 29/75). Tight U-turn detector (reversal with base <45px) found 0; zoom crop of db/cache/svc4 shows plain elbows. Size 2222x1965 (aspect 1.13) vs mermaid 4327x1058 (4.1), area ~equal (4.37M vs 4.58M); total edge length 80.5k vs 105.8k. Edge-through-node: 0 on 21 node boxes. Checker: crossing counts redone with true arc geometry and a side-switch test: 0.40.2 294 at every window from 4 to 14px (154 under single hops, 121 under bridges, 19 at gaps); 0.32 362; mermaid 222 (strict test and 14px window; 232 at 7px). A strict interior-only test gives 0.40.2 only 229 because bridge feet land exactly on the crossed lines, which is likely why the earlier 258 was low. Arrival directions in 0.40.2: 46 right, 17 down, 9 up, 3 left, so 26 arrive from top or bottom (not 29) and 3 from the right. Zoom crops of the lb/gw area and db/cache confirm separate heads and gap marks."
+  },
+  {
+   "name": "class",
+   "verdict": "lebih baik",
+   "verdict_line": "Isi setara mermaid, lebih pendek, tanpa komentar bocor",
+   "old_issues": [
+    {
+     "issue": "Hierarki terbalik",
+     "status": "beres",
+     "note": "Person di atas Customer; PaymentMethod di atas CreditCard dan PayPal."
+    },
+    {
+     "issue": "panah 'charges' tertutup dan arc raksasa",
+     "status": "beres",
+     "note": "charges kini garis putus siku pendek dengan kepala V terbuka."
+    },
+    {
+     "issue": "note dan «interface» hilang",
+     "status": "beres",
+     "note": "Note kuning dan «interface» di PaymentMethod tampil."
+    },
+    {
+     "issue": "waypoint diabaikan",
+     "status": "beres",
+     "note": "Penyebab di kode tidak terlihat; di gambar semua edge ikut rute siku, tanpa kurva bebas."
+    },
+    {
+     "issue": "kontras header",
+     "status": "beres",
+     "note": "Semua teks header minimal 4.5:1; terendah 4.58 di Product."
+    },
+    {
+     "issue": "kompartemen samar",
+     "status": "beres",
+     "note": "Garis pembagi kini warna border kelas dan jelas terlihat."
+    }
+   ],
+   "remaining": [
+    "Belokan S kecil di edge CreditCard dan PayPal, sama seperti mermaid"
+   ],
+   "better": "Komentar %% tidak bocor ke label 'charges' seperti di mermaid; tinggi 940 vs 1412 dengan susunan yang sama.",
+   "evidence": "Visual compare plus zoom crop of the middle band. Header contrast from SVG fills vs text fill: PaymentMethod 4.78, Person 5.99, Customer 7.34, Order 4.65, LineItem 5.55, Product 4.58, CreditCard 5.43, PayPal 5.5. Compartment dividers are <line> in the class border colour, width 1.2. charges path is dashed, orthogonal, open V head at PaymentMethod top. Note and «interface» text present. SVG size 610x940 vs mermaid 569x1412. Mermaid label reads 'charges %% dependency at checkout' over two lines. Checker: recomputed all 8 header contrasts from the SVG (same values); zoom crop of places/owns/charges shows no line through a box or chip and no clipped element."
+  },
+  {
+   "name": "er",
+   "verdict": "lebih baik",
+   "verdict_line": "Lebih ringkas dari mermaid, semua komentar dan kardinalitas tampil",
+   "old_issues": [
+    {
+     "issue": "Chip menutupi lingkaran zero",
+     "status": "beres",
+     "note": "Chip has di y 342–362, lingkaran zero di y 377–387. Jarak 15px, lingkaran terlihat utuh."
+    },
+    {
+     "issue": "33 komentar dibuang",
+     "status": "beres",
+     "note": "33 komentar tampil miring abu-abu di kolom keempat semua tabel."
+    },
+    {
+     "issue": "LR hard-coded sehingga terbentuk kolom kiri",
+     "status": "beres",
+     "note": "categories di atas questions, schedules dan settings sejajar di kanan. Susunannya mirip mermaid, kanvas 1475×704."
+    },
+    {
+     "issue": "kontras header 3/4 gagal",
+     "status": "beres",
+     "note": "Header hijau/oranye/pink kini teks gelap (6.0/7.3/4.65:1), biru teks putih 4.78:1. Semua lulus 4.5."
+    }
+   ],
+   "remaining": [
+    "Kanan bawah kosong lebar (mermaid sama)"
+   ],
+   "better": "Tanpa grid berat, kolom tipe/nama/kunci/komentar jelas, PK/FK tebal, komentar miring; kanvas 1475×704 vs 1519×1150.",
+   "evidence": "Viewed 0.40.2 PNG next to mermaid and 0.32; cropped the categories-questions link at 3x. SVG: circle cy=382 r=5 vs label rect y=342 h=20; grep font-style=italic = 33 comment texts; header fills #5b6dc0/#33a35c/#d99114/#c2588c with text #fff/#0a0e1a, WCAG ratios computed (4.78/5.99/7.34/4.65). viewBox 1475x704 vs mermaid 1519x1150. Checker re-ran the italic count (33, matches the 33 commented columns in the source), the circle/chip rects and the four contrast ratios; all hold."
+  },
+  {
+   "name": "state",
+   "verdict": "lebih baik",
+   "verdict_line": "Lebih rapi dan benar dari mermaid; note dan LR kini tampil",
+   "old_issues": [
+    {
+     "issue": "Note hilang",
+     "status": "beres",
+     "note": "Note kuning \"shown to the user\" tampil di bawah Rejected dengan garis titik-titik."
+    },
+    {
+     "issue": "composite LR jadi kolom",
+     "status": "beres",
+     "note": "Di dalam Validating, start → Syntax → Semantics → end kini satu baris."
+    },
+    {
+     "issue": "retry arc menyerempet sisi node",
+     "status": "beres",
+     "note": "retry kini jalur siku di x 486, 45px dari tepi Validating, lalu masuk Idle dari bawah. Tidak menyentuh node lain dan tidak memotong garis."
+    },
+    {
+     "issue": "choice 80×64.6",
+     "status": "beres",
+     "note": "Diamond choice kini 28×28."
+    },
+    {
+     "issue": "cabang fork berbentuk S",
+     "status": "beres",
+     "note": "Persist dan Notify tersambung garis vertikal lurus dari bar fork ke bar join."
+    }
+   ],
+   "remaining": [
+    "Chip valid duduk tepat di tikungan garis",
+    "Cabang valid/invalid keluar dari sisi miring diamond",
+    "Note right of Rejected ditaruh di bawah (mermaid juga)"
+   ],
+   "better": "Choice jadi diamond dan fork jadi bar (mermaid 12.2 menggambar keduanya kotak); garis siku rapi; chip label terbaca; kanvas 535×873 vs 649×886.",
+   "evidence": "Viewed full PNGs; cropped choice area and retry entry at 3x. SVG: choice polygon 220.6–248.6 x 364–392 (28x28); out-edges start at (242.6,384.1) and (228.4,385.8), both on lower faces; valid chip rect 128.3–171.7 x 410.8–430.8 covers the elbow at x 149.5–169.6, y 414–435; retry path x=486.3 vs cluster right edge 441.3, ends at Idle bottom (288.2,145.5); fork branch paths are straight verticals. viewBox 535x873 vs mermaid 648.6x886. Checker re-read the full retry path (horizontal at y 160 stops at x 288, clear of the submit chip ending at x 262) and confirmed mermaid draws decide and forked as boxes, joined as a bar."
+  },
+  {
+   "name": "sequence",
+   "verdict": "lebih baik",
+   "verdict_line": "Kini lebih rapi dari mermaid; semua masalah lama hilang",
+   "old_issues": [
+    {
+     "issue": "Panah tidak memperhitungkan bar",
+     "status": "beres",
+     "note": "Pesan 2 dan 4 berhenti di tepi kiri bar (x 388.4), pesan 5 mulai dan 6 berakhir di tepi kanan (x 396.4), pesan 3 dan 7 keluar dari tepi bar."
+    },
+    {
+     "issue": "activate telat 14px",
+     "status": "beres",
+     "note": "Bar API mulai di y 308, sama dengan garis pesan 4."
+    },
+    {
+     "issue": "note keluar dari alt",
+     "status": "beres",
+     "note": "\"indexed by tenant\" di x 548.9–683.9, di dalam frame alt yang sampai x 693.9."
+    },
+    {
+     "issue": "warna note = peserta",
+     "status": "beres",
+     "note": "Note kini kuning #fff8c5 bergaris zaitun. Peserta hijau/oranye/pink."
+    },
+    {
+     "issue": "actor bukan stick figure",
+     "status": "beres",
+     "note": "Visitor kini stick figure dengan label tebal di bawahnya."
+    },
+    {
+     "issue": "tanpa footer",
+     "status": "beres",
+     "note": "Baris peserta diulang di bawah, termasuk stick figure Visitor."
+    }
+   ],
+   "remaining": [
+    "Lifeline dan garis frame pucat (kontras 2.0:1), mermaid gelap"
+   ],
+   "better": "Area separuh mermaid (718×1032 vs 1060×1391); frame selebar penuh dan sejajar; nomor tebal inline; label frame tidak ditembus lifeline; komentar %% tidak bocor.",
+   "evidence": "Viewed full PNGs; cropped activation region (msgs 2-7) and loop/par region at 1.5x. SVG: activation rects x 388.4 w 8 at y 174 and y 308; message paths end/start at 388.4 or 396.4; msg 4 at y 308; note rect 548.9+135 vs alt rect 48.9+645; note fill #fff8c5; actor stick path at top and bottom; footer participant rects at y 960. Mermaid label shows 'show spinner %% self-message'. viewBox 718x1032 vs mermaid 1060x1391 (area 50.3%). Checker: stick figure is 18x31 (participant boxes 34 tall) vs mermaid 24x44 (boxes 65 tall), so it scales with the canvas (0.70 vs 0.68) and is not small for its boxes; lifelines and frame strokes are #aeb6d8 dashed, 2.0:1 on white, vs mermaid solid/dotted black."
+  },
+  {
+   "name": "pie",
+   "verdict": "lebih baik",
+   "verdict_line": "Lebih jelas dari mermaid; label kini terpisah dan kontras lulus",
+   "old_issues": [
+    {
+     "issue": "\"5%4%\" menyatu/keluar wedge",
+     "status": "beres",
+     "note": "5% dan 4% berjarak sekitar 8px dan keduanya di dalam wedge. 4% hanya sisa 3–4px ke tepi."
+    },
+    {
+     "issue": "teks putih gagal AA di 4/5 slice",
+     "status": "beres",
+     "note": "Hanya 38% yang putih di biru (4.78:1). Label lain teks gelap 4.65–7.34:1."
+    },
+    {
+     "issue": "radius 110 kecil",
+     "status": "beres",
+     "note": "Radius kini 130. Pie memakai sekitar 55% lebar kanvas, sama dengan mermaid (r 185 di kanvas 666). Ukuran absolut tetap lebih kecil."
+    },
+    {
+     "issue": "slice 0.35% hanya garis",
+     "status": "masih",
+     "note": "Trace elements masih garis ungu sekitar 3px di busur atas. Proporsinya memang 0.35%; mermaid tidak menggambarnya sama sekali."
+    }
+   ],
+   "remaining": [
+    "Slice Trace elements hanya garis ungu tipis di atas",
+    "Label 4% mepet tepi wedge Zinc (3–4px)"
+   ],
+   "better": "Palet jelas dan beda tiap slice, label tebal lulus AA, pemisah putih, judul tebal di tengah, slice 0.35% tetap terlihat.",
+   "evidence": "Viewed full PNGs; cropped top wedges at 6x. SVG: radius 130 (arc A 130), canvas 470x334 vs mermaid r=185 on 666x450 (ratio 0.277 both); trace wedge arc 147.1->150.0 (2.9px); label positions 5% (108.3,100.2) and 4% (135.2,91.6) checked against wedge boundary lines at that y (121.8–147.9 for Zinc); label fills vs slice fills, WCAG ratios computed. Checker: mermaid SVG has only 5 slice paths (no Trace elements); teal #199a8e with dark text is 5.55:1; 4% glyph box ~125.8–144.6 leaves 2.7–5.6px to the Zinc edges."
+  },
+  {
+   "name": "mindmap",
+   "verdict": "lebih baik",
+   "verdict_line": "Lebih rapi dan ringkas dari mermaid; bentuk node kini benar",
+   "old_issues": [
+    {
+     "issue": "Ink hanya 9% (ring 172)",
+     "status": "beres",
+     "note": "Ring sudah hilang, cabang rapat ke root. Ink 23.6% (mermaid 30.2%), kanvas 790×443 vs 810×490."
+    },
+    {
+     "issue": "spoke tidak rata",
+     "status": "sebagian",
+     "note": "Spoke cabang panjangnya 115–148 (mermaid 145–152). Celah sudut antar cabang 54°–150° (mermaid 55°–115°)."
+    },
+    {
+     "issue": "root pucat",
+     "status": "beres",
+     "note": "Root kini navy #2f3768 dengan teks putih tebal (11.2:1)."
+    },
+    {
+     "issue": "circle jadi elips",
+     "status": "beres",
+     "note": "Root kini lingkaran r 48.8."
+    },
+    {
+     "issue": "cloud mirip bang",
+     "status": "beres",
+     "note": "Eleven diagram types kini awan bergelembung, Zero dependencies bang bergerigi. Mermaid menggambar keduanya mirip awan."
+    }
+   ],
+   "remaining": [
+    "Spoke tidak sama panjang (115–148), celah sudut sampai 150°",
+    "Warna teks cabang campur: Input putih, cabang lain gelap (mermaid juga)"
+   ],
+   "better": "Palet tenang dengan kontras cukup, label tidak dipecah dua baris, bang dan cloud dibedakan, ikon file tampil, kanvas sedikit lebih kecil.",
+   "evidence": "Viewed full PNGs. SVG: root circle r=48.8 fill #2f3768; branch centres -> spoke lengths/angles computed (Input 126.6/-66, Engine 142.3/21, Output 114.8/75, Reach 147.9/-135); mermaid node translate() values -> 145–152 px, gaps 55–115 deg. Ink = share of pixels >30 off white: 0.32 9.3%, 0.40.2 23.6%, mermaid 30.2%. Cloud/bang polygons inspected; viewBox 790x443 vs mermaid 809.6x489.6. Checker re-ran spokes from both SVGs and ink (23.4/30.0/9.1%, same picture); mermaid also mixes text colour (Output branch and leaves white, others black)."
+  },
+  {
+   "name": "journey",
+   "verdict": "lebih baik",
+   "verdict_line": "Lebih ringkas dan jelas, kurva kepuasan kini tampil",
+   "old_issues": [
+    {
+     "issue": "Semua wajah di satu baseline",
+     "status": "beres",
+     "note": "Wajah kini naik-turun per skor: skor 5 di y=174, skor 3 di y=202, skor 1 di y=230."
+    },
+    {
+     "issue": "warna section = aktor = skor",
+     "status": "beres",
+     "note": "Band kini pastel (#d4d9ef, #cae7d5), Me biru #5b6dc0, Cat ungu #8a5cd6. Tidak ada warna yang sama persis lagi; band Go to work masih tint biru Me."
+    },
+    {
+     "issue": "band saling menempel",
+     "status": "beres",
+     "note": "Ada celah 8px: Go to work x 24–336, Go home x 344–552."
+    },
+    {
+     "issue": "kontras label section",
+     "status": "beres",
+     "note": "Teks gelap #0a0e1a di band pastel, kontras 13.7:1 dan 14.6:1. Dulu teks putih di hijau, 3.21:1."
+    }
+   ],
+   "remaining": [
+    "Label task ikut naik-turun dengan wajah, tidak sebaris seperti mermaid",
+    "Garis kurva pucat #c2c8dc, kontras 1.67:1 di latar putih"
+   ],
+   "better": "Wajah r=22 berwarna per skor, naik-turun sesuai skor dan dihubungkan garis kurva; 576×310 vs 1300×540, tanpa garis putus-putus panjang.",
+   "evidence": "Read fvm/svg/journey.svg: face circles cy=174/202/230 for scores 5/3/1; section rects x 24-336 and 344-552 (8px gap) filled #d4d9ef/#cae7d5 with #0a0e1a text; contrast computed in Python (13.73:1, 14.58:1; old white on #33a35c 3.21:1). Actor dots Me #5b6dc0, Cat #8a5cd6. Polyline #c2c8dc 2px (1.67:1 on white); checked by arithmetic that its segments clear the task labels. Canvas 576x310 vs mermaid viewBox 1300x540. Compared visually with the mermaid and 0.32 PNGs. Checker: re-ran contrast (same numbers); #d4d9ef is the 25% tint of #5b6dc0 (#d6daef) and #cae7d5 the 25% tint of old #33a35c, so bands still echo actor/score hues though no hex is reused; line clears Go downstairs label by ~8px at x=352."
+  },
+  {
+   "name": "gitgraph",
+   "verdict": "lebih baik",
+   "verdict_line": "Kini selengkap mermaid, label horizontal lebih mudah dibaca",
+   "old_issues": [
+    {
+     "issue": "Semua edge navy 2px",
+     "status": "beres",
+     "note": "Edge kini 5px dengan warna branch: main #5b6dc0, feat #33a35c, hotfix #d99114."
+    },
+    {
+     "issue": "kurva mencoret label merge",
+     "status": "beres",
+     "note": "Garis kini siku vertikal; label merge-feat dan merge-hotfix di kanan garis dengan halo putih, jarak sekitar 4px, tidak tercoret."
+    },
+    {
+     "issue": "merge/REVERSE/HIGHLIGHT/tag tidak terbedakan",
+     "status": "beres",
+     "note": "Merge = lingkaran berlubang putih, REVERSE = tanda X, HIGHLIGHT = kotak, tag = pill v1.0 dan v1.1."
+    },
+    {
+     "issue": "tanpa lane guide",
+     "status": "beres",
+     "note": "Ada garis putus-putus per lane dan pill nama branch berwarna di kiri."
+    }
+   ],
+   "remaining": [
+    "Garis feat dan hotfix di bawah merge-feat nyaris menempel (celah 1.4px)"
+   ],
+   "better": "Label commit horizontal 13px (mermaid 10px diputar) dan tidak tertimpa garis; tipe commit, tag dan lane sama lengkap dengan palet lebih tenang.",
+   "evidence": "Read fvm/svg/gitgraph.svg: edge paths stroke-width 5 in branch colours; merge commits r=11 with white r=5 inner; REVERSE drawn as X path; HIGHLIGHT rect 20x20; tag pills rx=9; dashed lane lines at y=58/128/198 plus branch pills. merge-feat text starts x=322.8 vs hotfix path x=316.2 (stroke edge 318.7), labels have white paint-order halo. feat merge path x=309.8 and hotfix fork x=316.2 with 5px strokes leave 1.4px gap; confirmed in a 3x zoom crop. Mermaid commit-label font-size 10px, rotated (grep). Canvas 573x255 vs mermaid 507x254. Checker: re-grepped mermaid font-size:10px and rotate(-45); 3x crop of x 420-640 shows the green/orange gap and merge-feat clear of the orange line; merge-hotfix starts 4px right of hotfix stroke; release label ends x~550 inside 573 canvas."
+  },
+  {
+   "name": "timeline",
+   "verdict": "lebih baik",
+   "verdict_line": "Lebih benar dan rapi dari mermaid, semua periode tampil",
+   "old_issues": [
+    {
+     "issue": "Garis dashed mencoret teks event",
+     "status": "beres",
+     "note": "Dashed kini hanya potongan pendek di celah antar baris (y 142.5–146 dan 162.5–171), tidak melewati teks."
+    },
+    {
+     "issue": "periode dan event sama secara tipografi",
+     "status": "beres",
+     "note": "Tahun kini tebal, event tetap normal."
+    },
+    {
+     "issue": "sumbu samar",
+     "status": "beres",
+     "note": "Sumbu kini #8a90a8 2px (dulu #c2c8dc 1.5px), kontras 3.16:1."
+    },
+    {
+     "issue": "band hijau 3.21:1",
+     "status": "beres",
+     "note": "Band Mobile kini #5b6dc0 dengan teks putih, kontras 4.78:1."
+    }
+   ],
+   "remaining": [
+    "Sumbu tanpa panah arah waktu; mermaid memakai panah"
+   ],
+   "better": "Keenam periode tampil (mermaid membuang 2002, 2004, 2005), tahun tebal dan event tidak tercoret; 624×211 vs 995×643.",
+   "evidence": "Read fvm/svg/timeline.svg: dashed line elements only at y 142.5-146 and 162.5-171, between event text centres 153.5 and 178.5; year texts font-weight bold; axis lines #8a90a8 width 2; Mobile rect #5b6dc0 with #ffffff text. Contrast computed in Python (4.78:1, axis 3.16:1). 2x zoom crop confirms no strike-through. All six years present; mermaid PNG shows only 2007/2009/2010. Canvas 624x211 vs mermaid viewBox 995x643. Checker: old 0.32 SVG grep confirms axis #c2c8dc 1.5 and Mobile #33a35c; 3x crop of Facebook/Google and iPhone/Android columns shows the dashes only in the gaps."
+  },
+  {
+   "name": "sankey",
+   "verdict": "lebih baik",
+   "verdict_line": "0 crossing dan warna terbedakan, lebih rapi dari mermaid",
+   "old_issues": [
+    {
+     "issue": "Palet 8 warna bentrok (Losses = Electricity)",
+     "status": "beres",
+     "note": "11 node dengan 11 warna berbeda; Electricity #33a35c, Losses #10645c. Kolom kanan memakai versi gelap dari rona kiri."
+    },
+    {
+     "issue": "label Electricity dan Industry sebaris tanpa pengukuran",
+     "status": "beres",
+     "note": "Penyebab di kode tidak bisa dinilai dari gambar. Di gambar tidak ada tabrakan: Electricity y=207.8, Industry y=229.5, selisih 22px."
+    },
+    {
+     "issue": "1 crossing tersisa",
+     "status": "beres",
+     "note": "0 crossing; ujung semua ribbon berurutan monoton di dua kolom (dihitung dari path SVG)."
+    }
+   ],
+   "remaining": [
+    "Urutan node di ketiga kolom beda dari file, mis. Gas di atas Coal",
+    "Label Industry, light lebih tinggi dari ribbonnya; tepi ribbon lewat di balik teks"
+   ],
+   "better": "0 crossing (mermaid 4) dan 11 node dengan 11 warna berbeda (mermaid: Coal dan Industry, light sama #4e79a7).",
+   "evidence": "Read fvm/svg/sankey.svg path coordinates: left-half links are monotone at both ends (Gas->Heating 24-62.5 -> 42-80.5 down to Solar 356.7-376 -> 338.7-358) and right-half links too, so 0 crossings. Counted 4 in mermaid PNG (Gas->Heating over Nuclear/Wind/Solar, Heating->Homes over Elec->Losses). Node rect fills: 11 distinct in flowmaid; mermaid SVG has #4e79a7 twice. Label boxes: Electricity x=311 start y=207.8, Industry end x=560 y=229.5; estimated Helvetica widths ~130px and ~112px, no overlap; 1.6x zoom crop confirms. Industry, light text 14px over a 12.8px ribbon. Checker: Liberation Sans 14px widths 129.6 and 111.7 give Electricity x 311-440.6 and Industry x 448.3-560 (7.7px apart, 22px vertical offset); grep of mermaid rect fills confirms #4e79a7 on Coal and Industry, light; node y order in all three columns (Heating above Electricity; Industry, light/Homes/Industry/Losses on the right) differs from first-appearance order in the .mmd, while mermaid keeps it."
+  },
+  {
+   "name": "architecture",
+   "verdict": "lebih baik",
+   "verdict_line": "Topologi dan port kini benar, mermaid masih menumpuk node",
+   "old_issues": [
+    {
+     "issue": "Edge web tersembunyi",
+     "status": "beres",
+     "note": "web→api kini garis lurus x 198→296 di y=109, tidak tertutup node."
+    },
+    {
+     "issue": "svc→cache lewat PostgreSQL",
+     "status": "beres",
+     "note": "svc→cache kini lurus vertikal di x=577, dari bawah Business Logic ke atas Redis."
+    },
+    {
+     "issue": "layout satu baris yang mengabaikan port",
+     "status": "beres",
+     "note": "Layout 2D: Mobile di bawah Web, Redis di bawah Business Logic (B→T), PostgreSQL di kanan (R→L)."
+    },
+    {
+     "issue": "emoji 16px",
+     "status": "sebagian",
+     "note": "Ikon kini emoji 24px dan lebih terbaca; masih emoji, ikon mermaid 80px."
+    }
+   ],
+   "remaining": [
+    "Ikon masih emoji 24px; ikon mermaid 80px",
+    "Garis Business Logic↔PostgreSQL berjalan 8px dari tepi kanan grup Backend",
+    "Grup Data 404×246 untuk dua node, banyak ruang kosong",
+    "Edge Mobile App menyatu dengan edge Web App sebelum API Gateway"
+   ],
+   "better": "Semua 5 edge terlihat dan port dihormati; tidak ada node bertumpuk (mermaid: \"MWobile App\") dan tidak ada garis mencoret label (mermaid: Business Logic).",
+   "evidence": "Read fvm/svg/architecture.svg: web->api polyline 198,109 -> 296,109 with no node between; mobile->api joins it at x=247; svc->cache vertical x=577 from y=144 to 370; svc<->db leaves svc right side at 652,109, runs down x=668 (Backend group right border x=676), enters db left side at 708,303. Emoji font-size 24 (0.32: 16); mermaid SVG icon rects 80x80. Data group rect 404x246. Zoom crops 1.3x of svc-db edge and frontend fan-in. Canvas 906x488 vs mermaid viewBox 869x608. Mermaid PNG shows Web/Mobile labels overlapping, '?' icons, and the svc->cache line through the 'Business Logic' label. Checker: 3x crops of the svc-db run (about 6px ink gap to the Backend border) and the mobile join at x=247; svc->cache at x=577 clears the Data title (ends x~553); arrow markers match the source (only api->svc and svc<->db have heads); mermaid has 15 width=\"80\" rects."
+  }
+ ],
+ "corrections": [
+  "advanced remaining: added 'Q→W1 masuk Worker 1 36px dari tengah, 8px dari sudut kanan'. SVG: Q→W1 runs at x=136.9, Worker 1 spans 56.0-144.9 (centre 100.5); Q→W2 lands at W2's centre 262.3 and mermaid's Q→W1 lands at W1's centre (x=350). Clearly visible in a crop of the Workers frame.",
+  "advanced remaining: added 'Panah no masuk Rollback 12px dari sudut kirinya'. SVG: Mon→Rollback at x=269.2, Rollback top edge 257.0-352.9; in the mermaid PNG the 'no' arrow lands near the middle of Rollback's top edge.",
+  "subgraph better: removed 'spine lurus', because mermaid's spine is straight too (Client, GW, Auth, Users, Bus and Store all at translate x=237 in the mermaid SVG). Also removed the SVG file size, which cannot be seen in the picture. Added the even inner gaps: flowmaid 60/60 vs mermaid Auth→Users 24 and Bus→Consumers 60 (node heights 45).",
+  "lr old issue 'kipas keputusan asimetris' note: the bends differ too, not only the chips (ok bend x=417.9, denied bend x=410.8, 7px apart). Status stays 'beres'.",
+  "lr remaining: added 'Garis tebal ke Database keluar 5px dari sudut atas Service Layer'. SVG: SVC→DB starts at y=77.0, SVC top y=72.0; mermaid's starts 16px below SVC's top (87.6 vs 71.3). Visible in a 1.5x crop: the thick line leaves right under the box corner.",
+  "shapes better: 'warna membedakan jenis shape' overclaimed, because colours are shared by groups (Diamond, Parallelogram and Reverse all orange #d99114; Stadium and Double circle green; Circle and Hexagon purple; Rectangle and Subroutine blue). Changed to 'warna per kelompok shape'.",
+  "stress: the Oct 30 'better' claim \"'no' dekat keputusannya\" no longer holds in 0.40.2; the 'no' chip now sits on the left lane, 75px above Check.",
+  "Area figures moved: stress is now 31.5% smaller than mermaid (old card said 38%), fanout 38.4% (old said 44%), back-edge 28.7%, wide-labels 17.9%, long-labels about equal (-2.5%).",
+  "checker, long-labels remaining[0]: the 'incomplete' edge enters its chip from the top, not the side. In the SVG, the B→D vertical x=235.6 lies inside the chip's x-range 228.8-311.2 (chip top y=326.6), and a zoomed crop shows the line meeting the chip's top edge near its left end. Only 'complete' (vertical x=173.6, chip right 160.8) enters from the side. The evidence text is fixed to match.",
+  "checker, back-edge verdict_line: replaced 'sisa jog kecil di bawah kepala' with the chip-on-bend issue. A zoomed crop of mermaid's E→B shows the same corner right under the head with no stub, so that point does not separate the two renders. Mermaid puts yes/no on straight segments, so the chips covering the bends do.",
+  "checker, back-edge remaining[0]: added 'mermaid sama', for the same reason as the verdict_line change.",
+  "checker, wide-labels old issue 4 note: 'writes the projection' does not float 9px above its line. Its chip (x1693.1-1832.7, y60.5-80.5) covers F->D's first run at y=69 and the step at x=1701.3, and only the long run at y=90 is 9.5px below it. 'forwarded' is the only chip that touches no part of its own path.",
+  "checker, wide-labels remaining[0]: added that the floating 'forwarded' chip nearly touches Service. The chip's right edge is 870.6 against Service's left edge 870.0, and the chip bottom is 77.8 against Service top 82.3 (4.5px). This is visible on the zoomed mid crop.",
+  "checker, wide-labels remaining[1]: added 'health probe' to the chips that cover a bend. Its chip (x660.2-752.5, y101.8-121.8) hides the A->C step at x=706.4 from y=115.3 to 108.3, so on the zoomed crop the line enters the chip on the left and leaves on the right 7px higher.",
+  "fanout-frames better: dropped '0 crossing' because mermaid also has 0 under the same count (0/2/0 for mermaid/0.32/0.40.2). Added node order instead: mermaid g1 rows are n5,n3 / n2,n4 / n1 and g3 is also scrambled, while 0.40.2 stacks n1..n5 and n9..n14 in source order.",
+  "dense-td better: dropped 'semua edge siku dan tidak menembus node' because mermaid 12.2 is also fully orthogonal (0/47 edges with a diagonal run over 30px) and had 0 edge-through-node hits on the boxes parsed. Added dotted styling instead: 0.40.2 draws all 3 dotted edges with dasharray 2 3, while mermaid draws n8->n42 and n22->n40 solid (dasharray '0 0 L 2'; crops of 'magna veniam magna' and 'aliqua sit amet' show solid lines).",
+  "dense-td crossings 65 -> 66 (mermaid 68 unchanged): this uses the same side-switch count on true arc geometry that the dense-lr and bench-75 corrections use. Parity still holds.",
+  "dense-td remaining: added a missed defect. n46->g1 and n12->n13 each have a gap-mask circle 10.5 and 11px before the path end, so the stem stops above the crossing line and the head floats below it (zoom crops). To stay within 4 bullets, the 'amet' bullet and the edge-less-node bullet were merged.",
+  "dense-lr crossings 40 -> 45, and the verdict_line changes from 4x to 4.5x mermaid. A strict interior-only test misses crossings that land exactly on bridge feet: 0.40.2 draws 8 multi-line bridges, and the zoom crop at x 1025-1060, y 681 shows one bridge over 3 lines that the strict test counted once. The side-switch test gives 19 hops + 21 lines under bridges + 4 gaps + 1 = 45, stable for windows of 4 to 14px. Mermaid 10 and 0.32 61 are unchanged.",
+  "dense-lr chips: 5 chips have a foreign line under them, not 2. They are 'tempor eiusmod' (n21->n47), 'eiusmod nostrud' (n12->n38), both 'magna' chips (n12->n22, n36->n45) and 'laboris' (n12->n30). Found by exact segment/rectangle clipping (the earlier point sampling missed long segments) and confirmed with zoom crops. The old-issue note and the remaining bullet were updated.",
+  "dense-lr better: dropped 'semua edge siku' because mermaid is also 0/42 non-orthogonal.",
+  "bench-75 crossings 258 -> 294 (0.32 361 -> 362, mermaid 222 unchanged). The same side-switch test gives 294 at every window from 4 to 14px: 154 under single hops, 121 under 53 multi-line bridges, 19 at gaps. A strict test gives 229 because bridge feet land exactly on the crossed lines, so 258 was not reproducible by either method.",
+  "bench-75 remaining: '29 dari 75 panah masuk dari atas atau bawah' was wrong. Last-segment directions in 0.40.2 are 46 right, 17 down, 9 up and 3 left, so 26 arrive from the top or bottom and 3 from the right (the 29 lumped in the right-side arrivals).",
+  "state, old 'better' note: mermaid 12.2 draws <<join>> as a black bar; only <<choice>> (decide) and <<fork>> (forked) come out as boxes.",
+  "sequence, remaining: dropped 'Stick figure Visitor kecil (sekitar 18px) dibanding kotak peserta'. SVG figure is 18x31 next to 34px-tall boxes; mermaid's is 24x44 next to 65px-tall boxes, so it is not smaller for its boxes than mermaid's and it scales with the canvas (0.70 vs 0.68).",
+  "sequence, remaining: added 'Lifeline dan garis frame pucat (kontras 2.0:1), mermaid gelap'. Lifelines and frame rects use stroke #aeb6d8 (dashed for lifelines), 2.0:1 on white and visibly faint in the PNG; mermaid draws solid black lifelines and dotted black frames.",
+  "mindmap, remaining: added '(mermaid juga)' to the mixed text colour bullet. In the mermaid PNG the Output branch and its leaves use white text while the other branches use black, so the mix is not specific to flowmaid.",
+  "journey, old issue 'warna section = aktor = skor': status stays beres, but the note now says no hex value is reused rather than that no colour is used twice. The 'Go to work' band #d4d9ef is the 25% tint of the Me colour #5b6dc0 (computed #d6daef), and #cae7d5 is the 25% tint of the old green #33a35c, so the band hues still echo Me and the score green.",
+  "sankey, remaining[0]: widened from 'source order changed (Gas above Coal)' to the reorder in all three columns. The SVG puts Heating (y 42) above Electricity (y 92.5) in the middle column, and orders the right column Industry, light / Homes / Industry / Losses. The .mmd first-appearance order is Electricity, Heating and Industry, Homes, Losses, Industry, light, and the mermaid PNG keeps that order."
+ ],
+ "status": {
+  "reasons": [
+   {
+    "n": 1,
+    "status": "beres",
+    "release": "0.34.0 + 0.38.0",
+    "note": "Semua edge flowchart dan state kini orthogonal dengan sudut membulat; S-cubic dan spline sudah hilang dari korpus.",
+    "evidence": "CHANGELOG 0.38.0: flowchart and state edges drawn on the axes with rounded corners, corpus S-curves 92|112 -> 0|0. 0.34.0 added back-edge lanes and orthogonal class edges. I ran examples/quality on 0.40.2 over the 6 quality fixtures and 9 example flowchart/state files: idiom_ortho equals the edge count in every file (185/185 and 88/88), and idiom_scubic, idiom_spline and idiom_bow are all 0. demo.png, lr.png, advanced.png and dense-td.png show only axis-aligned runs with rounded corners. Only self-loops keep a curve, as in mermaid."
+   },
+   {
+    "n": 2,
+    "status": "beres",
+    "release": "0.34.0",
+    "note": "Back-edge kini lane orthogonal di samping gambar, masuk tegak lurus; laso dan loop V hilang, kanvas mengecil.",
+    "evidence": "CHANGELOG 0.34.0: back-edges run in orthogonal lanes beside the drawing, and the canvas is fitted to the drawing. demo.png and back-edge.png: Show error -> Read input runs as a lane up the right side and enters Read input's bottom square-on, with the head fully visible. lr.png: Redis -> Service Layer is a short lane, not a V-loop. wide-labels.png shows no 230 px bow. stress.png: the 'no' loop is a lane. Quality run: demo is 321 px wide (383 in the report), and end_tilt is 0 on these files."
+   },
+   {
+    "n": 3,
+    "status": "beres",
+    "release": "0.34.0",
+    "note": "Satu ukuran kepala 11 px termasuk ==>, ujung tepat di border dan tegak lurus. Sisa kecil: satu panah miring 30°.",
+    "evidence": "CHANGELOG 0.34.0: one 11 px head for every flowchart edge, thick ==> included (markerUnits=userSpaceOnUse), and the stroke stops half a head short so it cannot poke out. advanced/demo/lr/back-edge/stress SVGs each define a single marker id=arrow, 11x11 userSpaceOnUse, and their 3.5 px thick edges use that same marker. demo.png: the Process data ==> Done head is the same size as the others. shapes.svg: tips land exactly on outlines. Quality run: end_tilt and end_kink are 0 on every corpus file except advanced Mon->Done, which enters the round Live node 29.8 deg off its radius."
+   },
+   {
+    "n": 4,
+    "status": "sebagian",
+    "release": "0.34.0 + 0.35.0 + 0.36.0 + 0.37.0",
+    "note": "Subgraph bersarang dan direction beres. dense-lr masih portrait, crossing masih lebih banyak dari mermaid; subgraph sebagai blok sedang dikerjakan.",
+    "evidence": "Fixed: advanced.svg draws all 3 frames, Async Workers included (0.34.0). state.png lays the direction LR composite out as one row (0.37.0). Edge-less subgraph members start on the subgraph's first row (0.35.0/0.36.0). Still open, from a quality run on 0.40.2: dense-lr (flowchart LR) is 2302x3468 px, portrait, while mermaid's is 1.28:1 landscape. Its frames are tall, with edge-less members stacked in their first column, and it draws 45 crossings (about 61 in the report, about 15 for mermaid). bench-75 (LR) is 2222x1965 (aspect 1.13, mermaid 4.04) with 294 crossings (364 in the report, mermaid 222). dense-td has 66 crossings, 11 edges through frames and tall frames with empty bands. docs/ROADMAP.md: subgraphs as blocks is in progress, with step 1 and the first part of step 2 merged behind a switch that is off."
+   },
+   {
+    "n": 5,
+    "status": "beres",
+    "release": "0.33.0 + 0.34.0",
+    "note": "Note state dan class, «interface», dan komentar ER kini tampil; lingkaran zero terlihat; parent class di atas anaknya.",
+    "evidence": "class.svg contains the «interface» line above PaymentMethod and the note card 'Domain model for a small shop'. class.png draws Person above Customer and PaymentMethod above CreditCard and PayPal. state.svg/png has the note 'shown to the user' as a yellow card with a dotted link. er.svg has 33 italic comment cells, matching the 33 comments in the source. The 'has' label rect spans y=342-362, clear of the zero circle at cy=382 r=5. CHANGELOG 0.33.0 covers the ER comments and labels off the crow's feet; 0.34.0 covers class notes, stereotypes, top-down hierarchies and state notes."
+   }
+  ],
+  "bugs": [
+   {
+    "n": 1,
+    "status": "beres",
+    "release": "0.34.0",
+    "note": "Async Workers kini digambar sebagai frame bersarang di dalam Production Platform.",
+    "evidence": "advanced.svg has three frame titles: 'CI/CD Pipeline', 'Production Platform' and 'Async Workers'. advanced.png shows Job Queue, Worker 1 and Worker 2 inside the Async Workers frame, nested in Production Platform. CHANGELOG 0.34.0 Fixed: 'A nested subgraph keeps its nodes when the outer block mentions them again' (the showcase used to draw 2 frames for 3 subgraphs)."
+   },
+   {
+    "n": 2,
+    "status": "beres",
+    "release": "0.34.0",
+    "note": "CI kini di atas Platform, dan Reg --> Platform turun lurus ke sisi atas frame.",
+    "evidence": "advanced.png: the CI/CD Pipeline frame sits directly above Production Platform. In advanced.svg the 'Reg → Platform' path runs vertically from (385.8,479) to (385.8,519.5) onto the frame's top. CHANGELOG 0.34.0 Fixed: 'An edge into (or out of) a subgraph ranks it even when a cycle runs through the box', so CI stacks above Platform. The mermaid render has the same stacking."
+   },
+   {
+    "n": 3,
+    "status": "beres",
+    "release": "0.34.0",
+    "note": "Dev --> CI kini digambar lurus ke bawah dari Dev ke Build, node pertama di CI.",
+    "evidence": "In advanced.svg the 'Dev → CI' path goes from (385.8,123) to (385.8,177.5), straight down from Developer git push onto Build & Test, as advanced.png shows. There is no upward stub to the frame border. CHANGELOG 0.34.0 Fixed: 'An edge from a member to its own box leads to the box's entry member'. Mermaid's own render still draws a dangling stub here."
+   },
+   {
+    "n": 4,
+    "status": "beres",
+    "release": "0.33.0",
+    "note": "Label kini diletakkan di luar glyph, jadi lingkaran zero pada o{ terlihat jelas.",
+    "evidence": "In er.svg the 'has' label rect spans x=232-268.6, y=342-362, and the zero circle is at (250.3,382) with r=5 (y 377-387), so they are 15 px apart. er.png shows || at categories, then 'has', then o< at questions. CHANGELOG 0.33.0 Fixed: 'ER relationship labels no longer cover the crow's feet'."
+   },
+   {
+    "n": 5,
+    "status": "beres",
+    "release": "0.34.0",
+    "note": "Relasi kini disusun sesuai urutan sumber: Person di atas Customer, PaymentMethod di atas CreditCard dan PayPal.",
+    "evidence": "class.png: Person is at the top with the inheritance triangle under it, pointing to Customer below. PaymentMethod («interface») is above CreditCard and PayPal. The 'charges' arc is gone, and 'charges' is a short dashed elbow. CHANGELOG 0.34.0: 'Class hierarchies read top-down, like mermaid and UML' (relations laid out in source order, left operand first)."
+   },
+   {
+    "n": 6,
+    "status": "beres",
+    "release": "0.34.0",
+    "note": "Edge class kini orthogonal dan digambar mengikuti rutenya; segitiga inheritance tampil utuh.",
+    "evidence": "class.svg has three hollow 16x14 inheritance triangles (Person, and PaymentMethod twice) and two diamonds (composition and aggregation). class.png shows every relation as an orthogonal route with rounded corners, and none crosses a class box. CHANGELOG 0.34.0 Fixed: rerouted class relationships used to be drawn straight through boxes with collapsed triangles, and the class writer now draws the route through scene::edge_path_d. Class edges are orthogonal (Changed)."
+   },
+   {
+    "n": 7,
+    "status": "beres",
+    "release": "0.33.0 + 0.34.0",
+    "note": "Note class dan state, «interface», serta komentar atribut ER kini dirender.",
+    "evidence": "class.svg contains 'Domain model for a small shop' (note card) and '«interface»' (1 occurrence). state.svg/png draws 'shown to the user' as a yellow note card with a dotted link to Rejected. er.svg has 33 italic comment cells, matching the 33 attribute comments in examples/er.mmd. CHANGELOG 0.33.0: 'ER attribute comments are drawn'. CHANGELOG 0.34.0: 'Class notes are drawn', 'Class stereotypes', 'State diagram notes are drawn'."
+   },
+   {
+    "n": 8,
+    "status": "beres",
+    "release": "0.34.0",
+    "note": "Ujung edge kini tepat di outline asli, termasuk sisi miring parallelogram dan titik hexagon.",
+    "evidence": "shapes.svg (11 px marker, refX 5, so the tip is path end + 5.5 px): the H→I tip is at x=1297.2, exactly on the hexagon point. The I→J tip is at 1479.9, which equals the parallelogram's slanted side at mid-height. J→K starts at 1609.7, on the right slant. The K tip is at 1683.7, on the trapezoid's slant. Quality run: end_gaps is 0 on all 15 flowchart/state corpus files. advanced.png shows the ends on the Security scan, Healthy? and Rollback flats. CHANGELOG 0.34.0 Fixed: 'Edge ends touch every shape's outline'."
+   },
+   {
+    "n": 9,
+    "status": "beres",
+    "release": "0.37.0",
+    "note": "Composite Validating dengan direction LR kini satu baris. Tiga poin kecil masih tercatat di roadmap.",
+    "evidence": "state.png: Validating (direction LR in a TD diagram) draws as one row, start -> Syntax -> ok -> Semantics -> end, and state.svg's viewBox is 535x873 as CHANGELOG 0.37.0 states (it was a 126x368 column). advanced's CI and Workers stay TD because edges cross their borders, which is mermaid's rule, and the mermaid render matches. docs/ROADMAP.md 'After that' lists three small open points: placement order, sibling width, and a composite without a direction."
+   },
+   {
+    "n": 10,
+    "status": "beres",
+    "release": "0.33.0",
+    "note": "Edge architecture kini terlihat semua, mengikuti port yang ditulis, dan tidak menembus kotak service.",
+    "evidence": "architecture.png: web--api and mobile--api both reach API Gateway's left side in plain sight. svc--cache drops straight from Business Logic's bottom to Redis's top and no longer passes through PostgreSQL. svc<-->db leaves R and enters L as declared, and no line crosses a service box. CHANGELOG 0.33.0 Fixed: 'architecture: an edge no longer passes behind or through a service box (report P0 #12)'."
+   }
+  ]
+ }
+}

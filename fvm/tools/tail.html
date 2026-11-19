@@ -1,0 +1,79 @@
+
+<section class="col">
+  <h2>Roadmap</h2>
+  <p class="sub">Tiga sprint di laporan 30 Oktober sudah dikerjakan dalam rilis 0.33.0 sampai 0.40.2. Yang tersisa ada di bagian Berikutnya.</p>
+  <div class="road">
+    <div class="tier"><h3>Sudah dirilis <small>0.33.0 – 0.40.2</small></h3>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Rilis</th><th>Isi</th></tr></thead>
+        <tbody>
+          <tr><td class="n">0.33.0</td><td>ER, sequence, gitGraph, pie, journey, timeline, sankey, mindmap, dan architecture digarap ulang supaya terbaca minimal sebaik mermaid. Router mode advance ditulis ulang.</td></tr>
+          <tr><td class="n">0.34.0</td><td>Flowchart: satu ukuran kepala panah, back-edge di lane orthogonal, subgraph bersarang dan perbaikan kanvas, ruang untuk label dan port, ujung edge di outline asli tiap shape, empat tema mermaid. Class dan state digarap ulang.</td></tr>
+          <tr><td class="n">0.35.0</td><td>Layering: subgraph yang diumpan hub, penyempitan flowchart yang terlalu lebar, gambar tetap stabil saat baris di sumber berpindah.</td></tr>
+          <tr><td class="n">0.36.0</td><td>Lanjutan layering. Wrap teks journey dan timeline, merge di gitGraph, label ER, pie lebih dari enam belas slice.</td></tr>
+          <tr><td class="n">0.37.0</td><td><code>direction</code> di dalam subgraph atau composite state.</td></tr>
+          <tr><td class="n">0.38.0</td><td>Edge flowchart dan state berjalan orthogonal, dengan sudut membulat.</td></tr>
+          <tr><td class="n">0.39.0</td><td>Garis yang bersilangan saling melompati. Kipas dari hub digambar seperti sisir.</td></tr>
+          <tr><td class="n">0.40.0</td><td>Class: nama bertitik, kipas enam tanpa crossing, self-relation tidak menabrak tetangga. State: drag di dalam composite tidak lagi mengubah ukuran bar fork atau join.</td></tr>
+          <tr><td class="n">0.40.1</td><td>API interaktif: <code>try_route</code>. Drag melewati margin kiri-atas tidak lagi menggeser gambar. Langkah 1 subgraph sebagai blok masuk, masih dimatikan.</td></tr>
+          <tr><td class="n">0.40.2</td><td>API interaktif: drag di diagram ER, class, dan mindmap hanya menggambar ulang yang terhubung ke kotak yang dipindah (<code>route_partial</code>). Mindmap, sequence, pie, journey, timeline, dan sankey bisa di-pick (<code>hit_test</code>). Bagian pertama langkah 2 subgraph sebagai blok masuk, masih dimatikan.</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+    <div class="tier"><h3>Berikutnya <small>urut</small></h3><ol>
+      <li><strong>Studi desain untuk blok yang lebih rapat.</strong> Beberapa cara merapatkan frame dan meluruskan rantai dibuat berdampingan, lalu dibandingkan gambar per gambar dengan mermaid 12.2.0 sebelum satu dipilih.</li>
+      <li><strong>Langkah 2 (bagian kedua) dan langkah 3 masuk ke dev</strong>, tetap dimatikan, setelah lolos review.</li>
+      <li><strong>Langkah 4</strong>, lalu layout blok menjadi default dalam satu rilis.</li>
+    </ol>
+    <p class="note">Sedang dipertimbangkan: merilis mode blok lebih awal sebagai opsi yang dinyalakan sendiri, dengan layout sekarang tetap jadi default.</p></div>
+    <div class="tier"><h3>Belum dijadwalkan</h3><ul class="plain">
+      <li>Class dengan tiga self-relation atau lebih pada satu kelas.</li>
+      <li>Tiga detail kecil pada subgraph dengan <code>direction</code> sendiri, dicek ulang setelah layout blok masuk.</li>
+      <li>Graf besar: graf padat seribu node masih butuh beberapa detik.</li>
+      <li>Hook id dan class di SVG, pemecahan fungsi layout yang panjang, math di label.</li>
+    </ul></div>
+  </div>
+</section>
+
+<section class="col">
+  <h2>Yang jangan sampai hilang</h2>
+  <p>Hal-hal berikut sudah lebih baik di flowmaid, jadi jangan dikorbankan demi meniru mermaid.</p>
+  <ul class="keep">
+    <li>Chip label putih yang berpadding. Label mermaid berupa blok abu-abu dan sering ditembus garis.</li>
+    <li>Judul cluster tidak pernah tertabrak edge. Mermaid mencoret "Platform" dan "Event bus".</li>
+    <li>Diamond kompak untuk label pendek (102×65, sementara mermaid 171×171).</li>
+    <li>SVG portabel: pakai <code>&lt;text&gt;</code> tanpa <code>foreignObject</code>, ukurannya 5–10× lebih kecil, dan punya aria.</li>
+    <li>Menghormati <code>&lt;br/&gt;</code> dan tidak menghasilkan wrap yatim. Auto-wrap cukup untuk label tanpa break eksplisit.</li>
+    <li>Self-loop yang jelas. Self-loop di mermaid rusak di advanced dan stress.</li>
+    <li>Semantik dotted dan thick tetap terjaga. Mermaid mengubah 2 edge dotted jadi solid di dense-td.</li>
+    <li><code>&lt;&lt;choice&gt;&gt;</code>/<code>&lt;&lt;fork&gt;&gt;</code> di state digambar benar. Mermaid 12.2 menggambarnya sebagai kotak.</li>
+    <li>Pie, journey, timeline, dan sankey sudah setara atau lebih baik.</li>
+    <li>Palet semantik per-shape. Tawarkan tema netral sebagai opsi, bukan pengganti.</li>
+  </ul>
+</section>
+
+<section class="col">
+  <h2>Metode</h2>
+  <p class="note">Sumber, konfigurasi mermaid, dan render mermaid sama dengan laporan 30 Oktober: <code>examples/*.mmd</code> dan <code>tests/fixtures/quality/*.mmd</code>, mermaid di Chromium headless dengan konfigurasi default. Gambar flowmaid 0.40.2 dibuat dengan CLI release build dari commit c202cfc. Setiap diagram ditinjau satu agent terhadap gambar mermaid, gambar 0.32, dan gambar 0.40.2, termasuk status setiap isu lama. Agent kedua lalu mencoba membantah setiap klaim dengan melihat gambar dan SVG-nya sendiri, dan mengoreksi 29 klaim. Status lima alasan besar dan sepuluh bug dicek di CHANGELOG dan di gambar hari ini. Gambar mode blok berasal dari branch kerja (b82d584) dan belum dirilis.</p>
+</section>
+</div>
+
+<script>
+(function(){
+  var cards=[].slice.call(document.querySelectorAll('.card'));
+  var toc=document.getElementById('toc');
+  cards.forEach(function(c){var a=document.createElement('a');a.href='#'+c.id;a.textContent=c.id.slice(2);a.dataset.group=c.dataset.group;a.dataset.behind=c.dataset.behind;toc.appendChild(a);});
+  var btns=[].slice.call(document.querySelectorAll('.filters button'));
+  function show(el,f){return f==='all'||(f==='behind'?el.dataset.behind==='yes':el.dataset.group===f);}
+  function apply(f){
+    btns.forEach(function(b){b.setAttribute('aria-pressed', String(b.dataset.f===f));});
+    cards.forEach(function(c){c.hidden=!show(c,f);});
+    [].slice.call(toc.children).forEach(function(a){a.hidden=!show(a,f);});
+    try{localStorage.setItem('fm-filter',f);}catch(e){}
+  }
+  btns.forEach(function(b){b.addEventListener('click',function(){apply(b.dataset.f);});});
+  var saved='all';try{saved=localStorage.getItem('fm-filter')||'all';}catch(e){}
+  if(!btns.some(function(b){return b.dataset.f===saved;})) saved='all';
+  apply(saved);
+})();
+</script>
