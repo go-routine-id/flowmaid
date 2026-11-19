@@ -5025,9 +5025,11 @@ fn place(
     // downstream, so the frames opening and closing next to it along
     // the flow keep their gap ([`f1_flow_short`]; the layer lines read
     // the frames' reach).
+    let mut flow_short: Vec<f64> = Vec::new();
     if let (Some(_), Some(nc), true) = (block_paths, node_cluster, horizontal) {
         let gap_l = g.rank_gap.unwrap_or(GAP_L);
         let short = f1_flow_short(g, nc, n, &layers, &alayer, &alsize, &cluster_span, gap_l);
+        flow_short.clone_from(&short);
         for v in 0..n {
             for &c in &nc[v] {
                 let (Some(&s), Some(&(lo, hi))) = (short.get(c), cluster_span.get(&c)) else {
@@ -5873,8 +5875,7 @@ fn place(
             &alsize,
             &lcoord,
             &cluster_span,
-            &header,
-            &title_jog,
+            (&header, &title_jog, &flow_short),
             (&preds, &succs),
         ),
         _ => (0..na).map(|v| lcoord[alayer[v]]).collect(),
@@ -6014,9 +6015,13 @@ const STAGGER_SLACK: f64 = 2.0;
 /// the shift, which cost frame compactness, and left the dummies of its
 /// inner chains on the old line. Top-level blocks only: levelling nested
 /// siblings changed no frame the gates read and lengthened a dense
-/// drawing's parallel runs (dense-td drawn TD: `band_len` +242). TD / BT
-/// only: in LR / RL the shift took one more crossing on dense-lr and
-/// moved two lines of `notes/spread-bottom` 4 px nearer. The shift is a
+/// drawing's parallel runs (dense-td drawn TD: `band_len` +242). In
+/// LR / RL a frame reaches along the flow its pad and the half of its
+/// title-length growth (B12 F2, [`f1_flow_short`]) on each flow side,
+/// its title strip lying on a lateral side. (Before the rules above held
+/// a block, the shift in LR / RL took one more crossing on dense-lr and
+/// moved two lines of `notes/spread-bottom` 4 px nearer; both stay put
+/// now, their blocks held.) The shift is a
 /// layout coordinate, not a frame rule: frames stay functions of their
 /// own members, so `route()` at the scene's centres draws them the same.
 /// Without it, sibling frames of a band whose first rows differ in
@@ -6031,16 +6036,12 @@ fn level_sibling_frames(
     alsize: &[f64],
     lcoord: &[f64],
     cluster_span: &BTreeMap<usize, (usize, usize)>,
-    header: &[f64],
-    title_jog: &[f64],
+    (header, title_jog, flow_short): (&[f64], &[f64], &[f64]),
     (preds, succs): (&[Vec<usize>], &[Vec<usize>]),
 ) -> Vec<f64> {
     let n = g.nodes.len();
     let na = alayer.len();
     let mut lpos: Vec<f64> = (0..na).map(|v| lcoord[alayer[v]]).collect();
-    if !matches!(g.direction, Direction::TD | Direction::BT) {
-        return lpos;
-    }
     // A link from outside block `c` comes into it past its first row
     // `li` from upstream.
     let held = |c: usize, li: usize| {
@@ -6074,9 +6075,14 @@ fn level_sibling_frames(
         out
     };
     let td = matches!(g.direction, Direction::TD);
+    let bt = matches!(g.direction, Direction::BT);
+    // Half what an LR / RL frame grows along the flow to hold its title
+    // (B12 F2, [`f1_flow_short`]), on each flow side.
+    let lengthen = |c: usize| flow_short.get(c).copied().unwrap_or(0.0).max(0.0) / 2.0;
     // What frame `c` reaches upstream past a member on its first row.
     let grow = |c: usize| -> f64 {
         FRAME_PAD
+            + lengthen(c)
             + if td {
                 header.get(c).copied().unwrap_or(0.0) + title_jog.get(c).copied().unwrap_or(0.0)
             } else {
@@ -6106,7 +6112,8 @@ fn level_sibling_frames(
         let &(_, hi) = cluster_span.get(&c)?;
         let back = |c2: usize| {
             FRAME_PAD
-                + if td {
+                + lengthen(c2)
+                + if !bt {
                     0.0
                 } else {
                     header.get(c2).copied().unwrap_or(0.0)

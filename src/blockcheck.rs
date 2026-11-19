@@ -3828,6 +3828,51 @@ fn sibling_frames_of_a_band_start_level_and_keep_their_size() {
 }
 
 #[test]
+fn sibling_frames_of_a_band_start_level_left_to_right_too() {
+    // B12 X4 in LR / RL: the frames of two top-level blocks that share
+    // their first row start level along the flow, the later one moved
+    // upstream as a whole. Drawn LR, a narrow first member put its frame
+    // 120 px after its sibling's, whose first member is wide, while its
+    // wide last member took it past the sibling's end: side by side and
+    // neither's span holding the other's (`sib_stagger`).
+    let src = "flowchart LR
+  s[Start] --> a1
+  t[Other start] --> b1
+  subgraph A[Short block]
+    a1[a] --> a2[a wide last member node]
+  end
+  subgraph B[Wide first row]
+    b1[a very wide first member node] --> b2[b]
+  end";
+    for dir in ["LR", "RL"] {
+        let g = graph(&in_direction(src, dir));
+        let sc = block_scene(&g);
+        let q = crate::quality::measure(&g, &sc);
+        assert_eq!(q.sib_stagger, 0, "{dir}");
+        let (a, b) = (frame_box(&sc, "A"), frame_box(&sc, "B"));
+        let lead = |r: (f64, f64, f64, f64)| if dir == "LR" { r.0 } else { r.2 };
+        assert!((lead(a) - lead(b)).abs() < 0.5, "{dir}: {a:?} {b:?}");
+        // The moved block's frame keeps its size: its members and pad.
+        let members = ["a1", "a2"].map(|id| node_box(&sc, id));
+        let span = members
+            .iter()
+            .map(|m| m.2)
+            .fold(f64::NEG_INFINITY, f64::max)
+            - members.iter().map(|m| m.0).fold(f64::INFINITY, f64::min);
+        assert!((a.2 - a.0) - span < 40.0, "{dir}: {a:?} round {span}");
+        let at: Vec<(f64, f64)> = sc.nodes.iter().map(|n| (n.x, n.y)).collect();
+        let routed = crate::levels::with_blocks(true, || crate::scene::route(&g, &at));
+        for id in ["A", "B"] {
+            let (p, r) = (frame_box(&sc, id), frame_box(&routed, id));
+            assert!(
+                (p.0 - r.0).abs() < 0.5 && (p.2 - r.2).abs() < 0.5,
+                "{dir} {id}: {p:?} routed {r:?}"
+            );
+        }
+    }
+}
+
+#[test]
 fn a_chip_kept_off_its_end_blocks_stays_on_its_line() {
     // B12 G3 keeps a label off the frames that hold one end of its edge
     // only while that leaves it a clean spot ON its line: where the best
