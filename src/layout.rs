@@ -5979,7 +5979,7 @@ const STAGGER_SLACK: f64 = 2.0;
 /// B12 X4: the positions along the flow of a block layout's nodes and
 /// chain dummies (by augmented index). Each sits on its layer line, with
 /// one exception that levels sibling frames: on a layer that is the
-/// first row of two or more top-level blocks, a block whose frame starts
+/// first row of two or more sibling blocks, a block whose frame starts
 /// later than the earliest of them and ends past the earliest's span
 /// (the two would read as interleaved: `sib_stagger`) moves upstream, as
 /// a whole (its members at any depth and the dummies of the chains it
@@ -6013,9 +6013,11 @@ const STAGGER_SLACK: f64 = 2.0;
 /// The block moves whole, so its frame keeps its size: moving only its
 /// first-row members (the spec's first wording) stretched the frame by
 /// the shift, which cost frame compactness, and left the dummies of its
-/// inner chains on the old line. Top-level blocks only: levelling nested
-/// siblings changed no frame the gates read and lengthened a dense
-/// drawing's parallel runs (dense-td drawn TD: `band_len` +242). In
+/// inner chains on the old line. Siblings at any depth, outermost first
+/// (a parent moved carries its children, which then level among
+/// themselves). (Before the rules above held a block, levelling nested
+/// siblings lengthened a dense drawing's parallel runs, dense-td drawn
+/// TD: `band_len` +242; its blocks are held now.) In
 /// LR / RL a frame reaches along the flow its pad and the half of its
 /// title-length growth (B12 F2, [`f1_flow_short`]) on each flow side,
 /// its title strip lying on a lateral side. (Before the rules above held
@@ -6044,14 +6046,15 @@ fn level_sibling_frames(
     let mut lpos: Vec<f64> = (0..na).map(|v| lcoord[alayer[v]]).collect();
     // A link from outside block `c` comes into it past its first row
     // `li` from upstream.
+    let inside = |v: usize, c: usize| apath[v].contains(&c);
     let held = |c: usize, li: usize| {
         (0..na).any(|v| {
-            apath[v].first() == Some(&c)
+            inside(v, c)
                 && (alayer[v] > li || v >= n)
                 && preds[v]
                     .iter()
                     .chain(&succs[v])
-                    .any(|&u| alayer[u] < alayer[v] && apath[u].first() != Some(&c))
+                    .any(|&u| alayer[u] < alayer[v] && !inside(u, c))
         })
     };
     // The blocks of `blocks` one node outside them feeds on their first
@@ -6059,14 +6062,13 @@ fn level_sibling_frames(
     let fan_into = |blocks: &[usize], li: usize| -> Vec<usize> {
         let mut out = Vec::new();
         for u in 0..na {
-            if apath[u].first().is_some_and(|c| blocks.contains(c)) {
+            if blocks.iter().any(|&c| inside(u, c)) {
                 continue;
             }
             let fed: std::collections::BTreeSet<usize> = succs[u]
                 .iter()
                 .filter(|&&v| alayer[v] == li && alayer[u] < li)
-                .filter_map(|&v| apath[v].first().copied())
-                .filter(|c| blocks.contains(c))
+                .flat_map(|&v| blocks.iter().copied().filter(move |&c| inside(v, c)))
                 .collect();
             if fed.len() >= 2 {
                 out.extend(fed);
@@ -6133,14 +6135,26 @@ fn level_sibling_frames(
         }
         out
     };
-    // Top-level blocks by their first row.
-    let mut groups: BTreeMap<usize, Vec<usize>> = BTreeMap::new();
-    for (&c, &(lo, _)) in cluster_span {
-        if g.subgraphs[c].parent.is_none() {
-            groups.entry(lo).or_default().push(c);
+    // Sibling blocks by their depth, parent and first row, outermost
+    // first: a parent moved carries its children, which then level among
+    // themselves.
+    let depth = |c: usize| {
+        let mut d = 0;
+        let mut p = g.subgraphs[c].parent;
+        while let Some(q) = p {
+            d += 1;
+            p = g.subgraphs[q].parent;
         }
+        d
+    };
+    let mut groups: BTreeMap<(usize, Option<usize>, usize), Vec<usize>> = BTreeMap::new();
+    for (&c, &(lo, _)) in cluster_span {
+        groups
+            .entry((depth(c), g.subgraphs[c].parent, lo))
+            .or_default()
+            .push(c);
     }
-    for (li, blocks) in groups {
+    for ((_, _, li), blocks) in groups {
         if blocks.len() < 2 {
             continue;
         }
@@ -6165,7 +6179,7 @@ fn level_sibling_frames(
             if d.abs() < ALIGN_EPS {
                 continue;
             }
-            for v in (0..na).filter(|&v| apath[v].first() == Some(&c)) {
+            for v in (0..na).filter(|&v| inside(v, c)) {
                 lpos[v] += d;
             }
         }

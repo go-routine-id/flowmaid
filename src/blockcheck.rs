@@ -3873,6 +3873,46 @@ fn sibling_frames_of_a_band_start_level_left_to_right_too() {
 }
 
 #[test]
+fn nested_sibling_frames_start_level_too() {
+    // B12 X4 at any depth: two blocks inside one parent that share their
+    // first row start level, the later one moved upstream as a whole
+    // inside its parent. A short first member put its frame 20 px after
+    // its sibling's, whose first member is tall, while its tall last
+    // member took it past the sibling's end (`sib_stagger`).
+    let src = r#"flowchart TD
+  s[Start] --> a1
+  t[Other start] --> b1
+  subgraph P[Parent block]
+    subgraph A[Short first row]
+      a1[a] --> a2["a tall<br/>last<br/>member<br/>node"]
+    end
+    subgraph B[Tall first row]
+      b1["b tall<br/>first<br/>member<br/>node"] --> b2[b]
+    end
+  end"#;
+    for dir in ["TD", "BT", "LR", "RL"] {
+        let g = graph(&in_direction(src, dir));
+        let sc = block_scene(&g);
+        let q = crate::quality::measure(&g, &sc);
+        assert_eq!(q.sib_stagger, 0, "{dir}");
+        let (a, b) = (frame_box(&sc, "A"), frame_box(&sc, "B"));
+        let lead = |r: (f64, f64, f64, f64)| match dir {
+            "TD" => r.1,
+            "BT" => r.3,
+            "LR" => r.0,
+            _ => r.2,
+        };
+        assert!((lead(a) - lead(b)).abs() < 0.5, "{dir}: {a:?} {b:?}");
+        // Inside its parent still.
+        let p = frame_box(&sc, "P");
+        assert!(
+            a.0 >= p.0 && a.1 >= p.1 && a.2 <= p.2 && a.3 <= p.3,
+            "{dir}: {a:?} in {p:?}"
+        );
+    }
+}
+
+#[test]
 fn a_chip_kept_off_its_end_blocks_stays_on_its_line() {
     // B12 G3 keeps a label off the frames that hold one end of its edge
     // only while that leaves it a clean spot ON its line: where the best
