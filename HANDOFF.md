@@ -375,3 +375,10 @@ User to run: git fetch origin && git tag -a v0.40.1 e9dc009ed9a33160d81fc7ecc7ab
 - Workspace (this folder): backup/parity-workspace holds every planning doc (MONDAY, HANDOFF, PLAN, SPEC, reports, design docs), all scripts and tools (js/py/sh), inputs (.mmd), diffs, json <= 256 KB, txt/tsv/log <= 32 KB, and the scratch .rs probes. NOT stored: b12/private/ (never), build dirs (target/, node_modules/), copies of repo source trees, rendered images and SVG outputs, large metric dumps — all reproducible from the code and the tools.
 - To restore: `git clone -b backup/parity-workspace https://github.com/go-routine-id/flowmaid ws` and read MONDAY.md first; code: `git checkout ccr-ccc6d89a-5cxd7e`.
 - 17:56 UTC: PR #141 CI green (test, msrv, wasm), mergeable. NOT merged: waiting for the user's ok. Workspace snapshot pushed: backup/parity-workspace = ded79e7 (+ this note).
+
+## 2026-11-22 ~08:40 UTC — README polish on main
+- User asked to beautify the README (for a LinkedIn post), then "merge aja".
+- PR #142 (backup/readme-2026-11-21 -> dev, squash dc37506): centred header, tagline, badges (+MSRV), links, light/dark hero banner docs/img/hero-{light,dark}.png (dark srcset absolute raw/HEAD URL for crates.io), Quick start replaces Installation, Benchmark moved below the gallery with table+method folded. Reviewed by a 3-agent workflow (render/facts/style) and fixed.
+- PR #143 dev -> main merged (55e6e18); PR #144 main -> dev sync merged (4204431). main is in dev; trees equal.
+- Not done (outside scope): examples/mindmap.mmd still says "Eleven diagram types" (hero uses a patched copy with "Twelve"); fixing it changes tests/fixtures/identity.tsv.
+- Still open: PR #141 (roadmap) waits for the user's ok. LinkedIn 3-panel image: backup/parity-workspace linkedin/.
