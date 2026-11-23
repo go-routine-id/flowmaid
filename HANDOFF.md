@@ -383,3 +383,4 @@ User to run: git fetch origin && git tag -a v0.40.1 e9dc009ed9a33160d81fc7ecc7ab
 - Not done (outside scope): examples/mindmap.mmd still says "Eleven diagram types" (hero uses a patched copy with "Twelve"); fixing it changes tests/fixtures/identity.tsv.
 - Still open: PR #141 (roadmap) waits for the user's ok. LinkedIn 3-panel image: backup/parity-workspace linkedin/.
 - 2026-11-23 ~03:20 UTC: README section 'When you need flowmaid' (#145 user-merged to dev, #146 dev->main, #147 sync). main 1dbb670, dev ebe6681; trees equal.
+- 2026-11-23 ~12:40 UTC: roadmap #141 + #148 (release targets: block layout opt-in 0.41.0, default 0.42.0) on main via #149 (c52ba69); sync #150 (68c7080). Trees equal.
