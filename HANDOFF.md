@@ -382,3 +382,4 @@ User to run: git fetch origin && git tag -a v0.40.1 e9dc009ed9a33160d81fc7ecc7ab
 - PR #143 dev -> main merged (55e6e18); PR #144 main -> dev sync merged (4204431). main is in dev; trees equal.
 - Not done (outside scope): examples/mindmap.mmd still says "Eleven diagram types" (hero uses a patched copy with "Twelve"); fixing it changes tests/fixtures/identity.tsv.
 - Still open: PR #141 (roadmap) waits for the user's ok. LinkedIn 3-panel image: backup/parity-workspace linkedin/.
+- 2026-11-23 ~03:20 UTC: README section 'When you need flowmaid' (#145 user-merged to dev, #146 dev->main, #147 sync). main 1dbb670, dev ebe6681; trees equal.
