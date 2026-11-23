@@ -1,0 +1,10 @@
+flowchart TD
+    req([Request]) --> auth{Auth?}
+    auth -->|no| deny[401 Denied]
+    auth -->|yes| cache
+    subgraph Data layer
+        cache[Cache] -->|miss| db[(Database)]
+    end
+    cache -->|hit| res([Response])
+    db --> res
+    deny --> res

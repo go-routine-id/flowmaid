@@ -1,0 +1,13 @@
+flowchart TD
+    A([Request]) --> B{Cached?}
+    B -->|yes| H
+    B -->|no| C[Auth check]
+    subgraph Services
+        C --> D[Orders]
+        C --> E[Billing]
+        C --> F[Search]
+    end
+    D --> G[(Database)]
+    E --> G
+    F --> G
+    G --> H((Response))

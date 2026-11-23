@@ -1,0 +1,12 @@
+flowchart TD
+    A([Pull request]) --> B[Run CI]
+    B --> C{Tests pass?}
+    C -->|yes| R
+    C -->|no| F[Fix code]
+    F --> B
+    subgraph Review
+        R[Code review] --> S{Approved?}
+    end
+    S -->|yes| M[(Merge)]
+    S -->|changes| F
+    M ==> D((Deploy))

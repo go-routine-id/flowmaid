@@ -1,0 +1,21 @@
+const { chromium } = require('playwright');
+const fs = require('fs');
+(async () => {
+  const [src, out, w, h, scheme] = process.argv.slice(2);
+  const browser = await chromium.launch();
+  const ctx = await browser.newContext({ viewport: { width: +w, height: +h }, deviceScaleFactor: 1.5, colorScheme: scheme || 'light' });
+  const page = await ctx.newPage();
+  page.on('pageerror', e => console.log('pageerror', e.message));
+  await page.goto('http://127.0.0.1:8731/', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => document.getElementById('version').textContent.includes('engine'));
+  await page.evaluate(() => document.fonts.ready);
+  await page.fill('#editor', fs.readFileSync(src, 'utf8').trimEnd());
+  await page.waitForTimeout(400);
+  await page.click('#relayout');
+  await page.click('#zoom-fit');
+  await page.mouse.move(5, 300);
+  await page.waitForTimeout(300);
+  console.log(await page.evaluate(() => document.getElementById('error').textContent));
+  await page.screenshot({ path: out });
+  await browser.close();
+})();

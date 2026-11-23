@@ -1,0 +1,314 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+:root{
+  --bg:#0b1020; --bg2:#111832; --ink:#eef1ff; --muted:#9aa3c7; --line:#27305a;
+  --acc:#8b9cff; --acc2:#5fe0c1; --amber:#ffc861; --card:#151d3b;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1080px;height:1350px;overflow:hidden;background:var(--bg);color:var(--ink);font-family:Inter,"Liberation Sans",sans-serif}
+#stage{position:relative;width:1080px;height:1350px;overflow:hidden;
+  background:radial-gradient(1200px 700px at 80% -10%, #1b2552 0%, rgba(27,37,82,0) 60%),
+             radial-gradient(900px 600px at -10% 110%, #132a3a 0%, rgba(19,42,58,0) 60%), var(--bg)}
+#grid{position:absolute;inset:0;background-image:radial-gradient(rgba(139,156,255,.13) 1.2px, transparent 1.3px);background-size:36px 36px;opacity:.55}
+.scene{position:absolute;inset:0;opacity:0}
+.eyebrow{font:600 22px/1 "JetBrains Mono",monospace;letter-spacing:.14em;color:var(--acc2);text-transform:uppercase}
+.eyebrow .nc{text-transform:none}
+.h1{font:800 84px/1.02 "Inter Display",Inter,sans-serif;letter-spacing:-.025em}
+.h2{font:800 66px/1.05 "Inter Display",Inter,sans-serif;letter-spacing:-.02em}
+.sub{font:500 30px/1.35 Inter,sans-serif;color:var(--muted)}
+.mono{font-family:"JetBrains Mono",monospace}
+*{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0}
+.card{position:absolute;background:var(--card);border:1px solid var(--line);border-radius:22px;box-shadow:0 30px 80px rgba(0,0,0,.45);overflow:hidden}
+.code{padding:30px 34px;font:500 27px/1.55 "JetBrains Mono",monospace;color:#cfd6ff;white-space:pre}
+.code .k{color:var(--acc2)} .code .p{color:var(--amber)} .code .c{color:#7f89b8}
+.caret{display:inline-block;width:14px;height:30px;background:var(--acc2);vertical-align:-5px;margin-left:2px}
+.chip{display:inline-flex;align-items:center;gap:10px;padding:12px 22px;border-radius:999px;background:rgba(139,156,255,.12);border:1px solid rgba(139,156,255,.35);font:600 26px/1 Inter,sans-serif;color:var(--ink)}
+.chip b{color:var(--amber)}
+.win-bar{height:52px;display:flex;align-items:center;gap:10px;padding:0 20px;background:#0f1530;border-bottom:1px solid var(--line)}
+.dot{width:14px;height:14px;border-radius:50%;flex:none}
+.url{margin-left:16px;flex:1;min-width:0;height:32px;border-radius:9px;background:#1a2246;display:flex;align-items:center;padding:0 16px;font:500 19px/1 "JetBrains Mono",monospace;color:#b9c2ee;white-space:nowrap;overflow:hidden}
+.vp{position:relative;overflow:hidden}
+.vp img{position:absolute;left:0;top:0;display:block}
+.thumb{position:absolute;background:#fff;border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
+.thumb .lab{height:42px;flex:none;display:flex;align-items:center;padding:0 14px;font:700 19px/1 Inter,sans-serif;color:#1d2340;background:#f1f3fb;border-bottom:1px solid #e1e5f3}
+.thumb .im{flex:1 1 0;min-height:0;padding:10px}
+.thumb img{display:block;width:100%;height:100%;object-fit:contain}
+.big{font:900 128px/0.9 "Inter Display",Inter,sans-serif;letter-spacing:-.04em;color:var(--amber)}
+.foot{font:500 24px/1.3 Inter,sans-serif;color:#8f98c4}
+.link{font:600 30px/1.3 "JetBrains Mono",monospace;color:var(--ink)}
+.link span{color:var(--acc2)}
+#ctachips .chip{font-size:23px;padding:11px 18px}
+</style></head>
+<body><div id="stage"><div id="grid"></div>
+
+<!-- S1 + S2: code -> diagram -> speed -->
+<div class="scene" id="s1">
+  <div style="position:absolute;left:72px;top:96px" class="eyebrow" id="s1eb"><span class="nc" style="font:800 34px/1 'Inter Display',Inter,sans-serif;letter-spacing:-.01em;color:var(--ink);vertical-align:-3px">flowmaid</span>&nbsp; · open-source Rust crate</div>
+  <div style="position:absolute;left:72px;top:148px" class="h1"><div id="s1l1">Mermaid diagrams,</div><div id="s1l2" style="color:var(--acc)">rendered in pure Rust.</div></div>
+  <div class="card" id="codecard" style="left:72px;top:380px;width:936px;height:500px"><div class="code" id="code"></div></div>
+  <div class="card" id="diagcard" style="left:560px;top:380px;width:448px;height:600px;background:#fff;opacity:0">
+    <div id="diag" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;padding:18px"></div>
+  </div>
+  <div id="s2cap" style="position:absolute;left:72px;top:1012px;opacity:0;font-size:40px" class="sub"><span style="color:var(--ink);font-weight:700">One call.</span> Clean SVG.</div>
+  <div id="speed" style="position:absolute;left:72px;top:1010px;opacity:0;display:flex;align-items:center;gap:30px;transform-origin:left center">
+    <div class="big" id="speedx">~113×</div>
+    <div><div style="font:800 38px/1.08 'Inter Display',Inter,sans-serif">faster than<br>mermaid.js</div>
+      <div class="foot" style="margin-top:8px">geometric mean, 25 sample diagrams</div></div>
+  </div>
+</div>
+
+<!-- S3: diagram types -->
+<div class="scene" id="s3">
+  <div style="position:absolute;left:72px;top:110px" class="eyebrow">Mermaid syntax in, SVG out</div>
+  <div style="position:absolute;left:72px;top:160px" class="h2"><span style="color:var(--amber)">12</span> diagram types</div>
+  <div id="thumbs"></div>
+</div>
+
+<!-- S4: web -->
+<div class="scene" id="s4">
+  <div style="position:absolute;left:72px;top:96px" class="eyebrow"><span class="nc">flowmaid-web</span> · WebAssembly</div>
+  <div style="position:absolute;left:72px;top:146px" class="h2">Try it in your browser</div>
+  <div style="position:absolute;left:72px;top:232px;width:940px" class="sub" id="s4sub">The whole engine runs in the page, as WebAssembly.</div>
+  <div class="card" id="webcard" style="left:50px;top:316px;width:980px">
+    <div class="win-bar"><div class="dot" style="background:#ff6b6b"></div><div class="dot" style="background:#ffc861"></div><div class="dot" style="background:#5fe0c1"></div><div class="url" id="weburl"></div></div>
+    <div class="vp" id="webvp" style="width:980px;height:656px"><img id="webimg"></div>
+  </div>
+  <div id="s4cap" style="position:absolute;left:72px;top:1134px" class="chip">Drag a node, <b>its edges follow</b></div>
+</div>
+
+<!-- S5: flowcli -->
+<div class="scene" id="s5">
+  <div style="position:absolute;left:72px;top:96px" class="eyebrow"><span class="nc">flowcli</span> · ratatui</div>
+  <div style="position:absolute;left:72px;top:146px" class="h2">Diagrams in your terminal,<br><span style="color:var(--acc)">built on flowmaid</span></div>
+  <div class="card" id="clicard" style="left:50px;top:338px;width:980px;background:#0d1117"><div class="vp" id="clivp" style="width:980px;height:777px"><img id="cliimg"></div></div>
+  <div id="s5cap" style="position:absolute;left:72px;top:1146px" class="chip">Redraws on save · <b>drag re-routes live</b></div>
+</div>
+
+<!-- S6: dbx -->
+<div class="scene" id="s6">
+  <div style="position:absolute;left:72px;top:96px" class="eyebrow"><span class="nc">dbx</span> · terminal database client</div>
+  <div style="position:absolute;left:72px;top:146px" class="h2">Your schema as an ERD,<br><span style="color:var(--acc)">right in the terminal</span></div>
+  <div class="card" id="dbxcard" style="left:50px;top:338px;width:980px;background:#0d1117"><div class="vp" id="dbxvp" style="width:980px;height:658px"><img id="dbximg"><div id="dbxdip" style="position:absolute;inset:0;background:#0d1117;opacity:0"></div></div></div>
+  <div id="s6cap" style="position:absolute;left:72px;top:1060px" class="chip">Live database → ERD, <b>laid out by flowmaid</b></div>
+</div>
+
+<!-- S7: CTA -->
+<div class="scene" id="s7">
+  <div style="position:absolute;left:0;right:0;top:300px;text-align:center" class="eyebrow">Open source · <span class="nc">GPLv3+</span></div>
+  <div style="position:absolute;left:0;right:0;top:350px;text-align:center;font:900 150px/1 'Inter Display',Inter,sans-serif;letter-spacing:-.04em" id="wordmark">flowmaid</div>
+  <div style="position:absolute;left:0;right:0;top:530px;text-align:center" class="sub">Mermaid diagrams, rendered in pure Rust.</div>
+  <div id="ctachips" style="position:absolute;left:40px;right:40px;top:620px;display:flex;flex-wrap:wrap;justify-content:center;gap:12px">
+    <div class="chip">Zero dependencies</div><div class="chip"><b>12</b> diagram types</div><div class="chip"><b>~113×</b> faster</div><div class="chip">wasm · CLI · TUI</div>
+  </div>
+  <div id="ctalinks" style="position:absolute;left:0;right:0;top:760px;text-align:center;display:flex;flex-direction:column;gap:22px">
+    <div class="link"><span>github.com/</span>go-routine-id/flowmaid</div>
+    <div class="link"><span>try:</span> <span id="ctaurl" style="color:var(--ink)"></span></div>
+    <div class="link" style="color:var(--amber)">cargo add flowmaid</div>
+  </div>
+  <div id="ctaused" style="position:absolute;left:0;right:0;top:1010px;text-align:center">
+    <div class="eyebrow" style="color:#8f98c4">Already powering</div>
+    <div style="margin-top:20px;display:flex;justify-content:center;gap:14px">
+      <div class="chip">flowmaid-web</div><div class="chip">flowcli</div><div class="chip">dbx</div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+const CODE = [
+ ['k','flowchart TD'],
+ ['','  A([Request]) --> B{Auth?}'],
+ ['','  B -->|yes| C[API Gateway]'],
+ ['','  B -->|no| D[401]'],
+ ['k','  subgraph Services'],
+ ['','    C --> E[(Cache)]'],
+ ['','    C --> F[(Database)]'],
+ ['k','  end'],
+ ['','  E --> G([Response])'],
+ ['','  F --> G'],
+];
+const TOTAL_CHARS = CODE.reduce((n,l)=>n+l[1].length+1,0);
+const $ = id => document.getElementById(id);
+const clamp = (x,a=0,b=1)=>Math.max(a,Math.min(b,x));
+const ease = x => { x=clamp(x); return x<.5? 4*x*x*x : 1-Math.pow(-2*x+2,3)/2; };
+const out = x => { x=clamp(x); return 1-Math.pow(1-x,3); };
+const prog = (t,a,b)=>clamp((t-a)/(b-a));
+const lerp = (a,b,k)=>a+(b-a)*k;
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function hl(s){ return esc(s).replace(/(--&gt;)/g,'<span class="p">$1</span>').replace(/(\|[^|]*\|)/g,'<span class="c">$1</span>'); }
+function codeHTML(nchars, caret){
+  let left=nchars, html='';
+  for(const [cls,line] of CODE){
+    if(left<=0) break;
+    const take=Math.min(line.length,left); left-=take+1;
+    const part=line.slice(0,take);
+    html += (cls?`<span class="${cls}">${esc(part)}</span>`:hl(part));
+    if(left>=0 && take===line.length) html+='\n';
+  }
+  if(caret) html+='<span class="caret"></span>';
+  return html;
+}
+// ---- timeline ----
+const T = {s1:[0,8.0], s3:[8.0,11.6], s4:[11.6,17.2], s5:[17.2,22.6], s6:[22.6,28.0], s7:[28.0,34.5]};
+const DUR = 34.5;
+const TYPE = [0.3, 2.9];          // typing window
+const SHRINK = [3.5, 4.2];        // code card shrinks
+const DIAGIN = [4.05, 4.5];       // diagram card enters
+const BUILD = [4.35, 5.9];        // diagram draws top to bottom
+const SPEED = 5.9;                // ~113x punch
+const THUMB0 = 8.25, THUMBDT = 0.07;
+const WEBCROP = [12.45, 13.15];   // web card goes from full window to the canvas
+// ---- diagram build (positions measured in screen px, so transformed groups work) ----
+let svgEls=null, svgH=1;
+function setupDiagram(svgText){
+  $('diag').innerHTML=svgText;
+  const svg=$('diag').querySelector('svg');
+  svg.removeAttribute('width'); svg.removeAttribute('height');
+  svg.style.width='100%'; svg.style.height='100%';
+  const sr=svg.getBoundingClientRect(); svgH=sr.height;
+  svgEls=[];
+  for(const el of svg.querySelectorAll('rect,path,text,polygon,ellipse,circle,line,polyline')){
+    if(el.closest('defs')||el.closest('marker')) continue;
+    if(el.parentNode===svg && el.tagName==='rect' && Math.abs(el.getBBox().width - svg.viewBox.baseVal.width) < 1) continue;
+    const r=el.getBoundingClientRect(); if(!r.width && !r.height) continue;
+    const isEdge = el.tagName==='path' && el.getAttribute('fill')==='none' && (el.getAttribute('marker-end')||'').length>0;
+    const len = isEdge? el.getTotalLength():0;
+    if(isEdge){ el.style.strokeDasharray=len; el.style.strokeDashoffset=len; }
+    svgEls.push({el,y:r.top-sr.top,h:r.height,isEdge,len,marker:el.getAttribute('marker-end')});
+  }
+}
+const REVEAL=36, FRONT_MUL=1.15;
+function drawDiagram(p){
+  if(!svgEls) return;
+  const front=p*(svgH*FRONT_MUL);
+  for(const o of svgEls){
+    if(o.isEdge){
+      const q=clamp((front-o.y)/(o.h+50));
+      o.el.style.strokeDashoffset=o.len*(1-q);
+      if(q<0.98) o.el.removeAttribute('marker-end'); else if(o.marker) o.el.setAttribute('marker-end',o.marker);
+    } else o.el.style.opacity=clamp((front-o.y)/REVEAL);
+  }
+}
+// rows of shapes (not text, not edges) for sound: time each row reaches half opacity
+function buildPops(){
+  const ys=[...new Set(svgEls.filter(o=>!o.isEdge && o.el.tagName!=='text' && o.h>18).map(o=>Math.round(o.y)))].sort((a,b)=>a-b);
+  const rows=[]; for(const y of ys){ if(!rows.length || y-rows[rows.length-1]>24) rows.push(y); }
+  return rows.map(y=> BUILD[0] + ((y+REVEAL/2)/(svgH*FRONT_MUL))*(BUILD[1]-BUILD[0]));
+}
+// ---- clips: explicit frame ranges mapped onto time windows ----
+const CLIPS={}; let MAP={};
+// a clip plays a list of segments [f0, f1, seconds?]; segments without seconds share the time left, by frame count
+function planClip(segs,t0,t1){
+  const fixed=segs.filter(g=>g[2]!=null).reduce((a,g)=>a+g[2],0);
+  const free=segs.filter(g=>g[2]==null).reduce((a,g)=>a+(g[1]-g[0]),0);
+  let t=t0; return segs.map(g=>{ const d=g[2]!=null?g[2]:(t1-t0-fixed)*(g[1]-g[0])/free; const seg={f0:g[0],f1:g[1],t0:t,t1:t+d}; t+=d; return seg; });
+}
+function clipIndex(name,t){ const P=MAP[name]; let s=P[0]; for(const g of P) if(t>=g.t0) s=g;
+  const k=clamp((t-s.t0)/(s.t1-s.t0)); return Math.round(s.f0 + k*(s.f1-s.f0)); }
+function clipTime(name,f){ for(const s of MAP[name]) if(f>=s.f0 && f<=s.f1) return s.t0 + (f-s.f0)/Math.max(1,s.f1-s.f0)*(s.t1-s.t0); return null; }
+function clipSrc(name,t){ const c=CLIPS[name]; if(!c||!c.frames.length) return null; return c.frames[Math.min(c.frames.length,Math.max(1,clipIndex(name,t)))-1]; }
+function setImg(id,src){ const im=$(id); if(src && im.getAttribute('src')!==src) im.setAttribute('src',src); }
+// place a crop (fractions of the source) into a viewport of vw x vh px
+function crop(imgId,vpId,srcW,srcH,c,vw,vh){
+  const s=vw/(c.w*srcW); const im=$(imgId), vp=$(vpId);
+  vp.style.width=vw+'px'; vp.style.height=vh+'px';
+  im.style.width=(srcW*s)+'px'; im.style.height=(srcH*s)+'px';
+  const top=c.y*srcH*s - Math.max(0,(vh - c.h*srcH*s)/2);
+  im.style.left=(-c.x*srcW*s)+'px'; im.style.top=(-top)+'px';
+}
+function thumbsSetup(list){
+  const box=$('thumbs'); box.innerHTML='';
+  const W=216,H=300,gx=24,gy=22,x0=72,y0=270;
+  list.forEach((it,i)=>{
+    const d=document.createElement('div'); d.className='thumb'; d.id='th'+i;
+    d.style.left=(x0+(i%4)*(W+gx))+'px'; d.style.top=(y0+Math.floor(i/4)*(H+gy))+'px';
+    d.style.width=W+'px'; d.style.height=H+'px';
+    d.innerHTML=`<div class="lab">${it.label}</div><div class="im"><img src="${it.src}"></div>`;
+    box.appendChild(d);
+  });
+}
+function sceneAlpha(name,t){ const [a,b]=T[name]; if(t<a||t>b) return 0; const fin = name==='s1'?1:clamp((t-a)/0.32); const fout = name==='s7'?1:clamp((b-t)/0.28); return Math.min(fin,fout); }
+let CFG={};
+window.render = function(t){
+  for(const s of Object.keys(T)) { const a=sceneAlpha(s,t); $(s).style.opacity=a; $(s).style.transform=`translateY(${(1-a)*18}px)`; }
+  // S1: headline and the empty code card are already there on frame 0
+  $('s1l1').style.transform=`translateY(${(1-out(prog(t,0,0.6)))*10}px)`;
+  $('s1l2').style.transform=`translateY(${(1-out(prog(t,0,0.75)))*16}px)`;
+  const typed=Math.floor(TOTAL_CHARS*prog(t,TYPE[0],TYPE[1]));
+  $('code').innerHTML=codeHTML(typed, t<3.4 && (Math.floor(t*3)%2===0 || (typed>0 && typed<TOTAL_CHARS)));
+  const m=ease(prog(t,SHRINK[0],SHRINK[1]));
+  const cc=$('codecard'); cc.style.width=(936-(936-456)*m)+'px'; cc.style.height=(500+100*m)+'px';
+  $('code').style.fontSize=(27-6*m)+'px';
+  const di=out(prog(t,DIAGIN[0],DIAGIN[1]));
+  $('diagcard').style.opacity=di; $('diagcard').style.transform=`translateX(${(1-di)*60}px)`;
+  drawDiagram(prog(t,BUILD[0],BUILD[1]));
+  $('s2cap').style.opacity = t<5.7 ? out(prog(t,4.5,5.0)) : 1-out(prog(t,5.7,5.85));
+  $('speed').style.opacity=out(prog(t,SPEED,SPEED+0.35));
+  $('speed').style.transform=`scale(${1+0.05*Math.sin(Math.PI*prog(t,SPEED,SPEED+0.5))})`;
+  // S3
+  document.querySelectorAll('.thumb').forEach((d,i)=>{ const p=out(prog(t,THUMB0+i*THUMBDT,THUMB0+0.4+i*THUMBDT)); d.style.opacity=p; d.style.transform=`scale(${0.88+0.12*p})`; });
+  // S4 web: full window first, then the canvas fills the card for the drag
+  setImg('webimg', clipSrc('web',t));
+  { const k=ease(prog(t,WEBCROP[0],WEBCROP[1])); const C=CFG.webCrop;
+    const c={x:lerp(0,C.x,k), y:lerp(0,C.y,k), w:lerp(1,C.w,k), h:lerp(1,C.h,k)};
+    const vh=lerp(656,C.vh,k), vw=vh*(c.w*CFG.webW)/(c.h*CFG.webH);
+    crop('webimg','webvp',CFG.webW,CFG.webH,c,vw,vh);
+    $('webcard').style.width=(vw+2)+'px'; $('webcard').style.left=((1080-vw-2)/2)+'px';
+    const ci=out(prog(t,T.s4[0]+0.1,T.s4[0]+0.5));
+    $('webcard').style.opacity=ci; $('webcard').style.transform=`translateY(${(1-ci)*40}px)`;
+    $('s4cap').style.top=(316+52+vh+26)+'px';
+  }
+  $('s4cap').style.opacity=out(prog(t,WEBCROP[1],WEBCROP[1]+0.4));
+  // S5 flowcli
+  setImg('cliimg', clipSrc('flowcli',t)); crop('cliimg','clivp',CFG.cliW,CFG.cliH,{x:0,y:0,w:1,h:1},980,980*CFG.cliH/CFG.cliW);
+  $('clicard').style.opacity=out(prog(t,T.s5[0]+0.05,T.s5[0]+0.45));
+  $('s5cap').style.opacity=out(prog(t,T.s5[0]+1.2,T.s5[0]+1.6));
+  // S6 dbx
+  setImg('dbximg', clipSrc('dbx',t));
+  { const C=CFG.dbxCrop, vw=980, vh=Math.round(vw*(C.h*CFG.dbxH)/(C.w*CFG.dbxW));
+    crop('dbximg','dbxvp',CFG.dbxW,CFG.dbxH,C,vw,vh); $('s6cap').style.top=(338+vh+30)+'px';
+    // a short dip to the terminal background where the clip is cut, instead of a hard jump
+    const P=MAP.dbx, XD=0.11; let dip=0;
+    for(let i=0;i+1<P.length;i++){ const b=P[i].t1; dip=Math.max(dip, 1-Math.abs(t-b)/XD); }
+    $('dbxdip').style.opacity=clamp(dip)*0.92; }
+  $('dbxcard').style.opacity=out(prog(t,T.s6[0]+0.05,T.s6[0]+0.45));
+  $('s6cap').style.opacity=out(prog(t,T.s6[0]+1.2,T.s6[0]+1.6));
+  // S7
+  const w=out(prog(t,T.s7[0]+0.1,T.s7[0]+0.6)); $('wordmark').style.opacity=w; $('wordmark').style.transform=`scale(${0.92+0.08*w})`;
+  document.querySelectorAll('#ctachips .chip').forEach((d,i)=>{ const p=out(prog(t,T.s7[0]+0.5+i*0.1,T.s7[0]+0.8+i*0.1)); d.style.opacity=p; d.style.transform=`translateY(${(1-p)*16}px)`; });
+  $('ctalinks').style.opacity=out(prog(t,T.s7[0]+1.0,T.s7[0]+1.4)); $('ctaused').style.opacity=out(prog(t,T.s7[0]+1.5,T.s7[0]+1.9));
+  $('stage').style.opacity = 1-prog(t,DUR-0.4,DUR);
+};
+window.setup = function(cfg){
+  CFG=cfg;
+  setupDiagram(cfg.svg);
+  thumbsSetup(cfg.thumbs);
+  Object.assign(CLIPS,cfg.clips);
+  // frame ranges (1-based, inclusive) and their time windows
+  MAP = {
+    web:     planClip(cfg.web.segs, T.s4[0]+0.35, T.s4[1]-0.45),
+    flowcli: planClip(cfg.cli.segs, T.s5[0]+0.3,  T.s5[1]-0.35),
+    dbx:     planClip(cfg.dbx.segs, T.s6[0]+0.3,  T.s6[1]-0.35),
+  };
+  $('weburl').textContent=cfg.weburl; $('ctaurl').textContent=cfg.weburl;
+};
+// every sound cue, derived from the same timeline the picture uses
+window.events = function(){
+  const ev=[];
+  let pos=0;
+  CODE.forEach(line=>{ for(const ch of line[1]+'\n'){ pos++; const t=TYPE[0]+(pos/TOTAL_CHARS)*(TYPE[1]-TYPE[0]);
+    if(ch==='\n') ev.push([t,'return']); else if(ch!==' ' && pos%3===0) ev.push([t,'type']); } });
+  ev.push([SHRINK[0]+0.05,'whoosh']);
+  buildPops().forEach((t,k)=>ev.push([t,'node',k]));
+  ev.push([SPEED,'punch']);
+  for(let i=0;i<12;i++) ev.push([THUMB0+i*THUMBDT,'thumb',i]);
+  for(const s of ['s3','s4','s5','s6','s7']) ev.push([T[s][0]-0.25,'scene']);
+  ev.push([T.s7[0]+0.15,'chime']);
+  for(const [name,list] of Object.entries(CFG.cues||{})) for(const [f,kind] of list){ const t=clipTime(name,f); if(t!=null) ev.push([t,kind]); }
+  return ev.sort((a,b)=>a[0]-b[0]);
+};
+window.DURATION = DUR;
+window.ready = () => Promise.all([...document.images].filter(i=>i.getAttribute('src')).map(i=>i.complete?Promise.resolve():i.decode().catch(()=>{})));
+</script>
+</body></html>

@@ -1,0 +1,13 @@
+flowchart LR
+    A([Order received]) --> B{In stock?}
+    B -->|yes| C[Reserve items]
+    B -->|no| D[Backorder]
+    C --> E
+    subgraph Payment
+        E[Create invoice] --> F{Paid?}
+    end
+    F -->|yes| G[(Save order)]
+    F -->|no| D
+    G ==> H((Ship))
+    classDef ship stroke:#ff9e64,color:#ffd9bf
+    class H ship

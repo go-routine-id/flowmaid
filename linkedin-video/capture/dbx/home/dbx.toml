@@ -1,0 +1,4 @@
+[[connections]]
+name = "shop-demo"
+driver = "sqlite"
+database = "shop.db"
