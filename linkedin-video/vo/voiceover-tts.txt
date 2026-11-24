@@ -1,0 +1,8 @@
+flowmaid renders Mermaid diagrams in pure Rust.
+Text in, clean S V G out.
+Over a hundred times faster than mermaid J S.
+Twelve diagram types, from flowcharts to sankey.
+In the browser, drag a node, and its edges follow.
+flow C L I draws them in your terminal, and redraws when you save.
+In D B X, flowmaid lays out your database schema as an E R D.
+flowmaid is open source. Try it in your browser, or cargo add flowmaid.
