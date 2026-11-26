@@ -1,0 +1,10 @@
+flowchart TD
+  A([Request]) --> B{Auth?}
+  B -->|yes| C[API Gateway]
+  B -->|no| D[401]
+  subgraph Services
+    C --> E[(Cache)]
+    C --> F[(Database)]
+  end
+  E --> G([Response])
+  F --> G

@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="470" height="334" viewBox="0 0 470 334" font-family="Helvetica, Arial, sans-serif" font-size="13" role="img" aria-label="Key elements in Product X">
+<title>Key elements in Product X</title>
+<text x="234.8" y="37.0" dy="0.33em" text-anchor="middle" font-weight="bold" font-size="16" fill="#232840">Key elements in Product X</text>
+<path d="M 150.0 184.0 L 150.0 54.0 A 130.0 130.0 0 0 1 241.7 276.2 Z" fill="#5b6dc0"/>
+<path d="M 150.0 184.0 L 241.7 276.2 A 130.0 130.0 0 0 1 30.0 134.0 Z" fill="#33a35c"/>
+<path d="M 150.0 184.0 L 30.0 134.0 A 130.0 130.0 0 0 1 73.8 78.7 Z" fill="#d99114"/>
+<path d="M 150.0 184.0 L 73.8 78.7 A 130.0 130.0 0 0 1 112.0 59.7 Z" fill="#c2588c"/>
+<path d="M 150.0 184.0 L 112.0 59.7 A 130.0 130.0 0 0 1 147.1 54.0 Z" fill="#199a8e"/>
+<path d="M 150.0 184.0 L 147.1 54.0 A 130.0 130.0 0 0 1 150.0 54.0 Z" fill="#8a5cd6"/>
+<line x1="150.0" y1="184.0" x2="150.0" y2="54.0" stroke="#ffffff" stroke-width="0.95"/>
+<line x1="150.0" y1="184.0" x2="241.7" y2="276.2" stroke="#ffffff" stroke-width="1.50"/>
+<line x1="150.0" y1="184.0" x2="30.0" y2="134.0" stroke="#ffffff" stroke-width="1.50"/>
+<line x1="150.0" y1="184.0" x2="73.8" y2="78.7" stroke="#ffffff" stroke-width="1.50"/>
+<line x1="150.0" y1="184.0" x2="112.0" y2="59.7" stroke="#ffffff" stroke-width="1.50"/>
+<line x1="150.0" y1="184.0" x2="147.1" y2="54.0" stroke="#ffffff" stroke-width="0.95"/>
+<text x="236.5" y="148.3" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#ffffff">38%</text>
+<text x="97.8" y="261.7" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#0a0e1a">44%</text>
+<text x="76.6" y="125.9" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#0a0e1a">9%</text>
+<text x="108.3" y="100.2" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#0a0e1a">5%</text>
+<text x="135.2" y="91.6" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#0a0e1a">4%</text>
+<rect x="308.0" y="118.0" width="12" height="12" rx="2" fill="#5b6dc0"/>
+<text x="328.0" y="124.0" dy="0.33em" fill="#232840">Calcium [42.96]</text>
+<rect x="308.0" y="142.0" width="12" height="12" rx="2" fill="#33a35c"/>
+<text x="328.0" y="148.0" dy="0.33em" fill="#232840">Potassium [50.05]</text>
+<rect x="308.0" y="166.0" width="12" height="12" rx="2" fill="#d99114"/>
+<text x="328.0" y="172.0" dy="0.33em" fill="#232840">Magnesium [10.01]</text>
+<rect x="308.0" y="190.0" width="12" height="12" rx="2" fill="#c2588c"/>
+<text x="328.0" y="196.0" dy="0.33em" fill="#232840">Iron [6]</text>
+<rect x="308.0" y="214.0" width="12" height="12" rx="2" fill="#199a8e"/>
+<text x="328.0" y="220.0" dy="0.33em" fill="#232840">Zinc [5]</text>
+<rect x="308.0" y="238.0" width="12" height="12" rx="2" fill="#8a5cd6"/>
+<text x="328.0" y="244.0" dy="0.33em" fill="#232840">Trace elements [0.4]</text>
+</svg>

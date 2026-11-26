@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="906" height="488" viewBox="0 0 906 488" font-family="Helvetica, Arial, sans-serif" font-size="14" role="img" aria-label="Architecture diagram">
+<title>Architecture diagram</title>
+<defs><marker id='flowmaid-arch-arrow-end' markerWidth='10' markerHeight='10' refX='9' refY='5' orient='auto' markerUnits='userSpaceOnUse'><path d='M 0,0 L 10,5 L 0,10 L 1,5 z' fill='#44507a'/></marker><marker id='flowmaid-arch-arrow-start' markerWidth='10' markerHeight='10' refX='1' refY='5' orient='auto' markerUnits='userSpaceOnUse'><path d='M 10,0 L 0,5 L 10,10 L 9,5 z' fill='#44507a'/></marker></defs>
+<rect x='24.0' y='24.0' width='198.0' height='246.0' rx='8' fill='#f7f8fc' stroke='#d5d9ec' stroke-width='2'/>
+<text x='48.0' y='44.0' dy='0.33em' font-weight='bold' fill='#232840'>☁️ Frontend</text>
+<rect x='272.0' y='24.0' width='404.0' height='144.0' rx='8' fill='#f7f8fc' stroke='#d5d9ec' stroke-width='2'/>
+<text x='296.0' y='44.0' dy='0.33em' font-weight='bold' fill='#232840'>🗄️ Backend</text>
+<rect x='478.0' y='218.0' width='404.0' height='246.0' rx='8' fill='#f7f8fc' stroke='#d5d9ec' stroke-width='2'/>
+<text x='502.0' y='238.0' dy='0.33em' font-weight='bold' fill='#232840'>🛢️ Data</text>
+<rect x='48.0' y='74.0' width='150.0' height='70.0' rx='9' fill='#ffffff' stroke='#5b6dc0' stroke-width='2.0'/>
+<text x='123.0' y='97.0' dy='0.33em' text-anchor='middle' font-size='24'>🌐</text>
+<text x='123.0' y='124.0' dy='0.33em' text-anchor='middle' fill='#232840'>Web App</text>
+<rect x='48.0' y='176.0' width='150.0' height='70.0' rx='9' fill='#ffffff' stroke='#5b6dc0' stroke-width='2.0'/>
+<text x='123.0' y='199.0' dy='0.33em' text-anchor='middle' font-size='24'>📱</text>
+<text x='123.0' y='226.0' dy='0.33em' text-anchor='middle' fill='#232840'>Mobile App</text>
+<rect x='296.0' y='74.0' width='150.0' height='70.0' rx='9' fill='#ffffff' stroke='#33a35c' stroke-width='2.0'/>
+<text x='371.0' y='97.0' dy='0.33em' text-anchor='middle' font-size='24'>🗄️</text>
+<text x='371.0' y='124.0' dy='0.33em' text-anchor='middle' fill='#232840'>API Gateway</text>
+<rect x='502.0' y='74.0' width='150.0' height='70.0' rx='9' fill='#ffffff' stroke='#33a35c' stroke-width='2.0'/>
+<text x='577.0' y='97.0' dy='0.33em' text-anchor='middle' font-size='24'>⚙️</text>
+<text x='577.0' y='124.0' dy='0.33em' text-anchor='middle' fill='#232840'>Business Logic</text>
+<rect x='708.0' y='268.0' width='150.0' height='70.0' rx='9' fill='#ffffff' stroke='#d99114' stroke-width='2.0'/>
+<text x='783.0' y='291.0' dy='0.33em' text-anchor='middle' font-size='24'>🛢️</text>
+<text x='783.0' y='318.0' dy='0.33em' text-anchor='middle' fill='#232840'>PostgreSQL</text>
+<rect x='502.0' y='370.0' width='150.0' height='70.0' rx='9' fill='#ffffff' stroke='#d99114' stroke-width='2.0'/>
+<text x='577.0' y='393.0' dy='0.33em' text-anchor='middle' font-size='24'>⚡️</text>
+<text x='577.0' y='420.0' dy='0.33em' text-anchor='middle' fill='#232840'>Redis</text>
+<polyline points='198.0,109.0 296.0,109.0' fill='none' stroke='#44507a' stroke-width='2' stroke-linejoin='round' />
+<polyline points='198.0,211.0 239.0,211.0 241.4,210.8 243.4,210.1 245.0,209.0 246.1,207.4 246.8,205.4 247.0,203.0 247.0,117.0 247.2,114.6 247.9,112.6 249.0,111.0 250.6,109.9 252.6,109.2 255.0,109.0 296.0,109.0' fill='none' stroke='#44507a' stroke-width='2' stroke-linejoin='round' />
+<polyline points='446.0,109.0 502.0,109.0' fill='none' stroke='#44507a' stroke-width='2' stroke-linejoin='round' marker-end='url(#flowmaid-arch-arrow-end)' />
+<polyline points='652.0,109.0 660.0,109.0 662.4,109.2 664.4,109.9 666.0,111.0 667.1,112.6 667.8,114.6 668.0,117.0 668.0,295.0 668.2,297.4 668.9,299.4 670.0,301.0 671.6,302.1 673.6,302.8 676.0,303.0 708.0,303.0' fill='none' stroke='#44507a' stroke-width='2' stroke-linejoin='round' marker-end='url(#flowmaid-arch-arrow-end)' marker-start='url(#flowmaid-arch-arrow-start)' />
+<polyline points='577.0,144.0 577.0,370.0' fill='none' stroke='#44507a' stroke-width='2' stroke-linejoin='round' />
+</svg>

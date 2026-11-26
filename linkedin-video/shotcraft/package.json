@@ -1,0 +1,23 @@
+{
+  "name": "promo-template",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts AiflPromo out/promo.mp4",
+    "still": "remotion still src/index.ts AiflPromo",
+    "render:flowmaid": "remotion render src/index.ts FlowmaidPromo out/flowmaid-promo.mp4 --muted --color-space=bt709 --browser-executable=/opt/pw-browsers/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell",
+    "cover:flowmaid": "remotion still src/index.ts FlowmaidPromo out/cover.png --frame=1079 --props={\\\"cover\\\":true} --browser-executable=/opt/pw-browsers/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell",
+    "cues:flowmaid": "node scripts/export-cues.mjs"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.484",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "remotion": "4.0.484"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.17",
+    "typescript": "6.0.3"
+  }
+}

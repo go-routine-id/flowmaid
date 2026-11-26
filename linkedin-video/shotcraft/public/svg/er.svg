@@ -1,0 +1,189 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1475" height="704" viewBox="0 0 1475 704" font-family="Helvetica, Arial, sans-serif" font-size="13" role="img" aria-label="Entity-relationship diagram">
+<title>Entity-relationship diagram</title>
+<path d="M 250.3 300.0 C 250.3 352.0, 250.3 352.0, 250.3 404.0" fill="none" stroke="#44507a" stroke-width="1.7"/>
+<rect x="28.0" y="72.0" width="444.6" height="228.0" rx="4" fill="#ffffff"/>
+<path d="M 28.0 76.0 Q 28.0 72.0, 32.0 72.0 L 468.6 72.0 Q 472.6 72.0, 472.6 76.0 L 472.6 102.0 L 28.0 102.0 Z" fill="#5b6dc0"/>
+<text x="250.3" y="87.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#ffffff">categories</text>
+<text x="38.0" y="113.0" dy="0.33em" fill="#6a7086">uuid</text>
+<text x="131.6" y="113.0" dy="0.33em" fill="#232840">id</text>
+<text x="261.0" y="113.0" dy="0.33em" text-anchor="end" font-weight="bold" fill="#44507a">PK</text>
+<text x="275.0" y="113.0" dy="0.33em" font-style="italic" fill="#6a7086">default gen_random_uuid()</text>
+<line x1="28.0" y1="124.0" x2="472.6" y2="124.0" stroke="#d5d9ec"/>
+<text x="38.0" y="135.0" dy="0.33em" fill="#6a7086">uuid</text>
+<text x="131.6" y="135.0" dy="0.33em" fill="#232840">organization_id</text>
+<text x="275.0" y="135.0" dy="0.33em" font-style="italic" fill="#6a7086">not null, index (org-scoped)</text>
+<line x1="28.0" y1="146.0" x2="472.6" y2="146.0" stroke="#d5d9ec"/>
+<text x="38.0" y="157.0" dy="0.33em" fill="#6a7086">uuid</text>
+<text x="131.6" y="157.0" dy="0.33em" fill="#232840">created_by</text>
+<text x="275.0" y="157.0" dy="0.33em" font-style="italic" fill="#6a7086">not null</text>
+<line x1="28.0" y1="168.0" x2="472.6" y2="168.0" stroke="#d5d9ec"/>
+<text x="38.0" y="179.0" dy="0.33em" fill="#6a7086">varchar(255)</text>
+<text x="131.6" y="179.0" dy="0.33em" fill="#232840">name</text>
+<text x="275.0" y="179.0" dy="0.33em" font-style="italic" fill="#6a7086">not null, unique(org_id, name)</text>
+<line x1="28.0" y1="190.0" x2="472.6" y2="190.0" stroke="#d5d9ec"/>
+<text x="38.0" y="201.0" dy="0.33em" fill="#6a7086">varchar(255)</text>
+<text x="131.6" y="201.0" dy="0.33em" fill="#232840">slug</text>
+<text x="275.0" y="201.0" dy="0.33em" font-style="italic" fill="#6a7086">not null, unique(org_id, slug)</text>
+<line x1="28.0" y1="212.0" x2="472.6" y2="212.0" stroke="#d5d9ec"/>
+<text x="38.0" y="223.0" dy="0.33em" fill="#6a7086">boolean</text>
+<text x="131.6" y="223.0" dy="0.33em" fill="#232840">is_active</text>
+<text x="275.0" y="223.0" dy="0.33em" font-style="italic" fill="#6a7086">default true</text>
+<line x1="28.0" y1="234.0" x2="472.6" y2="234.0" stroke="#d5d9ec"/>
+<text x="38.0" y="245.0" dy="0.33em" fill="#6a7086">timestamp</text>
+<text x="131.6" y="245.0" dy="0.33em" fill="#232840">created_at</text>
+<line x1="28.0" y1="256.0" x2="472.6" y2="256.0" stroke="#d5d9ec"/>
+<text x="38.0" y="267.0" dy="0.33em" fill="#6a7086">timestamp</text>
+<text x="131.6" y="267.0" dy="0.33em" fill="#232840">updated_at</text>
+<line x1="28.0" y1="278.0" x2="472.6" y2="278.0" stroke="#d5d9ec"/>
+<text x="38.0" y="289.0" dy="0.33em" fill="#6a7086">timestamp</text>
+<text x="131.6" y="289.0" dy="0.33em" fill="#232840">deleted_at</text>
+<text x="275.0" y="289.0" dy="0.33em" font-style="italic" fill="#6a7086">soft delete, index</text>
+<rect x="28.0" y="72.0" width="444.6" height="228.0" rx="4" fill="none" stroke="#5b6dc0" stroke-width="1.6"/>
+<rect x="40.2" y="404.0" width="420.1" height="272.0" rx="4" fill="#ffffff"/>
+<path d="M 40.2 408.0 Q 40.2 404.0, 44.2 404.0 L 456.4 404.0 Q 460.4 404.0, 460.4 408.0 L 460.4 434.0 L 40.2 434.0 Z" fill="#33a35c"/>
+<text x="250.3" y="419.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#0a0e1a">questions</text>
+<text x="50.2" y="445.0" dy="0.33em" fill="#6a7086">uuid</text>
+<text x="136.1" y="445.0" dy="0.33em" fill="#232840">id</text>
+<text x="265.4" y="445.0" dy="0.33em" text-anchor="end" font-weight="bold" fill="#44507a">PK</text>
+<text x="279.4" y="445.0" dy="0.33em" font-style="italic" fill="#6a7086">default gen_random_uuid()</text>
+<line x1="40.2" y1="456.0" x2="460.4" y2="456.0" stroke="#d5d9ec"/>
+<text x="50.2" y="467.0" dy="0.33em" fill="#6a7086">uuid</text>
+<text x="136.1" y="467.0" dy="0.33em" fill="#232840">organization_id</text>
+<text x="279.4" y="467.0" dy="0.33em" font-style="italic" fill="#6a7086">not null, index (org-scoped)</text>
+<line x1="40.2" y1="478.0" x2="460.4" y2="478.0" stroke="#d5d9ec"/>
+<text x="50.2" y="489.0" dy="0.33em" fill="#6a7086">uuid</text>
+<text x="136.1" y="489.0" dy="0.33em" fill="#232840">created_by</text>
+<text x="279.4" y="489.0" dy="0.33em" font-style="italic" fill="#6a7086">not null</text>
+<line x1="40.2" y1="500.0" x2="460.4" y2="500.0" stroke="#d5d9ec"/>
+<text x="50.2" y="511.0" dy="0.33em" fill="#6a7086">uuid</text>
+<text x="136.1" y="511.0" dy="0.33em" fill="#232840">category_id</text>
+<text x="265.4" y="511.0" dy="0.33em" text-anchor="end" font-weight="bold" fill="#44507a">FK</text>
+<text x="279.4" y="511.0" dy="0.33em" font-style="italic" fill="#6a7086">not null, index</text>
+<line x1="40.2" y1="522.0" x2="460.4" y2="522.0" stroke="#d5d9ec"/>
+<text x="50.2" y="533.0" dy="0.33em" fill="#6a7086">text</text>
+<text x="136.1" y="533.0" dy="0.33em" fill="#232840">question</text>
+<text x="279.4" y="533.0" dy="0.33em" font-style="italic" fill="#6a7086">not null</text>
+<line x1="40.2" y1="544.0" x2="460.4" y2="544.0" stroke="#d5d9ec"/>
+<text x="50.2" y="555.0" dy="0.33em" fill="#6a7086">text</text>
+<text x="136.1" y="555.0" dy="0.33em" fill="#232840">answer</text>
+<text x="279.4" y="555.0" dy="0.33em" font-style="italic" fill="#6a7086">not null</text>
+<line x1="40.2" y1="566.0" x2="460.4" y2="566.0" stroke="#d5d9ec"/>
+<text x="50.2" y="577.0" dy="0.33em" fill="#6a7086">varchar(20)</text>
+<text x="136.1" y="577.0" dy="0.33em" fill="#232840">difficulty</text>
+<text x="279.4" y="577.0" dy="0.33em" font-style="italic" fill="#6a7086">not null, default &#39;medium&#39;</text>
+<line x1="40.2" y1="588.0" x2="460.4" y2="588.0" stroke="#d5d9ec"/>
+<text x="50.2" y="599.0" dy="0.33em" fill="#6a7086">boolean</text>
+<text x="136.1" y="599.0" dy="0.33em" fill="#232840">is_active</text>
+<text x="279.4" y="599.0" dy="0.33em" font-style="italic" fill="#6a7086">default true</text>
+<line x1="40.2" y1="610.0" x2="460.4" y2="610.0" stroke="#d5d9ec"/>
+<text x="50.2" y="621.0" dy="0.33em" fill="#6a7086">timestamp</text>
+<text x="136.1" y="621.0" dy="0.33em" fill="#232840">created_at</text>
+<line x1="40.2" y1="632.0" x2="460.4" y2="632.0" stroke="#d5d9ec"/>
+<text x="50.2" y="643.0" dy="0.33em" fill="#6a7086">timestamp</text>
+<text x="136.1" y="643.0" dy="0.33em" fill="#232840">updated_at</text>
+<line x1="40.2" y1="654.0" x2="460.4" y2="654.0" stroke="#d5d9ec"/>
+<text x="50.2" y="665.0" dy="0.33em" fill="#6a7086">timestamp</text>
+<text x="136.1" y="665.0" dy="0.33em" fill="#232840">deleted_at</text>
+<text x="279.4" y="665.0" dy="0.33em" font-style="italic" fill="#6a7086">soft delete, index</text>
+<rect x="40.2" y="404.0" width="420.1" height="272.0" rx="4" fill="none" stroke="#33a35c" stroke-width="1.6"/>
+<rect x="522.6" y="28.0" width="443.2" height="316.0" rx="4" fill="#ffffff"/>
+<path d="M 522.6 32.0 Q 522.6 28.0, 526.6 28.0 L 961.8 28.0 Q 965.8 28.0, 965.8 32.0 L 965.8 58.0 L 522.6 58.0 Z" fill="#d99114"/>
+<text x="744.2" y="43.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#0a0e1a">schedules</text>
+<text x="532.6" y="69.0" dy="0.33em" fill="#6a7086">uuid</text>
+<text x="626.2" y="69.0" dy="0.33em" fill="#232840">id</text>
+<text x="763.6" y="69.0" dy="0.33em" text-anchor="end" font-weight="bold" fill="#44507a">PK</text>
+<text x="777.6" y="69.0" dy="0.33em" font-style="italic" fill="#6a7086">default gen_random_uuid()</text>
+<line x1="522.6" y1="80.0" x2="965.8" y2="80.0" stroke="#d5d9ec"/>
+<text x="532.6" y="91.0" dy="0.33em" fill="#6a7086">uuid</text>
+<text x="626.2" y="91.0" dy="0.33em" fill="#232840">organization_id</text>
+<text x="777.6" y="91.0" dy="0.33em" font-style="italic" fill="#6a7086">not null, index (org-scoped)</text>
+<line x1="522.6" y1="102.0" x2="965.8" y2="102.0" stroke="#d5d9ec"/>
+<text x="532.6" y="113.0" dy="0.33em" fill="#6a7086">uuid</text>
+<text x="626.2" y="113.0" dy="0.33em" fill="#232840">created_by</text>
+<text x="777.6" y="113.0" dy="0.33em" font-style="italic" fill="#6a7086">not null</text>
+<line x1="522.6" y1="124.0" x2="965.8" y2="124.0" stroke="#d5d9ec"/>
+<text x="532.6" y="135.0" dy="0.33em" fill="#6a7086">varchar(255)</text>
+<text x="626.2" y="135.0" dy="0.33em" fill="#232840">candidate_name</text>
+<text x="777.6" y="135.0" dy="0.33em" font-style="italic" fill="#6a7086">not null</text>
+<line x1="522.6" y1="146.0" x2="965.8" y2="146.0" stroke="#d5d9ec"/>
+<text x="532.6" y="157.0" dy="0.33em" fill="#6a7086">varchar(255)</text>
+<text x="626.2" y="157.0" dy="0.33em" fill="#232840">candidate_email</text>
+<text x="777.6" y="157.0" dy="0.33em" font-style="italic" fill="#6a7086">not null</text>
+<line x1="522.6" y1="168.0" x2="965.8" y2="168.0" stroke="#d5d9ec"/>
+<text x="532.6" y="179.0" dy="0.33em" fill="#6a7086">varchar(20)</text>
+<text x="626.2" y="179.0" dy="0.33em" fill="#232840">scheduled_date</text>
+<text x="777.6" y="179.0" dy="0.33em" font-style="italic" fill="#6a7086">not null, YYYY-MM-DD</text>
+<line x1="522.6" y1="190.0" x2="965.8" y2="190.0" stroke="#d5d9ec"/>
+<text x="532.6" y="201.0" dy="0.33em" fill="#6a7086">varchar(10)</text>
+<text x="626.2" y="201.0" dy="0.33em" fill="#232840">scheduled_time</text>
+<text x="777.6" y="201.0" dy="0.33em" font-style="italic" fill="#6a7086">not null, HH:MM</text>
+<line x1="522.6" y1="212.0" x2="965.8" y2="212.0" stroke="#d5d9ec"/>
+<text x="532.6" y="223.0" dy="0.33em" fill="#6a7086">int</text>
+<text x="626.2" y="223.0" dy="0.33em" fill="#232840">duration</text>
+<text x="777.6" y="223.0" dy="0.33em" font-style="italic" fill="#6a7086">not null, default 60 (minutes)</text>
+<line x1="522.6" y1="234.0" x2="965.8" y2="234.0" stroke="#d5d9ec"/>
+<text x="532.6" y="245.0" dy="0.33em" fill="#6a7086">varchar(50)</text>
+<text x="626.2" y="245.0" dy="0.33em" fill="#232840">status</text>
+<text x="777.6" y="245.0" dy="0.33em" font-style="italic" fill="#6a7086">not null, default &#39;scheduled&#39;</text>
+<line x1="522.6" y1="256.0" x2="965.8" y2="256.0" stroke="#d5d9ec"/>
+<text x="532.6" y="267.0" dy="0.33em" fill="#6a7086">text</text>
+<text x="626.2" y="267.0" dy="0.33em" fill="#232840">notes</text>
+<line x1="522.6" y1="278.0" x2="965.8" y2="278.0" stroke="#d5d9ec"/>
+<text x="532.6" y="289.0" dy="0.33em" fill="#6a7086">timestamp</text>
+<text x="626.2" y="289.0" dy="0.33em" fill="#232840">created_at</text>
+<line x1="522.6" y1="300.0" x2="965.8" y2="300.0" stroke="#d5d9ec"/>
+<text x="532.6" y="311.0" dy="0.33em" fill="#6a7086">timestamp</text>
+<text x="626.2" y="311.0" dy="0.33em" fill="#232840">updated_at</text>
+<line x1="522.6" y1="322.0" x2="965.8" y2="322.0" stroke="#d5d9ec"/>
+<text x="532.6" y="333.0" dy="0.33em" fill="#6a7086">timestamp</text>
+<text x="626.2" y="333.0" dy="0.33em" fill="#232840">deleted_at</text>
+<text x="777.6" y="333.0" dy="0.33em" font-style="italic" fill="#6a7086">soft delete, index</text>
+<rect x="522.6" y="28.0" width="443.2" height="316.0" rx="4" fill="none" stroke="#d99114" stroke-width="1.6"/>
+<rect x="1015.8" y="72.0" width="431.3" height="228.0" rx="4" fill="#ffffff"/>
+<path d="M 1015.8 76.0 Q 1015.8 72.0, 1019.8 72.0 L 1443.1 72.0 Q 1447.1 72.0, 1447.1 76.0 L 1447.1 102.0 L 1015.8 102.0 Z" fill="#c2588c"/>
+<text x="1231.5" y="87.0" dy="0.33em" text-anchor="middle" font-weight="bold" fill="#0a0e1a">settings</text>
+<text x="1025.8" y="113.0" dy="0.33em" fill="#6a7086">uuid</text>
+<text x="1119.4" y="113.0" dy="0.33em" fill="#232840">id</text>
+<text x="1248.8" y="113.0" dy="0.33em" text-anchor="end" font-weight="bold" fill="#44507a">PK</text>
+<text x="1262.8" y="113.0" dy="0.33em" font-style="italic" fill="#6a7086">default gen_random_uuid()</text>
+<line x1="1015.8" y1="124.0" x2="1447.1" y2="124.0" stroke="#d5d9ec"/>
+<text x="1025.8" y="135.0" dy="0.33em" fill="#6a7086">uuid</text>
+<text x="1119.4" y="135.0" dy="0.33em" fill="#232840">organization_id</text>
+<text x="1262.8" y="135.0" dy="0.33em" font-style="italic" fill="#6a7086">not null, index (org-scoped)</text>
+<line x1="1015.8" y1="146.0" x2="1447.1" y2="146.0" stroke="#d5d9ec"/>
+<text x="1025.8" y="157.0" dy="0.33em" fill="#6a7086">uuid</text>
+<text x="1119.4" y="157.0" dy="0.33em" fill="#232840">created_by</text>
+<text x="1262.8" y="157.0" dy="0.33em" font-style="italic" fill="#6a7086">not null</text>
+<line x1="1015.8" y1="168.0" x2="1447.1" y2="168.0" stroke="#d5d9ec"/>
+<text x="1025.8" y="179.0" dy="0.33em" fill="#6a7086">varchar(255)</text>
+<text x="1119.4" y="179.0" dy="0.33em" fill="#232840">key</text>
+<text x="1262.8" y="179.0" dy="0.33em" font-style="italic" fill="#6a7086">not null, unique(org_id, key)</text>
+<line x1="1015.8" y1="190.0" x2="1447.1" y2="190.0" stroke="#d5d9ec"/>
+<text x="1025.8" y="201.0" dy="0.33em" fill="#6a7086">text</text>
+<text x="1119.4" y="201.0" dy="0.33em" fill="#232840">value</text>
+<text x="1262.8" y="201.0" dy="0.33em" font-style="italic" fill="#6a7086">not null</text>
+<line x1="1015.8" y1="212.0" x2="1447.1" y2="212.0" stroke="#d5d9ec"/>
+<text x="1025.8" y="223.0" dy="0.33em" fill="#6a7086">varchar(50)</text>
+<text x="1119.4" y="223.0" dy="0.33em" fill="#232840">type</text>
+<text x="1262.8" y="223.0" dy="0.33em" font-style="italic" fill="#6a7086">not null, default &#39;string&#39;</text>
+<line x1="1015.8" y1="234.0" x2="1447.1" y2="234.0" stroke="#d5d9ec"/>
+<text x="1025.8" y="245.0" dy="0.33em" fill="#6a7086">timestamp</text>
+<text x="1119.4" y="245.0" dy="0.33em" fill="#232840">created_at</text>
+<line x1="1015.8" y1="256.0" x2="1447.1" y2="256.0" stroke="#d5d9ec"/>
+<text x="1025.8" y="267.0" dy="0.33em" fill="#6a7086">timestamp</text>
+<text x="1119.4" y="267.0" dy="0.33em" fill="#232840">updated_at</text>
+<line x1="1015.8" y1="278.0" x2="1447.1" y2="278.0" stroke="#d5d9ec"/>
+<text x="1025.8" y="289.0" dy="0.33em" fill="#6a7086">timestamp</text>
+<text x="1119.4" y="289.0" dy="0.33em" fill="#232840">deleted_at</text>
+<text x="1262.8" y="289.0" dy="0.33em" font-style="italic" fill="#6a7086">soft delete, index</text>
+<rect x="1015.8" y="72.0" width="431.3" height="228.0" rx="4" fill="none" stroke="#c2588c" stroke-width="1.6"/>
+<path d="M 256.3 308.0 L 244.3 308.0" fill="none" stroke="#44507a" stroke-width="1.7"/>
+<path d="M 256.3 314.0 L 244.3 314.0" fill="none" stroke="#44507a" stroke-width="1.7"/>
+<path d="M 250.3 389.0 L 244.3 404.0" fill="none" stroke="#44507a" stroke-width="1.7"/>
+<path d="M 250.3 389.0 L 256.3 404.0" fill="none" stroke="#44507a" stroke-width="1.7"/>
+<path d="M 250.3 389.0 L 250.3 396.5" fill="none" stroke="#44507a" stroke-width="1.7"/>
+<path d="M 250.3 396.5 L 250.3 404.0" fill="none" stroke="#44507a" stroke-width="1.7"/>
+<circle cx="250.3" cy="382.0" r="5.0" fill="#ffffff" stroke="#44507a" stroke-width="1.7"/>
+<rect x="232.0" y="342.0" width="36.6" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="250.3" y="352.0" dy="0.33em" text-anchor="middle" fill="#232840">has</text>
+</svg>

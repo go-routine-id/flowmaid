@@ -1,0 +1,35 @@
+1
+00:00:00,133 --> 00:00:02,933
+flowmaid renders Mermaid diagrams in pure Rust.
+
+2
+00:00:03,333 --> 00:00:07,467
+Text in, clean SVG out.
+
+3
+00:00:07,933 --> 00:00:11,233
+Over a hundred times faster than mermaid.js.
+
+4
+00:00:11,767 --> 00:00:14,900
+Twelve diagram types, from flowcharts to sankey.
+
+5
+00:00:15,433 --> 00:00:19,833
+In the browser, drag a node, and its edges follow.
+
+6
+00:00:20,767 --> 00:00:25,100
+flowcli draws them in your terminal, and redraws when you save.
+
+7
+00:00:25,633 --> 00:00:29,967
+In dbx, flowmaid lays out your database schema as an ERD.
+
+8
+00:00:30,967 --> 00:00:32,833
+flowmaid is open source.
+
+9
+00:00:32,833 --> 00:00:35,933
+Try it in your browser, or cargo add flowmaid.

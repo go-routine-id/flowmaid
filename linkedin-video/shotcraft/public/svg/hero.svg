@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="371" height="581" viewBox="0 0 371 581" font-family="Helvetica, Arial, sans-serif" font-size="14" role="img" aria-label="Flowchart diagram">
+<title>Flowchart diagram</title>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#44507a"/></marker></defs>
+<rect x="28.0" y="262.6" width="241.7" height="206.0" rx="8" fill="#f6f7fb" stroke="#858db0" stroke-width="1.4"/>
+<path d="M 199.1 66.0 C 199.1 94.0, 199.1 95.9, 199.1 120.5" fill="none" stroke="#44507a" stroke-width="2" marker-end="url(#arrow)"><title>A → B</title></path>
+<path d="M 190.2 184.7 L 190.2 187.6 L 190.2 201.8 C 190.2 207.0, 190.2 211.7, 187.9 214.0 C 185.6 216.4, 180.9 216.4, 175.5 216.4 L 158.7 216.4 C 153.3 216.4, 148.6 216.4, 146.3 218.7 C 144.0 221.0, 144.0 225.7, 144.0 240.1 L 144.0 290.6 L 144.0 297.1" fill="none" stroke="#44507a" stroke-width="2" marker-end="url(#arrow)"><title>B → C: yes</title></path>
+<path d="M 214.7 180.3 L 214.7 183.8 L 214.7 200.1 C 214.7 205.9, 214.7 210.6, 217.1 212.9 C 219.4 215.3, 224.1 215.3, 238.4 215.3 L 291.1 215.3 C 305.5 215.3, 310.2 215.3, 312.5 217.6 C 314.8 219.9, 314.8 224.6, 314.8 239.2 L 314.8 290.4 L 314.8 297.1" fill="none" stroke="#44507a" stroke-width="2" marker-end="url(#arrow)"><title>B → D: no</title></path>
+<path d="M 106.1 340.6 C 106.1 359.0, 106.1 377.4, 106.1 398.5" fill="none" stroke="#44507a" stroke-width="2" marker-end="url(#arrow)"><title>C → E</title></path>
+<path d="M 172.1 340.6 C 172.1 359.1, 172.1 377.5, 172.1 399.5" fill="none" stroke="#44507a" stroke-width="2" marker-end="url(#arrow)"><title>C → F</title></path>
+<path d="M 78.0 454.6 L 78.0 457.3 L 78.0 470.3 C 78.0 475.3, 78.0 479.9, 80.4 482.3 C 82.7 484.6, 87.4 484.6, 92.2 484.6 L 106.8 484.6 C 111.6 484.6, 116.2 484.6, 118.6 486.9 C 120.9 489.3, 120.9 493.9, 120.9 498.9 L 120.9 509.1" fill="none" stroke="#44507a" stroke-width="2" marker-end="url(#arrow)"><title>E → G</title></path>
+<path d="M 209.9 454.6 L 209.9 457.3 L 209.9 470.3 C 209.9 475.3, 209.9 479.9, 207.6 482.3 C 205.2 484.6, 200.6 484.6, 195.8 484.6 L 181.2 484.6 C 176.4 484.6, 171.7 484.6, 169.4 486.9 C 167.0 489.3, 167.0 493.9, 167.0 498.9 L 167.0 509.1" fill="none" stroke="#44507a" stroke-width="2" marker-end="url(#arrow)"><title>F → G</title></path>
+<g><title>Request</title>
+<rect x="151.2" y="28.0" width="95.8" height="38.0" rx="19.0" fill="#e5f5ea" stroke="#33a35c" stroke-width="1.8"/>
+<text x="199.1" y="47.0" dy="0.33em" text-anchor="middle" fill="#232840">Request</text>
+</g>
+<g><title>Auth?</title>
+<polygon points="199.1,126.0 247.9,158.3 199.1,190.6 150.3,158.3" fill="#fcf2da" stroke="#d99114" stroke-width="1.8"/>
+<text x="199.1" y="158.3" dy="0.33em" text-anchor="middle" fill="#232840">Auth?</text>
+</g>
+<g><title>API Gateway</title>
+<rect x="87.3" y="302.6" width="113.3" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.8"/>
+<text x="144.0" y="321.6" dy="0.33em" text-anchor="middle" fill="#232840">API Gateway</text>
+</g>
+<g><title>401</title>
+<rect x="287.1" y="302.6" width="55.4" height="38.0" rx="3.0" fill="#eef1fb" stroke="#5b6dc0" stroke-width="1.8"/>
+<text x="314.8" y="321.6" dy="0.33em" text-anchor="middle" fill="#232840">401</text>
+</g>
+<g><title>Cache</title>
+<path d="M 42.0 409.7 A 36.0 9.1 0 0 1 114.1 409.7 L 114.1 445.5 A 36.0 9.1 0 0 1 42.0 445.5 Z" fill="#e7eef7" stroke="#4d8fbf" stroke-width="1.8"/>
+<path d="M 42.0 409.7 A 36.0 9.1 0 0 0 114.1 409.7" fill="none" stroke="#4d8fbf" stroke-width="1.8"/>
+<text x="78.0" y="434.5" dy="0.33em" text-anchor="middle" fill="#232840">Cache</text>
+</g>
+<g><title>Database</title>
+<path d="M 164.1 410.6 A 45.8 10.0 0 0 1 255.7 410.6 L 255.7 444.6 A 45.8 10.0 0 0 1 164.1 444.6 Z" fill="#e7eef7" stroke="#4d8fbf" stroke-width="1.8"/>
+<path d="M 164.1 410.6 A 45.8 10.0 0 0 0 255.7 410.6" fill="none" stroke="#4d8fbf" stroke-width="1.8"/>
+<text x="209.9" y="435.1" dy="0.33em" text-anchor="middle" fill="#232840">Database</text>
+</g>
+<g><title>Response</title>
+<rect x="90.6" y="514.6" width="106.7" height="38.0" rx="19.0" fill="#e5f5ea" stroke="#33a35c" stroke-width="1.8"/>
+<text x="144.0" y="533.6" dy="0.33em" text-anchor="middle" fill="#232840">Response</text>
+</g>
+<rect x="126.5" y="214.3" width="35.8" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="144.4" y="224.3" dy="0.33em" text-anchor="middle" fill="#232840">yes</text>
+<rect x="276.1" y="205.3" width="29.6" height="20" rx="4" fill="#ffffff" stroke="#d5d9ec"/>
+<text x="290.9" y="215.3" dy="0.33em" text-anchor="middle" fill="#232840">no</text>
+<rect x="34.0" y="267.6" width="54.6" height="16" rx="4" fill="#f6f7fb" fill-opacity="0.9"/>
+<text x="38.0" y="279.6" font-size="12" font-weight="bold" fill="#4a5070">Services</text>
+</svg>
