@@ -7,6 +7,19 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **A few back edges no longer stretch a large flowchart** (#151). In a
+  flowchart past 400 nodes and edges, the cycle breakers come from one
+  walk in source order; when it took a back edge as a tree edge it turned
+  the forward edges that close against it, so 50 back edges in a 997-node,
+  50-layer graph made 350 layers, a drawing 34 000 px tall and a 2.2 s
+  layout (now 5 000 px and 0.15 s). Where the walk's layering is at least
+  twice as deep as the greedy feedback-arc-set marks' and the walk
+  reverses at least four times as many edges, the greedy marks are used.
+  Every other drawing, including long chains with loops and large random
+  graphs, is byte for byte what it was.
+
 ## [0.40.2] - 2026-11-19
 
 ### Highlights

@@ -186,6 +186,12 @@ const NARROW_HIT_SLACK: usize = 2;
 /// search budget) 1 396 -> 1 739 `route()` defects (B8b P2). Both now
 /// keep the walk in source order, as before 0.35.
 const WALK_MAX_ELEMENTS: usize = 400;
+/// How many times deeper than the greedy cycle breakers' layering the
+/// walk's may be before the greedy marks replace the walk's ([`rank`]).
+const STRETCH_FACTOR: usize = 2;
+/// How many times more real edges than the greedy cycle breakers the
+/// walk must reverse before the greedy marks replace its own ([`rank`]).
+const REVERSAL_FACTOR: usize = 4;
 /// Crossings one edge-through-node skeleton hit ([`node_hits`]) weighs
 /// when a narrowing step adds hits past NARROW_HIT_SLACK: the step must
 /// save more crossings than this many per hit it adds. A line struck
@@ -2566,6 +2572,30 @@ fn rank(
         }
     }
 
+    // Past WALK_MAX_ELEMENTS only one walk runs, and a walk that takes a
+    // reversed link as a tree edge turns the forward links it closes
+    // against: 50 back edges stretched a 50-layer graph to 350 layers.
+    // The greedy order of `greedy_back` keeps few links against the flow
+    // whatever the walk, but it breaks cycles by degree: in a chain with
+    // loops it cuts the chain where the walk cuts the loops, and a deep
+    // graph comes out shallow (a 260-stage pipeline with retries, a
+    // 140-step approval flow). Depth alone cannot tell that from a
+    // stretched layering, so the walk's marks go only where its layering
+    // is STRETCH_FACTOR times deeper *and* it reverses REVERSAL_FACTOR
+    // times as many real edges: the stretched walk reverses 8 to 30
+    // times what greedy does, every graph that is deep by nature 1.9
+    // times at most. Random graphs, with the walk reversing 1.5 to 1.9
+    // times as many, keep the walk (see WALK_MAX_ELEMENTS).
+    if walk == Walk::Source && blocks.is_none() {
+        let alt = greedy_back(&adj, nlinks);
+        let reversed = |b: &[bool]| b[..ne].iter().filter(|&&x| x).count();
+        if reversed(&alt) * REVERSAL_FACTOR <= reversed(&back)
+            && layer_depth(&adj, &alt, n) * STRETCH_FACTOR <= layer_depth(&adj, &back, n)
+        {
+            back = alt;
+        }
+    }
+
     // Block mode: the marks above are the raw marks of the block
     // layering, which does the rest.
     if let (Some(nc), Some(links)) = (node_cluster, blocks) {
@@ -2661,6 +2691,116 @@ fn rank(
         layer,
         blocks: None,
     }
+}
+
+/// Layers the longest-path layering of `adj` takes with `back` links
+/// left out (nodes `n..` are hubs, which add no layer), as [`rank`]
+/// lays it out.
+fn layer_depth(adj: &[Vec<(usize, usize)>], back: &[bool], n: usize) -> usize {
+    let nx = adj.len();
+    let mut indeg = vec![0usize; nx];
+    for links in adj {
+        for &(v, _) in links.iter().filter(|&&(_, ei)| !back[ei]) {
+            indeg[v] += 1;
+        }
+    }
+    let mut layer = vec![0usize; nx];
+    let mut q: VecDeque<usize> = (0..nx).filter(|&v| indeg[v] == 0).collect();
+    let mut deepest = 0;
+    while let Some(u) = q.pop_front() {
+        deepest = deepest.max(layer[u]);
+        let step = usize::from(u < n);
+        for &(v, _) in adj[u].iter().filter(|&&(_, ei)| !back[ei]) {
+            layer[v] = layer[v].max(layer[u] + step);
+            indeg[v] -= 1;
+            if indeg[v] == 0 {
+                q.push_back(v);
+            }
+        }
+    }
+    deepest + 1
+}
+
+/// Cycle breakers by the greedy feedback-arc-set order of Eades, Lin and
+/// Smyth: sinks go last, sources first, and otherwise the node with the
+/// most out-links over in-links goes next; a link pointing back along
+/// that order is a breaker. `adj[u]` holds `(target, link id)`; a
+/// self-loop is a breaker. Ties go to the lowest node, so the result
+/// does not depend on a hash order. O((V + E) log V).
+fn greedy_back(adj: &[Vec<(usize, usize)>], nlinks: usize) -> Vec<bool> {
+    use std::collections::BTreeSet;
+    let nx = adj.len();
+    let mut radj: Vec<Vec<usize>> = vec![Vec::new(); nx];
+    let mut out = vec![0i64; nx];
+    let mut inn = vec![0i64; nx];
+    for (u, links) in adj.iter().enumerate() {
+        for &(v, _) in links.iter().filter(|&&(v, _)| v != u) {
+            radj[v].push(u);
+            out[u] += 1;
+            inn[v] += 1;
+        }
+    }
+    // Keyed (out - in, reversed id): the largest key is the best node.
+    let key = |v: usize, out: &[i64], inn: &[i64]| (out[v] - inn[v], nx - v);
+    let mut rest: BTreeSet<(i64, usize)> = (0..nx).map(|v| key(v, &out, &inn)).collect();
+    let mut sinks: Vec<usize> = (0..nx).rev().filter(|&v| out[v] == 0).collect();
+    let mut sources: Vec<usize> = (0..nx).rev().filter(|&v| inn[v] == 0).collect();
+    let mut gone = vec![false; nx];
+    let (mut head, mut tail): (Vec<usize>, Vec<usize>) = (Vec::new(), Vec::new());
+    for _ in 0..nx {
+        let (v, to_tail) = loop {
+            if let Some(v) = sinks.pop() {
+                if !gone[v] && out[v] == 0 {
+                    break (v, true);
+                }
+            } else if let Some(v) = sources.pop() {
+                if !gone[v] && inn[v] == 0 {
+                    break (v, false);
+                }
+            } else {
+                let &(_, r) = rest.iter().next_back().expect("a node is left");
+                break (nx - r, false);
+            }
+        };
+        gone[v] = true;
+        rest.remove(&key(v, &out, &inn));
+        let (outs, ins): (Vec<usize>, Vec<usize>) = (
+            adj[v].iter().map(|&(t, _)| t).filter(|&t| t != v).collect(),
+            radj[v].clone(),
+        );
+        for t in outs.into_iter().filter(|&t| !gone[t]) {
+            rest.remove(&key(t, &out, &inn));
+            inn[t] -= 1;
+            rest.insert(key(t, &out, &inn));
+            if inn[t] == 0 {
+                sources.push(t);
+            }
+        }
+        for u in ins.into_iter().filter(|&u| !gone[u]) {
+            rest.remove(&key(u, &out, &inn));
+            out[u] -= 1;
+            rest.insert(key(u, &out, &inn));
+            if out[u] == 0 {
+                sinks.push(u);
+            }
+        }
+        if to_tail {
+            tail.push(v);
+        } else {
+            head.push(v);
+        }
+    }
+    let mut at = vec![0usize; nx];
+    for (i, &v) in head.iter().chain(tail.iter().rev()).enumerate() {
+        at[v] = i;
+    }
+    let mut back = vec![false; nlinks];
+    for (u, links) in adj.iter().enumerate() {
+        for &(v, ei) in links {
+            back[ei] = u == v || at[u] > at[v];
+        }
+    }
+    back
 }
 
 /// A clustered layout graph's layering as blocks and as it was before
