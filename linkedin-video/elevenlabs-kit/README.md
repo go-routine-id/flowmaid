@@ -1,6 +1,8 @@
 # ElevenLabs kit (Remotion version, 36 s, 1080x1350)
 
-`flowmaid-linkedin-video.zip` is the full Remotion project of the flowmaid-web-design video, packaged for a local
+`flowmaid-linkedin-video-final.zip` is the final state: the voice-over (ElevenLabs voice "Eric") and sound
+effects are in the project, and `deliverables/final/` holds the finished film, captions and cover.
+It is the full Remotion project of the flowmaid-web-design video, packaged for a local
 Claude Code to add an ElevenLabs voice-over. It supersedes `../shotcraft/` as the source of truth.
 
 Inside the zip:
